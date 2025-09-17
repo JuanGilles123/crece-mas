@@ -1,0 +1,127 @@
+/* Layout principal */
+.dashboard-layout {
+  display: flex;
+  min-height: 100vh;
+  background: #f6f8fa;
+}
+
+/* Sidebar */
+.dashboard-sidebar {
+  width: 220px;
+  background: #fff;
+  border-right: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 2rem 1rem 1rem 1.5rem;
+  gap: 2rem;
+}
+.dashboard-logo {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1e90ff;
+  margin-bottom: 2rem;
+}
+.dashboard-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  width: 100%;
+}
+.dashboard-nav a {
+  text-decoration: none;
+  color: #222;
+  font-size: 1.08rem;
+  padding: 0.7rem 1rem;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  transition: background 0.2s, color 0.2s;
+}
+.dashboard-nav a.active, .dashboard-nav a:hover {
+  background: #e6f0fa;
+  color: #1e90ff;
+}
+
+/* Main content */
+.dashboard-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.2rem 2rem 1.2rem 1rem;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+}
+.dashboard-content {
+  flex: 1;
+  padding: 2.5rem 2.5rem 2.5rem 2rem;
+  background: #f6f8fa;
+  min-height: 0;
+}
+.search {
+  width: 260px;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #f6f8fa;
+  font-size: 1rem;
+}
+.user-menu {
+  position: relative;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+.user-icon {
+  font-size: 1.5rem;
+  color: #1e90ff;
+}
+.user-dropdown {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: 2.2rem;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 4px 16px #0001;
+  padding: 0.7rem 1.2rem;
+  min-width: 150px;
+  z-index: 10;
+  gap: 0.7rem;
+  flex-direction: column;
+}
+.user-menu:hover .user-dropdown {
+  display: flex;
+}
+@media (max-width: 900px) {
+  .dashboard-sidebar {
+    width: 60px;
+    padding: 1rem 0.2rem 1rem 0.2rem;
+    align-items: center;
+  }
+  .dashboard-nav a {
+    font-size: 0.95rem;
+    padding: 0.7rem 0.5rem;
+    justify-content: center;
+  }
+  .dashboard-logo {
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+  }
+  .dashboard-main {
+    padding: 0;
+  }
+  .dashboard-header {
+    padding: 1rem 0.5rem 1rem 0.5rem;
+  }
+  .dashboard-content {
+    padding: 1rem 0.5rem;
+  }
+}

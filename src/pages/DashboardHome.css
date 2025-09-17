@@ -1,0 +1,136 @@
+/* Caja - glassmorphism y diseño moderno */
+.dashboard-home-main {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 60vh;
+  padding-top: 2rem;
+}
+.dashboard-caja-card {
+  background: rgba(255,255,255,0.85);
+  border-radius: 22px;
+  box-shadow: 0 4px 24px #0001;
+  padding: 2.5rem 2rem 2rem 2rem;
+  max-width: 540px;
+  width: 100%;
+  margin: 0 auto;
+  backdrop-filter: blur(8px);
+}
+.glass {
+  background: rgba(255,255,255,0.7);
+  box-shadow: 0 8px 32px 0 rgba(31,38,135,0.10);
+  backdrop-filter: blur(8px);
+}
+.dashboard-caja-actions {
+  display: flex;
+  gap: 1.2rem;
+  margin-bottom: 1.2rem;
+  justify-content: center;
+}
+.dashboard-caja-btn {
+  font-size: 1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 10px;
+  padding: 0.7rem 2.2rem;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+  box-shadow: 0 2px 8px #0001;
+}
+.dashboard-caja-btn.abrir {
+  background: #2563eb;
+  color: #fff;
+}
+.dashboard-caja-btn.abrir:hover {
+  background: #1e40af;
+}
+.dashboard-caja-btn.cerrar {
+  background: #22c55e;
+  color: #fff;
+}
+.dashboard-caja-btn.cerrar:hover {
+  background: #15803d;
+}
+.dashboard-caja-title {
+  font-size: 1.3rem;
+  color: #222;
+  font-weight: 700;
+  margin-bottom: 1.1rem;
+  text-align: left;
+}
+.dashboard-caja-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 0.5rem;
+  background: transparent;
+}
+.dashboard-caja-table th, .dashboard-caja-table td {
+  padding: 0.7rem 0.5rem;
+  text-align: left;
+  font-size: 1rem;
+}
+.dashboard-caja-table th {
+  color: #1e90ff;
+  font-weight: 700;
+  border-bottom: 2px solid #e5e7eb;
+}
+.dashboard-caja-table td {
+  color: #444;
+  border-bottom: 1px solid #f0f0f0;
+}
+.dashboard-caja-empty {
+  text-align: center;
+  color: #888;
+  font-style: italic;
+  padding: 1.5rem 0;
+}
+@media (max-width: 600px) {
+  .dashboard-caja-card {
+    padding: 1.2rem 0.5rem;
+  }
+  .dashboard-caja-table th, .dashboard-caja-table td {
+    font-size: 0.95rem;
+    padding: 0.5rem 0.2rem;
+  }
+  .dashboard-caja-btn {
+    padding: 0.6rem 1.2rem;
+    font-size: 0.95rem;
+  }
+}
+.dashboard-home {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+}
+.dashboard-card {
+  background: #fff;
+  border-radius: 22px;
+  box-shadow: 0 4px 24px #0001;
+  padding: 2.5rem 2rem;
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+  margin: 0 auto;
+}
+.dashboard-card h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #222;
+  margin-bottom: 1.2rem;
+}
+.dashboard-img {
+  width: 160px;
+  margin: 1.2rem auto 1.2rem auto;
+  display: block;
+}
+.dashboard-card h3 {
+  font-size: 1.25rem;
+  color: #1e90ff;
+  font-weight: 700;
+  margin-bottom: 0.7rem;
+}
+.dashboard-card p {
+  color: #444;
+  font-size: 1.05rem;
+}
