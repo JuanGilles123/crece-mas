@@ -1,11 +1,13 @@
 import './App.css';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Registro from './pages/Registro';
 import Recuperar from './pages/Recuperar';
 import Dashboard from './pages/Dashboard';
 import RestablecerContrasena from './pages/ResetPassword';
+import Confirmacion from './pages/Confirmacion';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -24,6 +26,7 @@ function App() {
               <Dashboard />
             </ProtectedRoute>
           } />
+          <Route path="/confirmar" element={<Confirmacion />} />
         </Routes>
       </Router>
     </AuthProvider>

@@ -37,6 +37,16 @@ const Inventario = () => {
   // Guardar producto en Supabase
   const handleAgregarProducto = async (nuevo) => {
     if (!user) return;
+    // Log de los datos que se intentan guardar
+    console.log('Intentando guardar producto:', {
+      user_id: user.id,
+      codigo: nuevo.codigo,
+      nombre: nuevo.nombre,
+      precio_compra: nuevo.precio_compra,
+      precio_venta: nuevo.precio_venta,
+      stock: nuevo.stock,
+      imagen: nuevo.imagen,
+    });
     const { data, error } = await supabase
       .from('productos')
       .insert([
@@ -51,7 +61,9 @@ const Inventario = () => {
         }
       ])
       .select();
-    if (!error && data && data[0]) {
+    if (error) {
+      console.error('Error al guardar producto:', error);
+    } else if (data && data[0]) {
       setProductos(prev => [data[0], ...prev]);
     }
   };
