@@ -80,12 +80,18 @@ const Registro = () => {
       }
       return;
     }
-    // Guardar en tabla personalizada
-    const { error: dbError } = await supabase.from('users').insert([
-      { email, phone: '+' + phone, currency }
+    // Guardar perfil en tabla perfiles (usando el id del usuario creado)
+    // Esperar a que el usuario esté confirmado
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError || !userData?.user) {
+      setError('No se pudo obtener el usuario para crear el perfil.');
+      return;
+    }
+    const { error: perfilError } = await supabase.from('perfiles').insert([
+      { id: userData.user.id, moneda: currency }
     ]);
-    if (dbError) {
-      setError(dbError.message);
+    if (perfilError) {
+      setError(perfilError.message);
     } else {
       setSuccess('¡Registro exitoso! Revisa tu correo o SMS para confirmar.');
       setTimeout(() => navigate('/login'), 2000);
