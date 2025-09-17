@@ -1,4 +1,68 @@
 .container {
-  padding: 2rem;
-  text-align: center;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(120deg, #e0e7ff 0%, #f0fdfa 100%);
+  padding: 0 1rem;
+}
+
+.landingBox {
+  background: rgba(255,255,255,0.95);
+  border-radius: 24px;
+  box-shadow: 0 8px 32px 0 rgba(31,38,135,0.13);
+  padding: 3rem 2.5rem 2.5rem 2.5rem;
+  max-width: 420px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.title {
+  font-size: 2.3rem;
+  font-weight: 800;
+  margin-bottom: 1.1rem;
+  color: #2563eb;
+  letter-spacing: -1px;
+}
+.subtitle {
+  font-size: 1.18rem;
+  color: #222;
+  margin-bottom: 2.2rem;
+  font-weight: 500;
+}
+.landingActions {
+  display: flex;
+  gap: 1.2rem;
+  width: 100%;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.landingBtn {
+  font-size: 1.13rem;
+  font-weight: 700;
+  border-radius: 12px;
+  padding: 1rem 2.2rem;
+  border: none;
+  text-decoration: none;
+  box-shadow: 0 2px 8px #0001;
+  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+  margin-bottom: 0.5rem;
+  display: inline-block;
+}
+.loginBtn {
+  background: #2563eb;
+  color: #fff;
+}
+.loginBtn:hover {
+  background: #1e40af;
+}
+.registerBtn {
+  background: #f3f4f6;
+  color: #2563eb;
+  border: 1.5px solid #2563eb;
+}
+.registerBtn:hover {
+  background: #e0e7ff;
+  color: #1e40af;
 }
