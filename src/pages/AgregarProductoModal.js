@@ -8,7 +8,8 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
   const { user } = useAuth();
   const [codigo, setCodigo] = useState('');
   const [nombre, setNombre] = useState('');
-  const [precio, setPrecio] = useState('');
+  const [precioCompra, setPrecioCompra] = useState('');
+  const [precioVenta, setPrecioVenta] = useState('');
   const [stock, setStock] = useState('');
   const [imagen, setImagen] = useState(null);
   const [subiendo, setSubiendo] = useState(false);
@@ -17,10 +18,13 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
 
   if (!open) return null;
 
-  const handlePrecioChange = e => {
-    // Solo números, formatear con puntos
+  const handlePrecioCompraChange = e => {
     let val = e.target.value.replace(/\D/g, '');
-    setPrecio(val ? Number(val).toLocaleString('es-CO') : '');
+    setPrecioCompra(val ? Number(val).toLocaleString('es-CO') : '');
+  };
+  const handlePrecioVentaChange = e => {
+    let val = e.target.value.replace(/\D/g, '');
+    setPrecioVenta(val ? Number(val).toLocaleString('es-CO') : '');
   };
 
   const handleImagenChange = e => {
@@ -36,7 +40,7 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
   const handleSubmit = async e => {
     e.preventDefault();
     setError('');
-    if (!codigo || !nombre || !precio || !stock || !imagen) {
+    if (!codigo || !nombre || !precioCompra || !precioVenta || !stock || !imagen) {
       setError('Todos los campos son obligatorios.');
       return;
     }
@@ -51,12 +55,13 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
       onProductoAgregado({
         codigo,
         nombre,
-        precio: Number(precio.replace(/\D/g, '')),
+        precio_compra: Number(precioCompra.replace(/\D/g, '')),
+        precio_venta: Number(precioVenta.replace(/\D/g, '')),
         stock: Number(stock),
         imagen: urlData.publicUrl,
       });
       onClose();
-  setCodigo(''); setNombre(''); setPrecio(''); setStock(''); setImagen(null);
+  setCodigo(''); setNombre(''); setPrecioCompra(''); setPrecioVenta(''); setStock(''); setImagen(null);
     } catch (err) {
       setError('Error al subir la imagen o guardar el producto.');
     } finally {
@@ -73,10 +78,16 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
           <input value={codigo} onChange={e => setCodigo(e.target.value)} required className="input-form" placeholder="Ej: SKU123" />
           <label>Nombre</label>
           <input value={nombre} onChange={e => setNombre(e.target.value)} required className="input-form" />
-          <label>Precio</label>
-          <div className="input-precio-row">
-            <input value={precio} onChange={handlePrecioChange} required inputMode="numeric" placeholder="Ej: 50.000" className="input-form" />
-            <span className="moneda-label">{moneda || 'COP'}</span>
+          <label>Precios</label>
+          <div className="input-precio-row" style={{ gap: '1.2rem', justifyContent: 'space-between' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontWeight: 600, fontSize: '0.98rem', marginBottom: 4 }}>Compra</span>
+              <input value={precioCompra} onChange={handlePrecioCompraChange} required inputMode="numeric" placeholder="Ej: 30.000" className="input-form" />
+            </div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontWeight: 600, fontSize: '0.98rem', marginBottom: 4 }}>Venta</span>
+              <input value={precioVenta} onChange={handlePrecioVentaChange} required inputMode="numeric" placeholder="Ej: 50.000" className="input-form" />
+            </div>
           </div>
           <label>Stock</label>
           <input value={stock} onChange={e => setStock(e.target.value.replace(/\D/g, ''))} required inputMode="numeric" className="input-form" />

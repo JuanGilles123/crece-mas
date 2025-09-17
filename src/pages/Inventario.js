@@ -1,34 +1,59 @@
 
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './Inventario.css';
 import AgregarProductoModal from './AgregarProductoModal';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../supabaseClient';
 
-const productosIniciales = [
-  { id: 1, nombre: 'Taza de ceramica winalmass', precio: 15000, stock: 50, imagen: 'https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&w=400&q=80' },
-  { id: 2, nombre: 'Auracuires winalmass', precio: 0, stock: 0, imagen: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=400&q=80' },
-  { id: 3, nombre: '80.000 recetas', precio: 80000, stock: 0, imagen: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=400&q=80' },
-  { id: 4, nombre: 'Taza navideña', precio: 15000, stock: 50, imagen: 'https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&w=400&q=80' },
-  { id: 5, nombre: 'Libro de recetas', precio: 0, stock: 52, imagen: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=400&q=80' },
-  { id: 6, nombre: 'Recetario social', precio: 0, stock: 0, imagen: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=400&q=80' },
-  { id: 7, nombre: 'Rabaná', precio: 35000, stock: 12, imagen: 'https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&w=400&q=80' },
-];
+const productosIniciales = [];
 
 
 const Inventario = () => {
   const { user } = useAuth();
   const [productos, setProductos] = useState(productosIniciales);
+  const [cargando, setCargando] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [modoLista, setModoLista] = useState(false);
   // Suponiendo que el usuario tiene moneda en user.user_metadata.moneda
   const moneda = user?.user_metadata?.moneda || 'COP';
 
-  const handleAgregarProducto = (nuevo) => {
-    setProductos(prev => [
-      { ...nuevo, id: Date.now() },
-      ...prev
-    ]);
+  // Cargar productos del usuario al montar
+  useEffect(() => {
+    const fetchProductos = async () => {
+      if (!user) return;
+      setCargando(true);
+      const { data, error } = await supabase
+        .from('productos')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      if (!error) setProductos(data || []);
+      setCargando(false);
+    };
+    fetchProductos();
+  }, [user]);
+
+  // Guardar producto en Supabase
+  const handleAgregarProducto = async (nuevo) => {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from('productos')
+      .insert([
+        {
+          user_id: user.id,
+          codigo: nuevo.codigo,
+          nombre: nuevo.nombre,
+          precio_compra: nuevo.precio_compra,
+          precio_venta: nuevo.precio_venta,
+          stock: nuevo.stock,
+          imagen: nuevo.imagen,
+        }
+      ])
+      .select();
+    if (!error && data && data[0]) {
+      setProductos(prev => [data[0], ...prev]);
+    }
   };
 
   return (
@@ -46,12 +71,19 @@ const Inventario = () => {
       <div className="inventario-content">
         {modoLista ? (
           <div className="inventario-lista">
-            {productos.map(prod => (
+            {cargando ? (
+              <div style={{textAlign:'center',width:'100%',padding:'2rem'}}>Cargando productos...</div>
+            ) : productos.length === 0 ? (
+              <div style={{textAlign:'center',width:'100%',padding:'2rem'}}>No hay productos aún.</div>
+            ) : productos.map(prod => (
               <div className="inventario-lista-item" key={prod.id}>
                 <img src={prod.imagen} alt={prod.nombre} className="inventario-img-lista" />
                 <div className="inventario-lista-info">
                   <div className="inventario-nombre">{prod.nombre}</div>
-                  <div className="inventario-precio">{prod.precio > 0 ? prod.precio.toLocaleString('es-CO') : '\u00A0'}</div>
+                  <div style={{display:'flex',gap:'1.2rem',justifyContent:'center',marginBottom:4}}>
+                    <span style={{color:'#2563eb',fontWeight:700}}>Compra: {prod.precio_compra?.toLocaleString('es-CO')}</span>
+                    <span style={{color:'#16a34a',fontWeight:700}}>Venta: {prod.precio_venta?.toLocaleString('es-CO')}</span>
+                  </div>
                   <div className="inventario-stock">Stock: {prod.stock}</div>
                 </div>
                 <div className="inventario-lista-actions">
@@ -63,12 +95,19 @@ const Inventario = () => {
           </div>
         ) : (
           <div className="inventario-grid">
-            {productos.map(prod => (
+            {cargando ? (
+              <div style={{textAlign:'center',width:'100%',padding:'2rem'}}>Cargando productos...</div>
+            ) : productos.length === 0 ? (
+              <div style={{textAlign:'center',width:'100%',padding:'2rem'}}>No hay productos aún.</div>
+            ) : productos.map(prod => (
               <div className="inventario-card" key={prod.id}>
                 <img src={prod.imagen} alt={prod.nombre} className="inventario-img" />
                 <div className="inventario-info">
                   <div className="inventario-nombre">{prod.nombre}</div>
-                  <div className="inventario-precio" style={{ minHeight: '1.2em' }}>{prod.precio > 0 ? prod.precio.toLocaleString('es-CO') : '\u00A0'}</div>
+                  <div style={{display:'flex',gap:'1.2rem',justifyContent:'center',marginBottom:4}}>
+                    <span style={{color:'#2563eb',fontWeight:700}}>Compra: {prod.precio_compra?.toLocaleString('es-CO')}</span>
+                    <span style={{color:'#16a34a',fontWeight:700}}>Venta: {prod.precio_venta?.toLocaleString('es-CO')}</span>
+                  </div>
                   <div className="inventario-stock">Stock: {prod.stock}</div>
                 </div>
                 <div className="inventario-card-actions">
