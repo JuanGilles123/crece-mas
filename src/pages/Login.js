@@ -30,6 +30,7 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    
     if (!email.match(/^[^@\s]+@[^@\s]+\.[^@\s]+$/)) {
       setError('Por favor ingresa un correo válido.');
       return;
@@ -50,6 +51,7 @@ const Login = () => {
       setError('La contraseña debe tener al menos un número.');
       return;
     }
+    
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       if (error.message.toLowerCase().includes('invalid login credentials')) {
@@ -103,8 +105,10 @@ const Login = () => {
             <button className={styles['auth-btn']} type="submit">Entrar</button>
             {error && <p style={{color:'red'}}>{error}</p>}
           </form>
-          <Link className={styles['auth-link']} to="/recuperar">Olvidé mi contraseña</Link>
-          <Link className={`${styles['auth-link']} ${styles['green']}`} to="/registro">Crear cuenta</Link>
+          <div>
+            <Link className={styles['auth-link']} to="/recuperar">Olvidé mi contraseña</Link>
+            <Link className={`${styles['auth-link']} ${styles['green']}`} to="/registro">Crear cuenta</Link>
+          </div>
         </div>
       </div>
     </div>

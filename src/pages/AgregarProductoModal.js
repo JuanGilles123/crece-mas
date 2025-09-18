@@ -1,6 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { supabase } from '../supabaseClient';
+import { FormSkeleton } from '../components/SkeletonLoader';
 import './Inventario.css';
 import { useAuth } from '../context/AuthContext';
 
@@ -44,21 +45,30 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
       setError('Todos los campos son obligatorios.');
       return;
     }
+
+    // Validar que el stock no sea negativo
+    const stockNum = Number(stock);
+    if (stockNum < 0) {
+      setError('El stock no puede ser negativo');
+      return;
+    }
+
     setSubiendo(true);
     try {
       // Subir imagen a Supabase Storage
       const nombreArchivo = `${user.id}/${Date.now()}_${imagen.name}`;
       const { error: errorUpload } = await supabase.storage.from('productos').upload(nombreArchivo, imagen);
       if (errorUpload) throw errorUpload;
-      // Obtener URL pública (o signed URL si es privado)
-      const { data: urlData } = supabase.storage.from('productos').getPublicUrl(nombreArchivo);
+      // Guardar la ruta del archivo en lugar de la URL
+      // Usaremos signed URLs cuando necesitemos mostrar la imagen
+      console.log('Archivo guardado:', nombreArchivo);
       onProductoAgregado({
         codigo,
         nombre,
         precio_compra: Number(precioCompra.replace(/\D/g, '')),
         precio_venta: Number(precioVenta.replace(/\D/g, '')),
         stock: Number(stock),
-        imagen: urlData.publicUrl,
+        imagen: nombreArchivo, // Guardamos la ruta del archivo, no la URL
       });
       onClose();
   setCodigo(''); setNombre(''); setPrecioCompra(''); setPrecioVenta(''); setStock(''); setImagen(null);
@@ -73,24 +83,40 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
     <div className="modal-bg">
       <div className="modal-card">
         <h2>Agregar producto</h2>
-        <form className="form-producto form-producto-centro" onSubmit={handleSubmit}>
+        {subiendo ? (
+          <FormSkeleton />
+        ) : (
+          <form className="form-producto form-producto-centro" onSubmit={handleSubmit}>
           <label>Código de producto</label>
           <input value={codigo} onChange={e => setCodigo(e.target.value)} required className="input-form" placeholder="Ej: SKU123" />
           <label>Nombre</label>
           <input value={nombre} onChange={e => setNombre(e.target.value)} required className="input-form" />
           <label>Precios</label>
-          <div className="input-precio-row" style={{ gap: '1.2rem', justifyContent: 'space-between' }}>
+          <div className="input-precio-row" style={{ gap: '2.5rem', justifyContent: 'space-between' }}>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontWeight: 600, fontSize: '0.98rem', marginBottom: 4 }}>Compra</span>
+              <span style={{ fontWeight: 600, fontSize: '0.98rem', marginBottom: 4, textAlign: 'center' }}>Precio de Compra</span>
               <input value={precioCompra} onChange={handlePrecioCompraChange} required inputMode="numeric" placeholder="Ej: 30.000" className="input-form" />
             </div>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontWeight: 600, fontSize: '0.98rem', marginBottom: 4 }}>Venta</span>
+              <span style={{ fontWeight: 600, fontSize: '0.98rem', marginBottom: 4, textAlign: 'center' }}>Precio de Venta</span>
               <input value={precioVenta} onChange={handlePrecioVentaChange} required inputMode="numeric" placeholder="Ej: 50.000" className="input-form" />
             </div>
           </div>
           <label>Stock</label>
-          <input value={stock} onChange={e => setStock(e.target.value.replace(/\D/g, ''))} required inputMode="numeric" className="input-form" />
+          <input 
+            value={stock} 
+            onChange={e => {
+              const value = e.target.value.replace(/\D/g, '');
+              // No permitir valores negativos
+              if (value === '' || Number(value) >= 0) {
+                setStock(value);
+              }
+            }} 
+            required 
+            inputMode="numeric" 
+            className="input-form" 
+            placeholder="Cantidad en stock"
+          />
           <label>Imagen</label>
           <div className="input-upload-wrapper input-upload-centro">
             <button type="button" className="input-upload-btn" onClick={handleClickUpload}>
@@ -99,21 +125,13 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
             </button>
             <input type="file" accept="image/*" onChange={handleImagenChange} ref={fileInputRef} style={{ display: 'none' }} required />
           </div>
-          {imagen && (
-            <div style={{ display: 'flex', justifyContent: 'center', margin: '0.7rem 0 1.2rem 0' }}>
-              <img
-                src={URL.createObjectURL(imagen)}
-                alt="Previsualización"
-                style={{ maxWidth: 120, maxHeight: 120, borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
-              />
-            </div>
-          )}
           {error && <div className="form-error">{error}</div>}
           <div className="form-actions form-actions-centro">
             <button type="button" className="inventario-btn inventario-btn-secondary" onClick={onClose} disabled={subiendo}>Cancelar</button>
             <button type="submit" className="inventario-btn inventario-btn-primary" disabled={subiendo}>{subiendo ? 'Subiendo...' : 'Agregar'}</button>
           </div>
         </form>
+        )}
       </div>
     </div>
   );

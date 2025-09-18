@@ -1,0 +1,303 @@
+/* Animación base del skeleton */
+@keyframes skeleton-loading {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+/* Clase base para todos los skeletons */
+.skeleton-line {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200px 100%;
+  animation: skeleton-loading 1.5s infinite;
+  border-radius: 4px;
+  height: 20px;
+  margin-bottom: 8px;
+}
+
+/* Skeleton para tarjetas de producto */
+.skeleton-card {
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+  padding: 1.2rem 1rem 1rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+}
+
+.skeleton-image {
+  width: 80px;
+  height: 80px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200px 100%;
+  animation: skeleton-loading 1.5s infinite;
+  margin-bottom: 0.5rem;
+}
+
+.skeleton-content {
+  text-align: center;
+  margin-bottom: 0.5rem;
+  min-height: 70px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 0.1rem;
+  width: 100%;
+}
+
+.skeleton-title {
+  width: 80%;
+  height: 16px;
+  margin: 0 auto 0.2rem auto;
+}
+
+.skeleton-price {
+  width: 90%;
+  height: 14px;
+  margin: 0 auto 0.2rem auto;
+}
+
+.skeleton-stock {
+  width: 60%;
+  height: 12px;
+  margin: 0 auto;
+}
+
+.skeleton-actions {
+  display: flex;
+  gap: 0.7rem;
+  margin-top: 1.1rem;
+  justify-content: center;
+  width: 100%;
+}
+
+.skeleton-button {
+  width: 60px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200px 100%;
+  animation: skeleton-loading 1.5s infinite;
+}
+
+/* Skeleton para lista de productos */
+.skeleton-list-item {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  padding: 1rem 1.2rem;
+  gap: 1.2rem;
+  min-width: 0;
+}
+
+.skeleton-image-small {
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200px 100%;
+  animation: skeleton-loading 1.5s infinite;
+  flex-shrink: 0;
+}
+
+.skeleton-list-item .skeleton-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  text-align: left;
+  margin-bottom: 0;
+  min-height: auto;
+}
+
+.skeleton-list-item .skeleton-actions {
+  display: flex;
+  gap: 0.7rem;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 120px;
+  flex-shrink: 0;
+  margin-top: 0;
+}
+
+/* Skeleton para header del inventario */
+.skeleton-header {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 1.2rem;
+}
+
+.skeleton-search {
+  flex: 1;
+  height: 40px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200px 100%;
+  animation: skeleton-loading 1.5s infinite;
+}
+
+.skeleton-buttons {
+  display: flex;
+  gap: 1rem;
+}
+
+.skeleton-buttons .skeleton-button {
+  width: 120px;
+  height: 40px;
+  border-radius: 10px;
+}
+
+/* Skeleton para dashboard */
+.skeleton-dashboard {
+  display: flex;
+  min-height: 100vh;
+}
+
+.skeleton-sidebar {
+  width: 250px;
+  background: #fff;
+  padding: 2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.skeleton-logo {
+  width: 80px;
+  height: 30px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200px 100%;
+  animation: skeleton-loading 1.5s infinite;
+}
+
+.skeleton-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.skeleton-nav-item {
+  width: 100%;
+  height: 40px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200px 100%;
+  animation: skeleton-loading 1.5s infinite;
+}
+
+.skeleton-main {
+  flex: 1;
+  padding: 2.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.skeleton-content-area {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 1.5rem;
+  flex: 1;
+}
+
+/* Skeleton para formularios */
+.skeleton-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 2rem;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.skeleton-input {
+  width: 100%;
+  height: 45px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200px 100%;
+  animation: skeleton-loading 1.5s infinite;
+}
+
+.skeleton-button-large {
+  width: 100%;
+  height: 50px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200px 100%;
+  animation: skeleton-loading 1.5s infinite;
+  margin-top: 1rem;
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+  .skeleton-dashboard {
+    flex-direction: column;
+  }
+  
+  .skeleton-sidebar {
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+  }
+  
+  .skeleton-nav {
+    flex-direction: row;
+    gap: 1rem;
+  }
+  
+  .skeleton-nav-item {
+    width: 80px;
+  }
+}
+
+@media (max-width: 700px) {
+  .skeleton-main {
+    padding: 1rem 0.2rem;
+  }
+  
+  .skeleton-header {
+    flex-direction: column;
+    gap: 0.7rem;
+    align-items: stretch;
+  }
+  
+  .skeleton-buttons {
+    justify-content: center;
+  }
+  
+  .skeleton-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 1rem;
+  }
+  
+  .skeleton-sidebar {
+    padding: 1rem;
+  }
+  
+  .skeleton-nav-item {
+    width: 60px;
+  }
+}
