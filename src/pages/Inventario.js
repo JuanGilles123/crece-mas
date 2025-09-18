@@ -4,10 +4,12 @@ import React, { useState, useEffect } from 'react';
 import './Inventario.css';
 import AgregarProductoModal from './AgregarProductoModal';
 import EditarProductoModal from './EditarProductoModal';
+import ImportarProductosCSV from '../components/ImportarProductosCSV';
 import OptimizedProductImage from '../components/OptimizedProductImage';
 import { ProductCardSkeleton, ProductListSkeleton, InventoryHeaderSkeleton } from '../components/SkeletonLoader';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
+import { deleteImageFromStorage } from '../utils/storageCleanup';
 
 const productosIniciales = [];
 
@@ -18,31 +20,34 @@ const Inventario = () => {
   const [cargando, setCargando] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editarModalOpen, setEditarModalOpen] = useState(false);
+  const [csvModalOpen, setCsvModalOpen] = useState(false);
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
   const [modoLista, setModoLista] = useState(false);
   // Suponiendo que el usuario tiene moneda en user.user_metadata.moneda
   const moneda = user?.user_metadata?.moneda || 'COP';
 
+  // Función para cargar productos
+  const cargarProductos = async () => {
+    if (!user) return;
+    setCargando(true);
+    const { data, error } = await supabase
+      .from('productos')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+    if (!error) {
+      console.log('Productos cargados:', data);
+      data?.forEach(prod => {
+        console.log('Producto:', prod.nombre, 'Imagen path:', prod.imagen);
+      });
+      setProductos(data || []);
+    }
+    setCargando(false);
+  };
+
   // Cargar productos del usuario al montar
   useEffect(() => {
-    const fetchProductos = async () => {
-      if (!user) return;
-      setCargando(true);
-      const { data, error } = await supabase
-        .from('productos')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-      if (!error) {
-        console.log('Productos cargados:', data);
-        data?.forEach(prod => {
-          console.log('Producto:', prod.nombre, 'Imagen path:', prod.imagen);
-        });
-        setProductos(data || []);
-      }
-      setCargando(false);
-    };
-    fetchProductos();
+    cargarProductos();
   }, [user]);
 
   // Guardar producto en Supabase
@@ -102,12 +107,10 @@ const Inventario = () => {
     try {
       // Eliminar imagen del storage si existe
       if (producto.imagen) {
-        const { error: deleteImageError } = await supabase.storage
-          .from('productos')
-          .remove([producto.imagen]);
-        
-        if (deleteImageError) {
-          console.error('Error eliminando imagen:', deleteImageError);
+        console.log('Eliminando imagen del storage:', producto.imagen);
+        const imageDeleted = await deleteImageFromStorage(producto.imagen);
+        if (!imageDeleted) {
+          console.warn('No se pudo eliminar la imagen del storage, pero continuando con la eliminación del producto');
         }
       }
 
@@ -130,6 +133,12 @@ const Inventario = () => {
     }
   };
 
+  const handleProductosImportados = () => {
+    // Recargar la lista de productos después de la importación
+    cargarProductos();
+    setCsvModalOpen(false);
+  };
+
   return (
     <div className="inventario-main">
       {cargando ? (
@@ -139,7 +148,7 @@ const Inventario = () => {
           <input className="inventario-search" placeholder="Buscar producto..." />
           <div className="inventario-actions">
             <button className="inventario-btn inventario-btn-primary" onClick={() => setModalOpen(true)}>Nuevo producto</button>
-            <button className="inventario-btn inventario-btn-secondary">Importar CSV</button>
+            <button className="inventario-btn inventario-btn-secondary" onClick={() => setCsvModalOpen(true)}>Importar CSV</button>
             <button className="inventario-btn inventario-btn-secondary" onClick={() => setModoLista(m => !m)}>
               {modoLista ? 'Ver en cuadrícula' : 'Ver en lista'}
             </button>
@@ -253,6 +262,11 @@ const Inventario = () => {
         }} 
         producto={productoSeleccionado}
         onProductoEditado={handleProductoEditado}
+      />
+      <ImportarProductosCSV 
+        open={csvModalOpen} 
+        onClose={() => setCsvModalOpen(false)}
+        onProductosImportados={handleProductosImportados}
       />
     </div>
   );

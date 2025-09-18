@@ -1,0 +1,265 @@
+/* StorageInfo Component - Responsive Styles */
+
+.storage-info-container {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 1rem 0;
+  box-sizing: border-box;
+}
+
+.storage-info-title {
+  margin: 0 0 1rem 0;
+  color: #1e293b;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.storage-info-content {
+  margin-bottom: 1rem;
+}
+
+.storage-info-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.storage-info-label {
+  color: #64748b;
+}
+
+.storage-info-value {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.storage-info-last-cleanup {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+}
+
+.storage-info-last-cleanup-label {
+  color: #64748b;
+}
+
+.storage-info-last-cleanup-value {
+  color: #16a34a;
+}
+
+.storage-info-button {
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  width: 100%;
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+
+.storage-info-button:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+.storage-info-button:disabled {
+  background: #f1f5f9;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+.storage-info-result {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.storage-info-result.success {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #16a34a;
+}
+
+.storage-info-result.error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+}
+
+.storage-info-tip {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  color: #92400e;
+}
+
+/* Responsive Design */
+
+/* Tablets */
+@media (max-width: 1024px) {
+  .storage-info-container {
+    padding: 1.25rem;
+  }
+  
+  .storage-info-title {
+    font-size: 1rem;
+  }
+}
+
+/* Móviles grandes */
+@media (max-width: 768px) {
+  .storage-info-container {
+    padding: 1rem;
+    margin: 0.8rem 0;
+  }
+  
+  .storage-info-title {
+    font-size: 0.95rem;
+    margin-bottom: 0.8rem;
+  }
+  
+  .storage-info-row {
+    font-size: 0.85rem;
+  }
+  
+  .storage-info-last-cleanup {
+    font-size: 0.75rem;
+  }
+  
+  .storage-info-button {
+    padding: 0.7rem 0.9rem;
+    font-size: 0.85rem;
+  }
+  
+  .storage-info-result {
+    padding: 0.6rem;
+    font-size: 0.8rem;
+  }
+  
+  .storage-info-tip {
+    padding: 0.6rem;
+    font-size: 0.75rem;
+  }
+}
+
+/* Móviles medianos */
+@media (max-width: 600px) {
+  .storage-info-container {
+    padding: 0.8rem;
+    margin: 0.6rem 0;
+  }
+  
+  .storage-info-title {
+    font-size: 0.9rem;
+    margin-bottom: 0.7rem;
+  }
+  
+  .storage-info-row {
+    font-size: 0.8rem;
+    margin-bottom: 0.4rem;
+  }
+  
+  .storage-info-last-cleanup {
+    font-size: 0.7rem;
+  }
+  
+  .storage-info-button {
+    padding: 0.6rem 0.8rem;
+    font-size: 0.8rem;
+  }
+  
+  .storage-info-result {
+    padding: 0.5rem;
+    font-size: 0.75rem;
+  }
+  
+  .storage-info-tip {
+    padding: 0.5rem;
+    font-size: 0.7rem;
+  }
+}
+
+/* Móviles pequeños */
+@media (max-width: 480px) {
+  .storage-info-container {
+    padding: 0.7rem;
+    margin: 0.5rem 0;
+    border-radius: 8px;
+  }
+  
+  .storage-info-title {
+    font-size: 0.85rem;
+    margin-bottom: 0.6rem;
+  }
+  
+  .storage-info-row {
+    font-size: 0.75rem;
+    margin-bottom: 0.3rem;
+  }
+  
+  .storage-info-last-cleanup {
+    font-size: 0.65rem;
+  }
+  
+  .storage-info-button {
+    padding: 0.5rem 0.7rem;
+    font-size: 0.75rem;
+  }
+  
+  .storage-info-result {
+    padding: 0.4rem;
+    font-size: 0.7rem;
+  }
+  
+  .storage-info-tip {
+    padding: 0.4rem;
+    font-size: 0.65rem;
+  }
+}
+
+/* Móviles muy pequeños */
+@media (max-width: 360px) {
+  .storage-info-container {
+    padding: 0.6rem;
+    margin: 0.4rem 0;
+  }
+  
+  .storage-info-title {
+    font-size: 0.8rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .storage-info-row {
+    font-size: 0.7rem;
+    margin-bottom: 0.25rem;
+  }
+  
+  .storage-info-last-cleanup {
+    font-size: 0.6rem;
+  }
+  
+  .storage-info-button {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.7rem;
+  }
+  
+  .storage-info-result {
+    padding: 0.3rem;
+    font-size: 0.65rem;
+  }
+  
+  .storage-info-tip {
+    padding: 0.3rem;
+    font-size: 0.6rem;
+  }
+}

@@ -713,8 +713,30 @@
   border-radius: 0.75rem;
 }
 
-/* Responsive Design */
-@media (min-width: 768px) {
+/* Responsive Design Mejorado */
+
+/* Tablets grandes */
+@media (min-width: 1024px) {
+  .caja-container {
+    flex-direction: row;
+  }
+  
+  .caja-products-panel {
+    width: 60%;
+  }
+  
+  .caja-cart-panel {
+    display: flex;
+    width: 40%;
+  }
+  
+  .caja-mobile-footer {
+    display: none !important;
+  }
+}
+
+/* Tablets */
+@media (min-width: 768px) and (max-width: 1023px) {
   .caja-container {
     flex-direction: row;
   }
@@ -725,20 +747,262 @@
   
   .caja-cart-panel {
     display: flex;
+    width: 50%;
   }
   
   .caja-mobile-footer {
     display: none !important;
   }
+  
+  .caja-product-content {
+    padding: 0.6rem;
+  }
+  
+  .caja-product-image {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .caja-product-name {
+    font-size: 0.9rem;
+  }
+  
+  .caja-product-stock {
+    font-size: 0.75rem;
+  }
+  
+  .caja-product-price {
+    font-size: 0.9rem;
+  }
 }
 
-@media (min-width: 1024px) {
+/* Móviles grandes */
+@media (max-width: 767px) {
+  .caja-container {
+    flex-direction: column;
+    height: 100vh;
+    padding-bottom: 80px; /* Espacio para el footer móvil */
+  }
+  
   .caja-products-panel {
-    width: 60%;
+    width: 100%;
+    flex: 1;
+    padding: 0.8rem;
   }
   
   .caja-cart-panel {
-    width: 40%;
+    display: none;
+  }
+  
+  .caja-mobile-footer {
+    display: flex !important;
+  }
+  
+  .caja-product-content {
+    padding: 0.6rem;
+  }
+  
+  .caja-product-image {
+    width: 44px;
+    height: 44px;
+  }
+  
+  .caja-product-name {
+    font-size: 0.9rem;
+  }
+  
+  .caja-product-stock {
+    font-size: 0.75rem;
+  }
+  
+  .caja-product-price {
+    font-size: 0.9rem;
+  }
+  
+  .caja-search-input {
+    padding: 0.6rem;
+    font-size: 0.9rem;
+  }
+}
+
+/* Móviles medianos */
+@media (max-width: 600px) {
+  .caja-products-panel {
+    padding: 0.6rem;
+  }
+  
+  .caja-product-content {
+    padding: 0.5rem;
+    gap: 0.5rem;
+  }
+  
+  .caja-product-image {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .caja-product-name {
+    font-size: 0.85rem;
+  }
+  
+  .caja-product-stock {
+    font-size: 0.7rem;
+  }
+  
+  .caja-product-price {
+    font-size: 0.85rem;
+  }
+  
+  .caja-mobile-footer {
+    padding: 0.6rem;
+    gap: 0.5rem;
+  }
+  
+  .caja-mobile-cart-btn,
+  .caja-mobile-pay-btn {
+    padding: 0.6rem 0.8rem;
+    font-size: 0.8rem;
+  }
+  
+  .caja-mobile-total-amount {
+    font-size: 1rem;
+  }
+}
+
+/* Móviles pequeños */
+@media (max-width: 480px) {
+  .caja-products-panel {
+    padding: 0.5rem;
+  }
+  
+  .caja-product-content {
+    padding: 0.4rem;
+    gap: 0.4rem;
+  }
+  
+  .caja-product-image {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .caja-product-name {
+    font-size: 0.8rem;
+  }
+  
+  .caja-product-stock {
+    font-size: 0.65rem;
+  }
+  
+  .caja-product-price {
+    font-size: 0.8rem;
+  }
+  
+  .caja-mobile-footer {
+    padding: 0.5rem;
+    gap: 0.4rem;
+  }
+  
+  .caja-mobile-cart-btn,
+  .caja-mobile-pay-btn {
+    padding: 0.5rem 0.6rem;
+    font-size: 0.75rem;
+  }
+  
+  .caja-mobile-total-amount {
+    font-size: 0.9rem;
+  }
+  
+  .caja-mobile-total-label {
+    font-size: 0.7rem;
+  }
+  
+  /* Mejoras para el overlay móvil */
+  .caja-mobile-cart-header {
+    padding: 0.8rem;
+  }
+  
+  .caja-mobile-cart-content {
+    padding: 0.8rem;
+  }
+  
+  .caja-mobile-cart-footer {
+    padding: 0.8rem;
+  }
+  
+  .caja-mobile-cart-item {
+    padding: 0.6rem;
+  }
+  
+  .caja-mobile-cart-item-name {
+    font-size: 0.85rem;
+  }
+  
+  .caja-mobile-cart-item-price {
+    font-size: 0.7rem;
+  }
+  
+  .caja-mobile-qty-btn {
+    width: 24px;
+    height: 24px;
+    font-size: 0.8rem;
+  }
+  
+  .caja-mobile-qty-display {
+    width: 20px;
+    font-size: 0.8rem;
+  }
+  
+  .caja-mobile-cart-item-total {
+    width: 5rem;
+    font-size: 0.8rem;
+  }
+}
+
+/* Móviles muy pequeños */
+@media (max-width: 360px) {
+  .caja-products-panel {
+    padding: 0.4rem;
+  }
+  
+  .caja-product-content {
+    padding: 0.3rem;
+    gap: 0.3rem;
+  }
+  
+  .caja-product-image {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .caja-product-name {
+    font-size: 0.75rem;
+  }
+  
+  .caja-product-stock {
+    font-size: 0.6rem;
+  }
+  
+  .caja-product-price {
+    font-size: 0.75rem;
+  }
+  
+  .caja-mobile-footer {
+    padding: 0.4rem;
+    gap: 0.3rem;
+  }
+  
+  .caja-mobile-cart-btn,
+  .caja-mobile-pay-btn {
+    padding: 0.4rem 0.5rem;
+    font-size: 0.7rem;
+  }
+  
+  .caja-mobile-total-amount {
+    font-size: 0.85rem;
+  }
+  
+  .caja-mobile-total-label {
+    font-size: 0.65rem;
   }
 }
 

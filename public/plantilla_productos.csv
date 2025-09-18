@@ -1,0 +1,40 @@
+# ========================================
+# PLANTILLA DE IMPORTACIÓN DE PRODUCTOS
+# ========================================
+# 
+# INSTRUCCIONES:
+# 1. Completa los datos de tus productos en las filas de abajo
+# 2. NO modifiques los títulos (celdas bloqueadas)
+# 3. Usa números sin comillas para precios y stock
+# 4. Usa comillas solo para textos con espacios
+# 5. Guarda el archivo como CSV antes de importar
+#
+# ========================================
+
+# TÍTULOS (NO MODIFICAR)
+nombre,descripcion,precio_compra,precio_venta,stock,categoria
+
+# ========================================
+# EJEMPLOS DE PRODUCTOS (BORRA ESTAS FILAS)
+# ========================================
+
+"Camisa Polo Azul","Camisa de algodón 100% color azul marino talla M",25000,45000,10,"Ropa"
+"Zapatos Deportivos Nike","Zapatos deportivos para running talla 42",80000,150000,5,"Calzado"
+"Pantalón Jeans Clásico","Pantalón de mezclilla azul talla 32",40000,80000,8,"Ropa"
+"Gorra de Béisbol","Gorra de béisbol color negro con logo",15000,30000,12,"Accesorios"
+"Reloj Digital Casio","Reloj digital con cronómetro y alarma",60000,120000,3,"Accesorios"
+
+# ========================================
+# TUS PRODUCTOS (AGREGA AQUÍ TUS DATOS)
+# ========================================
+
+"","","","","",""
+"","","","","",""
+"","","","","",""
+"","","","","",""
+"","","","","",""
+"","","","","",""
+"","","","","",""
+"","","","","",""
+"","","","","",""
+"","","","","",""

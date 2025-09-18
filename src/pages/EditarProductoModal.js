@@ -2,6 +2,8 @@ import React, { useState, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import './Inventario.css';
 import { useAuth } from '../context/AuthContext';
+import { compressProductImage } from '../utils/imageCompression';
+import { deleteImageFromStorage } from '../utils/storageCleanup';
 
 const EditarProductoModal = ({ open, onClose, producto, onProductoEditado }) => {
   const { user } = useAuth();
@@ -12,6 +14,7 @@ const EditarProductoModal = ({ open, onClose, producto, onProductoEditado }) => 
   const [stock, setStock] = useState(producto?.stock?.toString() || '');
   const [imagen, setImagen] = useState(null);
   const [subiendo, setSubiendo] = useState(false);
+  const [comprimiendo, setComprimiendo] = useState(false);
   const [error, setError] = useState('');
   const fileInputRef = useRef(null);
 
@@ -68,11 +71,22 @@ const EditarProductoModal = ({ open, onClose, producto, onProductoEditado }) => 
     try {
       let imagenPath = producto?.imagen; // Mantener imagen actual por defecto
 
-      // Si hay nueva imagen, subirla
+      // Si hay nueva imagen, comprimirla y subirla
       if (imagen) {
-        const nombreArchivo = `${user.id}/${Date.now()}_${imagen.name}`;
-        const { error: errorUpload } = await supabase.storage.from('productos').upload(nombreArchivo, imagen);
+        setComprimiendo(true);
+        console.log('Comprimiendo nueva imagen antes de subir...');
+        const imagenComprimida = await compressProductImage(imagen);
+        setComprimiendo(false);
+        const nombreArchivo = `${user.id}/${Date.now()}_${imagenComprimida.name}`;
+        const { error: errorUpload } = await supabase.storage.from('productos').upload(nombreArchivo, imagenComprimida);
         if (errorUpload) throw errorUpload;
+        
+        // Eliminar la imagen anterior del storage si existe
+        if (producto?.imagen) {
+          console.log('Eliminando imagen anterior del storage...');
+          await deleteImageFromStorage(producto.imagen);
+        }
+        
         imagenPath = nombreArchivo;
       }
 
@@ -116,6 +130,7 @@ const EditarProductoModal = ({ open, onClose, producto, onProductoEditado }) => 
       setError(err.message || 'Error al actualizar el producto');
     } finally {
       setSubiendo(false);
+      setComprimiendo(false);
     }
   };
 
@@ -199,7 +214,7 @@ const EditarProductoModal = ({ open, onClose, producto, onProductoEditado }) => 
               Cancelar
             </button>
             <button type="submit" className="inventario-btn inventario-btn-primary" disabled={subiendo}>
-              {subiendo ? 'Actualizando...' : 'Actualizar'}
+              {subiendo ? (comprimiendo ? '🗜️ Comprimiendo...' : 'Actualizando...') : 'Actualizar'}
             </button>
           </div>
         </form>

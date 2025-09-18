@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient';
 import { FormSkeleton } from '../components/SkeletonLoader';
 import './Inventario.css';
 import { useAuth } from '../context/AuthContext';
+import { compressProductImage } from '../utils/imageCompression';
 
 const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => {
   const { user } = useAuth();
@@ -14,6 +15,7 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
   const [stock, setStock] = useState('');
   const [imagen, setImagen] = useState(null);
   const [subiendo, setSubiendo] = useState(false);
+  const [comprimiendo, setComprimiendo] = useState(false);
   const [error, setError] = useState('');
   const fileInputRef = useRef();
 
@@ -54,10 +56,16 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
     }
 
     setSubiendo(true);
+    setComprimiendo(true);
     try {
-      // Subir imagen a Supabase Storage
-      const nombreArchivo = `${user.id}/${Date.now()}_${imagen.name}`;
-      const { error: errorUpload } = await supabase.storage.from('productos').upload(nombreArchivo, imagen);
+      // Comprimir imagen antes de subir
+      console.log('Comprimiendo imagen antes de subir...');
+      const imagenComprimida = await compressProductImage(imagen);
+      setComprimiendo(false);
+      
+      // Subir imagen comprimida a Supabase Storage
+      const nombreArchivo = `${user.id}/${Date.now()}_${imagenComprimida.name}`;
+      const { error: errorUpload } = await supabase.storage.from('productos').upload(nombreArchivo, imagenComprimida);
       if (errorUpload) throw errorUpload;
       // Guardar la ruta del archivo en lugar de la URL
       // Usaremos signed URLs cuando necesitemos mostrar la imagen
@@ -76,6 +84,7 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
       setError('Error al subir la imagen o guardar el producto.');
     } finally {
       setSubiendo(false);
+      setComprimiendo(false);
     }
   };
 
@@ -84,7 +93,20 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
       <div className="modal-card">
         <h2>Agregar producto</h2>
         {subiendo ? (
-          <FormSkeleton />
+          <div style={{ textAlign: 'center', padding: '2rem' }}>
+            {comprimiendo ? (
+              <div>
+                <div style={{ fontSize: '1.1rem', marginBottom: '1rem', color: '#2563eb' }}>
+                  🗜️ Comprimiendo imagen...
+                </div>
+                <div style={{ fontSize: '0.9rem', color: '#6b7280' }}>
+                  Optimizando para carga rápida
+                </div>
+              </div>
+            ) : (
+              <FormSkeleton />
+            )}
+          </div>
         ) : (
           <form className="form-producto form-producto-centro" onSubmit={handleSubmit}>
           <label>Código de producto</label>
@@ -128,7 +150,9 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
           {error && <div className="form-error">{error}</div>}
           <div className="form-actions form-actions-centro">
             <button type="button" className="inventario-btn inventario-btn-secondary" onClick={onClose} disabled={subiendo}>Cancelar</button>
-            <button type="submit" className="inventario-btn inventario-btn-primary" disabled={subiendo}>{subiendo ? 'Subiendo...' : 'Agregar'}</button>
+            <button type="submit" className="inventario-btn inventario-btn-primary" disabled={subiendo}>
+              {subiendo ? (comprimiendo ? '🗜️ Comprimiendo...' : 'Subiendo...') : 'Agregar'}
+            </button>
           </div>
         </form>
         )}

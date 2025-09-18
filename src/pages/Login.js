@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate, Link } from 'react-router-dom';
-import styles from './Auth.module.css';
+import styles from './Login.module.css';
 import { MailIcon, LockIcon } from './Icons';
 import { EyeIcon } from './EyeIcon';
 
@@ -67,51 +67,55 @@ const Login = () => {
   };
 
   return (
-    <div className={styles['auth-bg']}>
+    <div className={styles.container}>
       <TerminosModal open={showTerms} onClose={()=>setShowTerms(false)} />
-      <div className={styles['auth-container']}>
-        <div className={styles['auth-side']}>
-          <h1>Bienvenido de nuevo</h1>
-          <p>Accede para gestionar tu caja, inventario y dashboard.</p>
-        </div>
-        <div className={styles['auth-card']}>
-          <h2>Iniciar sesión</h2>
-          <form onSubmit={handleSubmit}>
-            <div className={styles['auth-input']} style={{boxShadow:'none',background:'rgba(255,255,255,0.95)',border:'1.5px solid #e0e0e0'}}>
-              <MailIcon />
-              <input
-                type="email"
-                placeholder="Correo"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-                style={{background:'transparent',boxShadow:'none'}}
-              />
-            </div>
-            <div className={styles['auth-input']} style={{boxShadow:'none',background:'rgba(255,255,255,0.95)',border:'1.5px solid #e0e0e0'}}>
-              <LockIcon />
+      <div className={styles.form}>
+        <h2 className={styles.title}>Iniciar sesión</h2>
+        <form onSubmit={handleSubmit}>
+            <input
+              type="email"
+              placeholder="Correo"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              required
+              className={styles.input}
+            />
+            <div style={{ position: 'relative' }}>
               <input
                 type={showPass ? 'text' : 'password'}
                 placeholder="Contraseña"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required
-                style={{flex:1,background:'transparent',boxShadow:'none'}}
+                className={styles.input}
+                style={{ paddingRight: '3rem' }}
               />
-              <button type="button" style={{background:'none',border:'none',cursor:'pointer',marginLeft:8,padding:0}} onClick={()=>setShowPass(v=>!v)}>
+              <button 
+                type="button" 
+                style={{
+                  position: 'absolute',
+                  right: '0.75rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '0.25rem'
+                }} 
+                onClick={() => setShowPass(v => !v)}
+              >
                 <EyeIcon open={showPass} />
               </button>
             </div>
-            <button className={styles['auth-btn']} type="submit">Entrar</button>
-            {error && <p style={{color:'red'}}>{error}</p>}
+            <button className={styles.button} type="submit">Entrar</button>
+            {error && <div className={styles.error}>{error}</div>}
           </form>
-          <div>
-            <Link className={styles['auth-link']} to="/recuperar">Olvidé mi contraseña</Link>
-            <Link className={`${styles['auth-link']} ${styles['green']}`} to="/registro">Crear cuenta</Link>
+          <div className={styles.links}>
+            <Link className={styles.link} to="/recuperar">Olvidé mi contraseña</Link>
+            <Link className={styles.link} to="/registro">Crear cuenta</Link>
           </div>
         </div>
       </div>
-    </div>
   );
 };
 
