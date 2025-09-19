@@ -8,7 +8,9 @@
 
 /* Sidebar */
 .dashboard-sidebar {
-  width: 220px;
+  width: 250px;
+  min-width: 220px;
+  max-width: 280px;
   background: #fff;
   border-right: none;
   display: flex;
@@ -17,6 +19,7 @@
   padding: 1.5rem 1rem 1rem 1.5rem;
   gap: 2rem;
   position: relative;
+  flex-shrink: 0;
 }
 
 .dashboard-sidebar::after {
@@ -58,6 +61,29 @@
   gap: 0.8rem;
   transition: all 0.2s ease;
   position: relative;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1;
+}
+
+.dashboard-nav a:hover::after {
+  content: attr(title);
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #1f2937;
+  color: #fff;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  margin-left: 0.5rem;
+  pointer-events: none;
 }
 .dashboard-nav a.active, .dashboard-nav a:hover {
   background: linear-gradient(135deg, #3b82f6, #1e40af);
@@ -128,7 +154,8 @@
 /* Tablet y pantallas medianas */
 @media (max-width: 1024px) {
   .dashboard-sidebar {
-    width: 200px;
+    width: 230px;
+    min-width: 200px;
     padding: 1.5rem 1rem 1rem 1rem;
   }
   .dashboard-content {

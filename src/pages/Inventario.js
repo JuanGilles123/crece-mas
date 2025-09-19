@@ -1,6 +1,7 @@
 
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import './Inventario.css';
 import AgregarProductoModal from './AgregarProductoModal';
 import EditarProductoModal from './EditarProductoModal';
@@ -41,6 +42,7 @@ const Inventario = () => {
   const [csvModalOpen, setCsvModalOpen] = useState(false);
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
   const [modoLista, setModoLista] = useState(false);
+  const [query, setQuery] = useState('');
   // Suponiendo que el usuario tiene moneda en user.user_metadata.moneda
   const moneda = user?.user_metadata?.moneda || 'COP';
 
@@ -48,16 +50,15 @@ const Inventario = () => {
   const cargarProductos = useCallback(async () => {
     if (!user) return;
     setCargando(true);
+    
     const { data, error } = await supabase
       .from('productos')
       .select('*')
       .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(1000);
+    
     if (!error) {
-      console.log('Productos cargados:', data);
-      data?.forEach(prod => {
-        console.log('Producto:', prod.nombre, 'Imagen path:', prod.imagen);
-      });
       setProductos(data || []);
     }
     setCargando(false);
@@ -67,6 +68,13 @@ const Inventario = () => {
   useEffect(() => {
     cargarProductos();
   }, [user, cargarProductos]);
+
+  // Filtrar productos basado en la búsqueda
+  const filteredProducts = productos.filter((producto) => {
+    const searchTerm = query.toLowerCase().trim();
+    if (!searchTerm) return true;
+    return producto.nombre.toLowerCase().includes(searchTerm);
+  });
 
   // Guardar producto en Supabase
   const handleAgregarProducto = async (nuevo) => {
@@ -165,7 +173,12 @@ const Inventario = () => {
         <div className="inventario-header">
           <div className="inventario-search-container">
             <Search className="inventario-search-icon" size={20} />
-            <input className="inventario-search" placeholder="Buscar producto..." />
+            <input 
+              className="inventario-search" 
+              placeholder="Buscar producto..." 
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
           </div>
           <div className="inventario-actions">
             <button className="inventario-btn inventario-btn-primary" onClick={() => setModalOpen(true)}>Nuevo producto</button>
@@ -186,10 +199,27 @@ const Inventario = () => {
                 <ProductListSkeleton />
                 <ProductListSkeleton />
               </>
-            ) : productos.length === 0 ? (
-              <div style={{textAlign:'center',width:'100%',padding:'2rem'}}>No hay productos aún.</div>
-            ) : productos.map(prod => (
-              <div className="inventario-lista-item" key={prod.id}>
+            ) : filteredProducts.length === 0 ? (
+              <div style={{textAlign:'center',width:'100%',padding:'2rem'}}>
+                {query ? `No se encontraron productos para "${query}"` : 'No hay productos aún.'}
+              </div>
+            ) : filteredProducts.map((prod, index) => (
+              <motion.div 
+                className="inventario-lista-item" 
+                key={prod.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ 
+                  duration: 0.3, 
+                  delay: index * 0.05,
+                  ease: "easeOut"
+                }}
+                whileHover={{ 
+                  scale: 1.02,
+                  transition: { duration: 0.2 }
+                }}
+                layout
+              >
                 <OptimizedProductImage 
                   imagePath={prod.imagen} 
                   alt={prod.nombre} 
@@ -220,7 +250,7 @@ const Inventario = () => {
                     Eliminar
                   </button>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         ) : (
@@ -234,10 +264,27 @@ const Inventario = () => {
                 <ProductCardSkeleton />
                 <ProductCardSkeleton />
               </>
-            ) : productos.length === 0 ? (
-              <div style={{textAlign:'center',width:'100%',padding:'2rem'}}>No hay productos aún.</div>
-            ) : productos.map(prod => (
-              <div className="inventario-card" key={prod.id}>
+            ) : filteredProducts.length === 0 ? (
+              <div style={{textAlign:'center',width:'100%',padding:'2rem'}}>
+                {query ? `No se encontraron productos para "${query}"` : 'No hay productos aún.'}
+              </div>
+            ) : filteredProducts.map((prod, index) => (
+              <motion.div 
+                className="inventario-card" 
+                key={prod.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ 
+                  duration: 0.3, 
+                  delay: index * 0.05,
+                  ease: "easeOut"
+                }}
+                whileHover={{ 
+                  scale: 1.02,
+                  transition: { duration: 0.2 }
+                }}
+                layout
+              >
                 <OptimizedProductImage 
                   imagePath={prod.imagen} 
                   alt={prod.nombre} 
@@ -268,7 +315,7 @@ const Inventario = () => {
                     Eliminar
                   </button>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         )}

@@ -1,8 +1,10 @@
 import React, { useMemo, useState, useEffect } from "react";
+import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import OptimizedProductImage from '../components/OptimizedProductImage';
 import ReciboVenta from '../components/ReciboVenta';
+import ConfirmacionVenta from '../components/ConfirmacionVenta';
 import { ShoppingCart, Trash2, Plus, Minus, Search, CheckCircle, X, CreditCard, Banknote, Smartphone, Wallet } from 'lucide-react';
 import './Caja.css';
 
@@ -39,18 +41,24 @@ export default function Caja() {
   const [mostrandoMetodosPago, setMostrandoMetodosPago] = useState(false);
   const [mostrandoPagoEfectivo, setMostrandoPagoEfectivo] = useState(false);
   const [montoEntregado, setMontoEntregado] = useState('');
+  const [mostrandoConfirmacion, setMostrandoConfirmacion] = useState(false);
+  const [confirmacionCargando, setConfirmacionCargando] = useState(false);
+  const [confirmacionExito, setConfirmacionExito] = useState(false);
+  const [datosVentaConfirmada, setDatosVentaConfirmada] = useState(null);
 
   // Cargar productos del usuario
   useEffect(() => {
     const fetchProductos = async () => {
       if (!user) return;
       setCargando(true);
+      
       const { data, error } = await supabase
         .from('productos')
         .select('*')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-      
+        .order('created_at', { ascending: false })
+        .limit(1000);
+        
       if (!error) {
         setProductos(data || []);
       }
@@ -156,17 +164,18 @@ export default function Caja() {
     setMontoEntregado('');
   };
 
+  const handleCerrarConfirmacion = () => {
+    setMostrandoConfirmacion(false);
+    setConfirmacionCargando(false);
+    setConfirmacionExito(false);
+    setDatosVentaConfirmada(null);
+  };
+
   // Componente para pago en efectivo
   const PagoEfectivo = () => {
     const monto = parseFloat(montoEntregado.replace(/[^\d]/g, '')) || 0;
     const cambio = monto - total;
-    const valoresComunes = [
-      Math.ceil(total / 1000) * 1000, // Redondear hacia arriba a miles
-      Math.ceil(total / 1000) * 1000 + 1000, // +1000
-      Math.ceil(total / 1000) * 1000 + 2000, // +2000
-      Math.ceil(total / 1000) * 1000 + 5000, // +5000
-      10000, 20000, 50000, 100000 // Valores fijos comunes
-    ].filter(valor => valor >= total).slice(0, 6); // Máximo 6 opciones
+    const valoresComunes = [1000, 5000, 10000, 20000, 50000, 100000];
 
     return (
       <div className="pago-efectivo-overlay">
@@ -312,6 +321,12 @@ export default function Caja() {
       alert('El carrito está vacío');
       return;
     }
+
+    // Mostrar modal de confirmación con carga
+    setMostrandoConfirmacion(true);
+    setConfirmacionCargando(true);
+    setConfirmacionExito(false);
+    setDatosVentaConfirmada(null);
     
     setProcesandoVenta(true);
     console.log('Iniciando confirmación de venta...', { cart, total, method });
@@ -420,10 +435,19 @@ export default function Caja() {
       
       console.log('Mostrando recibo:', ventaRecibo);
       
-      // Mostrar recibo
-      setVentaCompletada(ventaRecibo);
-      setCart([]);
-      setShowCartMobile(false);
+      // Simular tiempo de procesamiento para la animación
+      setTimeout(() => {
+        setConfirmacionCargando(false);
+        setConfirmacionExito(true);
+        setDatosVentaConfirmada(ventaRecibo);
+        
+        // Después de mostrar éxito, limpiar carrito
+        setTimeout(() => {
+          setVentaCompletada(ventaRecibo);
+          setCart([]);
+          setShowCartMobile(false);
+        }, 2000);
+      }, 1500);
       
       // Recargar productos para actualizar stock
       console.log('Recargando productos...');
@@ -442,6 +466,9 @@ export default function Caja() {
     } catch (error) {
       console.error('Error confirmando venta:', error);
       alert(`Error al procesar la venta: ${error.message}`);
+      setMostrandoConfirmacion(false);
+      setConfirmacionCargando(false);
+      setConfirmacionExito(false);
     } finally {
       setProcesandoVenta(false);
     }
@@ -478,10 +505,22 @@ export default function Caja() {
         </div>
 
         <div className="caja-products-list">
-          {filteredProducts.map((producto) => (
-            <div 
+          {filteredProducts.map((producto, index) => (
+            <motion.div 
               key={producto.id} 
               className="caja-product-card"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ 
+                duration: 0.3, 
+                delay: index * 0.05,
+                ease: "easeOut"
+              }}
+              whileHover={{ 
+                scale: 1.02,
+                transition: { duration: 0.2 }
+              }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => addToCart(producto)}
             >
               <div className="caja-product-content">
@@ -496,7 +535,7 @@ export default function Caja() {
                 </div>
                 <span className="caja-product-price">{formatCOP(producto.precio_venta)}</span>
               </div>
-            </div>
+            </motion.div>
           ))}
 
           {filteredProducts.length === 0 && (
@@ -568,28 +607,20 @@ export default function Caja() {
             <span className="caja-total-amount">{formatCOP(total)}</span>
           </div>
           
-          <div className="caja-payment-method">
-            <label className="caja-payment-label">Método de pago</label>
-            <select 
-              className="caja-payment-select"
-              value={method} 
-              onChange={(e) => setMethod(e.target.value)}
-            >
-              <option>Efectivo</option>
-              <option>Transferencia</option>
-              <option>Nequi</option>
-              <option>Mixto</option>
-            </select>
-          </div>
           
-          <button 
-            className="caja-confirm-btn"
-            onClick={handleContinuar} 
-            disabled={cart.length === 0 || procesandoVenta}
-          >
-            <CheckCircle className="caja-confirm-icon" /> 
-            {procesandoVenta ? 'Procesando...' : 'Continuar'}
-          </button>
+            <motion.button 
+              className="caja-confirm-btn"
+              onClick={handleContinuar} 
+              disabled={cart.length === 0 || procesandoVenta}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <CheckCircle className="caja-confirm-icon" /> 
+              {procesandoVenta ? 'Procesando...' : 'Continuar'}
+            </motion.button>
         </div>
       </div>
 
@@ -677,19 +708,6 @@ export default function Caja() {
               <span className="caja-mobile-total-amount">{formatCOP(total)}</span>
             </div>
             
-            <div className="caja-mobile-payment-method">
-              <label className="caja-mobile-payment-label">Método de pago</label>
-              <select 
-                className="caja-mobile-payment-select"
-                value={method} 
-                onChange={(e) => setMethod(e.target.value)}
-              >
-                <option>Efectivo</option>
-                <option>Transferencia</option>
-                <option>Nequi</option>
-                <option>Mixto</option>
-              </select>
-            </div>
             
             <button 
               className="caja-mobile-confirm-btn"
@@ -716,6 +734,15 @@ export default function Caja() {
           onNuevaVenta={handleNuevaVenta}
         />
       )}
+
+      {/* Modal de confirmación de venta */}
+      <ConfirmacionVenta
+        isVisible={mostrandoConfirmacion}
+        isLoading={confirmacionCargando}
+        isSuccess={confirmacionExito}
+        onClose={handleCerrarConfirmacion}
+        ventaData={datosVentaConfirmada}
+      />
     </div>
   );
 }

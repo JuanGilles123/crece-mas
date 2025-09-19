@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { User, Settings, Building2, LogOut, Edit3, Save, X } from 'lucide-react';
 import ConfiguracionFacturacion from '../components/ConfiguracionFacturacion';
@@ -68,52 +69,123 @@ const Perfil = () => {
     { id: 'configuracion', label: 'Configuración', icon: Settings },
   ];
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        duration: 0.6,
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.5,
+        ease: "easeOut"
+      }
+    }
+  };
+
   return (
-    <div className="perfil-container">
-      <div className="perfil-header">
+    <motion.div 
+      className="perfil-container"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      <motion.div className="perfil-header" variants={itemVariants}>
         <div className="perfil-user-info">
-          <div className="perfil-avatar">
+          <motion.div 
+            className="perfil-avatar"
+            whileHover={{ scale: 1.05 }}
+            transition={{ duration: 0.2 }}
+          >
             <User className="perfil-avatar-icon" />
-          </div>
+          </motion.div>
           <div className="perfil-user-details">
-            <h1 className="perfil-user-name">
+            <motion.h1 
+              className="perfil-user-name"
+              variants={itemVariants}
+            >
               {user?.user_metadata?.full_name || user?.email || 'Usuario'}
-            </h1>
-            <p className="perfil-user-email">{user?.email}</p>
-            <p className="perfil-user-role">Administrador</p>
+            </motion.h1>
+            <motion.p 
+              className="perfil-user-email"
+              variants={itemVariants}
+            >
+              {user?.email}
+            </motion.p>
+            <motion.p 
+              className="perfil-user-role"
+              variants={itemVariants}
+            >
+              Administrador
+            </motion.p>
           </div>
         </div>
-        <button 
+        <motion.button 
           className="perfil-logout-btn"
           onClick={handleLogout}
           disabled={loading}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          variants={itemVariants}
         >
           <LogOut className="perfil-logout-icon" />
           {loading ? 'Cerrando...' : 'Cerrar Sesión'}
-        </button>
-      </div>
+        </motion.button>
+      </motion.div>
 
       <div className="perfil-content">
         <div className="perfil-sidebar">
           <nav className="perfil-nav">
-            {tabs.map((tab) => {
+            {tabs.map((tab, index) => {
               const Icon = tab.icon;
               return (
-                <button
+                <motion.button
                   key={tab.id}
                   className={`perfil-nav-item ${activeTab === tab.id ? 'active' : ''}`}
                   onClick={() => setActiveTab(tab.id)}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ 
+                    duration: 0.3, 
+                    delay: index * 0.1,
+                    ease: "easeOut"
+                  }}
+                  whileHover={{ 
+                    scale: 1.02,
+                    transition: { duration: 0.2 }
+                  }}
+                  whileTap={{ scale: 0.98 }}
                 >
                   <Icon className="perfil-nav-icon" />
                   {tab.label}
-                </button>
+                </motion.button>
               );
             })}
           </nav>
         </div>
 
-        <div className="perfil-main">
-          {activeTab === 'datos' && (
+        <motion.div 
+          className="perfil-main"
+          variants={itemVariants}
+        >
+          <AnimatePresence mode="wait">
+            {activeTab === 'datos' && (
+              <motion.div
+                key="datos"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+              >
             <div className="perfil-section">
               <h2 className="perfil-section-title">Datos Personales</h2>
               <div className="perfil-datos-grid">
@@ -178,21 +250,37 @@ const Perfil = () => {
                   </p>
                 </div>
               </div>
-            </div>
+              </div>
+            </motion.div>
           )}
 
           {activeTab === 'facturacion' && (
-            <div className="perfil-section">
-              <h2 className="perfil-section-title">Configuración de Facturación</h2>
-              <p className="perfil-section-description">
-                Configure los datos de su empresa para generar recibos profesionales.
-              </p>
-              <ConfiguracionFacturacion />
-            </div>
+            <motion.div
+              key="facturacion"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="perfil-section">
+                <h2 className="perfil-section-title">Configuración de Facturación</h2>
+                <p className="perfil-section-description">
+                  Configure los datos de su empresa para generar recibos profesionales.
+                </p>
+                <ConfiguracionFacturacion />
+              </div>
+            </motion.div>
           )}
 
           {activeTab === 'configuracion' && (
-            <div className="perfil-section">
+            <motion.div
+              key="configuracion"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="perfil-section">
               <h2 className="perfil-section-title">Configuración General</h2>
               <div className="perfil-config-grid">
                 <div className="perfil-config-item">
@@ -217,11 +305,13 @@ const Perfil = () => {
                   </button>
                 </div>
               </div>
-            </div>
+              </div>
+            </motion.div>
           )}
-        </div>
+          </AnimatePresence>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
