@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Mail, Lock, Eye, EyeOff, ArrowLeft, TrendingUp, Users, BarChart3 } from 'lucide-react';
 import styles from './Login.module.css';
-// import { MailIcon, LockIcon } from './Icons'; // No se usan actualmente
-import { EyeIcon } from './EyeIcon';
 
 const TerminosModal = ({ open, onClose }) => (
   open ? (
@@ -69,53 +69,133 @@ const Login = () => {
   return (
     <div className={styles.container}>
       <TerminosModal open={showTerms} onClose={()=>setShowTerms(false)} />
-      <div className={styles.form}>
-        <h2 className={styles.title}>Iniciar sesión</h2>
-        <form onSubmit={handleSubmit}>
-            <input
-              type="email"
-              placeholder="Correo"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              required
-              className={styles.input}
-            />
-            <div style={{ position: 'relative' }}>
-              <input
-                type={showPass ? 'text' : 'password'}
-                placeholder="Contraseña"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
-                className={styles.input}
-                style={{ paddingRight: '3rem' }}
-              />
-              <button 
-                type="button" 
-                style={{
-                  position: 'absolute',
-                  right: '0.75rem',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '0.25rem'
-                }} 
-                onClick={() => setShowPass(v => !v)}
-              >
-                <EyeIcon open={showPass} />
-              </button>
-            </div>
-            <button className={styles.button} type="submit">Entrar</button>
-            {error && <div className={styles.error}>{error}</div>}
-          </form>
-          <div className={styles.links}>
-            <Link className={styles.link} to="/recuperar">Olvidé mi contraseña</Link>
-            <Link className={styles.link} to="/registro">Crear cuenta</Link>
+      
+      {/* Botón de regreso */}
+      <motion.div 
+        className={styles.backButton}
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 0.2 }}
+      >
+        <Link to="/" className={styles.backLink}>
+          <ArrowLeft size={20} />
+          Volver al inicio
+        </Link>
+      </motion.div>
+
+      <div className={styles.content}>
+        {/* Panel izquierdo con información */}
+        <motion.div 
+          className={styles.infoPanel}
+          initial={{ opacity: 0, x: -50 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <div className={styles.logo}>
+            <TrendingUp size={40} />
+            <h1>Crece+</h1>
           </div>
-        </div>
+          <h2>¡Bienvenido de vuelta!</h2>
+          <p>Accede a tu panel de control y continúa gestionando tu negocio de manera eficiente.</p>
+          
+          <div className={styles.features}>
+            <div className={styles.feature}>
+              <BarChart3 size={24} />
+              <span>Dashboard completo</span>
+            </div>
+            <div className={styles.feature}>
+              <Users size={24} />
+              <span>Gestión de inventario</span>
+            </div>
+            <div className={styles.feature}>
+              <TrendingUp size={24} />
+              <span>Reportes en tiempo real</span>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Panel derecho con formulario */}
+        <motion.div 
+          className={styles.formPanel}
+          initial={{ opacity: 0, x: 50 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
+          <div className={styles.form}>
+            <div className={styles.formHeader}>
+              <h2>Iniciar sesión</h2>
+              <p>Ingresa tus credenciales para acceder</p>
+            </div>
+
+            <form onSubmit={handleSubmit}>
+              <div className={styles.inputGroup}>
+                <div className={styles.inputWrapper}>
+                  <Mail size={20} className={styles.inputIcon} />
+                  <input
+                    type="email"
+                    placeholder="Correo electrónico"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    required
+                    className={styles.input}
+                  />
+                </div>
+              </div>
+
+              <div className={styles.inputGroup}>
+                <div className={styles.inputWrapper}>
+                  <Lock size={20} className={styles.inputIcon} />
+                  <input
+                    type={showPass ? 'text' : 'password'}
+                    placeholder="Contraseña"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    required
+                    className={styles.input}
+                  />
+                  <button 
+                    type="button" 
+                    className={styles.eyeButton}
+                    onClick={() => setShowPass(v => !v)}
+                  >
+                    {showPass ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className={styles.forgotPassword}>
+                <Link to="/recuperar" className={styles.forgotLink}>
+                  ¿Olvidaste tu contraseña?
+                </Link>
+              </div>
+
+              <motion.button 
+                className={styles.submitButton} 
+                type="submit"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                Iniciar sesión
+              </motion.button>
+
+              {error && (
+                <motion.div 
+                  className={styles.error}
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  {error}
+                </motion.div>
+              )}
+            </form>
+
+            <div className={styles.signupLink}>
+              <p>¿No tienes cuenta? <Link to="/registro" className={styles.link}>Regístrate aquí</Link></p>
+            </div>
+          </div>
+        </motion.div>
       </div>
+    </div>
   );
 };
 

@@ -10,6 +10,7 @@ import Recuperar from './pages/Recuperar';
 import Dashboard from './pages/Dashboard';
 import RestablecerContrasena from './pages/ResetPassword';
 import Confirmacion from './pages/Confirmacion';
+import ConfirmacionExitosa from './components/ConfirmacionExitosa';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -35,6 +36,7 @@ function App() {
           <Router>
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/home" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/registro" element={<Registro />} />
             <Route path="/recuperar" element={<Recuperar />} />
@@ -45,6 +47,7 @@ function App() {
               </ProtectedRoute>
             } />
             <Route path="/confirmar" element={<Confirmacion />} />
+            <Route path="/confirmacion-exitosa" element={<ConfirmacionExitosa />} />
           </Routes>
         </Router>
         {/* Configuración de React Hot Toast */}
