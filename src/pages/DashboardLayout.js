@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 import { DashboardSkeleton } from '../components/SkeletonLoader';
+import { BarChart3, CreditCard, Package, User } from 'lucide-react';
 import './DashboardLayout.css';
 
 const DashboardLayout = () => {
@@ -22,19 +23,22 @@ const DashboardLayout = () => {
   return (
     <div className="dashboard-layout">
       <aside className="dashboard-sidebar">
-        <div className="dashboard-logo">Crece</div>
+        {/* <div className="dashboard-logo">Crece</div> */}
+        <div className="dashboard-logo">
+          <img src="/logo.png" alt="Logo Crece" className="dashboard-logo-img" />
+        </div>
         <nav className="dashboard-nav">
           <NavLink to="/dashboard" end className={({ isActive }) => isActive ? 'active' : ''}>
-            <span role="img" aria-label="dashboard">📊</span> Dashboard
+            <BarChart3 size={20} /> Dashboard
           </NavLink>
           <NavLink to="/dashboard/caja" className={({ isActive }) => isActive ? 'active' : ''}>
-            <span role="img" aria-label="caja">💰</span> Caja
+            <CreditCard size={20} /> Caja
           </NavLink>
           <NavLink to="/dashboard/inventario" className={({ isActive }) => isActive ? 'active' : ''}>
-            <span role="img" aria-label="inventario">📦</span> Inventario
+            <Package size={20} /> Inventario
           </NavLink>
           <NavLink to="/dashboard/perfil" className={({ isActive }) => isActive ? 'active' : ''}>
-            <span role="img" aria-label="perfil">👤</span> Perfil
+            <User size={20} /> Perfil
           </NavLink>
         </nav>
       </aside>

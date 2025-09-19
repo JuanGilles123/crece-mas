@@ -1,7 +1,6 @@
 import React from 'react';
 import './DashboardHome.css';
 import obrero from '../assets/obrero.png';
-import StorageInfo from '../components/StorageInfo';
 
 const DashboardHome = () => (
   <div className="dashboard-home">
@@ -11,8 +10,6 @@ const DashboardHome = () => (
       <h3>Dashboard en Construcción</h3>
       <p>Pronto verá aquí tus métricas clave.</p>
     </div>
-    
-    <StorageInfo />
   </div>
 );
 

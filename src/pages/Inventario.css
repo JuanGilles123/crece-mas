@@ -9,11 +9,12 @@
   display: flex;
   align-items: center;
   background: #fff;
-  border-radius: 14px;
-  box-shadow: 0 2px 12px #0001;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   padding: 1rem 1.2rem;
   gap: 1.2rem;
   min-width: 0;
+  border: 1px solid #f1f5f9;
 }
 .inventario-img-lista {
   width: 56px;
@@ -34,8 +35,15 @@
   gap: 0.7rem;
   align-items: center;
   justify-content: center;
-  min-width: 120px;
+  min-width: 140px;
   flex-shrink: 0;
+}
+.inventario-lista-actions .inventario-btn-outline {
+  min-width: 80px;
+  padding: 0.5rem 0.8rem;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  text-align: center;
 }
 
 /* Forzar que los botones de acción de producto nunca se salgan de la tarjeta */
@@ -50,13 +58,18 @@
   box-sizing: border-box;
 }
 .inventario-card-actions .inventario-btn-outline {
-  min-width: 90px;
+  min-width: 100px;
   max-width: 100%;
   word-break: break-word;
   margin-right: 0;
   flex: 1;
-  max-width: 120px;
+  max-width: 140px;
   text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.9rem;
 }
 /* --- Mejora visual para el modal de agregar producto --- */
 .modal-card {
@@ -359,25 +372,41 @@
 }
 /* Inventario - estilo moderno y responsivo */
 .inventario-main {
-  padding: 2.5rem 2rem;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1.5rem;
+  max-width: 100%;
 }
 .inventario-header {
   display: flex;
   align-items: center;
   gap: 1.5rem;
-  margin-bottom: 1.2rem;
+  margin-bottom: 0;
+  padding: 0;
 }
-.inventario-search {
+.inventario-search-container {
   flex: 1;
-  padding: 0.7rem 1.2rem;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.inventario-search-icon {
+  position: absolute;
+  left: 1rem;
+  color: #6b7280;
+  z-index: 1;
+}
+
+.inventario-search {
+  width: 100%;
+  padding: 0.7rem 1.2rem 0.7rem 3rem;
   border-radius: 10px;
   border: 1px solid #e5e7eb;
   background: #fff;
   font-size: 1rem;
-  box-shadow: 0 2px 8px #0001;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 .inventario-actions {
   display: flex;
@@ -391,7 +420,7 @@
   border: none;
   cursor: pointer;
   transition: background 0.2s, color 0.2s, box-shadow 0.2s;
-  box-shadow: 0 2px 8px #0001;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 .inventario-btn-primary {
   background: #2563eb;
@@ -429,14 +458,15 @@
 }
 .inventario-card {
   background: #fff;
-  border-radius: 18px;
-  box-shadow: 0 4px 24px #0001;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   padding: 1.2rem 1rem 1rem 1rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.7rem;
   min-width: 0;
+  border: 1px solid #f1f5f9;
 }
 .inventario-img {
   width: 80px;
@@ -724,9 +754,20 @@
     gap: 0.5rem;
   }
   .inventario-card-actions .inventario-btn-outline {
-    min-width: 70px;
+    min-width: 85px;
     font-size: 0.8rem;
     padding: 0.5rem 0.6rem;
+    white-space: nowrap;
+  }
+  /* Mejorar botones en vista de lista para móviles */
+  .inventario-lista-actions {
+    min-width: 120px;
+    gap: 0.5rem;
+  }
+  .inventario-lista-actions .inventario-btn-outline {
+    min-width: 70px;
+    font-size: 0.8rem;
+    padding: 0.4rem 0.6rem;
   }
 }
 
@@ -761,6 +802,8 @@
     min-width: auto;
     font-size: 0.8rem;
     padding: 0.6rem;
+    white-space: nowrap;
+    text-align: center;
   }
 }
 
@@ -780,5 +823,15 @@
   }
   .inventario-card p {
     font-size: 0.75rem;
+  }
+  /* Botones en vista de lista para móviles muy pequeños */
+  .inventario-lista-actions {
+    min-width: 100px;
+    gap: 0.4rem;
+  }
+  .inventario-lista-actions .inventario-btn-outline {
+    min-width: 60px;
+    font-size: 0.75rem;
+    padding: 0.3rem 0.5rem;
   }
 }

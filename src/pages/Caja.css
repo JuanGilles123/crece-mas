@@ -2,20 +2,33 @@
 
 .caja-container {
   display: flex;
-  height: 100vh;
+  height: 100%;
   flex-direction: column;
-  background: #f8fafc;
+  background: #fff;
 }
 
 /* Panel de productos */
 .caja-products-panel {
   width: 100%;
-  border-right: 1px solid #e2e8f0;
-  padding: 1rem;
+  border-right: none;
+  padding: 0;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  gap: 1rem;
+  gap: 0;
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.caja-products-panel::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.08) 20%, rgba(0, 0, 0, 0.12) 50%, rgba(0, 0, 0, 0.08) 80%, transparent 100%);
 }
 
 /* Búsqueda */
@@ -23,12 +36,24 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0;
   position: sticky;
   top: 0;
   background: white;
-  padding: 0.5rem 0;
+  padding: 0.5rem 1rem;
   z-index: 10;
+  border-bottom: none;
+  position: relative;
+}
+
+.caja-search-container::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.08) 20%, rgba(0, 0, 0, 0.12) 50%, rgba(0, 0, 0, 0.08) 80%, transparent 100%);
 }
 
 .caja-search-icon {
@@ -39,33 +64,40 @@
 .caja-search-input {
   width: 100%;
   padding: 0.75rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid transparent;
   border-radius: 0.5rem;
   font-size: 1rem;
   outline: none;
-  transition: border-color 0.2s;
+  transition: all 0.2s;
+  background: #f8fafc;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .caja-search-input:focus {
   border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1), inset 0 1px 2px rgba(0, 0, 0, 0.05);
+  background: #fff;
 }
 
 /* Lista de productos */
 .caja-products-list {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.5rem;
   flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  padding: 0.5rem 1rem;
 }
 
 .caja-product-card {
   background: white;
   border-radius: 0.75rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   cursor: pointer;
   transition: all 0.2s;
-  border: 1px solid transparent;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  position: relative;
 }
 
 .caja-product-card:hover {
@@ -127,10 +159,23 @@
 .caja-cart-panel {
   display: none;
   width: 50%;
-  padding: 1rem;
+  padding: 0.5rem;
   flex-direction: column;
   background: white;
-  border-left: 1px solid #e2e8f0;
+  border-left: none;
+  height: 100%;
+  overflow-y: auto;
+  position: relative;
+}
+
+.caja-cart-panel::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.08) 20%, rgba(0, 0, 0, 0.12) 50%, rgba(0, 0, 0, 0.08) 80%, transparent 100%);
 }
 
 .caja-cart-header {
@@ -139,7 +184,18 @@
   justify-content: space-between;
   margin-bottom: 1rem;
   padding-bottom: 0.75rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: none;
+  position: relative;
+}
+
+.caja-cart-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.08) 20%, rgba(0, 0, 0, 0.12) 50%, rgba(0, 0, 0, 0.08) 80%, transparent 100%);
 }
 
 .caja-cart-title {
@@ -371,13 +427,27 @@
   bottom: 0;
   left: 0;
   right: 0;
-  border-top: 1px solid #e2e8f0;
+  border-top: none;
   background: white;
-  padding: 0.75rem;
+  padding: 0.5rem 0.75rem;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
   z-index: 20;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  min-height: 60px;
+  position: relative;
+}
+
+.caja-mobile-footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.08) 20%, rgba(0, 0, 0, 0.12) 50%, rgba(0, 0, 0, 0.08) 80%, transparent 100%);
 }
 
 .caja-mobile-total {
@@ -780,14 +850,15 @@
 @media (max-width: 767px) {
   .caja-container {
     flex-direction: column;
-    height: 100vh;
-    padding-bottom: 80px; /* Espacio para el footer móvil */
+    height: 100%;
+    padding-bottom: 60px; /* Espacio para el footer móvil */
   }
   
   .caja-products-panel {
     width: 100%;
     flex: 1;
-    padding: 0.8rem;
+    padding: 0;
+    min-height: calc(100vh - 60px);
   }
   
   .caja-cart-panel {
@@ -827,8 +898,13 @@
 
 /* Móviles medianos */
 @media (max-width: 600px) {
+  .caja-container {
+    padding-bottom: 85px;
+  }
+  
   .caja-products-panel {
     padding: 0.6rem;
+    min-height: calc(100vh - 85px);
   }
   
   .caja-product-content {
@@ -854,8 +930,9 @@
   }
   
   .caja-mobile-footer {
-    padding: 0.6rem;
+    padding: 0.8rem 0.6rem;
     gap: 0.5rem;
+    min-height: 75px;
   }
   
   .caja-mobile-cart-btn,
@@ -871,8 +948,13 @@
 
 /* Móviles pequeños */
 @media (max-width: 480px) {
+  .caja-container {
+    padding-bottom: 80px;
+  }
+  
   .caja-products-panel {
     padding: 0.5rem;
+    min-height: calc(100vh - 80px);
   }
   
   .caja-product-content {
@@ -898,8 +980,9 @@
   }
   
   .caja-mobile-footer {
-    padding: 0.5rem;
+    padding: 0.7rem 0.5rem;
     gap: 0.4rem;
+    min-height: 70px;
   }
   
   .caja-mobile-cart-btn,
@@ -960,8 +1043,13 @@
 
 /* Móviles muy pequeños */
 @media (max-width: 360px) {
+  .caja-container {
+    padding-bottom: 75px;
+  }
+  
   .caja-products-panel {
     padding: 0.4rem;
+    min-height: calc(100vh - 75px);
   }
   
   .caja-product-content {
@@ -987,8 +1075,9 @@
   }
   
   .caja-mobile-footer {
-    padding: 0.4rem;
+    padding: 0.6rem 0.4rem;
     gap: 0.3rem;
+    min-height: 65px;
   }
   
   .caja-mobile-cart-btn,
@@ -1004,6 +1093,25 @@
   .caja-mobile-total-label {
     font-size: 0.65rem;
   }
+}
+
+/* Mejoras de scroll */
+.caja-products-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.caja-products-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.caja-products-list::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.caja-products-list::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }
 
 /* Animaciones */

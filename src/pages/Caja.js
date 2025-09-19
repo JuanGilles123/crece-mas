@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import OptimizedProductImage from '../components/OptimizedProductImage';
 import ReciboVenta from '../components/ReciboVenta';
+import { ShoppingCart, Trash2, Plus, Minus, Search, CheckCircle, X } from 'lucide-react';
 import './Caja.css';
 
 // Componente SafeImg removido ya que usamos OptimizedProductImage
@@ -34,7 +35,6 @@ export default function Caja() {
   const [productos, setProductos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [ventaCompletada, setVentaCompletada] = useState(null);
-  const [pagoCliente, setPagoCliente] = useState(0);
 
   // Cargar productos del usuario
   useEffect(() => {
@@ -108,7 +108,6 @@ export default function Caja() {
 
   const handleNuevaVenta = () => {
     setVentaCompletada(null);
-    setPagoCliente(0);
   };
 
   async function confirmSale() {
@@ -241,7 +240,7 @@ export default function Caja() {
       {/* Panel de productos */}
       <div className="caja-products-panel">
         <div className="caja-search-container">
-          <div className="caja-search-icon">🔍</div>
+          <Search className="caja-search-icon" size={20} />
           <input
             type="text"
             placeholder="Buscar producto..."
@@ -283,7 +282,7 @@ export default function Caja() {
       <div className="caja-cart-panel">
         <div className="caja-cart-header">
           <h2 className="caja-cart-title">
-            <span className="caja-cart-icon">🛒</span> Carrito de Venta
+            <ShoppingCart className="caja-cart-icon" /> Carrito de Venta
           </h2>
           {cart.length > 0 && (
             <button 
@@ -311,14 +310,14 @@ export default function Caja() {
                       className="caja-qty-btn"
                       onClick={() => dec(item.id)}
                     >
-                      −
+                      <Minus size={16} />
                     </button>
                     <span className="caja-qty-display">{item.qty}</span>
                     <button 
                       className="caja-qty-btn"
                       onClick={() => inc(item.id)}
                     >
-                      +
+                      <Plus size={16} />
                     </button>
                   </div>
                   <div className="caja-cart-item-total">
@@ -328,7 +327,7 @@ export default function Caja() {
                     className="caja-remove-btn"
                     onClick={() => removeItem(item.id)}
                   >
-                    🗑️
+                    <Trash2 size={16} />
                   </button>
                 </li>
               ))}
@@ -361,7 +360,7 @@ export default function Caja() {
             onClick={confirmSale} 
             disabled={cart.length === 0}
           >
-            <span className="caja-confirm-icon">💰</span> Confirmar Venta
+            <CheckCircle className="caja-confirm-icon" /> Confirmar Venta
           </button>
         </div>
       </div>
@@ -376,7 +375,7 @@ export default function Caja() {
           className="caja-mobile-cart-btn"
           onClick={() => setShowCartMobile(true)}
         >
-          <span className="caja-mobile-cart-icon">🛒</span> 
+          <ShoppingCart className="caja-mobile-cart-icon" /> 
           Ver carrito ({cart.reduce((n, i) => n + i.qty, 0)})
         </button>
         <button 
@@ -393,13 +392,13 @@ export default function Caja() {
         <div className="caja-mobile-overlay">
           <div className="caja-mobile-cart-header">
             <h3 className="caja-mobile-cart-title">
-              <span className="caja-mobile-cart-icon">🛒</span> Carrito
+              <ShoppingCart className="caja-mobile-cart-icon" /> Carrito
             </h3>
             <button 
               className="caja-mobile-close-btn"
               onClick={() => setShowCartMobile(false)}
             >
-              ✕
+              <X size={20} />
             </button>
           </div>
 
@@ -419,14 +418,14 @@ export default function Caja() {
                         className="caja-mobile-qty-btn"
                         onClick={() => dec(item.id)}
                       >
-                        −
+                        <Minus size={14} />
                       </button>
                       <span className="caja-mobile-qty-display">{item.qty}</span>
                       <button 
                         className="caja-mobile-qty-btn"
                         onClick={() => inc(item.id)}
                       >
-                        +
+                        <Plus size={14} />
                       </button>
                     </div>
                     <div className="caja-mobile-cart-item-total">
@@ -436,7 +435,7 @@ export default function Caja() {
                       className="caja-mobile-remove-btn"
                       onClick={() => removeItem(item.id)}
                     >
-                      🗑️
+                      <Trash2 size={14} />
                     </button>
                   </li>
                 ))}
@@ -469,7 +468,7 @@ export default function Caja() {
               onClick={confirmSale} 
               disabled={cart.length === 0}
             >
-              <span className="caja-mobile-confirm-icon">💰</span> Confirmar Venta
+              <CheckCircle className="caja-mobile-confirm-icon" /> Confirmar Venta
             </button>
           </div>
         </div>

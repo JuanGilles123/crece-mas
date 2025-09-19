@@ -1,6 +1,6 @@
 
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './Inventario.css';
 import AgregarProductoModal from './AgregarProductoModal';
 import EditarProductoModal from './EditarProductoModal';
@@ -9,7 +9,25 @@ import OptimizedProductImage from '../components/OptimizedProductImage';
 import { ProductCardSkeleton, ProductListSkeleton, InventoryHeaderSkeleton } from '../components/SkeletonLoader';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
-import { deleteImageFromStorage } from '../utils/storageCleanup';
+import { Search } from 'lucide-react';
+
+// Función para eliminar imagen del storage
+const deleteImageFromStorage = async (imagePath) => {
+  if (!imagePath) return false;
+  try {
+    const { error } = await supabase.storage
+      .from('productos')
+      .remove([imagePath]);
+    if (error) {
+      console.error('Error eliminando imagen:', error);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error('Error eliminando imagen:', error);
+    return false;
+  }
+};
 
 const productosIniciales = [];
 
@@ -27,7 +45,7 @@ const Inventario = () => {
   const moneda = user?.user_metadata?.moneda || 'COP';
 
   // Función para cargar productos
-  const cargarProductos = async () => {
+  const cargarProductos = useCallback(async () => {
     if (!user) return;
     setCargando(true);
     const { data, error } = await supabase
@@ -43,12 +61,12 @@ const Inventario = () => {
       setProductos(data || []);
     }
     setCargando(false);
-  };
+  }, [user]);
 
   // Cargar productos del usuario al montar
   useEffect(() => {
     cargarProductos();
-  }, [user]);
+  }, [user, cargarProductos]);
 
   // Guardar producto en Supabase
   const handleAgregarProducto = async (nuevo) => {
@@ -145,7 +163,10 @@ const Inventario = () => {
         <InventoryHeaderSkeleton />
       ) : (
         <div className="inventario-header">
-          <input className="inventario-search" placeholder="Buscar producto..." />
+          <div className="inventario-search-container">
+            <Search className="inventario-search-icon" size={20} />
+            <input className="inventario-search" placeholder="Buscar producto..." />
+          </div>
           <div className="inventario-actions">
             <button className="inventario-btn inventario-btn-primary" onClick={() => setModalOpen(true)}>Nuevo producto</button>
             <button className="inventario-btn inventario-btn-secondary" onClick={() => setCsvModalOpen(true)}>Importar CSV</button>

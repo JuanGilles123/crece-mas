@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate, Link } from 'react-router-dom';
 import styles from './Login.module.css';
-import { MailIcon, LockIcon } from './Icons';
+// import { MailIcon, LockIcon } from './Icons'; // No se usan actualmente
 import { EyeIcon } from './EyeIcon';
 
 const TerminosModal = ({ open, onClose }) => (

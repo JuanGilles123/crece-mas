@@ -3,7 +3,20 @@ import { supabase } from '../supabaseClient';
 import './Inventario.css';
 import { useAuth } from '../context/AuthContext';
 import { compressProductImage } from '../utils/imageCompression';
-import { deleteImageFromStorage } from '../utils/storageCleanup';
+// Función para eliminar imagen del storage
+const deleteImageFromStorage = async (imagePath) => {
+  if (!imagePath) return;
+  try {
+    const { error } = await supabase.storage
+      .from('productos')
+      .remove([imagePath]);
+    if (error) {
+      console.error('Error eliminando imagen:', error);
+    }
+  } catch (error) {
+    console.error('Error eliminando imagen:', error);
+  }
+};
 
 const EditarProductoModal = ({ open, onClose, producto, onProductoEditado }) => {
   const { user } = useAuth();

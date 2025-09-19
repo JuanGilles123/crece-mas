@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from "react";
-import { CheckCircle, Printer, Share2, Download, Settings } from "lucide-react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import { CheckCircle, Printer, Share2, Download } from "lucide-react";
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import jsPDF from 'jspdf';
@@ -32,9 +32,9 @@ export default function ReciboVenta({ venta, onNuevaVenta, onCerrar }) {
   // Cargar datos de la empresa
   useEffect(() => {
     cargarDatosEmpresa();
-  }, [user]);
+  }, [user, cargarDatosEmpresa]);
 
-  const cargarDatosEmpresa = async () => {
+  const cargarDatosEmpresa = useCallback(async () => {
     if (!user) return;
     
     try {
@@ -54,7 +54,7 @@ export default function ReciboVenta({ venta, onNuevaVenta, onCerrar }) {
     } finally {
       setCargandoDatos(false);
     }
-  };
+  }, [user]);
 
   if (!venta) return null;
 

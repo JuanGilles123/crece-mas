@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { Save, Upload, Building2, MapPin, Phone, Hash, Mail, MapPin as City } from 'lucide-react';
@@ -22,12 +22,7 @@ export default function ConfiguracionFacturacion() {
   const [subiendoLogo, setSubiendoLogo] = useState(false);
   const [mensaje, setMensaje] = useState('');
 
-  // Cargar datos existentes
-  useEffect(() => {
-    cargarDatosEmpresa();
-  }, [user]);
-
-  const cargarDatosEmpresa = async () => {
+  const cargarDatosEmpresa = useCallback(async () => {
     if (!user) return;
     
     setCargando(true);
@@ -50,7 +45,12 @@ export default function ConfiguracionFacturacion() {
     } finally {
       setCargando(false);
     }
-  };
+  }, [user]);
+
+  // Cargar datos existentes
+  useEffect(() => {
+    cargarDatosEmpresa();
+  }, [user, cargarDatosEmpresa]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -80,7 +80,7 @@ export default function ConfiguracionFacturacion() {
     try {
       const fileName = `logo_${user.id}_${Date.now()}.${file.name.split('.').pop()}`;
       
-      const { data, error } = await supabase.storage
+      const { error } = await supabase.storage
         .from('logos')
         .upload(fileName, file, {
           cacheControl: '3600',

@@ -1,18 +1,18 @@
-/* Animación base del skeleton */
+/* Animación base del skeleton - Suave y fluida */
 @keyframes skeleton-loading {
   0% {
-    background-position: -200px 0;
+    background-position: -300px 0;
   }
   100% {
-    background-position: calc(200px + 100%) 0;
+    background-position: calc(300px + 100%) 0;
   }
 }
 
 /* Clase base para todos los skeletons */
 .skeleton-line {
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 200px 100%;
-  animation: skeleton-loading 1.5s infinite;
+  background: linear-gradient(90deg, #f5f5f5 30%, #e8e8e8 50%, #f5f5f5 70%);
+  background-size: 300px 100%;
+  animation: skeleton-loading 3s ease-in-out infinite;
   border-radius: 4px;
   height: 20px;
   margin-bottom: 8px;
@@ -35,9 +35,9 @@
   width: 80px;
   height: 80px;
   border-radius: 12px;
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 200px 100%;
-  animation: skeleton-loading 1.5s infinite;
+  background: linear-gradient(90deg, #f5f5f5 30%, #e8e8e8 50%, #f5f5f5 70%);
+  background-size: 300px 100%;
+  animation: skeleton-loading 3s ease-in-out infinite;
   margin-bottom: 0.5rem;
 }
 
@@ -82,9 +82,9 @@
   width: 60px;
   height: 32px;
   border-radius: 8px;
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 200px 100%;
-  animation: skeleton-loading 1.5s infinite;
+  background: linear-gradient(90deg, #f5f5f5 30%, #e8e8e8 50%, #f5f5f5 70%);
+  background-size: 300px 100%;
+  animation: skeleton-loading 3s ease-in-out infinite;
 }
 
 /* Skeleton para lista de productos */
@@ -103,9 +103,9 @@
   width: 56px;
   height: 56px;
   border-radius: 10px;
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 200px 100%;
-  animation: skeleton-loading 1.5s infinite;
+  background: linear-gradient(90deg, #f5f5f5 30%, #e8e8e8 50%, #f5f5f5 70%);
+  background-size: 300px 100%;
+  animation: skeleton-loading 3s ease-in-out infinite;
   flex-shrink: 0;
 }
 
@@ -142,9 +142,9 @@
   flex: 1;
   height: 40px;
   border-radius: 10px;
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 200px 100%;
-  animation: skeleton-loading 1.5s infinite;
+  background: linear-gradient(90deg, #f5f5f5 30%, #e8e8e8 50%, #f5f5f5 70%);
+  background-size: 300px 100%;
+  animation: skeleton-loading 3s ease-in-out infinite;
 }
 
 .skeleton-buttons {
@@ -178,9 +178,9 @@
   width: 80px;
   height: 30px;
   border-radius: 6px;
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 200px 100%;
-  animation: skeleton-loading 1.5s infinite;
+  background: linear-gradient(90deg, #f5f5f5 30%, #e8e8e8 50%, #f5f5f5 70%);
+  background-size: 300px 100%;
+  animation: skeleton-loading 3s ease-in-out infinite;
 }
 
 .skeleton-nav {
@@ -193,9 +193,9 @@
   width: 100%;
   height: 40px;
   border-radius: 8px;
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 200px 100%;
-  animation: skeleton-loading 1.5s infinite;
+  background: linear-gradient(90deg, #f5f5f5 30%, #e8e8e8 50%, #f5f5f5 70%);
+  background-size: 300px 100%;
+  animation: skeleton-loading 3s ease-in-out infinite;
 }
 
 .skeleton-main {
@@ -234,18 +234,18 @@
   width: 100%;
   height: 45px;
   border-radius: 8px;
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 200px 100%;
-  animation: skeleton-loading 1.5s infinite;
+  background: linear-gradient(90deg, #f5f5f5 30%, #e8e8e8 50%, #f5f5f5 70%);
+  background-size: 300px 100%;
+  animation: skeleton-loading 3s ease-in-out infinite;
 }
 
 .skeleton-button-large {
   width: 100%;
   height: 50px;
   border-radius: 10px;
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 200px 100%;
-  animation: skeleton-loading 1.5s infinite;
+  background: linear-gradient(90deg, #f5f5f5 30%, #e8e8e8 50%, #f5f5f5 70%);
+  background-size: 300px 100%;
+  animation: skeleton-loading 3s ease-in-out infinite;
   margin-top: 1rem;
 }
 

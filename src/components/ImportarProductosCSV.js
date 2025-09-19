@@ -158,8 +158,8 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
                   header.includes(required) || 
                   header.includes(required.replace('_', ' ')) ||
                   header.includes(required.replace('_', '')) ||
-                  header.includes('precio') && (required.includes('precio')) ||
-                  header.includes('price') && (required.includes('precio'))
+                  (header.includes('precio') && required.includes('precio')) ||
+                  (header.includes('price') && required.includes('precio'))
                 )
               );
               
@@ -337,8 +337,8 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
           header.includes(required) || 
           header.includes(required.replace('_', ' ')) ||
           header.includes(required.replace('_', '')) ||
-          header.includes('precio') && (required.includes('precio')) ||
-          header.includes('price') && (required.includes('precio'))
+          (header.includes('precio') && required.includes('precio')) ||
+          (header.includes('price') && required.includes('precio'))
         )
       );
       
