@@ -35,6 +35,7 @@ export default function Caja() {
   const [productos, setProductos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [ventaCompletada, setVentaCompletada] = useState(null);
+  const [procesandoVenta, setProcesandoVenta] = useState(false);
 
   // Cargar productos del usuario
   useEffect(() => {
@@ -111,22 +112,38 @@ export default function Caja() {
   };
 
   async function confirmSale() {
-    if (!user) return;
+    if (!user) {
+      console.error('Usuario no autenticado');
+      alert('Error: Usuario no autenticado');
+      return;
+    }
+    
+    if (cart.length === 0) {
+      alert('El carrito está vacío');
+      return;
+    }
+    
+    setProcesandoVenta(true);
+    console.log('Iniciando confirmación de venta...', { cart, total, method });
     
     // Validar que no se exceda el stock
     for (const item of cart) {
       const producto = productos.find(p => p.id === item.id);
-      if (item.qty > producto.stock) {
-        alert(`No hay suficiente stock para ${item.nombre}. Disponible: ${producto.stock}`);
+      if (!producto) {
+        console.error('Producto no encontrado:', item.id);
+        alert(`Error: Producto ${item.nombre} no encontrado`);
         return;
       }
-    }
-    
-    // Validación adicional: no permitir stock negativo
-    for (const item of cart) {
-      const producto = productos.find(p => p.id === item.id);
+      
+      if (item.qty > producto.stock) {
+        alert(`No hay suficiente stock para ${item.nombre}. Disponible: ${producto.stock}`);
+        setProcesandoVenta(false);
+        return;
+      }
+      
       if (producto.stock < item.qty) {
         alert(`No hay suficiente stock para ${item.nombre}. Disponible: ${producto.stock}`);
+        setProcesandoVenta(false);
         return;
       }
     }
@@ -135,48 +152,63 @@ export default function Caja() {
     let montoPagoCliente = total;
     if (method === "Efectivo") {
       const monto = prompt(`Total a pagar: ${formatCOP(total)}\n\nIngrese el monto entregado por el cliente:`);
-      if (monto === null) return; // Usuario canceló
+      if (monto === null) {
+        setProcesandoVenta(false);
+        return; // Usuario canceló
+      }
       
       const montoNumero = parseFloat(monto.replace(/[^\d]/g, ''));
       if (isNaN(montoNumero) || montoNumero < total) {
         alert('El monto debe ser mayor o igual al total de la venta.');
+        setProcesandoVenta(false);
         return;
       }
       montoPagoCliente = montoNumero;
     }
     
     try {
+      console.log('Guardando venta en base de datos...');
+      
       // Guardar la venta en la base de datos
-      const { data: ventaData, error: ventaError } = await supabase
+      const ventaData = {
+        user_id: user.id,
+        total: total,
+        metodo_pago: method,
+        items: cart,
+        fecha: new Date().toISOString(),
+        pago_cliente: montoPagoCliente
+      };
+      
+      console.log('Datos de venta a insertar:', ventaData);
+      
+      const { data: ventaResult, error: ventaError } = await supabase
         .from('ventas')
-        .insert([{
-          user_id: user.id,
-          total: total,
-          metodo_pago: method,
-          items: cart,
-          fecha: new Date().toISOString(),
-          pago_cliente: montoPagoCliente
-        }])
+        .insert([ventaData])
         .select();
       
       if (ventaError) {
         console.error('Error guardando venta:', ventaError);
-        alert('Error al guardar la venta. Intenta de nuevo.');
+        alert(`Error al guardar la venta: ${ventaError.message}`);
+        setProcesandoVenta(false);
         return;
       }
       
-      console.log("Venta guardada:", ventaData);
+      if (!ventaResult || ventaResult.length === 0) {
+        console.error('No se retornó data de la venta');
+        alert('Error: No se pudo obtener el ID de la venta');
+        setProcesandoVenta(false);
+        return;
+      }
+      
+      console.log("Venta guardada exitosamente:", ventaResult);
       
       // Actualizar stock de productos
+      console.log('Actualizando stock de productos...');
       for (const item of cart) {
         const producto = productos.find(p => p.id === item.id);
         const nuevoStock = producto.stock - item.qty;
         
-        // Validación adicional: asegurar que el stock no sea negativo
-        if (nuevoStock < 0) {
-          alert(`Error: El stock de ${item.nombre} se volvería negativo. Stock actual: ${producto.stock}, Cantidad a vender: ${item.qty}`);
-          return;
-        }
+        console.log(`Actualizando stock de ${item.nombre}: ${producto.stock} -> ${nuevoStock}`);
         
         const { error: stockError } = await supabase
           .from('productos')
@@ -185,14 +217,14 @@ export default function Caja() {
         
         if (stockError) {
           console.error('Error actualizando stock:', stockError);
-          alert('Error al actualizar el stock. La venta no se completó.');
-          return;
+          alert(`Error al actualizar el stock de ${item.nombre}. La venta se guardó pero el stock no se actualizó.`);
+          // No retornamos aquí para que la venta se complete
         }
       }
       
       // Crear objeto de venta para el recibo
       const ventaRecibo = {
-        id: ventaData[0].id,
+        id: ventaResult[0].id,
         date: new Date().toLocaleDateString("es-CO"),
         time: new Date().toLocaleTimeString("es-CO"),
         cashier: user.user_metadata?.full_name || user.email || "Usuario",
@@ -202,21 +234,32 @@ export default function Caja() {
         pagoCliente: montoPagoCliente
       };
       
+      console.log('Mostrando recibo:', ventaRecibo);
+      
       // Mostrar recibo
       setVentaCompletada(ventaRecibo);
       setCart([]);
       setShowCartMobile(false);
       
       // Recargar productos para actualizar stock
-      const { data } = await supabase
+      console.log('Recargando productos...');
+      const { data: productosActualizados, error: productosError } = await supabase
         .from('productos')
         .select('*')
         .eq('user_id', user.id);
-      setProductos(data || []);
+      
+      if (productosError) {
+        console.error('Error recargando productos:', productosError);
+      } else {
+        setProductos(productosActualizados || []);
+        console.log('Productos recargados exitosamente');
+      }
       
     } catch (error) {
       console.error('Error confirmando venta:', error);
-      alert('Error al procesar la venta. Intenta de nuevo.');
+      alert(`Error al procesar la venta: ${error.message}`);
+    } finally {
+      setProcesandoVenta(false);
     }
   }
 
@@ -358,9 +401,10 @@ export default function Caja() {
           <button 
             className="caja-confirm-btn"
             onClick={confirmSale} 
-            disabled={cart.length === 0}
+            disabled={cart.length === 0 || procesandoVenta}
           >
-            <CheckCircle className="caja-confirm-icon" /> Confirmar Venta
+            <CheckCircle className="caja-confirm-icon" /> 
+            {procesandoVenta ? 'Procesando...' : 'Confirmar Venta'}
           </button>
         </div>
       </div>
@@ -466,9 +510,10 @@ export default function Caja() {
             <button 
               className="caja-mobile-confirm-btn"
               onClick={confirmSale} 
-              disabled={cart.length === 0}
+              disabled={cart.length === 0 || procesandoVenta}
             >
-              <CheckCircle className="caja-mobile-confirm-icon" /> Confirmar Venta
+              <CheckCircle className="caja-mobile-confirm-icon" /> 
+              {procesandoVenta ? 'Procesando...' : 'Confirmar Venta'}
             </button>
           </div>
         </div>

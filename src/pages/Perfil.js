@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { User, Settings, Building2, LogOut } from 'lucide-react';
+import { User, Settings, Building2, LogOut, Edit3, Save, X } from 'lucide-react';
 import ConfiguracionFacturacion from '../components/ConfiguracionFacturacion';
 import { supabase } from '../supabaseClient';
 import './Perfil.css';
@@ -9,6 +9,9 @@ const Perfil = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('datos');
   const [loading, setLoading] = useState(false);
+  const [editandoNombre, setEditandoNombre] = useState(false);
+  const [nombreCompleto, setNombreCompleto] = useState(user?.user_metadata?.full_name || '');
+  const [guardandoNombre, setGuardandoNombre] = useState(false);
 
   const handleLogout = async () => {
     setLoading(true);
@@ -18,6 +21,44 @@ const Perfil = () => {
       console.error('Error al cerrar sesión:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEditarNombre = () => {
+    setEditandoNombre(true);
+    setNombreCompleto(user?.user_metadata?.full_name || '');
+  };
+
+  const handleCancelarEdicion = () => {
+    setEditandoNombre(false);
+    setNombreCompleto(user?.user_metadata?.full_name || '');
+  };
+
+  const handleGuardarNombre = async () => {
+    if (!nombreCompleto.trim()) {
+      alert('Por favor ingresa un nombre válido');
+      return;
+    }
+
+    setGuardandoNombre(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: { full_name: nombreCompleto.trim() }
+      });
+
+      if (error) {
+        console.error('Error actualizando nombre:', error);
+        alert('Error al actualizar el nombre. Intenta de nuevo.');
+      } else {
+        alert('Nombre actualizado exitosamente');
+        setEditandoNombre(false);
+        // El usuario se actualizará automáticamente por el listener de auth
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al actualizar el nombre. Intenta de nuevo.');
+    } finally {
+      setGuardandoNombre(false);
     }
   };
 
@@ -78,9 +119,49 @@ const Perfil = () => {
               <div className="perfil-datos-grid">
                 <div className="perfil-dato-item">
                   <label className="perfil-dato-label">Nombre Completo</label>
-                  <p className="perfil-dato-value">
-                    {user?.user_metadata?.full_name || 'No especificado'}
-                  </p>
+                  {editandoNombre ? (
+                    <div className="perfil-edit-form">
+                      <input
+                        type="text"
+                        value={nombreCompleto}
+                        onChange={(e) => setNombreCompleto(e.target.value)}
+                        className="perfil-edit-input"
+                        placeholder="Ingresa tu nombre completo"
+                        disabled={guardandoNombre}
+                      />
+                      <div className="perfil-edit-actions">
+                        <button
+                          className="perfil-edit-btn perfil-edit-save"
+                          onClick={handleGuardarNombre}
+                          disabled={guardandoNombre}
+                        >
+                          <Save size={16} />
+                          {guardandoNombre ? 'Guardando...' : 'Guardar'}
+                        </button>
+                        <button
+                          className="perfil-edit-btn perfil-edit-cancel"
+                          onClick={handleCancelarEdicion}
+                          disabled={guardandoNombre}
+                        >
+                          <X size={16} />
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="perfil-dato-display">
+                      <p className="perfil-dato-value">
+                        {user?.user_metadata?.full_name || 'No especificado'}
+                      </p>
+                      <button
+                        className="perfil-edit-btn perfil-edit-start"
+                        onClick={handleEditarNombre}
+                      >
+                        <Edit3 size={16} />
+                        Editar
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div className="perfil-dato-item">
                   <label className="perfil-dato-label">Email</label>

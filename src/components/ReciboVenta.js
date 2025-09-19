@@ -29,11 +29,6 @@ export default function ReciboVenta({ venta, onNuevaVenta, onCerrar }) {
   const [cargandoDatos, setCargandoDatos] = useState(true);
   const reciboRef = useRef(null);
 
-  // Cargar datos de la empresa
-  useEffect(() => {
-    cargarDatosEmpresa();
-  }, [user, cargarDatosEmpresa]);
-
   const cargarDatosEmpresa = useCallback(async () => {
     if (!user) return;
     
@@ -55,6 +50,11 @@ export default function ReciboVenta({ venta, onNuevaVenta, onCerrar }) {
       setCargandoDatos(false);
     }
   }, [user]);
+
+  // Cargar datos de la empresa
+  useEffect(() => {
+    cargarDatosEmpresa();
+  }, [cargarDatosEmpresa]);
 
   if (!venta) return null;
 
