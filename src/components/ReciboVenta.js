@@ -23,7 +23,6 @@ function formatCOP(value) {
 
 export default function ReciboVenta({ venta, onNuevaVenta, onCerrar }) {
   const { user } = useAuth();
-  const [incluirIva, setIncluirIva] = useState(true);
   const [generandoPDF, setGenerandoPDF] = useState(false);
   const [datosEmpresa, setDatosEmpresa] = useState(null);
   const [cargandoDatos, setCargandoDatos] = useState(true);
@@ -59,8 +58,7 @@ export default function ReciboVenta({ venta, onNuevaVenta, onCerrar }) {
   if (!venta) return null;
 
   const subtotal = venta.items.reduce((s, i) => s + i.qty * i.precio_venta, 0);
-  const impuestos = incluirIva ? subtotal * 0.19 : 0;
-  const total = subtotal + impuestos;
+  const total = venta.total || subtotal; // Usar el total que viene de la venta
   const cambio = venta.pagoCliente - total;
 
   // Validar que los datos de empresa estén configurados
@@ -85,7 +83,7 @@ export default function ReciboVenta({ venta, onNuevaVenta, onCerrar }) {
       const canvas = await html2canvas(reciboRef.current, {
         scale: 2, // Reducido de 3 a 2 para menor tamaño
         useCORS: true,
-        backgroundColor: '#ffffff',
+        backgroundColor: 'var(--bg-card)',
         width: reciboRef.current.scrollWidth,
         height: reciboRef.current.scrollHeight,
         logging: false,
@@ -177,7 +175,6 @@ ${venta.items.map(item =>
 
 💰 TOTALES:
 Subtotal: ${formatCOP(subtotal)}
-${incluirIva ? `IVA (19%): ${formatCOP(impuestos)}` : 'IVA: No aplica'}
 TOTAL: ${formatCOP(total)}
 
 💳 PAGO:
@@ -231,10 +228,10 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
               font-family: Arial, sans-serif;
               margin: 0;
               padding: 20px;
-              background: white;
+              background: var(--bg-card);
             }
             .recibo-container {
-              background: white;
+              background: var(--bg-card);
               border-radius: 8px;
               box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
               max-width: 400px;
@@ -424,30 +421,6 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
   return (
     <div className="recibo-overlay">
       <div className="recibo-container">
-        {/* Controles superiores mejorados */}
-        <div className="recibo-controls">
-          <div className="recibo-iva-section">
-            <div className="recibo-iva-toggle">
-              <label className="recibo-toggle-label">
-                <input
-                  type="checkbox"
-                  checked={incluirIva}
-                  onChange={(e) => setIncluirIva(e.target.checked)}
-                  className="recibo-toggle-input"
-                />
-                <span className="recibo-toggle-slider"></span>
-                <span className="recibo-toggle-text">
-                  {incluirIva ? 'Con IVA (19%)' : 'Sin IVA'}
-                </span>
-              </label>
-            </div>
-            <div className="recibo-iva-info">
-              <span className="recibo-iva-total">
-                Total: {formatCOP(total)}
-              </span>
-            </div>
-          </div>
-        </div>
 
         {/* Contenido del recibo */}
         <div className="recibo-content" ref={reciboRef}>
@@ -517,12 +490,6 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
               <span>Subtotal</span>
               <span>{formatCOP(subtotal)}</span>
             </div>
-            {incluirIva && (
-              <div className="recibo-total-row">
-                <span>IVA (19%)</span>
-                <span>{formatCOP(impuestos)}</span>
-              </div>
-            )}
             <div className="recibo-total-row recibo-total-final">
               <span>Total</span>
               <span>{formatCOP(total)}</span>

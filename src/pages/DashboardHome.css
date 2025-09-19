@@ -7,19 +7,21 @@
   padding-top: 2rem;
 }
 .dashboard-caja-card {
-  background: rgba(255,255,255,0.85);
+  background: var(--bg-card);
   border-radius: 22px;
-  box-shadow: 0 4px 24px #0001;
+  box-shadow: var(--shadow-xl);
   padding: 2.5rem 2rem 2rem 2rem;
   max-width: 540px;
   width: 100%;
   margin: 0 auto;
   backdrop-filter: blur(8px);
+  border: 1px solid var(--border-primary);
 }
 .glass {
-  background: rgba(255,255,255,0.7);
-  box-shadow: 0 8px 32px 0 rgba(31,38,135,0.10);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-lg);
   backdrop-filter: blur(8px);
+  border: 1px solid var(--border-primary);
 }
 .dashboard-caja-actions {
   display: flex;
@@ -38,22 +40,22 @@
   box-shadow: 0 2px 8px #0001;
 }
 .dashboard-caja-btn.abrir {
-  background: #2563eb;
-  color: #fff;
+  background: var(--accent-primary);
+  color: var(--text-inverse);
 }
 .dashboard-caja-btn.abrir:hover {
   background: #1e40af;
 }
 .dashboard-caja-btn.cerrar {
-  background: #22c55e;
-  color: #fff;
+  background: var(--accent-success);
+  color: var(--text-inverse);
 }
 .dashboard-caja-btn.cerrar:hover {
   background: #15803d;
 }
 .dashboard-caja-title {
   font-size: 1.3rem;
-  color: #222;
+  color: var(--text-primary);
   font-weight: 700;
   margin-bottom: 1.1rem;
   text-align: left;
@@ -70,17 +72,17 @@
   font-size: 1rem;
 }
 .dashboard-caja-table th {
-  color: #1e90ff;
+  color: var(--accent-primary);
   font-weight: 700;
-  border-bottom: 2px solid #e5e7eb;
+  border-bottom: 2px solid var(--border-primary);
 }
 .dashboard-caja-table td {
-  color: #444;
-  border-bottom: 1px solid #f0f0f0;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-primary);
 }
 .dashboard-caja-empty {
   text-align: center;
-  color: #888;
+  color: var(--text-tertiary);
   font-style: italic;
   padding: 1.5rem 0;
 }
@@ -151,7 +153,7 @@
   flex-wrap: wrap;
 }
 .dashboard-card {
-  background: #fff;
+  background: var(--bg-card);
   border-radius: 16px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
   padding: 2rem;
@@ -169,7 +171,7 @@
 .dashboard-card h2 {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--text-primary);
   margin-bottom: 1.5rem;
   background: linear-gradient(135deg, #3b82f6, #1e40af);
   -webkit-background-clip: text;
@@ -186,13 +188,13 @@
 }
 .dashboard-card h3 {
   font-size: 1.3rem;
-  color: #3b82f6;
+  color: var(--accent-primary);
   font-weight: 600;
   margin-bottom: 1rem;
   line-height: 1.4;
 }
 .dashboard-card p {
-  color: #6b7280;
+  color: var(--text-secondary);
   font-size: 1rem;
   line-height: 1.6;
   margin: 0;

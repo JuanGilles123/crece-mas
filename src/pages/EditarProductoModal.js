@@ -172,7 +172,7 @@ const EditarProductoModal = ({ open, onClose, producto, onProductoEditado }) => 
           <label>Precios</label>
           <div className="input-precio-row" style={{ gap: '2.5rem', justifyContent: 'space-between' }}>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontWeight: 600, fontSize: '0.98rem', marginBottom: 4, textAlign: 'center' }}>Precio de Compra</span>
+              <span style={{ fontWeight: 600, fontSize: '0.98rem', marginBottom: 4, textAlign: 'center', color: 'var(--text-secondary)' }}>Precio de Compra</span>
               <input 
                 value={precioCompra} 
                 onChange={e => setPrecioCompra(e.target.value)} 
@@ -183,7 +183,7 @@ const EditarProductoModal = ({ open, onClose, producto, onProductoEditado }) => 
               />
             </div>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontWeight: 600, fontSize: '0.98rem', marginBottom: 4, textAlign: 'center' }}>Precio de Venta</span>
+              <span style={{ fontWeight: 600, fontSize: '0.98rem', marginBottom: 4, textAlign: 'center', color: 'var(--text-secondary)' }}>Precio de Venta</span>
               <input 
                 value={precioVenta} 
                 onChange={e => setPrecioVenta(e.target.value)} 
@@ -215,7 +215,7 @@ const EditarProductoModal = ({ open, onClose, producto, onProductoEditado }) => 
           
           <div className="input-upload-wrapper input-upload-centro">
             <button type="button" className="input-upload-btn" onClick={handleClickUpload}>
-              <svg width="22" height="22" fill="none" viewBox="0 0 24 24"><path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><rect x="4" y="16" width="16" height="4" rx="2" fill="#2563eb" fillOpacity=".08"/></svg>
+              <svg width="22" height="22" fill="none" viewBox="0 0 24 24"><path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke="var(--accent-primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><rect x="4" y="16" width="16" height="4" rx="2" fill="var(--accent-primary)" fillOpacity=".08"/></svg>
               {imagen ? imagen.name : 'Cambiar imagen'}
             </button>
             <input type="file" accept="image/*" onChange={handleImagenChange} ref={fileInputRef} style={{ display: 'none' }} />

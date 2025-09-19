@@ -42,7 +42,7 @@ const ResetPassword = () => {
         <div className={styles['auth-card']}>
           <h2>Nueva contraseña</h2>
           <form onSubmit={handleSubmit}>
-            <div className={styles['auth-input']} style={{boxShadow:'none',background:'#fff',border:'1.5px solid #e0e0e0'}}>
+            <div className={styles['auth-input']} style={{boxShadow:'none',background:'var(--bg-input)',border:'1.5px solid var(--border-primary)'}}>
               <input
                 type={showPass ? 'text' : 'password'}
                 placeholder="Nueva contraseña"

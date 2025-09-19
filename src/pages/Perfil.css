@@ -4,7 +4,7 @@
   max-width: 100%;
   margin: 0;
   padding: 0;
-  background: #fff;
+  background: var(--bg-primary);
   min-height: 100%;
 }
 
@@ -13,11 +13,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: white;
+  background: var(--bg-card);
   padding: 1rem 1.5rem;
   border-radius: 0;
   box-shadow: none;
   margin-bottom: 0;
+  border-bottom: 1px solid var(--border-primary);
   border-bottom: none;
   position: relative;
 }
@@ -52,25 +53,25 @@
 .perfil-avatar-icon {
   width: 2rem;
   height: 2rem;
-  color: white;
+  color: var(--text-inverse);
 }
 
 .perfil-user-details h1 {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #111827;
+  color: var(--text-primary);
   margin: 0 0 0.25rem 0;
 }
 
 .perfil-user-email {
   font-size: 1rem;
-  color: #6b7280;
+  color: var(--text-secondary);
   margin: 0 0 0.25rem 0;
 }
 
 .perfil-user-role {
   font-size: 0.875rem;
-  color: #10b981;
+  color: var(--accent-success);
   font-weight: 600;
   margin: 0;
 }
@@ -81,7 +82,7 @@
   gap: 0.5rem;
   padding: 0.75rem 1.5rem;
   background: #ef4444;
-  color: white;
+  color: var(--text-inverse);
   border: none;
   border-radius: 0.5rem;
   font-weight: 600;
@@ -110,7 +111,7 @@
   display: grid;
   grid-template-columns: 250px 1fr;
   gap: 0;
-  background: white;
+  background: var(--bg-input);
   border-radius: 0;
   box-shadow: none;
   overflow: hidden;
@@ -119,7 +120,7 @@
 
 /* Sidebar de navegación */
 .perfil-sidebar {
-  background: #fff;
+  background: var(--bg-card);
   border-right: none;
   padding: 1rem 0;
   position: relative;
@@ -148,7 +149,7 @@
   padding: 0.875rem 1.5rem;
   background: none;
   border: none;
-  color: #6b7280;
+  color: var(--text-secondary);
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
@@ -158,13 +159,13 @@
 }
 
 .perfil-nav-item:hover {
-  background: #e5e7eb;
-  color: #374151;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
 }
 
 .perfil-nav-item.active {
   background: #10b981;
-  color: white;
+  color: var(--text-inverse);
   font-weight: 600;
 }
 
@@ -177,19 +178,19 @@
 .perfil-main {
   padding: 1.5rem;
   overflow-y: auto;
-  background: #fff;
+  background: var(--bg-card);
 }
 
 .perfil-section-title {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #111827;
+  color: var(--text-primary);
   margin: 0 0 0.5rem 0;
 }
 
 .perfil-section-description {
   font-size: 1rem;
-  color: #6b7280;
+  color: var(--text-secondary);
   margin: 0 0 2rem 0;
   line-height: 1.5;
 }
@@ -202,7 +203,7 @@
 }
 
 .perfil-dato-item {
-  background: #fff;
+  background: var(--bg-card);
   padding: 1.5rem;
   border-radius: 0.75rem;
   border: 1px solid rgba(0, 0, 0, 0.05);
@@ -213,13 +214,13 @@
   display: block;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--text-primary);
   margin-bottom: 0.5rem;
 }
 
 .perfil-dato-value {
   font-size: 1rem;
-  color: #111827;
+  color: var(--text-primary);
   margin: 0;
   word-break: break-all;
 }
@@ -244,20 +245,20 @@
   border: 2px solid #e5e7eb;
   border-radius: 0.5rem;
   font-size: 1rem;
-  color: #111827;
-  background: white;
+  color: var(--text-primary);
+  background: var(--bg-input);
   transition: border-color 0.2s;
 }
 
 .perfil-edit-input:focus {
   outline: none;
-  border-color: #10b981;
+  border-color: var(--accent-success);
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
 }
 
 .perfil-edit-input:disabled {
-  background: #f9fafb;
-  color: #6b7280;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
   cursor: not-allowed;
 }
 
@@ -281,19 +282,19 @@
 }
 
 .perfil-edit-start {
-  background: #f3f4f6;
-  color: #6b7280;
-  border: 1px solid #d1d5db;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-primary);
 }
 
 .perfil-edit-start:hover {
-  background: #e5e7eb;
-  color: #374151;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
 }
 
 .perfil-edit-save {
   background: #10b981;
-  color: white;
+  color: var(--text-inverse);
 }
 
 .perfil-edit-save:hover:not(:disabled) {
@@ -309,7 +310,7 @@
 
 .perfil-edit-cancel {
   background: #ef4444;
-  color: white;
+  color: var(--text-inverse);
 }
 
 .perfil-edit-cancel:hover:not(:disabled) {
@@ -331,7 +332,7 @@
 }
 
 .perfil-config-item {
-  background: #fff;
+  background: var(--bg-card);
   padding: 1.5rem;
   border-radius: 0.75rem;
   border: 1px solid rgba(0, 0, 0, 0.05);
@@ -342,13 +343,13 @@
 .perfil-config-item h3 {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-primary);
   margin: 0 0 0.5rem 0;
 }
 
 .perfil-config-item p {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--text-secondary);
   margin: 0 0 1rem 0;
   line-height: 1.5;
 }
@@ -356,7 +357,7 @@
 .perfil-config-btn {
   padding: 0.75rem 1.5rem;
   background: #10b981;
-  color: white;
+  color: var(--text-inverse);
   border: none;
   border-radius: 0.5rem;
   font-weight: 600;

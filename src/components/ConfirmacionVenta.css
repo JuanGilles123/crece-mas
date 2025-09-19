@@ -15,7 +15,7 @@
 }
 
 .confirmacion-venta-container {
-  background: #fff;
+  background: var(--bg-card);
   border-radius: 1.5rem;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   max-width: 500px;
@@ -28,7 +28,7 @@
   position: absolute;
   top: 1rem;
   right: 1rem;
-  background: #f3f4f6;
+  background: var(--bg-tertiary);
   border: none;
   border-radius: 50%;
   width: 2.5rem;
@@ -37,14 +37,14 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: #6b7280;
+  color: var(--text-secondary);
   transition: all 0.2s ease;
   z-index: 10;
 }
 
 .confirmacion-venta-close:hover {
-  background: #e5e7eb;
-  color: #374151;
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 /* Estados de carga */
@@ -75,7 +75,7 @@
 }
 
 .confirmacion-venta-loading p {
-  color: #6b7280;
+  color: var(--text-secondary);
   margin: 0;
   font-size: 1rem;
 }
@@ -99,18 +99,18 @@
 }
 
 .confirmacion-venta-text p {
-  color: #6b7280;
+  color: var(--text-secondary);
   margin: 0 0 2rem 0;
   font-size: 1rem;
 }
 
 /* Detalles de la venta */
 .confirmacion-venta-details {
-  background: #f8fafc;
+  background: var(--bg-secondary);
   border-radius: 1rem;
   padding: 1.5rem;
   margin-bottom: 2rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-primary);
 }
 
 .confirmacion-venta-detail-item {
@@ -118,7 +118,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 0.75rem 0;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border-primary);
 }
 
 .confirmacion-venta-detail-item:last-child {
@@ -127,20 +127,20 @@
 
 .detail-label {
   font-weight: 500;
-  color: #6b7280;
+  color: var(--text-secondary);
   font-size: 0.875rem;
 }
 
 .detail-value {
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text-primary);
   font-size: 0.875rem;
 }
 
 /* Botón continuar */
 .confirmacion-venta-continue {
   background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-  color: white;
+  color: var(--text-inverse);
   border: none;
   border-radius: 0.75rem;
   padding: 1rem 2rem;

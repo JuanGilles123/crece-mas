@@ -2,7 +2,7 @@
 .dashboard-layout {
   display: flex;
   height: 100vh;
-  background: #fff;
+  background: var(--bg-primary);
   overflow: hidden;
 }
 
@@ -11,8 +11,8 @@
   width: 250px;
   min-width: 220px;
   max-width: 280px;
-  background: #fff;
-  border-right: none;
+  background: var(--bg-card);
+  border-right: 1px solid var(--border-primary);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -20,6 +20,42 @@
   gap: 2rem;
   position: relative;
   flex-shrink: 0;
+  transition: all 0.3s ease;
+  z-index: 100;
+}
+
+.dashboard-sidebar.collapsed {
+  width: 0;
+  min-width: 0;
+  max-width: 0;
+  padding: 0;
+  overflow: hidden;
+  border-right: none;
+}
+
+/* Botón de toggle del sidebar */
+.sidebar-toggle {
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 1000;
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+}
+
+.sidebar-toggle:hover {
+  background: var(--bg-tertiary);
+  box-shadow: var(--shadow-lg);
+}
+
+.dashboard-sidebar.collapsed + .sidebar-toggle {
+  left: 1rem;
 }
 
 .dashboard-sidebar::after {
@@ -29,7 +65,7 @@
   top: 0;
   bottom: 0;
   width: 1px;
-  background: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.1) 20%, rgba(0, 0, 0, 0.15) 50%, rgba(0, 0, 0, 0.1) 80%, transparent 100%);
+  background: linear-gradient(to bottom, transparent 0%, var(--border-primary) 20%, var(--border-secondary) 50%, var(--border-primary) 80%, transparent 100%);
 }
 .dashboard-logo {
   margin-bottom: 2rem;
@@ -51,7 +87,7 @@
 }
 .dashboard-nav a {
   text-decoration: none;
-  color: #374151;
+  color: var(--text-secondary);
   font-size: 1rem;
   font-weight: 500;
   padding: 0.8rem 1rem;
@@ -74,8 +110,8 @@
   left: 100%;
   top: 50%;
   transform: translateY(-50%);
-  background: #1f2937;
-  color: #fff;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
   padding: 0.5rem 0.75rem;
   border-radius: 0.375rem;
   font-size: 0.875rem;
@@ -86,10 +122,10 @@
   pointer-events: none;
 }
 .dashboard-nav a.active, .dashboard-nav a:hover {
-  background: linear-gradient(135deg, #3b82f6, #1e40af);
-  color: #fff;
+  background: var(--gradient-primary);
+  color: var(--text-inverse);
   transform: translateX(2px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  box-shadow: var(--shadow-lg);
 }
 
 /* Main content */
@@ -98,6 +134,7 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  background: var(--bg-primary);
 }
 .dashboard-header {
   display: flex;
@@ -110,7 +147,7 @@
 .dashboard-content {
   flex: 1;
   padding: 1rem;
-  background: #fff;
+  background: var(--bg-card);
   height: 100vh;
   overflow-y: auto;
   display: flex;
@@ -132,14 +169,14 @@
 }
 .user-icon {
   font-size: 1.5rem;
-  color: #1e90ff;
+  color: var(--accent-primary);
 }
 .user-dropdown {
   display: none;
   position: absolute;
   right: 0;
   top: 2.2rem;
-  background: #fff;
+  background: var(--bg-card);
   border-radius: 10px;
   box-shadow: 0 4px 16px #0001;
   padding: 0.7rem 1.2rem;

@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
@@ -6,6 +6,7 @@ import OptimizedProductImage from '../components/OptimizedProductImage';
 import ReciboVenta from '../components/ReciboVenta';
 import ConfirmacionVenta from '../components/ConfirmacionVenta';
 import { ShoppingCart, Trash2, Plus, Minus, Search, CheckCircle, X, CreditCard, Banknote, Smartphone, Wallet } from 'lucide-react';
+import toast from 'react-hot-toast';
 import './Caja.css';
 
 // Componente SafeImg removido ya que usamos OptimizedProductImage
@@ -45,6 +46,8 @@ export default function Caja() {
   const [confirmacionCargando, setConfirmacionCargando] = useState(false);
   const [confirmacionExito, setConfirmacionExito] = useState(false);
   const [datosVentaConfirmada, setDatosVentaConfirmada] = useState(null);
+  const [incluirIva, setIncluirIva] = useState(false);
+  const [porcentajeIva, setPorcentajeIva] = useState(19);
 
   // Cargar productos del usuario
   useEffect(() => {
@@ -73,7 +76,9 @@ export default function Caja() {
     return productos.filter((p) => p.nombre.toLowerCase().includes(q));
   }, [query, productos]);
 
-  const total = useMemo(() => calcTotal(cart.map((c) => ({ id: c.id, price: c.precio_venta, qty: c.qty }))), [cart]);
+  const subtotal = useMemo(() => calcTotal(cart.map((c) => ({ id: c.id, price: c.precio_venta, qty: c.qty }))), [cart]);
+  const impuestos = useMemo(() => incluirIva ? subtotal * (porcentajeIva / 100) : 0, [subtotal, incluirIva, porcentajeIva]);
+  const total = useMemo(() => subtotal + impuestos, [subtotal, impuestos]);
 
   function addToCart(producto) {
     // Verificar stock disponible
@@ -82,7 +87,7 @@ export default function Caja() {
     const cantidadEnCarrito = itemEnCarrito ? itemEnCarrito.qty : 0;
     
     if (cantidadEnCarrito >= stockDisponible) {
-      alert(`No hay suficiente stock. Disponible: ${stockDisponible}`);
+      toast.error(`No hay suficiente stock. Disponible: ${stockDisponible}`);
       return;
     }
 
@@ -107,7 +112,7 @@ export default function Caja() {
     const itemEnCarrito = cart.find(item => item.id === id);
     
     if (itemEnCarrito && itemEnCarrito.qty >= producto.stock) {
-      alert(`No hay suficiente stock. Disponible: ${producto.stock}`);
+      toast.error(`No hay suficiente stock. Disponible: ${producto.stock}`);
       return;
     }
     
@@ -125,7 +130,7 @@ export default function Caja() {
 
   const handleContinuar = () => {
     if (cart.length === 0) {
-      alert('El carrito está vacío');
+      toast.error('El carrito está vacío');
       return;
     }
     setMostrandoMetodosPago(true);
@@ -145,14 +150,18 @@ export default function Caja() {
     }
   };
 
-  const handleValorPredefinido = (valor) => {
-    setMontoEntregado(valor.toString());
-  };
+  const handleValorPredefinido = useCallback((valor) => {
+    setMontoEntregado(prev => {
+      const montoActual = parseFloat(prev.replace(/[^\d]/g, '')) || 0;
+      const nuevoMonto = montoActual + valor;
+      return nuevoMonto.toLocaleString('es-CO');
+    });
+  }, []);
 
   const handleConfirmarPagoEfectivo = () => {
     const monto = parseFloat(montoEntregado.replace(/[^\d]/g, ''));
     if (isNaN(monto) || monto < total) {
-      alert('El monto debe ser mayor o igual al total de la venta.');
+      toast.error('El monto debe ser mayor o igual al total de la venta.');
       return;
     }
     setMostrandoPagoEfectivo(false);
@@ -191,15 +200,40 @@ export default function Caja() {
               <input
                 type="text"
                 value={montoEntregado}
-                onChange={(e) => setMontoEntregado(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Permitir solo números y comas/puntos para formato
+                  const cleanValue = value.replace(/[^\d,.]/g, '');
+                  // Solo actualizar si el valor es diferente para evitar re-renders innecesarios
+                  if (cleanValue !== montoEntregado) {
+                    setMontoEntregado(cleanValue);
+                  }
+                }}
                 className="pago-efectivo-input"
                 placeholder="Ingresa el monto"
                 autoFocus
+                style={{ 
+                  transition: 'none',
+                  willChange: 'auto',
+                  backfaceVisibility: 'hidden',
+                  transform: 'translateZ(0)',
+                  WebkitBackfaceVisibility: 'hidden',
+                  WebkitTransform: 'translateZ(0)'
+                }}
               />
             </div>
 
             <div className="pago-efectivo-valores-comunes">
-              <p className="pago-efectivo-subtitle">Valores comunes:</p>
+              <div className="pago-efectivo-subtitle-container">
+                <p className="pago-efectivo-subtitle">Valores comunes:</p>
+                <button 
+                  className="pago-efectivo-limpiar-btn"
+                  onClick={() => setMontoEntregado('')}
+                  title="Limpiar monto"
+                >
+                  Limpiar
+                </button>
+              </div>
               <div className="pago-efectivo-botones">
                 {valoresComunes.map((valor, index) => (
                   <button
@@ -313,12 +347,12 @@ export default function Caja() {
   async function confirmSale() {
     if (!user) {
       console.error('Usuario no autenticado');
-      alert('Error: Usuario no autenticado');
+      toast.error('Error: Usuario no autenticado');
       return;
     }
     
     if (cart.length === 0) {
-      alert('El carrito está vacío');
+      toast.error('El carrito está vacío');
       return;
     }
 
@@ -326,7 +360,7 @@ export default function Caja() {
     setMostrandoConfirmacion(true);
     setConfirmacionCargando(true);
     setConfirmacionExito(false);
-    setDatosVentaConfirmada(null);
+    // NO establecer datosVentaConfirmada como null aquí
     
     setProcesandoVenta(true);
     console.log('Iniciando confirmación de venta...', { cart, total, method });
@@ -336,18 +370,18 @@ export default function Caja() {
       const producto = productos.find(p => p.id === item.id);
       if (!producto) {
         console.error('Producto no encontrado:', item.id);
-        alert(`Error: Producto ${item.nombre} no encontrado`);
+        toast.error(`Error: Producto ${item.nombre} no encontrado`);
         return;
       }
       
       if (item.qty > producto.stock) {
-        alert(`No hay suficiente stock para ${item.nombre}. Disponible: ${producto.stock}`);
+        toast.error(`No hay suficiente stock para ${item.nombre}. Disponible: ${producto.stock}`);
         setProcesandoVenta(false);
         return;
       }
       
       if (producto.stock < item.qty) {
-        alert(`No hay suficiente stock para ${item.nombre}. Disponible: ${producto.stock}`);
+        toast.error(`No hay suficiente stock para ${item.nombre}. Disponible: ${producto.stock}`);
         setProcesandoVenta(false);
         return;
       }
@@ -358,7 +392,7 @@ export default function Caja() {
     if (method === "Efectivo") {
       const montoNumero = parseFloat(montoEntregado.replace(/[^\d]/g, ''));
       if (isNaN(montoNumero) || montoNumero < total) {
-        alert('El monto debe ser mayor o igual al total de la venta.');
+        toast.error('El monto debe ser mayor o igual al total de la venta.');
         setProcesandoVenta(false);
         return;
       }
@@ -387,14 +421,14 @@ export default function Caja() {
       
       if (ventaError) {
         console.error('Error guardando venta:', ventaError);
-        alert(`Error al guardar la venta: ${ventaError.message}`);
+        toast.error(`Error al guardar la venta: ${ventaError.message}`);
         setProcesandoVenta(false);
         return;
       }
       
       if (!ventaResult || ventaResult.length === 0) {
         console.error('No se retornó data de la venta');
-        alert('Error: No se pudo obtener el ID de la venta');
+        toast.error('Error: No se pudo obtener el ID de la venta');
         setProcesandoVenta(false);
         return;
       }
@@ -416,7 +450,7 @@ export default function Caja() {
         
         if (stockError) {
           console.error('Error actualizando stock:', stockError);
-          alert(`Error al actualizar el stock de ${item.nombre}. La venta se guardó pero el stock no se actualizó.`);
+          toast.error(`Error al actualizar el stock de ${item.nombre}. La venta se guardó pero el stock no se actualizó.`);
           // No retornamos aquí para que la venta se complete
         }
       }
@@ -430,16 +464,23 @@ export default function Caja() {
         register: "Caja Principal",
         items: cart,
         metodo_pago: method,
-        pagoCliente: montoPagoCliente
+        pagoCliente: montoPagoCliente,
+        total: total,
+        cantidadProductos: cart.length
       };
       
       console.log('Mostrando recibo:', ventaRecibo);
       
+      // Establecer datos y mostrar modal de éxito inmediatamente
+      setDatosVentaConfirmada(ventaRecibo);
+      setConfirmacionCargando(false);
+      setConfirmacionExito(true);
+      
       // Simular tiempo de procesamiento para la animación
       setTimeout(() => {
-        setConfirmacionCargando(false);
-        setConfirmacionExito(true);
-        setDatosVentaConfirmada(ventaRecibo);
+        
+        // Toast de éxito
+        toast.success(`¡Venta completada! Total: ${formatCOP(total)}`);
         
         // Después de mostrar éxito, limpiar carrito
         setTimeout(() => {
@@ -465,7 +506,7 @@ export default function Caja() {
       
     } catch (error) {
       console.error('Error confirmando venta:', error);
-      alert(`Error al procesar la venta: ${error.message}`);
+      toast.error(`Error al procesar la venta: ${error.message}`);
       setMostrandoConfirmacion(false);
       setConfirmacionCargando(false);
       setConfirmacionExito(false);
@@ -560,6 +601,38 @@ export default function Caja() {
           )}
         </div>
 
+        {/* Control de IVA */}
+        {cart.length > 0 && (
+          <div className="caja-iva-controls">
+            <div className="caja-iva-toggle">
+              <label className="caja-iva-label">
+                <input
+                  type="checkbox"
+                  checked={incluirIva}
+                  onChange={(e) => setIncluirIva(e.target.checked)}
+                  className="caja-iva-checkbox"
+                />
+                <span className="caja-iva-text">Incluir IVA</span>
+              </label>
+            </div>
+            {incluirIva && (
+              <div className="caja-iva-percentage">
+                <label className="caja-iva-percentage-label">Porcentaje:</label>
+                <select
+                  value={porcentajeIva}
+                  onChange={(e) => setPorcentajeIva(Number(e.target.value))}
+                  className="caja-iva-select"
+                >
+                  <option value={5}>5%</option>
+                  <option value={10}>10%</option>
+                  <option value={19}>19%</option>
+                  <option value={21}>21%</option>
+                </select>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="caja-cart-items">
           {cart.length === 0 ? (
             <p className="caja-empty-cart">Aún no has agregado productos.</p>
@@ -602,9 +675,21 @@ export default function Caja() {
         </div>
 
         <div className="caja-cart-footer">
-          <div className="caja-total-container">
-            <span className="caja-total-label">Total</span>
-            <span className="caja-total-amount">{formatCOP(total)}</span>
+          <div className="caja-total-breakdown">
+            <div className="caja-total-row">
+              <span className="caja-total-label">Subtotal</span>
+              <span className="caja-total-amount">{formatCOP(subtotal)}</span>
+            </div>
+            {incluirIva && (
+              <div className="caja-total-row">
+                <span className="caja-total-label">IVA ({porcentajeIva}%)</span>
+                <span className="caja-total-amount">{formatCOP(impuestos)}</span>
+              </div>
+            )}
+            <div className="caja-total-row caja-total-final">
+              <span className="caja-total-label">Total</span>
+              <span className="caja-total-amount">{formatCOP(total)}</span>
+            </div>
           </div>
           
           

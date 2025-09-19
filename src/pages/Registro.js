@@ -22,7 +22,7 @@ const TerminosModal = ({ open, onClose }) => (
             <li><b>5. Propiedad intelectual:</b> Todo el contenido, marcas y código fuente de la plataforma son propiedad de la empresa o sus licenciantes. No puedes copiar, modificar ni distribuir sin autorización.</li>
             <li><b>6. Cancelación y eliminación de cuenta:</b> Puedes cancelar tu cuenta en cualquier momento. Nos reservamos el derecho de suspender cuentas que incumplan estos términos.</li>
             <li><b>7. Modificaciones:</b> Podemos actualizar estos términos en cualquier momento. Te notificaremos de cambios importantes por correo o en la app.</li>
-            <li><b>8. Contacto:</b> Para dudas o consultas, contáctanos a <a href="mailto:soporte@tudominio.com" style={{color:'#1e90ff'}}>soporte@tudominio.com</a>.</li>
+            <li><b>8. Contacto:</b> Para dudas o consultas, contáctanos a <a href="mailto:soporte@tudominio.com" style={{color:'var(--accent-primary)'}}>soporte@tudominio.com</a>.</li>
           </ul>
         </div>
         <button className={styles['auth-btn']} onClick={onClose}>Cerrar</button>
@@ -109,7 +109,7 @@ const Registro = () => {
         <div className={styles['auth-card']}>
           <h2>Registro</h2>
           <form onSubmit={handleSubmit}>
-            <div className={styles['auth-input']} style={{boxShadow:'none',background:'rgba(255,255,255,0.95)',border:'1.5px solid #e0e0e0'}}>
+            <div className={styles['auth-input']} style={{boxShadow:'none',background:'var(--bg-input)',border:'1.5px solid var(--border-primary)'}}>
               <MailIcon />
               <input
                 type="email"
@@ -120,7 +120,7 @@ const Registro = () => {
                 style={{background:'transparent',boxShadow:'none'}}
               />
             </div>
-            <div className={styles['auth-input']} style={{boxShadow:'none',background:'rgba(255,255,255,0.95)',border:'1.5px solid #e0e0e0'}}>
+            <div className={styles['auth-input']} style={{boxShadow:'none',background:'var(--bg-input)',border:'1.5px solid var(--border-primary)'}}>
               <LockIcon />
               <input
                 type={showPass ? 'text' : 'password'}
@@ -139,7 +139,7 @@ const Registro = () => {
                 country={'co'}
                 value={phone}
                 onChange={setPhone}
-                inputStyle={{width:'100%',background:'rgba(255,255,255,0.95)',boxShadow:'none',border:'1.5px solid #e0e0e0'}}
+                inputStyle={{width:'100%',background:'var(--bg-input)',boxShadow:'none',border:'1.5px solid var(--border-primary)'}}
                 inputClass={styles['auth-input']}
                 specialLabel=""
                 placeholder="Número de teléfono"
@@ -148,7 +148,7 @@ const Registro = () => {
               />
             </div>
             <div style={{marginBottom:'1rem'}}>
-              <select value={currency} onChange={e => setCurrency(e.target.value)} style={{width:'100%',padding:'0.75rem',borderRadius:8,border:'1px solid #e0e0e0',maxWidth:'100%',overflow:'hidden',textOverflow:'ellipsis',background:'rgba(255,255,255,0.95)'}} required>
+              <select value={currency} onChange={e => setCurrency(e.target.value)} style={{width:'100%',padding:'0.75rem',borderRadius:8,border:'1px solid var(--border-primary)',maxWidth:'100%',overflow:'hidden',textOverflow:'ellipsis',background:'var(--bg-input)'}} required>
                 <option value="">Selecciona tu moneda</option>
                 {currencyList.map(c => (
                   <option key={c.code} value={c.code} style={{whiteSpace:'nowrap',textOverflow:'ellipsis',overflow:'hidden'}}>{c.name}</option>
@@ -157,7 +157,7 @@ const Registro = () => {
             </div>
             <div style={{marginBottom:'1rem',display:'flex',alignItems:'center',fontSize:'0.97rem'}}>
               <input type="checkbox" id="terms" checked={acceptTerms} onChange={e=>setAcceptTerms(e.target.checked)} required style={{marginRight:8}} />
-              <label htmlFor="terms">Acepto los <span style={{color:'#1e90ff',cursor:'pointer'}} onClick={()=>setShowTerms(true)}>términos y condiciones</span></label>
+              <label htmlFor="terms">Acepto los <span style={{color:'var(--accent-primary)',cursor:'pointer'}} onClick={()=>setShowTerms(true)}>términos y condiciones</span></label>
             </div>
             <button className={styles['auth-btn']} type="submit">Registrarse</button>
             {error && <p style={{color:'red'}}>{error}</p>}

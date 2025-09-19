@@ -52,7 +52,7 @@
 }
 .loginBtn {
   background: #2563eb;
-  color: #fff;
+  color: var(--text-inverse);
 }
 .loginBtn:hover {
   background: #1e40af;

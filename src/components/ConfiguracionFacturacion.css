@@ -4,7 +4,7 @@
   max-width: 800px;
   margin: 0 auto;
   padding: 2rem;
-  background: white;
+  background: var(--bg-card);
   border-radius: 1rem;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
@@ -13,26 +13,26 @@
   text-align: center;
   margin-bottom: 2rem;
   padding-bottom: 1.5rem;
-  border-bottom: 2px solid #e5e7eb;
+  border-bottom: 2px solid var(--border-primary);
 }
 
 .config-facturacion-icon {
   width: 3rem;
   height: 3rem;
-  color: #10b981;
+  color: var(--accent-success);
   margin: 0 auto 1rem;
 }
 
 .config-facturacion-title {
   font-size: 1.875rem;
   font-weight: 700;
-  color: #111827;
+  color: var(--text-primary);
   margin: 0 0 0.5rem 0;
 }
 
 .config-facturacion-subtitle {
   font-size: 1rem;
-  color: #6b7280;
+  color: var(--text-secondary);
   margin: 0;
 }
 
@@ -44,15 +44,15 @@
 }
 
 .config-mensaje-success {
-  background: #d1fae5;
-  color: #065f46;
-  border: 1px solid #a7f3d0;
+  background: var(--bg-success);
+  color: var(--accent-success);
+  border: 1px solid var(--accent-success);
 }
 
 .config-mensaje-error {
-  background: #fee2e2;
-  color: #991b1b;
-  border: 1px solid #fca5a5;
+  background: var(--bg-error);
+  color: var(--accent-error);
+  border: 1px solid var(--accent-error);
 }
 
 .config-facturacion-form {
@@ -78,41 +78,41 @@
   align-items: center;
   gap: 0.5rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--text-primary);
   font-size: 0.875rem;
 }
 
 .config-input-icon {
   width: 1rem;
   height: 1rem;
-  color: #6b7280;
+  color: var(--text-secondary);
 }
 
 .config-form-input {
   padding: 0.75rem;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--border-primary);
   border-radius: 0.5rem;
   font-size: 1rem;
   transition: all 0.2s;
-  background: white;
+  background: var(--bg-card);
 }
 
 .config-form-input:focus {
   outline: none;
-  border-color: #10b981;
+  border-color: var(--accent-success);
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
 }
 
 .config-form-input::placeholder {
-  color: #9ca3af;
+  color: var(--text-placeholder);
 }
 
 /* Logo Section */
 .config-logo-group {
-  background: #f9fafb;
+  background: var(--bg-secondary);
   padding: 1.5rem;
   border-radius: 0.75rem;
-  border: 2px dashed #d1d5db;
+  border: 2px dashed var(--border-primary);
 }
 
 .config-logo-container {
@@ -126,8 +126,8 @@
   height: 4rem;
   object-fit: contain;
   border-radius: 0.5rem;
-  border: 2px solid #e5e7eb;
-  background: white;
+  border: 2px solid var(--border-primary);
+  background: var(--bg-card);
   padding: 0.5rem;
 }
 
@@ -146,8 +146,8 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1rem;
-  background: #10b981;
-  color: white;
+  background: var(--accent-success);
+  color: var(--text-inverse);
   border-radius: 0.5rem;
   cursor: pointer;
   font-weight: 500;
@@ -157,7 +157,7 @@
 }
 
 .config-logo-button:hover {
-  background: #059669;
+  background: var(--accent-success);
   transform: translateY(-1px);
 }
 
@@ -174,7 +174,7 @@
 
 .config-logo-help {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: var(--text-secondary);
   margin: 0;
 }
 
@@ -183,7 +183,7 @@
   display: flex;
   justify-content: center;
   padding-top: 1rem;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--border-primary);
 }
 
 .config-save-button {
@@ -191,8 +191,8 @@
   align-items: center;
   gap: 0.5rem;
   padding: 1rem 2rem;
-  background: #10b981;
-  color: white;
+  background: var(--accent-success);
+  color: var(--text-inverse);
   border: none;
   border-radius: 0.75rem;
   font-size: 1rem;
@@ -204,7 +204,7 @@
 }
 
 .config-save-button:hover:not(:disabled) {
-  background: #059669;
+  background: var(--accent-success);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
@@ -236,7 +236,7 @@
 
 .config-skeleton-header {
   height: 120px;
-  background: linear-gradient(90deg, #f5f5f5 30%, #e8e8e8 50%, #f5f5f5 70%);
+  background: linear-gradient(90deg, var(--bg-tertiary) 30%, var(--bg-secondary) 50%, var(--bg-tertiary) 70%);
   background-size: 300px 100%;
   animation: shimmer 3s ease-in-out infinite;
   border-radius: 1rem;
@@ -250,7 +250,7 @@
 
 .config-skeleton-input {
   height: 60px;
-  background: linear-gradient(90deg, #f5f5f5 30%, #e8e8e8 50%, #f5f5f5 70%);
+  background: linear-gradient(90deg, var(--bg-tertiary) 30%, var(--bg-secondary) 50%, var(--bg-tertiary) 70%);
   background-size: 300px 100%;
   animation: shimmer 3s ease-in-out infinite;
   border-radius: 0.5rem;
@@ -321,18 +321,18 @@
 
 /* Estados de validación */
 .config-form-input:invalid {
-  border-color: #ef4444;
+  border-color: var(--accent-error);
 }
 
 .config-form-input:valid {
-  border-color: #10b981;
+  border-color: var(--accent-success);
 }
 
 /* Mejoras de accesibilidad */
 .config-form-input:focus,
 .config-logo-button:focus,
 .config-save-button:focus {
-  outline: 2px solid #10b981;
+  outline: 2px solid var(--accent-success);
   outline-offset: 2px;
 }
 

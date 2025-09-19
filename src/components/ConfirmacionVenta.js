@@ -208,7 +208,7 @@ const ConfirmacionVenta = ({
                   <p>Tu transacción se ha procesado exitosamente</p>
                 </motion.div>
 
-                {ventaData && (
+                {ventaData && ventaData.total !== undefined ? (
                   <motion.div
                     className="confirmacion-venta-details"
                     variants={ventaDetailsVariants}
@@ -241,8 +241,39 @@ const ConfirmacionVenta = ({
                     >
                       <span className="detail-label">Productos:</span>
                       <span className="detail-value">
-                        {ventaData.items?.length || 0} artículo(s)
+                        {ventaData.cantidadProductos || ventaData.items?.length || 0} artículo(s)
                       </span>
+                    </motion.div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    className="confirmacion-venta-details"
+                    variants={ventaDetailsVariants}
+                    initial="hidden"
+                    animate="visible"
+                  >
+                    <motion.div
+                      className="confirmacion-venta-detail-item"
+                      variants={detailItemVariants}
+                    >
+                      <span className="detail-label">Total:</span>
+                      <span className="detail-value">Cargando...</span>
+                    </motion.div>
+                    
+                    <motion.div
+                      className="confirmacion-venta-detail-item"
+                      variants={detailItemVariants}
+                    >
+                      <span className="detail-label">Método de pago:</span>
+                      <span className="detail-value">Cargando...</span>
+                    </motion.div>
+                    
+                    <motion.div
+                      className="confirmacion-venta-detail-item"
+                      variants={detailItemVariants}
+                    >
+                      <span className="detail-label">Productos:</span>
+                      <span className="detail-value">Cargando...</span>
                     </motion.div>
                   </motion.div>
                 )}

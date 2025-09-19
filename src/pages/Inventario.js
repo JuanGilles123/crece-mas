@@ -8,9 +8,12 @@ import EditarProductoModal from './EditarProductoModal';
 import ImportarProductosCSV from '../components/ImportarProductosCSV';
 import OptimizedProductImage from '../components/OptimizedProductImage';
 import { ProductCardSkeleton, ProductListSkeleton, InventoryHeaderSkeleton } from '../components/SkeletonLoader';
+import LottieLoader from '../components/LottieLoader';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import { Search } from 'lucide-react';
+import { useProductos, useEliminarProducto } from '../hooks/useProductos';
+import toast from 'react-hot-toast';
 
 // Función para eliminar imagen del storage
 const deleteImageFromStorage = async (imagePath) => {
@@ -35,8 +38,6 @@ const productosIniciales = [];
 
 const Inventario = () => {
   const { user } = useAuth();
-  const [productos, setProductos] = useState(productosIniciales);
-  const [cargando, setCargando] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editarModalOpen, setEditarModalOpen] = useState(false);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
@@ -46,28 +47,14 @@ const Inventario = () => {
   // Suponiendo que el usuario tiene moneda en user.user_metadata.moneda
   const moneda = user?.user_metadata?.moneda || 'COP';
 
-  // Función para cargar productos
-  const cargarProductos = useCallback(async () => {
-    if (!user) return;
-    setCargando(true);
-    
-    const { data, error } = await supabase
-      .from('productos')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(1000);
-    
-    if (!error) {
-      setProductos(data || []);
-    }
-    setCargando(false);
-  }, [user]);
+  // React Query hooks
+  const { data: productos = [], isLoading: cargando, error } = useProductos(user?.id);
+  const eliminarProductoMutation = useEliminarProducto();
 
-  // Cargar productos del usuario al montar
-  useEffect(() => {
-    cargarProductos();
-  }, [user, cargarProductos]);
+  // Mostrar error si hay problemas cargando productos
+  if (error) {
+    toast.error('Error al cargar productos');
+  }
 
   // Filtrar productos basado en la búsqueda
   const filteredProducts = productos.filter((producto) => {
@@ -76,38 +63,11 @@ const Inventario = () => {
     return producto.nombre.toLowerCase().includes(searchTerm);
   });
 
-  // Guardar producto en Supabase
+  // Guardar producto en Supabase (ahora manejado por React Query en AgregarProductoModal)
   const handleAgregarProducto = async (nuevo) => {
-    if (!user) return;
-    // Log de los datos que se intentan guardar
-    console.log('Intentando guardar producto:', {
-      user_id: user.id,
-      codigo: nuevo.codigo,
-      nombre: nuevo.nombre,
-      precio_compra: nuevo.precio_compra,
-      precio_venta: nuevo.precio_venta,
-      stock: nuevo.stock,
-      imagen: nuevo.imagen,
-    });
-    const { data, error } = await supabase
-      .from('productos')
-      .insert([
-        {
-          user_id: user.id,
-          codigo: nuevo.codigo,
-          nombre: nuevo.nombre,
-          precio_compra: nuevo.precio_compra,
-          precio_venta: nuevo.precio_venta,
-          stock: nuevo.stock,
-          imagen: nuevo.imagen,
-        }
-      ])
-      .select();
-    if (error) {
-      console.error('Error al guardar producto:', error);
-    } else if (data && data[0]) {
-      setProductos(prev => [data[0], ...prev]);
-    }
+    // Esta función ya no es necesaria ya que React Query maneja la mutación
+    // en el componente AgregarProductoModal
+    console.log('Producto agregado:', nuevo);
   };
 
   // Editar producto
@@ -116,9 +76,9 @@ const Inventario = () => {
     setEditarModalOpen(true);
   };
 
-  // Actualizar producto editado
+  // Actualizar producto editado (ahora manejado por React Query)
   const handleProductoEditado = (productoEditado) => {
-    setProductos(prev => prev.map(p => p.id === productoEditado.id ? productoEditado : p));
+    // React Query invalidará automáticamente la cache y recargará los productos
     setEditarModalOpen(false);
     setProductoSeleccionado(null);
   };
@@ -140,35 +100,28 @@ const Inventario = () => {
         }
       }
 
-      // Eliminar producto de la base de datos
-      const { error } = await supabase
-        .from('productos')
-        .delete()
-        .eq('id', producto.id);
-
-      if (error) {
-        console.error('Error eliminando producto:', error);
-        alert('Error al eliminar el producto');
-      } else {
-        setProductos(prev => prev.filter(p => p.id !== producto.id));
-        alert('Producto eliminado exitosamente');
-      }
+      // Usar React Query mutation para eliminar
+      eliminarProductoMutation.mutate({ 
+        id: producto.id, 
+        userId: user.id 
+      });
     } catch (error) {
       console.error('Error:', error);
-      alert('Error al eliminar el producto');
+      toast.error('Error al eliminar el producto');
     }
   };
 
   const handleProductosImportados = () => {
-    // Recargar la lista de productos después de la importación
-    cargarProductos();
+    // React Query invalidará automáticamente la cache y recargará los productos
     setCsvModalOpen(false);
   };
 
   return (
     <div className="inventario-main">
       {cargando ? (
-        <InventoryHeaderSkeleton />
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}>
+          <LottieLoader size="medium" message="Cargando inventario..." />
+        </div>
       ) : (
         <div className="inventario-header">
           <div className="inventario-search-container">
@@ -193,12 +146,9 @@ const Inventario = () => {
         {modoLista ? (
           <div className="inventario-lista">
             {cargando ? (
-              <>
-                <ProductListSkeleton />
-                <ProductListSkeleton />
-                <ProductListSkeleton />
-                <ProductListSkeleton />
-              </>
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}>
+                <LottieLoader size="medium" message="Cargando productos..." />
+              </div>
             ) : filteredProducts.length === 0 ? (
               <div style={{textAlign:'center',width:'100%',padding:'2rem'}}>
                 {query ? `No se encontraron productos para "${query}"` : 'No hay productos aún.'}
@@ -231,8 +181,8 @@ const Inventario = () => {
                 <div className="inventario-lista-info">
                   <div className="inventario-nombre">{prod.nombre}</div>
                   <div style={{display:'flex',gap:'1.2rem',justifyContent:'center',marginBottom:4}}>
-                    <span style={{color:'#2563eb',fontWeight:700}}>Compra: {prod.precio_compra?.toLocaleString('es-CO')}</span>
-                    <span style={{color:'#16a34a',fontWeight:700}}>Venta: {prod.precio_venta?.toLocaleString('es-CO')}</span>
+                    <span style={{color:'var(--accent-primary)',fontWeight:700}}>Compra: {prod.precio_compra?.toLocaleString('es-CO')}</span>
+                    <span style={{color:'var(--accent-success)',fontWeight:700}}>Venta: {prod.precio_venta?.toLocaleString('es-CO')}</span>
                   </div>
                   <div className="inventario-stock">Stock: {prod.stock}</div>
                 </div>
@@ -256,14 +206,9 @@ const Inventario = () => {
         ) : (
           <div className="inventario-grid">
             {cargando ? (
-              <>
-                <ProductCardSkeleton />
-                <ProductCardSkeleton />
-                <ProductCardSkeleton />
-                <ProductCardSkeleton />
-                <ProductCardSkeleton />
-                <ProductCardSkeleton />
-              </>
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem', gridColumn: '1 / -1' }}>
+                <LottieLoader size="medium" message="Cargando productos..." />
+              </div>
             ) : filteredProducts.length === 0 ? (
               <div style={{textAlign:'center',width:'100%',padding:'2rem'}}>
                 {query ? `No se encontraron productos para "${query}"` : 'No hay productos aún.'}
@@ -296,8 +241,8 @@ const Inventario = () => {
                 <div className="inventario-info">
                   <div className="inventario-nombre">{prod.nombre}</div>
                   <div style={{display:'flex',gap:'1.2rem',justifyContent:'center',marginBottom:4}}>
-                    <span style={{color:'#2563eb',fontWeight:700}}>Compra: {prod.precio_compra?.toLocaleString('es-CO')}</span>
-                    <span style={{color:'#16a34a',fontWeight:700}}>Venta: {prod.precio_venta?.toLocaleString('es-CO')}</span>
+                    <span style={{color:'var(--accent-primary)',fontWeight:700}}>Compra: {prod.precio_compra?.toLocaleString('es-CO')}</span>
+                    <span style={{color:'var(--accent-success)',fontWeight:700}}>Venta: {prod.precio_venta?.toLocaleString('es-CO')}</span>
                   </div>
                   <div className="inventario-stock">Stock: {prod.stock}</div>
                 </div>

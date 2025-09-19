@@ -81,7 +81,7 @@ const ProductImage = ({ imagePath, alt, className, onError }) => {
         position: 'relative',
         overflow: 'hidden'
       }}>
-        <div style={{ fontSize: '12px', color: '#666' }}>Cargando...</div>
+        <div style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>Cargando...</div>
         {/* Skeleton loader */}
         <div style={{
           position: 'absolute',

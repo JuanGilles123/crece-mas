@@ -1,7 +1,7 @@
 /* Resumen de Ventas - Estilos */
 .resumen-ventas-container {
     padding: 1.5rem;
-    background: #fff;
+    background: var(--bg-primary);
     min-height: 100vh;
     max-width: 100%;
   }
@@ -23,7 +23,7 @@
     left: 0;
     right: 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent, #e5e7eb, transparent);
+    background: linear-gradient(90deg, transparent, var(--border-primary), transparent);
   }
   
   .resumen-ventas-title {
@@ -32,13 +32,13 @@
     gap: 0.75rem;
     font-size: 1.875rem;
     font-weight: 700;
-    color: #1f2937;
+    color: var(--text-primary);
     margin: 0;
     line-height: 1.2;
   }
   
   .resumen-ventas-title-icon {
-    color: #3b82f6;
+    color: var(--accent-primary);
     line-height: 0;
     display: inline-flex;
     align-items: center;
@@ -57,11 +57,11 @@
     display: inline-flex;          /* <- para centrar icono+texto */
     align-items: center;
     gap: 0.5rem;
-    color: #334155;
+    color: var(--text-secondary);
     font-size: 0.875rem;
     font-weight: 600;
     padding: 0.5rem 0.75rem;
-    background: #f8fafc;
+    background: var(--bg-secondary);
     border: 1px solid #e5e7eb;
     border-radius: 999px;
     line-height: 1;                /* evita desalineo de texto */
@@ -74,7 +74,7 @@
     align-items: center;
     justify-content: center;
     transform: translateY(-1px);   /* <- “sube” un poco el carrito */
-    color: #64748b;
+    color: var(--text-tertiary);
   }
   
   /* Botones */
@@ -102,23 +102,23 @@
   }
   
   .resumen-ventas-btn-outline {
-    background: #fff;
-    color: #374151;
-    border: 1px solid #d1d5db;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border-primary);
   }
   
   .resumen-ventas-btn-outline:hover {
-    background: #f9fafb;
-    border-color: #9ca3af;
+    background: var(--bg-secondary);
+    border-color: var(--border-secondary);
   }
   
   .resumen-ventas-btn-primary {
-    background: #3b82f6;
-    color: #fff;
+    background: var(--accent-primary);
+    color: var(--text-inverse);
   }
   
   .resumen-ventas-btn-primary:hover {
-    background: #2563eb;
+    background: var(--accent-primary);
   }
   
   /* Selector de vistas */
@@ -138,22 +138,22 @@
     font-size: 0.875rem;
     font-weight: 500;
     border: 1px solid #e5e7eb;
-    background: #fff;
-    color: #374151;
+    background: var(--bg-card);
+    color: var(--text-primary);
     cursor: pointer;
     transition: all 0.2s ease;
     line-height: 1;
   }
   
   .resumen-ventas-vista-btn:hover {
-    background: #f9fafb;
-    border-color: #d1d5db;
+    background: var(--bg-secondary);
+    border-color: var(--border-primary);
   }
   
   .resumen-ventas-vista-btn.active {
-    background: #3b82f6;
-    color: #fff;
-    border-color: #3b82f6;
+    background: var(--accent-primary);
+    color: var(--text-inverse);
+    border-color: var(--accent-primary);
   }
   
   /* Filtros */
@@ -163,7 +163,7 @@
     gap: 1rem;
     margin-bottom: 2rem;
     padding: 1.5rem;
-    background: #f9fafb;
+    background: var(--bg-secondary);
     border-radius: 0.75rem;
     border: 1px solid #e5e7eb;
   }
@@ -172,24 +172,24 @@
     display: flex;
     align-items: center;           /* <- centra icono + label */
     gap: 0.5rem;
-    color: #6b7280;
+    color: var(--text-secondary);
   }
   
   .resumen-ventas-input,
   .resumen-ventas-select {
     flex: 1;
     padding: 0.5rem 0.75rem;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--border-primary);
     border-radius: 0.375rem;
     font-size: 0.875rem;
-    background: #fff;
+    background: var(--bg-card);
     transition: all 0.2s ease;
   }
   
   .resumen-ventas-input:focus,
   .resumen-ventas-select:focus {
     outline: none;
-    border-color: #3b82f6;
+    border-color: var(--accent-primary);
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
   }
   
@@ -206,15 +206,15 @@
     align-items: center;           /* <- alinea icono + texto */
     gap: 1rem;
     padding: 1.5rem;
-    background: #fff;
+    background: var(--bg-card);
     border-radius: 0.75rem;
-    border: 1px solid #e5e7eb;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-primary);
+    box-shadow: var(--shadow-sm);
     transition: all 0.2s ease;
   }
   
   .resumen-ventas-metrica:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--shadow-lg);
     transform: translateY(-1px);
   }
   
@@ -224,9 +224,9 @@
     justify-content: center;
     width: 3rem;
     height: 3rem;
-    background: #f3f4f6;
+    background: var(--bg-tertiary);
     border-radius: 0.5rem;
-    color: #3b82f6;
+    color: var(--accent-primary);
   }
   
   .resumen-ventas-metrica-content {
@@ -235,19 +235,19 @@
   
   .resumen-ventas-metrica-label {
     font-size: 0.875rem;
-    color: #6b7280;
+    color: var(--text-secondary);
     margin: 0 0 0.25rem 0;
   }
   
   .resumen-ventas-metrica-value {
     font-size: 1.5rem;
     font-weight: 700;
-    color: #1f2937;
+    color: var(--text-primary);
     margin: 0;
   }
   
   .resumen-ventas-utilidad {
-    color: #059669;
+    color: var(--accent-success);
   }
   
   /* Gráficos */
@@ -259,7 +259,7 @@
   }
   
   .resumen-ventas-grafico {
-    background: #fff;
+    background: var(--bg-card);
     border-radius: 0.75rem;
     border: 1px solid #e5e7eb;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -282,7 +282,7 @@
   .resumen-ventas-grafico-title {
     font-size: 1.125rem;
     font-weight: 600;
-    color: #1f2937;
+    color: var(--text-primary);
     margin: 0;
     line-height: 1.2;
   }
@@ -298,8 +298,8 @@
     align-items: center;
     gap: 0.25rem;
     font-size: 0.75rem;
-    color: #6b7280;
-    background: #f3f4f6;
+    color: var(--text-secondary);
+    background: var(--bg-tertiary);
     padding: 0.375rem 0.75rem;
     border-radius: 0.375rem;
     margin-top: -0.25rem;
@@ -320,7 +320,7 @@
   }
   
   .resumen-ventas-ranking {
-    background: #fff;
+    background: var(--bg-card);
     border-radius: 0.75rem;
     border: 1px solid #e5e7eb;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -330,7 +330,7 @@
   .resumen-ventas-ranking-title {
     font-size: 1.125rem;
     font-weight: 600;
-    color: #1f2937;
+    color: var(--text-primary);
     margin: 0;
     padding: 1.5rem 1.5rem 0 1.5rem;
   }
@@ -359,18 +359,18 @@
   
   .resumen-ventas-ranking-position {
     font-weight: 600;
-    color: #3b82f6;
+    color: var(--accent-primary);
     min-width: 1.5rem;
   }
   
   .resumen-ventas-ranking-nombre {
     flex: 1;
-    color: #374151;
+    color: var(--text-primary);
   }
   
   .resumen-ventas-ranking-cantidad {
     font-weight: 600;
-    color: #059669;
+    color: var(--accent-success);
   }
   
   /* Barra de búsqueda y exportar */
@@ -382,7 +382,7 @@
     margin-top: 2rem;
     gap: 1.5rem;
     padding: 1rem;
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
     border-radius: 1rem;
     border: 1px solid rgba(148, 163, 184, 0.1);
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
@@ -402,7 +402,7 @@
   .resumen-ventas-busqueda-icon {
     position: absolute;
     left: 1rem;
-    color: #64748b;
+    color: var(--text-tertiary);
     z-index: 1;
     transition: all 0.3s ease;
     pointer-events: none;          /* <- no bloquea el foco */
@@ -414,7 +414,7 @@
   }
   
   .resumen-ventas-busqueda-input-container:focus-within .resumen-ventas-busqueda-icon {
-    color: #3b82f6;
+    color: var(--accent-primary);
     transform: translateY(-1px) scale(1.1);
   }
   
@@ -424,7 +424,7 @@
     border: 2px solid transparent;
     border-radius: 0.75rem;
     font-size: 0.875rem;
-    background: rgba(255, 255, 255, 0.8);
+    background: var(--bg-input);
     backdrop-filter: blur(10px);
     transition: all 0.3s ease;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
@@ -433,8 +433,8 @@
   
   .resumen-ventas-busqueda-input:focus {
     outline: none;
-    border-color: #3b82f6;
-    background: rgba(255, 255, 255, 0.95);
+    border-color: var(--accent-primary);
+    background: var(--bg-input);
     box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1), 0 4px 12px rgba(0, 0, 0, 0.1);
     transform: translateY(-1px);
   }
@@ -445,8 +445,8 @@
     justify-content: center;
     gap: 0.75rem;
     padding: 1rem 1.5rem;
-    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-    color: white;
+    background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+    color: var(--text-inverse);
     border: none;
     border-radius: 0.75rem;
     font-size: 0.875rem;
@@ -483,7 +483,7 @@
   }
   
   .resumen-ventas-exportar-btn:hover {
-    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+    background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
     transform: translateY(-2px);
     box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
   }
@@ -494,7 +494,7 @@
     overflow-y: auto;
     max-height: 400px;
     border-radius: 1rem;
-    background: #fff;
+    background: var(--bg-card);
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     border: 1px solid #e5e7eb;
   }
@@ -506,23 +506,23 @@
   }
   
   .resumen-ventas-tabla-container::-webkit-scrollbar-track {
-    background: #f1f5f9;
+    background: var(--bg-secondary);
     border-radius: 4px;
   }
   
   .resumen-ventas-tabla-container::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
+    background: var(--border-secondary);
     border-radius: 4px;
   }
   
   .resumen-ventas-tabla-container::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
+    background: var(--text-tertiary);
   }
   
   .resumen-ventas-tabla {
     width: 100%;
     border-collapse: collapse;
-    background: #fff;
+    background: var(--bg-card);
     table-layout: fixed;
   }
   
@@ -560,7 +560,7 @@
 }
   
   .resumen-ventas-tabla thead {
-    background: #f8fafc;
+    background: var(--bg-secondary);
   }
   
 .resumen-ventas-tabla th {
@@ -568,8 +568,8 @@
   text-align: left;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #374151;
-  border-bottom: 1px solid #e5e7eb;
+  color: var(--text-primary);
+    border-bottom: 1px solid var(--border-primary);
   white-space: nowrap;
   line-height: 1.2;              /* alinea mejor el texto */
 }
@@ -607,15 +607,15 @@
   .resumen-ventas-tabla td:nth-child(5) { text-align: right; }
   
   .resumen-ventas-tabla tbody tr:hover {
-    background: #f9fafb;
+    background: var(--bg-secondary);
   }
   
   /* Estilos básicos para el contenido de las celdas */
-  .resumen-ventas-tabla td:nth-child(1) { color: #3b82f6; font-weight: 600; }
-  .resumen-ventas-tabla td:nth-child(2) { color: #1e293b; font-weight: 600; }
-  .resumen-ventas-tabla td:nth-child(3) { color: #64748b; }
-  .resumen-ventas-tabla td:nth-child(4) { color: #f59e0b; font-weight: 700; }
-  .resumen-ventas-tabla td:nth-child(5) { color: #059669; font-weight: 700; }
+  .resumen-ventas-tabla td:nth-child(1) { color: var(--accent-primary); font-weight: 600; }
+  .resumen-ventas-tabla td:nth-child(2) { color: var(--text-primary); font-weight: 600; }
+  .resumen-ventas-tabla td:nth-child(3) { color: var(--text-tertiary); }
+  .resumen-ventas-tabla td:nth-child(4) { color: var(--accent-warning); font-weight: 700; }
+  .resumen-ventas-tabla td:nth-child(5) { color: var(--accent-success); font-weight: 700; }
   
   .resumen-ventas-metodo-badge {
     display: inline-flex;
@@ -630,11 +630,11 @@
     line-height: 1;
   }
   
-  .resumen-ventas-metodo-efectivo { background: #dcfce7; color: #166534; }
-  .resumen-ventas-metodo-tarjeta { background: #dbeafe; color: #1e40af; }
-  .resumen-ventas-metodo-transferencia { background: #fef3c7; color: #92400e; }
-  .resumen-ventas-metodo-nequi { background: #fce7f3; color: #be185d; }
-  .resumen-ventas-metodo-daviplata { background: #e0e7ff; color: #3730a3; }
+  .resumen-ventas-metodo-efectivo { background: var(--bg-success); color: var(--accent-success); }
+  .resumen-ventas-metodo-tarjeta { background: var(--bg-info); color: var(--accent-primary); }
+  .resumen-ventas-metodo-transferencia { background: var(--bg-warning); color: var(--accent-warning); }
+  .resumen-ventas-metodo-nequi { background: var(--bg-error); color: var(--accent-error); }
+  .resumen-ventas-metodo-daviplata { background: var(--bg-info); color: var(--accent-secondary); }
   
   /* Estados mejorados */
   .resumen-ventas-sin-datos {
@@ -643,10 +643,10 @@
     align-items: center;
     justify-content: center;
     text-align: center;
-    color: #6b7280;
+    color: var(--text-secondary);
     padding: 4rem 2rem;
     margin: 0;
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
     border-radius: 1rem;
     border: 2px dashed rgba(148, 163, 184, 0.3);
     position: relative;
@@ -670,7 +670,7 @@
   }
   
   .resumen-ventas-sin-datos-icon {
-    color: #d1d5db;
+    color: var(--text-tertiary);
     margin-bottom: 1.5rem;
     animation: float 3s ease-in-out infinite;
   }
@@ -693,7 +693,7 @@
   
   .resumen-ventas-sin-datos small {
     font-size: 0.875rem;
-    color: #64748b;
+    color: var(--text-tertiary);
     font-weight: 500;
   }
   
@@ -719,7 +719,7 @@
     align-items: center;
     justify-content: center;
     padding: 4rem;
-    color: #6b7280;
+    color: var(--text-secondary);
   }
   
   .loading-spinner {

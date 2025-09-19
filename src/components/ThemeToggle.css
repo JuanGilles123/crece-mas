@@ -1,0 +1,246 @@
+/* Contenedor principal */
+.theme-toggle-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Botón principal */
+.theme-toggle {
+  position: relative;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(10px);
+  border: 2px solid transparent;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+}
+
+/* Tamaños */
+.theme-toggle-small {
+  width: 40px;
+  height: 40px;
+}
+
+.theme-toggle-medium {
+  width: 50px;
+  height: 50px;
+}
+
+.theme-toggle-large {
+  width: 60px;
+  height: 60px;
+}
+
+/* Estados del botón */
+.theme-toggle.light {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  box-shadow: 
+    0 4px 15px rgba(251, 191, 36, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  border-color: rgba(251, 191, 36, 0.3);
+}
+
+.theme-toggle.light:hover {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  box-shadow: 
+    0 6px 20px rgba(251, 191, 36, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.theme-toggle.dark {
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+  box-shadow: 
+    0 4px 15px rgba(30, 41, 59, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border-color: rgba(148, 163, 184, 0.3);
+}
+
+.theme-toggle.dark:hover {
+  background: linear-gradient(135deg, #334155, #1e293b);
+  box-shadow: 
+    0 6px 20px rgba(30, 41, 59, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* Efecto de glow */
+.theme-toggle-glow {
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 50%;
+  background: inherit;
+  filter: blur(8px);
+  opacity: 0.6;
+  z-index: -1;
+}
+
+/* Contenedor del icono */
+.theme-toggle-icon-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.theme-toggle-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-inverse);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+/* Partículas de transición */
+.theme-toggle-particles {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 10;
+}
+
+.theme-toggle-particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: linear-gradient(45deg, #fbbf24, #f59e0b);
+  box-shadow: 0 0 6px rgba(251, 191, 36, 0.8);
+}
+
+.theme-toggle.dark .theme-toggle-particle {
+  background: linear-gradient(45deg, #94a3b8, #64748b);
+  box-shadow: 0 0 6px rgba(148, 163, 184, 0.8);
+}
+
+/* Label */
+.theme-toggle-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #6b7280;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* Estados de transición */
+.theme-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Animaciones de entrada */
+@keyframes themeToggleIn {
+  0% {
+    transform: scale(0) rotate(-180deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2) rotate(-90deg);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes themeToggleOut {
+  0% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2) rotate(90deg);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(0) rotate(180deg);
+    opacity: 0;
+  }
+}
+
+/* Efectos de hover mejorados */
+.theme-toggle:hover .theme-toggle-glow {
+  opacity: 0.8;
+  filter: blur(12px);
+}
+
+.theme-toggle:active {
+  transform: scale(0.95);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .theme-toggle-medium {
+    width: 45px;
+    height: 45px;
+  }
+  
+  .theme-toggle-large {
+    width: 55px;
+    height: 55px;
+  }
+}
+
+/* Modo oscuro específico */
+.dark-theme .theme-toggle-label {
+  color: #9ca3af;
+}
+
+/* Efectos de transición global */
+* {
+  transition: background-color 0.3s ease, 
+              border-color 0.3s ease, 
+              color 0.3s ease,
+              box-shadow 0.3s ease;
+}
+
+/* Animación brutal de transición de tema */
+.theme-transition {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.theme-transition::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at center, transparent 0%, rgba(0, 0, 0, 0.8) 100%);
+  animation: themeTransition 0.6s ease-in-out;
+}
+
+@keyframes themeTransition {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}

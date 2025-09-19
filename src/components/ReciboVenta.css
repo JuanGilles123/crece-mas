@@ -15,7 +15,7 @@
 }
 
 .recibo-container {
-  background: white;
+  background: var(--bg-card);
   border-radius: 1rem;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   max-width: 32rem;
@@ -29,8 +29,8 @@
 /* Controles superiores mejorados */
 .recibo-controls {
   padding: 1rem 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  border-bottom: 1px solid var(--border-primary);
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
   border-radius: 1rem 1rem 0 0;
 }
 
@@ -53,9 +53,9 @@
   cursor: pointer;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--text-primary);
   padding: 0.5rem 1rem;
-  background: white;
+  background: var(--bg-card);
   border-radius: 2rem;
   border: 2px solid #e5e7eb;
   transition: all 0.3s ease;
@@ -75,7 +75,7 @@
   position: relative;
   width: 3rem;
   height: 1.5rem;
-  background: #e5e7eb;
+  background: var(--bg-tertiary);
   border-radius: 1rem;
   transition: all 0.3s ease;
   cursor: pointer;
@@ -88,14 +88,14 @@
   left: 2px;
   width: 1.25rem;
   height: 1.25rem;
-  background: white;
+  background: var(--bg-card);
   border-radius: 50%;
   transition: all 0.3s ease;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .recibo-toggle-input:checked + .recibo-toggle-slider {
-  background: #10b981;
+  background: var(--accent-success);
 }
 
 .recibo-toggle-input:checked + .recibo-toggle-slider::before {
@@ -105,7 +105,7 @@
 .recibo-toggle-text {
   user-select: none;
   font-weight: 600;
-  color: #374151;
+  color: var(--text-primary);
 }
 
 .recibo-iva-info {
@@ -117,7 +117,7 @@
   font-size: 1.125rem;
   font-weight: 700;
   color: #10b981;
-  background: white;
+  background: var(--bg-card);
   padding: 0.5rem 1rem;
   border-radius: 0.5rem;
   border: 2px solid #10b981;
@@ -190,7 +190,7 @@
 /* Info del recibo */
 .recibo-info-section {
   text-align: center;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border-primary);
   padding-bottom: 1rem;
 }
 
@@ -229,13 +229,13 @@
 
 /* Tabla de productos */
 .recibo-products {
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border-primary);
   padding-bottom: 1rem;
 }
 
 .recibo-section-title {
   font-weight: 600;
-  color: #374151;
+  color: var(--text-primary);
   margin: 0 0 0.75rem 0;
   font-size: 0.875rem;
 }
@@ -254,15 +254,15 @@
 }
 
 .recibo-table-header {
-  background: #f3f4f6;
-  border-bottom: 1px solid #d1d5db;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-primary);
 }
 
 .recibo-th-cant {
   text-align: left;
   padding: 0.5rem 0.25rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--text-primary);
   width: 15%;
 }
 
@@ -270,7 +270,7 @@
   text-align: left;
   padding: 0.5rem 0.25rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--text-primary);
   width: 60%;
 }
 
@@ -278,7 +278,7 @@
   text-align: right;
   padding: 0.5rem 0.25rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--text-primary);
   width: 25%;
 }
 
@@ -287,18 +287,18 @@
 }
 
 .recibo-table-row:hover {
-  background: #f9fafb;
+  background: var(--bg-secondary);
 }
 
 .recibo-td-cant {
   padding: 0.5rem 0.25rem;
-  color: #374151;
+  color: var(--text-primary);
   font-weight: 500;
 }
 
 .recibo-td-producto {
   padding: 0.5rem 0.25rem;
-  color: #374151;
+  color: var(--text-primary);
 }
 
 .recibo-td-total {
@@ -310,7 +310,7 @@
 
 /* Totales */
 .recibo-totals {
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border-primary);
   padding-bottom: 1rem;
   display: flex;
   flex-direction: column;
@@ -345,7 +345,7 @@
 
 /* Pago y cambio */
 .recibo-payment {
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border-primary);
   padding-bottom: 1rem;
   display: flex;
   flex-direction: column;
@@ -396,7 +396,7 @@
 .recibo-actions {
   padding: 1rem 1.5rem;
   border-top: 1px solid #e5e7eb;
-  background: #f9fafb;
+  background: var(--bg-secondary);
   border-radius: 0 0 1rem 1rem;
   display: grid;
   grid-template-columns: 1fr 1fr 1fr 1fr;
@@ -419,24 +419,24 @@
 }
 
 .recibo-btn-secondary {
-  background: #f3f4f6;
-  color: #374151;
-  border: 1px solid #d1d5db;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-primary);
 }
 
 .recibo-btn-secondary:hover:not(:disabled) {
-  background: #e5e7eb;
-  border-color: #9ca3af;
+  background: var(--bg-tertiary);
+  border-color: var(--text-placeholder);
   transform: translateY(-1px);
 }
 
 .recibo-btn-primary {
-  background: #10b981;
-  color: white;
+  background: var(--accent-success);
+  color: var(--text-inverse);
 }
 
 .recibo-btn-primary:hover {
-  background: #059669;
+  background: var(--accent-success);
   transform: translateY(-1px);
 }
 
@@ -624,7 +624,7 @@
   }
   
   .recibo-table-header {
-    background: #f0f0f0;
+    background: var(--bg-tertiary);
   }
   
   .recibo-table-row {

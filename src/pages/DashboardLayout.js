@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Outlet, NavLink } from 'react-router-dom';
 import { DashboardSkeleton } from '../components/SkeletonLoader';
-import { BarChart3, CreditCard, Package, User, TrendingUp } from 'lucide-react';
+import { BarChart3, CreditCard, Package, User, TrendingUp, Menu, X } from 'lucide-react';
 import './DashboardLayout.css';
 
 const DashboardLayout = () => {
   const [isLoading, setIsLoading] = useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     // Simular tiempo de carga inicial
@@ -62,8 +63,21 @@ const DashboardLayout = () => {
 
   return (
     <div className="dashboard-layout">
+      {/* Botón de toggle para sidebar */}
+      <motion.button
+        className="sidebar-toggle"
+        onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 0.5 }}
+      >
+        {sidebarCollapsed ? <Menu size={20} /> : <X size={20} />}
+      </motion.button>
+
       <motion.aside 
-        className="dashboard-sidebar"
+        className={`dashboard-sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}
         variants={sidebarVariants}
         initial="hidden"
         animate="visible"

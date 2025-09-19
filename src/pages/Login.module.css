@@ -11,7 +11,7 @@
 }
 
 .form {
-  background: white;
+  background: var(--bg-card);
   padding: 2rem;
   border-radius: 12px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
@@ -30,7 +30,7 @@
 .input {
   width: 100%;
   padding: 0.75rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-primary);
   border-radius: 8px;
   font-size: 1rem;
   margin-bottom: 1rem;
@@ -47,7 +47,7 @@
 .button {
   width: 100%;
   background: #3b82f6;
-  color: white;
+  color: var(--text-inverse);
   border: none;
   border-radius: 8px;
   padding: 0.75rem;

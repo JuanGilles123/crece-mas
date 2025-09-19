@@ -31,7 +31,7 @@
 .auth-side {
   flex: 1 1 45%;
   background: linear-gradient(135deg, rgba(59,183,126,0.92) 0%, rgba(30,144,255,0.92) 100%);
-  color: #fff;
+  color: var(--text-inverse);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -50,7 +50,7 @@
   font-weight: 800;
   margin-bottom: 1.2rem;
   letter-spacing: -1px;
-  color: #fff;
+  color: var(--text-inverse);
   text-shadow: 0 2px 8px #0004;
 }
 
@@ -90,18 +90,18 @@
 
 .auth-input, .auth-card .react-tel-input .form-control, .auth-card select {
   box-shadow: none !important;
-  background: #fff !important;
+  background: var(--bg-input) !important;
   border: 1.5px solid #e0e0e0 !important;
 }
 
 .auth-input {
   display: flex;
   align-items: center;
-  background: rgba(255,255,255,0.95);
+  background: var(--bg-input);
   border-radius: 12px;
   padding: 0.75rem 1rem;
   margin-bottom: 1rem;
-  border: 1.5px solid #e0e0e0;
+  border: 1.5px solid var(--border-primary);
   box-shadow: 0 1px 4px #0001;
   transition: box-shadow 0.2s, border 0.2s;
 }
@@ -118,18 +118,18 @@
 }
 
 .auth-input:focus-within, .auth-input input:focus {
-  border: 1.5px solid #3bb77e !important;
-  background: #fff !important;
+  border: 1.5px solid var(--accent-success) !important;
+  background: var(--bg-input) !important;
 }
 
 .auth-card .react-tel-input .form-control:focus {
-  border: 1.5px solid #3bb77e !important;
-  background: #fff !important;
+  border: 1.5px solid var(--accent-success) !important;
+  background: var(--bg-input) !important;
 }
 
 .auth-btn {
   background: linear-gradient(90deg, #1e90ff 0%, #3bb77e 100%);
-  color: #fff;
+  color: var(--text-inverse);
   border: none;
   border-radius: 8px;
   padding: 0.75rem;

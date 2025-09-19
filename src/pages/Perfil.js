@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { User, Settings, Building2, LogOut, Edit3, Save, X } from 'lucide-react';
 import ConfiguracionFacturacion from '../components/ConfiguracionFacturacion';
+import ThemeToggle from '../components/ThemeToggle';
 import { supabase } from '../supabaseClient';
 import './Perfil.css';
 
@@ -283,6 +284,11 @@ const Perfil = () => {
               <div className="perfil-section">
               <h2 className="perfil-section-title">Configuración General</h2>
               <div className="perfil-config-grid">
+                <div className="perfil-config-item">
+                  <h3>Modo Oscuro</h3>
+                  <p>Cambiar entre tema claro y oscuro</p>
+                  <ThemeToggle size="medium" showLabel={true} />
+                </div>
                 <div className="perfil-config-item">
                   <h3>Preferencias de la Aplicación</h3>
                   <p>Configuraciones generales del sistema</p>

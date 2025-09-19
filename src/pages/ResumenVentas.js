@@ -609,11 +609,20 @@ const ResumenVentas = () => {
                     legend: {
                       display: false,
                     },
+                    title: {
+                      display: true,
+                      text: 'Ventas por Día',
+                      color: 'var(--text-primary)',
+                      font: {
+                        size: 16,
+                        weight: 'bold'
+                      }
+                    },
                     tooltip: {
-                      backgroundColor: 'rgba(31, 41, 55, 0.95)',
-                      titleColor: '#fff',
-                      bodyColor: '#fff',
-                      borderColor: '#374151',
+                      backgroundColor: 'var(--bg-modal)',
+                      titleColor: 'var(--text-primary)',
+                      bodyColor: 'var(--text-primary)',
+                      borderColor: 'var(--border-primary)',
                       borderWidth: 1,
                       cornerRadius: 8,
                       displayColors: false,
@@ -631,7 +640,7 @@ const ResumenVentas = () => {
                         color: 'rgba(229, 231, 235, 0.5)',
                       },
                       ticks: {
-                        color: '#6b7280',
+                        color: 'var(--text-secondary)',
                         callback: function(value) {
                           return formatCOP(value);
                         }
@@ -642,7 +651,7 @@ const ResumenVentas = () => {
                         display: false,
                       },
                       ticks: {
-                        color: '#6b7280',
+                        color: 'var(--text-secondary)',
                       }
                     },
                   },
@@ -714,13 +723,22 @@ const ResumenVentas = () => {
                   responsive: true,
                   maintainAspectRatio: false,
                   plugins: {
+                    title: {
+                      display: true,
+                      text: 'Productos Más Vendidos',
+                      color: 'var(--text-primary)',
+                      font: {
+                        size: 16,
+                        weight: 'bold'
+                      }
+                    },
                     legend: {
                       position: 'bottom',
                       labels: {
                         padding: 20,
                         usePointStyle: true,
                         pointStyle: 'circle',
-                        color: '#374151',
+                        color: 'var(--text-primary)',
                         font: {
                           size: 12,
                           weight: '500',
@@ -728,10 +746,10 @@ const ResumenVentas = () => {
                       }
                     },
                     tooltip: {
-                      backgroundColor: 'rgba(31, 41, 55, 0.95)',
-                      titleColor: '#fff',
-                      bodyColor: '#fff',
-                      borderColor: '#374151',
+                      backgroundColor: 'var(--bg-modal)',
+                      titleColor: 'var(--text-primary)',
+                      bodyColor: 'var(--text-primary)',
+                      borderColor: 'var(--border-primary)',
                       borderWidth: 1,
                       cornerRadius: 8,
                       displayColors: true,
