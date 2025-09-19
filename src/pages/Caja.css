@@ -1163,3 +1163,415 @@
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
 }
+
+/* Métodos de pago - Overlay */
+.metodos-pago-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.metodos-pago-container {
+  background: white;
+  border-radius: 1rem;
+  padding: 2rem;
+  max-width: 600px;
+  width: 100%;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.metodos-pago-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.metodos-pago-header h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 0.5rem 0;
+}
+
+.metodos-pago-header p {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #059669;
+  margin: 0;
+}
+
+.metodos-pago-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.metodo-pago-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem 1rem;
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  min-height: 120px;
+  justify-content: center;
+}
+
+.metodo-pago-btn:hover {
+  border-color: #10b981;
+  background: #f0fdf4;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.15);
+}
+
+.metodo-pago-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+
+.metodo-pago-icon {
+  width: 2rem;
+  height: 2rem;
+  color: #6b7280;
+  transition: color 0.2s;
+}
+
+.metodo-pago-btn:hover .metodo-pago-icon {
+  color: #10b981;
+}
+
+.metodo-pago-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+  text-align: center;
+}
+
+.metodo-pago-desc {
+  font-size: 0.75rem;
+  color: #6b7280;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.metodos-pago-cancelar {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.metodos-pago-cancelar:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+
+/* Responsive para métodos de pago */
+@media (max-width: 768px) {
+  .metodos-pago-container {
+    margin: 1rem;
+    padding: 1.5rem;
+  }
+  
+  .metodos-pago-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+  
+  .metodo-pago-btn {
+    padding: 1rem 0.5rem;
+    min-height: 100px;
+  }
+  
+  .metodo-pago-icon {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+  
+  .metodo-pago-label {
+    font-size: 0.875rem;
+  }
+  
+  .metodo-pago-desc {
+    font-size: 0.7rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .metodos-pago-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .metodo-pago-btn {
+    flex-direction: row;
+    text-align: left;
+    min-height: 60px;
+    padding: 1rem;
+  }
+  
+  .metodo-pago-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+  }
+  
+  .metodo-pago-label {
+    font-size: 1rem;
+  }
+  
+  .metodo-pago-desc {
+    font-size: 0.75rem;
+  }
+}
+
+/* Modal de Pago en Efectivo */
+.pago-efectivo-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1001;
+  padding: 1rem;
+}
+
+.pago-efectivo-container {
+  background: white;
+  border-radius: 1rem;
+  padding: 2rem;
+  max-width: 500px;
+  width: 100%;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  animation: slideIn 0.3s ease-out;
+}
+
+.pago-efectivo-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.pago-efectivo-header h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 0.5rem 0;
+}
+
+.pago-efectivo-header p {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #059669;
+  margin: 0;
+}
+
+.pago-efectivo-content {
+  margin-bottom: 2rem;
+}
+
+.pago-efectivo-input-section {
+  margin-bottom: 1.5rem;
+}
+
+.pago-efectivo-label {
+  display: block;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.pago-efectivo-input {
+  width: 100%;
+  padding: 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+  background: white;
+  transition: border-color 0.2s;
+  text-align: center;
+}
+
+.pago-efectivo-input:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.pago-efectivo-valores-comunes {
+  margin-bottom: 1.5rem;
+}
+
+.pago-efectivo-subtitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #6b7280;
+  margin: 0 0 0.75rem 0;
+}
+
+.pago-efectivo-botones {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.5rem;
+}
+
+.pago-efectivo-btn-valor {
+  padding: 0.75rem 1rem;
+  background: #f3f4f6;
+  border: 2px solid #e5e7eb;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pago-efectivo-btn-valor:hover {
+  background: #e5e7eb;
+  border-color: #d1d5db;
+  transform: translateY(-1px);
+}
+
+.pago-efectivo-btn-valor:active {
+  transform: translateY(0);
+  background: #d1d5db;
+}
+
+.pago-efectivo-cambio {
+  background: #f9fafb;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  border: 1px solid #e5e7eb;
+}
+
+.pago-efectivo-cambio-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.pago-efectivo-cambio-item:last-child {
+  margin-bottom: 0;
+}
+
+.pago-efectivo-cambio-total {
+  font-weight: 700;
+  font-size: 1rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #e5e7eb;
+  margin-top: 0.5rem;
+}
+
+.pago-efectivo-cambio-total.positivo {
+  color: #059669;
+}
+
+.pago-efectivo-cambio-total.negativo {
+  color: #dc2626;
+}
+
+.pago-efectivo-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.pago-efectivo-btn {
+  flex: 1;
+  padding: 0.875rem 1rem;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pago-efectivo-cancelar {
+  background: #ef4444;
+  color: white;
+}
+
+.pago-efectivo-cancelar:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+
+.pago-efectivo-confirmar {
+  background: #10b981;
+  color: white;
+}
+
+.pago-efectivo-confirmar:hover:not(:disabled) {
+  background: #059669;
+  transform: translateY(-1px);
+}
+
+.pago-efectivo-confirmar:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Responsive para pago en efectivo */
+@media (max-width: 768px) {
+  .pago-efectivo-container {
+    margin: 1rem;
+    padding: 1.5rem;
+  }
+  
+  .pago-efectivo-botones {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .pago-efectivo-input {
+    font-size: 1.125rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .pago-efectivo-botones {
+    grid-template-columns: 1fr;
+  }
+  
+  .pago-efectivo-actions {
+    flex-direction: column;
+  }
+}

@@ -3,7 +3,7 @@ import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import OptimizedProductImage from '../components/OptimizedProductImage';
 import ReciboVenta from '../components/ReciboVenta';
-import { ShoppingCart, Trash2, Plus, Minus, Search, CheckCircle, X } from 'lucide-react';
+import { ShoppingCart, Trash2, Plus, Minus, Search, CheckCircle, X, CreditCard, Banknote, Smartphone, Wallet } from 'lucide-react';
 import './Caja.css';
 
 // Componente SafeImg removido ya que usamos OptimizedProductImage
@@ -36,6 +36,9 @@ export default function Caja() {
   const [cargando, setCargando] = useState(true);
   const [ventaCompletada, setVentaCompletada] = useState(null);
   const [procesandoVenta, setProcesandoVenta] = useState(false);
+  const [mostrandoMetodosPago, setMostrandoMetodosPago] = useState(false);
+  const [mostrandoPagoEfectivo, setMostrandoPagoEfectivo] = useState(false);
+  const [montoEntregado, setMontoEntregado] = useState('');
 
   // Cargar productos del usuario
   useEffect(() => {
@@ -109,7 +112,194 @@ export default function Caja() {
 
   const handleNuevaVenta = () => {
     setVentaCompletada(null);
+    setMostrandoMetodosPago(false);
   };
+
+  const handleContinuar = () => {
+    if (cart.length === 0) {
+      alert('El carrito está vacío');
+      return;
+    }
+    setMostrandoMetodosPago(true);
+  };
+
+  const handleSeleccionarMetodoPago = (metodo) => {
+    setMethod(metodo);
+    setMostrandoMetodosPago(false);
+    
+    if (metodo === 'Efectivo') {
+      // Mostrar modal de pago en efectivo
+      setMontoEntregado('');
+      setMostrandoPagoEfectivo(true);
+    } else {
+      // Para otros métodos, proceder directamente
+      confirmSale();
+    }
+  };
+
+  const handleValorPredefinido = (valor) => {
+    setMontoEntregado(valor.toString());
+  };
+
+  const handleConfirmarPagoEfectivo = () => {
+    const monto = parseFloat(montoEntregado.replace(/[^\d]/g, ''));
+    if (isNaN(monto) || monto < total) {
+      alert('El monto debe ser mayor o igual al total de la venta.');
+      return;
+    }
+    setMostrandoPagoEfectivo(false);
+    confirmSale();
+  };
+
+  const handleCancelarPagoEfectivo = () => {
+    setMostrandoPagoEfectivo(false);
+    setMontoEntregado('');
+  };
+
+  // Componente para pago en efectivo
+  const PagoEfectivo = () => {
+    const monto = parseFloat(montoEntregado.replace(/[^\d]/g, '')) || 0;
+    const cambio = monto - total;
+    const valoresComunes = [
+      Math.ceil(total / 1000) * 1000, // Redondear hacia arriba a miles
+      Math.ceil(total / 1000) * 1000 + 1000, // +1000
+      Math.ceil(total / 1000) * 1000 + 2000, // +2000
+      Math.ceil(total / 1000) * 1000 + 5000, // +5000
+      10000, 20000, 50000, 100000 // Valores fijos comunes
+    ].filter(valor => valor >= total).slice(0, 6); // Máximo 6 opciones
+
+    return (
+      <div className="pago-efectivo-overlay">
+        <div className="pago-efectivo-container">
+          <div className="pago-efectivo-header">
+            <h3>Pago en Efectivo</h3>
+            <p>Total a pagar: {formatCOP(total)}</p>
+          </div>
+          
+          <div className="pago-efectivo-content">
+            <div className="pago-efectivo-input-section">
+              <label className="pago-efectivo-label">Monto entregado por el cliente</label>
+              <input
+                type="text"
+                value={montoEntregado}
+                onChange={(e) => setMontoEntregado(e.target.value)}
+                className="pago-efectivo-input"
+                placeholder="Ingresa el monto"
+                autoFocus
+              />
+            </div>
+
+            <div className="pago-efectivo-valores-comunes">
+              <p className="pago-efectivo-subtitle">Valores comunes:</p>
+              <div className="pago-efectivo-botones">
+                {valoresComunes.map((valor, index) => (
+                  <button
+                    key={index}
+                    className="pago-efectivo-btn-valor"
+                    onClick={() => handleValorPredefinido(valor)}
+                  >
+                    {formatCOP(valor)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {monto > 0 && (
+              <div className="pago-efectivo-cambio">
+                <div className="pago-efectivo-cambio-item">
+                  <span>Monto entregado:</span>
+                  <span>{formatCOP(monto)}</span>
+                </div>
+                <div className="pago-efectivo-cambio-item">
+                  <span>Total a pagar:</span>
+                  <span>{formatCOP(total)}</span>
+                </div>
+                <div className={`pago-efectivo-cambio-item pago-efectivo-cambio-total ${cambio < 0 ? 'negativo' : 'positivo'}`}>
+                  <span>Cambio:</span>
+                  <span>
+                    {cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambio)}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <div className="pago-efectivo-actions">
+            <button 
+              className="pago-efectivo-btn pago-efectivo-cancelar"
+              onClick={handleCancelarPagoEfectivo}
+            >
+              Cancelar
+            </button>
+            <button 
+              className="pago-efectivo-btn pago-efectivo-confirmar"
+              onClick={handleConfirmarPagoEfectivo}
+              disabled={monto < total}
+            >
+              Confirmar Pago
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Componente para métodos de pago
+  const MetodosPago = () => (
+    <div className="metodos-pago-overlay">
+      <div className="metodos-pago-container">
+        <div className="metodos-pago-header">
+          <h3>Selecciona el método de pago</h3>
+          <p>Total a pagar: {formatCOP(total)}</p>
+        </div>
+        
+        <div className="metodos-pago-grid">
+          <button 
+            className="metodo-pago-btn"
+            onClick={() => handleSeleccionarMetodoPago('Efectivo')}
+          >
+            <Banknote className="metodo-pago-icon" />
+            <span className="metodo-pago-label">Efectivo</span>
+            <span className="metodo-pago-desc">Pago en efectivo</span>
+          </button>
+          
+          <button 
+            className="metodo-pago-btn"
+            onClick={() => handleSeleccionarMetodoPago('Transferencia')}
+          >
+            <CreditCard className="metodo-pago-icon" />
+            <span className="metodo-pago-label">Transferencia</span>
+            <span className="metodo-pago-desc">Transferencia bancaria</span>
+          </button>
+          
+          <button 
+            className="metodo-pago-btn"
+            onClick={() => handleSeleccionarMetodoPago('Nequi')}
+          >
+            <Smartphone className="metodo-pago-icon" />
+            <span className="metodo-pago-label">Nequi</span>
+            <span className="metodo-pago-desc">Pago móvil</span>
+          </button>
+          
+          <button 
+            className="metodo-pago-btn"
+            onClick={() => handleSeleccionarMetodoPago('Mixto')}
+          >
+            <Wallet className="metodo-pago-icon" />
+            <span className="metodo-pago-label">Mixto</span>
+            <span className="metodo-pago-desc">Varios métodos</span>
+          </button>
+        </div>
+        
+        <button 
+          className="metodos-pago-cancelar"
+          onClick={() => setMostrandoMetodosPago(false)}
+        >
+          Cancelar
+        </button>
+      </div>
+    </div>
+  );
 
   async function confirmSale() {
     if (!user) {
@@ -148,16 +338,10 @@ export default function Caja() {
       }
     }
     
-    // Si es pago en efectivo, pedir el monto entregado por el cliente
+    // Si es pago en efectivo, usar el monto del modal
     let montoPagoCliente = total;
     if (method === "Efectivo") {
-      const monto = prompt(`Total a pagar: ${formatCOP(total)}\n\nIngrese el monto entregado por el cliente:`);
-      if (monto === null) {
-        setProcesandoVenta(false);
-        return; // Usuario canceló
-      }
-      
-      const montoNumero = parseFloat(monto.replace(/[^\d]/g, ''));
+      const montoNumero = parseFloat(montoEntregado.replace(/[^\d]/g, ''));
       if (isNaN(montoNumero) || montoNumero < total) {
         alert('El monto debe ser mayor o igual al total de la venta.');
         setProcesandoVenta(false);
@@ -400,11 +584,11 @@ export default function Caja() {
           
           <button 
             className="caja-confirm-btn"
-            onClick={confirmSale} 
+            onClick={handleContinuar} 
             disabled={cart.length === 0 || procesandoVenta}
           >
             <CheckCircle className="caja-confirm-icon" /> 
-            {procesandoVenta ? 'Procesando...' : 'Confirmar Venta'}
+            {procesandoVenta ? 'Procesando...' : 'Continuar'}
           </button>
         </div>
       </div>
@@ -509,15 +693,21 @@ export default function Caja() {
             
             <button 
               className="caja-mobile-confirm-btn"
-              onClick={confirmSale} 
+              onClick={handleContinuar} 
               disabled={cart.length === 0 || procesandoVenta}
             >
               <CheckCircle className="caja-mobile-confirm-icon" /> 
-              {procesandoVenta ? 'Procesando...' : 'Confirmar Venta'}
+              {procesandoVenta ? 'Procesando...' : 'Continuar'}
             </button>
           </div>
         </div>
       )}
+
+      {/* Métodos de pago */}
+      {mostrandoMetodosPago && <MetodosPago />}
+
+      {/* Pago en efectivo */}
+      {mostrandoPagoEfectivo && <PagoEfectivo />}
 
       {/* Recibo de venta */}
       {ventaCompletada && (
