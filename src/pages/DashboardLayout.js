@@ -25,13 +25,16 @@ const DashboardLayout = () => {
         <div className="dashboard-logo">Crece</div>
         <nav className="dashboard-nav">
           <NavLink to="/dashboard" end className={({ isActive }) => isActive ? 'active' : ''}>
-            <span role="img" aria-label="dashboard"></span> Dashboard
+            <span role="img" aria-label="dashboard">📊</span> Dashboard
           </NavLink>
           <NavLink to="/dashboard/caja" className={({ isActive }) => isActive ? 'active' : ''}>
-            <span role="img" aria-label="caja"></span> Caja
+            <span role="img" aria-label="caja">💰</span> Caja
           </NavLink>
           <NavLink to="/dashboard/inventario" className={({ isActive }) => isActive ? 'active' : ''}>
-            <span role="img" aria-label="inventario"></span> Inventario
+            <span role="img" aria-label="inventario">📦</span> Inventario
+          </NavLink>
+          <NavLink to="/dashboard/perfil" className={({ isActive }) => isActive ? 'active' : ''}>
+            <span role="img" aria-label="perfil">👤</span> Perfil
           </NavLink>
         </nav>
       </aside>

@@ -4,6 +4,7 @@ import DashboardLayout from './DashboardLayout';
 import DashboardHome from './DashboardHome';
 import Caja from './Caja';
 import Inventario from './Inventario';
+import Perfil from './Perfil';
 import styles from './Dashboard.module.css';
 
 const Dashboard = () => (
@@ -13,6 +14,7 @@ const Dashboard = () => (
         <Route index element={<DashboardHome />} />
         <Route path="caja" element={<Caja />} />
         <Route path="inventario" element={<Inventario />} />
+        <Route path="perfil" element={<Perfil />} />
         <Route path="*" element={<Navigate to="/dashboard" />} />
       </Route>
     </Routes>

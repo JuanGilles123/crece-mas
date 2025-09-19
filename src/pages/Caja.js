@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import OptimizedProductImage from '../components/OptimizedProductImage';
+import ReciboVenta from '../components/ReciboVenta';
 import './Caja.css';
 
 // Componente SafeImg removido ya que usamos OptimizedProductImage
@@ -32,6 +33,8 @@ export default function Caja() {
   const [showCartMobile, setShowCartMobile] = useState(false);
   const [productos, setProductos] = useState([]);
   const [cargando, setCargando] = useState(true);
+  const [ventaCompletada, setVentaCompletada] = useState(null);
+  const [pagoCliente, setPagoCliente] = useState(0);
 
   // Cargar productos del usuario
   useEffect(() => {
@@ -103,6 +106,11 @@ export default function Caja() {
     setCart((prev) => prev.map((i) => (i.id === id ? { ...i, qty: Math.max(1, i.qty - 1) } : i)).filter((i) => i.qty > 0));
   const removeItem = (id) => setCart((prev) => prev.filter((i) => i.id !== id));
 
+  const handleNuevaVenta = () => {
+    setVentaCompletada(null);
+    setPagoCliente(0);
+  };
+
   async function confirmSale() {
     if (!user) return;
     
@@ -124,6 +132,20 @@ export default function Caja() {
       }
     }
     
+    // Si es pago en efectivo, pedir el monto entregado por el cliente
+    let montoPagoCliente = total;
+    if (method === "Efectivo") {
+      const monto = prompt(`Total a pagar: ${formatCOP(total)}\n\nIngrese el monto entregado por el cliente:`);
+      if (monto === null) return; // Usuario canceló
+      
+      const montoNumero = parseFloat(monto.replace(/[^\d]/g, ''));
+      if (isNaN(montoNumero) || montoNumero < total) {
+        alert('El monto debe ser mayor o igual al total de la venta.');
+        return;
+      }
+      montoPagoCliente = montoNumero;
+    }
+    
     try {
       // Guardar la venta en la base de datos
       const { data: ventaData, error: ventaError } = await supabase
@@ -133,7 +155,8 @@ export default function Caja() {
           total: total,
           metodo_pago: method,
           items: cart,
-          fecha: new Date().toISOString()
+          fecha: new Date().toISOString(),
+          pago_cliente: montoPagoCliente
         }])
         .select();
       
@@ -168,9 +191,20 @@ export default function Caja() {
         }
       }
       
-      // Mostrar confirmación
-      alert(`Venta confirmada por ${formatCOP(total)}`);
+      // Crear objeto de venta para el recibo
+      const ventaRecibo = {
+        id: ventaData[0].id,
+        date: new Date().toLocaleDateString("es-CO"),
+        time: new Date().toLocaleTimeString("es-CO"),
+        cashier: user.user_metadata?.full_name || user.email || "Usuario",
+        register: "Caja Principal",
+        items: cart,
+        metodo_pago: method,
+        pagoCliente: montoPagoCliente
+      };
       
+      // Mostrar recibo
+      setVentaCompletada(ventaRecibo);
       setCart([]);
       setShowCartMobile(false);
       
@@ -439,6 +473,14 @@ export default function Caja() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Recibo de venta */}
+      {ventaCompletada && (
+        <ReciboVenta 
+          venta={ventaCompletada} 
+          onNuevaVenta={handleNuevaVenta}
+        />
       )}
     </div>
   );
