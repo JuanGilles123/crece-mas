@@ -198,19 +198,26 @@
 
 .input {
   width: 100% !important;
-  padding: 1rem 1rem 1rem 3rem !important;
+  padding: var(--pwa-space-5) var(--pwa-space-5) var(--pwa-space-5) 3.5rem !important;
   border: 2px solid #e5e7eb !important;
-  border-radius: 0.75rem !important;
-  font-size: 1rem !important;
+  border-radius: var(--pwa-radius-xl) !important;
+  font-size: var(--pwa-font-size-xl) !important;
   background: white !important;
-  transition: all 0.3s ease !important;
+  color: #1f2937 !important;
+  transition: var(--pwa-transition-normal) !important;
   box-sizing: border-box !important;
+  min-height: var(--pwa-input-height-xl) !important;
 }
 
 .input:focus {
   outline: none;
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.input::placeholder {
+  color: #9ca3af !important;
+  opacity: 1 !important;
 }
 
 .input:focus + .inputIcon,
@@ -259,14 +266,15 @@
   background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
   color: white !important;
   border: none !important;
-  border-radius: 0.75rem !important;
-  padding: 1rem !important;
-  font-size: 1rem !important;
+  border-radius: var(--pwa-radius-xl) !important;
+  padding: var(--pwa-space-5) !important;
+  font-size: var(--pwa-font-size-xl) !important;
   font-weight: 600 !important;
   cursor: pointer !important;
-  transition: all 0.3s ease !important;
+  transition: var(--pwa-transition-normal) !important;
   margin-bottom: 1.5rem !important;
-  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3) !important;
+  box-shadow: var(--pwa-shadow-lg) !important;
+  min-height: var(--pwa-btn-height-xl) !important;
 }
 
 .submitButton:hover {

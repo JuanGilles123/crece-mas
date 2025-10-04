@@ -8,14 +8,34 @@ import './DashboardLayout.css';
 const DashboardLayout = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
+    // Detectar si es móvil
+    const checkIsMobile = () => {
+      const mobile = window.innerWidth <= 768;
+      setIsMobile(mobile);
+      // En móvil, el sidebar inicia colapsado
+      if (mobile) {
+        setSidebarCollapsed(true);
+      }
+    };
+
+    // Verificar al cargar
+    checkIsMobile();
+
+    // Escuchar cambios de tamaño
+    window.addEventListener('resize', checkIsMobile);
+
     // Simular tiempo de carga inicial
     const timer = setTimeout(() => {
       setIsLoading(false);
     }, 800);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', checkIsMobile);
+    };
   }, []);
 
   if (isLoading) {
@@ -120,6 +140,15 @@ const DashboardLayout = () => {
           })}
         </nav>
       </motion.aside>
+      
+      {/* Overlay para móvil */}
+      {isMobile && !sidebarCollapsed && (
+        <div 
+          className="sidebar-overlay"
+          onClick={() => setSidebarCollapsed(true)}
+        />
+      )}
+      
       <motion.main 
         className="dashboard-main"
         variants={mainVariants}

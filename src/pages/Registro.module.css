@@ -242,19 +242,26 @@
 
 .input {
   width: 100%;
-  padding: 0.875rem 0.875rem 0.875rem 2.75rem;
+  padding: var(--pwa-space-5) var(--pwa-space-5) var(--pwa-space-5) 3.5rem;
   border: 2px solid #e5e7eb;
-  border-radius: 0.75rem;
-  font-size: 0.95rem;
+  border-radius: var(--pwa-radius-xl);
+  font-size: var(--pwa-font-size-xl);
   background: white;
-  transition: all 0.3s ease;
+  color: #1f2937;
+  transition: var(--pwa-transition-normal);
   box-sizing: border-box;
+  min-height: var(--pwa-input-height-xl);
 }
 
 .input:focus {
   outline: none;
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.input::placeholder {
+  color: #9ca3af;
+  opacity: 1;
 }
 
 .input:focus + .inputIcon,
@@ -264,21 +271,28 @@
 
 .select {
   width: 100%;
-  padding: 0.875rem 0.875rem 0.875rem 2.75rem;
+  padding: var(--pwa-space-5) var(--pwa-space-5) var(--pwa-space-5) 3.5rem;
   border: 2px solid #e5e7eb;
-  border-radius: 0.75rem;
-  font-size: 0.95rem;
+  border-radius: var(--pwa-radius-xl);
+  font-size: var(--pwa-font-size-xl);
   background: white;
-  transition: all 0.3s ease;
+  color: #1f2937;
+  transition: var(--pwa-transition-normal);
   box-sizing: border-box;
   appearance: none;
   cursor: pointer;
+  min-height: var(--pwa-input-height-xl);
 }
 
 .select:focus {
   outline: none;
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.select option {
+  color: #1f2937;
+  background: white;
 }
 
 .select:focus + .inputIcon,
@@ -472,14 +486,15 @@
   background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
   color: white;
   border: none;
-  border-radius: 0.75rem;
-  padding: 0.875rem;
-  font-size: 0.95rem;
+  border-radius: var(--pwa-radius-xl);
+  padding: var(--pwa-space-5);
+  font-size: var(--pwa-font-size-xl);
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: var(--pwa-transition-normal);
   margin-bottom: 1rem;
-  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+  box-shadow: var(--pwa-shadow-lg);
+  min-height: var(--pwa-btn-height-xl);
 }
 
 .submitButton:hover {

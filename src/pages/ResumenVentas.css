@@ -738,54 +738,183 @@
   }
   
   /* Responsive */
+  @media (max-width: 1024px) {
+    .resumen-ventas-container { 
+      padding: 1.5rem 1rem; 
+    }
+    .resumen-ventas-metricas { 
+      grid-template-columns: repeat(2, 1fr); 
+      gap: 1rem; 
+    }
+    .resumen-ventas-graficos { 
+      grid-template-columns: 1fr; 
+      gap: 1.5rem; 
+    }
+    .resumen-ventas-grafico-content { 
+      height: 300px; 
+    }
+  }
+
   @media (max-width: 768px) {
-    .resumen-ventas-container { padding: 1rem; }
-    .resumen-ventas-header { flex-direction: column; gap: 1rem; align-items: stretch; }
-    .resumen-ventas-actions { justify-content: center; }
-    .resumen-ventas-filtros { grid-template-columns: 1fr; }
-    .resumen-ventas-metricas { grid-template-columns: 1fr; }
-    .resumen-ventas-rankings { grid-template-columns: 1fr; }
-    .resumen-ventas-graficos { grid-template-columns: 1fr; }
-    .resumen-ventas-grafico-content { height: 250px; }
+    .resumen-ventas-container { 
+      padding: 1rem 0.8rem; 
+    }
+    .resumen-ventas-header { 
+      flex-direction: column; 
+      gap: 1rem; 
+      align-items: stretch; 
+    }
+    .resumen-ventas-title {
+      font-size: 1.6rem;
+      text-align: center;
+    }
+    .resumen-ventas-actions { 
+      justify-content: center; 
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .resumen-ventas-filtros { 
+      grid-template-columns: 1fr; 
+      gap: 1rem;
+    }
+    .resumen-ventas-metricas { 
+      grid-template-columns: 1fr; 
+      gap: 1rem; 
+    }
+    .resumen-ventas-rankings { 
+      grid-template-columns: 1fr; 
+      gap: 1.5rem; 
+    }
+    .resumen-ventas-graficos { 
+      grid-template-columns: 1fr; 
+      gap: 1.5rem; 
+    }
+    .resumen-ventas-grafico-content { 
+      height: 280px; 
+    }
   
     .resumen-ventas-busqueda-container {
       flex-direction: column;
       align-items: stretch;
       gap: 1rem;
-      padding: 0.75rem;
+      padding: 1rem;
     }
   
-    .resumen-ventas-busqueda { max-width: none; }
-    .resumen-ventas-busqueda-input { padding: 0.875rem 0.875rem 0.875rem 2.5rem; }
+    .resumen-ventas-busqueda { 
+      max-width: none; 
+    }
+    .resumen-ventas-busqueda-input { 
+      padding: 0.9rem 1rem 0.9rem 3rem; 
+      font-size: 1rem;
+    }
   
     .resumen-ventas-exportar-btn {
       justify-content: center;
-      padding: 0.875rem 1.25rem;
+      padding: 0.9rem 1.5rem;
+      font-size: 0.9rem;
     }
   
-    .resumen-ventas-tabla-container { max-height: 300px; }
+    .resumen-ventas-tabla-container { 
+      max-height: 400px; 
+      overflow-x: auto;
+    }
   
     .resumen-ventas-tabla th,
     .resumen-ventas-tabla td {
-      padding: 0.75rem 0.5rem;
-      font-size: 0.75rem;
+      padding: 0.8rem 0.6rem;
+      font-size: 0.85rem;
     }
   
     .resumen-ventas-tabla th:nth-child(1),
-    .resumen-ventas-tabla td:nth-child(1) { width: 20%; min-width: 80px; }
+    .resumen-ventas-tabla td:nth-child(1) { 
+      width: 25%; 
+      min-width: 90px; 
+    }
     .resumen-ventas-tabla th:nth-child(2),
-    .resumen-ventas-tabla td:nth-child(2) { width: 35%; min-width: 120px; }
+    .resumen-ventas-tabla td:nth-child(2) { 
+      width: 40%; 
+      min-width: 140px; 
+    }
     .resumen-ventas-tabla th:nth-child(3),
-    .resumen-ventas-tabla td:nth-child(3) { width: 25%; min-width: 100px; }
+    .resumen-ventas-tabla td:nth-child(3) { 
+      width: 20%; 
+      min-width: 100px; 
+    }
     .resumen-ventas-tabla th:nth-child(4),
-    .resumen-ventas-tabla td:nth-child(4) { width: 10%; min-width: 60px; }
-    .resumen-ventas-tabla th:nth-child(5),
-    .resumen-ventas-tabla td:nth-child(5) { width: 15%; min-width: 80px; }
+    .resumen-ventas-tabla td:nth-child(4) { 
+      width: 15%; 
+      min-width: 80px; 
+    }
+  }
+  
+  @media (max-width: 600px) {
+    .resumen-ventas-container { 
+      padding: 0.8rem 0.6rem; 
+    }
+    .resumen-ventas-title { 
+      font-size: 1.4rem; 
+    }
+    .resumen-ventas-actions { 
+      gap: 0.4rem;
+    }
+    .resumen-ventas-vista-btn { 
+      font-size: 0.8rem; 
+      padding: 0.6rem 0.8rem; 
+    }
+    .resumen-ventas-busqueda-input { 
+      padding: 0.8rem 0.9rem 0.8rem 2.8rem; 
+      font-size: 0.95rem;
+    }
+    .resumen-ventas-exportar-btn {
+      padding: 0.8rem 1.2rem;
+      font-size: 0.85rem;
+    }
+    .resumen-ventas-tabla th,
+    .resumen-ventas-tabla td {
+      padding: 0.7rem 0.5rem;
+      font-size: 0.8rem;
+    }
+    .resumen-ventas-grafico-content { 
+      height: 250px; 
+    }
   }
   
   @media (max-width: 480px) {
-    .resumen-ventas-title { font-size: 1.5rem; }
-    .resumen-ventas-vistas { justify-content: center; }
-    .resumen-ventas-vista-btn { font-size: 0.75rem; padding: 0.5rem 0.75rem; }
+    .resumen-ventas-container { 
+      padding: 0.6rem 0.4rem; 
+    }
+    .resumen-ventas-title { 
+      font-size: 1.2rem; 
+    }
+    .resumen-ventas-vistas { 
+      justify-content: center; 
+      gap: 0.3rem;
+    }
+    .resumen-ventas-vista-btn { 
+      font-size: 0.75rem; 
+      padding: 0.5rem 0.6rem; 
+    }
+    .resumen-ventas-busqueda-container {
+      padding: 0.8rem;
+    }
+    .resumen-ventas-busqueda-input { 
+      padding: 0.7rem 0.8rem 0.7rem 2.5rem; 
+      font-size: 0.9rem;
+    }
+    .resumen-ventas-exportar-btn {
+      padding: 0.7rem 1rem;
+      font-size: 0.8rem;
+    }
+    .resumen-ventas-tabla th,
+    .resumen-ventas-tabla td {
+      padding: 0.6rem 0.4rem;
+      font-size: 0.75rem;
+    }
+    .resumen-ventas-tabla-container { 
+      max-height: 350px; 
+    }
+    .resumen-ventas-grafico-content { 
+      height: 220px; 
+    }
   }
   

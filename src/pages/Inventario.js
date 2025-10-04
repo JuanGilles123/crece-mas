@@ -11,7 +11,7 @@ import { ProductCardSkeleton, ProductListSkeleton, InventoryHeaderSkeleton } fro
 import LottieLoader from '../components/LottieLoader';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
-import { Search } from 'lucide-react';
+import { Search, List, Grid3X3 } from 'lucide-react';
 import { useProductos, useEliminarProducto } from '../hooks/useProductos';
 import toast from 'react-hot-toast';
 
@@ -137,7 +137,7 @@ const Inventario = () => {
             <button className="inventario-btn inventario-btn-primary" onClick={() => setModalOpen(true)}>Nuevo producto</button>
             <button className="inventario-btn inventario-btn-secondary" onClick={() => setCsvModalOpen(true)}>Importar CSV</button>
             <button className="inventario-btn inventario-btn-secondary" onClick={() => setModoLista(m => !m)}>
-              {modoLista ? 'Ver en cuadrícula' : 'Ver en lista'}
+              {modoLista ? <Grid3X3 size={18} /> : <List size={18} />}
             </button>
           </div>
         </div>
@@ -180,7 +180,7 @@ const Inventario = () => {
                 />
                 <div className="inventario-lista-info">
                   <div className="inventario-nombre">{prod.nombre}</div>
-                  <div style={{display:'flex',gap:'1.2rem',justifyContent:'center',marginBottom:4}}>
+                  <div className="inventario-lista-precios">
                     <span style={{color:'var(--accent-primary)',fontWeight:700}}>Compra: {prod.precio_compra?.toLocaleString('es-CO')}</span>
                     <span style={{color:'var(--accent-success)',fontWeight:700}}>Venta: {prod.precio_venta?.toLocaleString('es-CO')}</span>
                   </div>

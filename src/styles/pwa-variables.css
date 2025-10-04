@@ -1,0 +1,198 @@
+/* Variables PWA - Diseño Nativo */
+:root {
+  /* Tamaños base para PWA */
+  --pwa-font-size-xs: 0.75rem;    /* 12px */
+  --pwa-font-size-sm: 0.875rem;   /* 14px */
+  --pwa-font-size-base: 1rem;     /* 16px */
+  --pwa-font-size-lg: 1.125rem;   /* 18px */
+  --pwa-font-size-xl: 1.25rem;    /* 20px */
+  --pwa-font-size-2xl: 1.5rem;    /* 24px */
+  --pwa-font-size-3xl: 1.875rem;  /* 30px */
+  --pwa-font-size-4xl: 2.25rem;   /* 36px */
+
+  /* Espaciado PWA */
+  --pwa-space-1: 0.25rem;   /* 4px */
+  --pwa-space-2: 0.5rem;    /* 8px */
+  --pwa-space-3: 0.75rem;   /* 12px */
+  --pwa-space-4: 1rem;      /* 16px */
+  --pwa-space-5: 1.25rem;   /* 20px */
+  --pwa-space-6: 1.5rem;    /* 24px */
+  --pwa-space-8: 2rem;      /* 32px */
+  --pwa-space-10: 2.5rem;   /* 40px */
+  --pwa-space-12: 3rem;     /* 48px */
+  --pwa-space-16: 4rem;     /* 64px */
+  --pwa-space-20: 5rem;     /* 80px */
+
+  /* Tamaños de botones PWA */
+  --pwa-btn-height-sm: 2.5rem;    /* 40px */
+  --pwa-btn-height-md: 3rem;      /* 48px */
+  --pwa-btn-height-lg: 3.5rem;    /* 56px */
+  --pwa-btn-height-xl: 4rem;      /* 64px */
+
+  /* Tamaños de inputs PWA */
+  --pwa-input-height-sm: 2.5rem;  /* 40px */
+  --pwa-input-height-md: 3rem;    /* 48px */
+  --pwa-input-height-lg: 3.5rem;  /* 56px */
+  --pwa-input-height-xl: 4rem;    /* 64px */
+
+  /* Tamaños de iconos PWA */
+  --pwa-icon-sm: 1rem;      /* 16px */
+  --pwa-icon-md: 1.25rem;   /* 20px */
+  --pwa-icon-lg: 1.5rem;    /* 24px */
+  --pwa-icon-xl: 2rem;      /* 32px */
+  --pwa-icon-2xl: 2.5rem;   /* 40px */
+
+  /* Border radius PWA */
+  --pwa-radius-sm: 0.375rem;   /* 6px */
+  --pwa-radius-md: 0.5rem;     /* 8px */
+  --pwa-radius-lg: 0.75rem;    /* 12px */
+  --pwa-radius-xl: 1rem;       /* 16px */
+  --pwa-radius-2xl: 1.5rem;    /* 24px */
+  --pwa-radius-full: 9999px;
+
+  /* Sombras PWA */
+  --pwa-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --pwa-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --pwa-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --pwa-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+  /* Z-index PWA */
+  --pwa-z-dropdown: 1000;
+  --pwa-z-sticky: 1020;
+  --pwa-z-fixed: 1030;
+  --pwa-z-modal-backdrop: 1040;
+  --pwa-z-modal: 1050;
+  --pwa-z-popover: 1060;
+  --pwa-z-tooltip: 1070;
+  --pwa-z-toast: 1080;
+
+  /* Transiciones PWA */
+  --pwa-transition-fast: 150ms ease-in-out;
+  --pwa-transition-normal: 250ms ease-in-out;
+  --pwa-transition-slow: 350ms ease-in-out;
+
+  /* Breakpoints PWA */
+  --pwa-breakpoint-sm: 640px;
+  --pwa-breakpoint-md: 768px;
+  --pwa-breakpoint-lg: 1024px;
+  --pwa-breakpoint-xl: 1280px;
+  --pwa-breakpoint-2xl: 1536px;
+}
+
+/* Clases utilitarias PWA */
+.pwa-text-xs { font-size: var(--pwa-font-size-xs); }
+.pwa-text-sm { font-size: var(--pwa-font-size-sm); }
+.pwa-text-base { font-size: var(--pwa-font-size-base); }
+.pwa-text-lg { font-size: var(--pwa-font-size-lg); }
+.pwa-text-xl { font-size: var(--pwa-font-size-xl); }
+.pwa-text-2xl { font-size: var(--pwa-font-size-2xl); }
+.pwa-text-3xl { font-size: var(--pwa-font-size-3xl); }
+.pwa-text-4xl { font-size: var(--pwa-font-size-4xl); }
+
+.pwa-btn-sm { 
+  height: var(--pwa-btn-height-sm);
+  padding: 0 var(--pwa-space-4);
+  font-size: var(--pwa-font-size-sm);
+}
+.pwa-btn-md { 
+  height: var(--pwa-btn-height-md);
+  padding: 0 var(--pwa-space-6);
+  font-size: var(--pwa-font-size-base);
+}
+.pwa-btn-lg { 
+  height: var(--pwa-btn-height-lg);
+  padding: 0 var(--pwa-space-8);
+  font-size: var(--pwa-font-size-lg);
+}
+.pwa-btn-xl { 
+  height: var(--pwa-btn-height-xl);
+  padding: 0 var(--pwa-space-10);
+  font-size: var(--pwa-font-size-xl);
+}
+
+.pwa-input-sm { 
+  height: var(--pwa-input-height-sm);
+  padding: 0 var(--pwa-space-3);
+  font-size: var(--pwa-font-size-sm);
+}
+.pwa-input-md { 
+  height: var(--pwa-input-height-md);
+  padding: 0 var(--pwa-space-4);
+  font-size: var(--pwa-font-size-base);
+}
+.pwa-input-lg { 
+  height: var(--pwa-input-height-lg);
+  padding: 0 var(--pwa-space-5);
+  font-size: var(--pwa-font-size-lg);
+}
+.pwa-input-xl { 
+  height: var(--pwa-input-height-xl);
+  padding: 0 var(--pwa-space-6);
+  font-size: var(--pwa-font-size-xl);
+}
+
+/* Touch targets mínimos para PWA */
+.pwa-touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Espaciado PWA */
+.pwa-p-1 { padding: var(--pwa-space-1); }
+.pwa-p-2 { padding: var(--pwa-space-2); }
+.pwa-p-3 { padding: var(--pwa-space-3); }
+.pwa-p-4 { padding: var(--pwa-space-4); }
+.pwa-p-5 { padding: var(--pwa-space-5); }
+.pwa-p-6 { padding: var(--pwa-space-6); }
+.pwa-p-8 { padding: var(--pwa-space-8); }
+.pwa-p-10 { padding: var(--pwa-space-10); }
+.pwa-p-12 { padding: var(--pwa-space-12); }
+.pwa-p-16 { padding: var(--pwa-space-16); }
+.pwa-p-20 { padding: var(--pwa-space-20); }
+
+.pwa-m-1 { margin: var(--pwa-space-1); }
+.pwa-m-2 { margin: var(--pwa-space-2); }
+.pwa-m-3 { margin: var(--pwa-space-3); }
+.pwa-m-4 { margin: var(--pwa-space-4); }
+.pwa-m-5 { margin: var(--pwa-space-5); }
+.pwa-m-6 { margin: var(--pwa-space-6); }
+.pwa-m-8 { margin: var(--pwa-space-8); }
+.pwa-m-10 { margin: var(--pwa-space-10); }
+.pwa-m-12 { margin: var(--pwa-space-12); }
+.pwa-m-16 { margin: var(--pwa-space-16); }
+.pwa-m-20 { margin: var(--pwa-space-20); }
+
+/* Responsive PWA */
+@media (max-width: 768px) {
+  :root {
+    /* Aumentar tamaños base en móvil */
+    --pwa-font-size-base: 1.125rem;   /* 18px */
+    --pwa-font-size-lg: 1.25rem;      /* 20px */
+    --pwa-font-size-xl: 1.5rem;       /* 24px */
+    --pwa-font-size-2xl: 1.875rem;    /* 30px */
+    --pwa-font-size-3xl: 2.25rem;     /* 36px */
+    --pwa-font-size-4xl: 3rem;        /* 48px */
+
+    /* Aumentar tamaños de botones en móvil */
+    --pwa-btn-height-sm: 3rem;        /* 48px */
+    --pwa-btn-height-md: 3.5rem;      /* 56px */
+    --pwa-btn-height-lg: 4rem;        /* 64px */
+    --pwa-btn-height-xl: 4.5rem;      /* 72px */
+
+    /* Aumentar tamaños de inputs en móvil */
+    --pwa-input-height-sm: 3rem;      /* 48px */
+    --pwa-input-height-md: 3.5rem;    /* 56px */
+    --pwa-input-height-lg: 4rem;      /* 64px */
+    --pwa-input-height-xl: 4.5rem;    /* 72px */
+
+    /* Aumentar iconos en móvil */
+    --pwa-icon-sm: 1.25rem;           /* 20px */
+    --pwa-icon-md: 1.5rem;            /* 24px */
+    --pwa-icon-lg: 2rem;              /* 32px */
+    --pwa-icon-xl: 2.5rem;            /* 40px */
+    --pwa-icon-2xl: 3rem;             /* 48px */
+  }
+}

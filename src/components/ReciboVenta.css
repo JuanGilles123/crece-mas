@@ -26,6 +26,161 @@
   flex-direction: column;
 }
 
+/* Responsive para ReciboVenta */
+@media (max-width: 768px) {
+  .recibo-overlay {
+    padding: 0.5rem;
+  }
+  
+  .recibo-container {
+    max-width: calc(100vw - 1rem);
+    max-height: 95vh;
+    border-radius: 0.8rem;
+  }
+  
+  .recibo-controls {
+    padding: 0.8rem 1rem;
+  }
+  
+  .recibo-content {
+    padding: 1rem;
+  }
+  
+  .recibo-header {
+    padding: 1rem;
+  }
+  
+  .recibo-header h2 {
+    font-size: 1.4rem;
+  }
+  
+  .recibo-header p {
+    font-size: 0.9rem;
+  }
+  
+  .recibo-table {
+    font-size: 0.85rem;
+  }
+  
+  .recibo-table th,
+  .recibo-table td {
+    padding: 0.6rem 0.4rem;
+  }
+  
+  .recibo-footer {
+    padding: 1rem;
+  }
+  
+  .recibo-actions {
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+  
+  .recibo-btn {
+    width: 100%;
+    padding: 0.8rem 1rem;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .recibo-overlay {
+    padding: 0.3rem;
+  }
+  
+  .recibo-container {
+    max-width: calc(100vw - 0.6rem);
+    border-radius: 0.6rem;
+  }
+  
+  .recibo-controls {
+    padding: 0.6rem 0.8rem;
+  }
+  
+  .recibo-content {
+    padding: 0.8rem;
+  }
+  
+  .recibo-header {
+    padding: 0.8rem;
+  }
+  
+  .recibo-header h2 {
+    font-size: 1.2rem;
+  }
+  
+  .recibo-header p {
+    font-size: 0.85rem;
+  }
+  
+  .recibo-table {
+    font-size: 0.8rem;
+  }
+  
+  .recibo-table th,
+  .recibo-table td {
+    padding: 0.5rem 0.3rem;
+  }
+  
+  .recibo-footer {
+    padding: 0.8rem;
+  }
+  
+  .recibo-btn {
+    padding: 0.7rem 0.8rem;
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .recibo-overlay {
+    padding: 0.2rem;
+  }
+  
+  .recibo-container {
+    max-width: calc(100vw - 0.4rem);
+    border-radius: 0.5rem;
+  }
+  
+  .recibo-controls {
+    padding: 0.5rem 0.6rem;
+  }
+  
+  .recibo-content {
+    padding: 0.6rem;
+  }
+  
+  .recibo-header {
+    padding: 0.6rem;
+  }
+  
+  .recibo-header h2 {
+    font-size: 1.1rem;
+  }
+  
+  .recibo-header p {
+    font-size: 0.8rem;
+  }
+  
+  .recibo-table {
+    font-size: 0.75rem;
+  }
+  
+  .recibo-table th,
+  .recibo-table td {
+    padding: 0.4rem 0.2rem;
+  }
+  
+  .recibo-footer {
+    padding: 0.6rem;
+  }
+  
+  .recibo-btn {
+    padding: 0.6rem 0.7rem;
+    font-size: 0.8rem;
+  }
+}
+
 /* Controles superiores mejorados */
 .recibo-controls {
   padding: 1rem 1.5rem;
