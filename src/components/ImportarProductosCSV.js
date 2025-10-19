@@ -7,7 +7,7 @@ import { ClipboardList } from 'lucide-react';
 import './ImportarProductosCSV.css';
 
 const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const [archivo, setArchivo] = useState(null);
   const [procesando, setProcesando] = useState(false);
   const [resultado, setResultado] = useState(null);
@@ -261,7 +261,7 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
           precio_compra: precioCompraNum,
           precio_venta: precioVentaNum,
           stock: stockNum,
-          user_id: user.id,
+          organization_id: userProfile?.organization_id,
           codigo: producto['CODIGO PRODUCTO'] || producto.codigo || producto.Codigo || `PROD-${Date.now()}-${i}`,
           imagen: imagen || null // Guardamos la imagen original para procesar después
         };
@@ -450,7 +450,7 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
         precio_compra: precioCompraNum,
         precio_venta: precioVentaNum,
         stock: stockNum,
-        user_id: user.id,
+        organization_id: userProfile?.organization_id,
         codigo: producto.codigo || producto.Codigo || producto.CODIGO || `PROD-${Date.now()}-${i}`,
         imagen: imagen || null // Guardamos la imagen original para procesar después
       };
@@ -498,6 +498,14 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
       setError('Por favor selecciona un archivo CSV o Excel.');
       return;
     }
+
+    // Validar que tengamos organization_id
+    if (!userProfile || !userProfile.organization_id) {
+      setError('Error: No se pudo obtener la organización. Por favor recarga la página e intenta de nuevo.');
+      return;
+    }
+
+    console.log('Organization ID:', userProfile.organization_id);
 
     setProcesando(true);
     setError('');

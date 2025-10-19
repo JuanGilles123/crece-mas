@@ -77,18 +77,23 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
+  padding: 1.5rem;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 12px;
 }
 
 .dashboard-logo-img {
-  width: 120px;
-  height: 60px;
+  width: 180px;
+  height: 90px;
   object-fit: contain;
   display: block;
   /* Si el SVG no se ve, le damos un filtro para hacerlo visible */
   filter: brightness(1.2);
+  transition: transform 0.3s ease;
+}
+
+.dashboard-logo-img:hover {
+  transform: scale(1.05);
 }
 
 /* Contenedor del selector de organizaciones */

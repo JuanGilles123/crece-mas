@@ -1,14 +1,16 @@
-import React, { useMemo, useState, useEffect, useCallback } from "react";
+import React, { useMemo, useState, useEffect, useCallback, Suspense, lazy } from "react";
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import OptimizedProductImage from '../components/OptimizedProductImage';
-import ReciboVenta from '../components/ReciboVenta';
-import ConfirmacionVenta from '../components/ConfirmacionVenta';
 import { ShoppingCart, Trash2, Plus, Minus, Search, CheckCircle, X, CreditCard, Banknote, Smartphone, Wallet } from 'lucide-react';
 import toast from 'react-hot-toast';
 import './Caja.css';
+
+// Lazy loading de componentes pesados (renderizado procedural)
+const ReciboVenta = lazy(() => import('../components/ReciboVenta'));
+const ConfirmacionVenta = lazy(() => import('../components/ConfirmacionVenta'));
 
 // Componente SafeImg removido ya que usamos OptimizedProductImage
 
@@ -50,21 +52,21 @@ export default function Caja() {
   const [datosVentaConfirmada, setDatosVentaConfirmada] = useState(null);
   const [incluirIva, setIncluirIva] = useState(false);
   const [porcentajeIva, setPorcentajeIva] = useState(19);
+  const [productosVisibles, setProductosVisibles] = useState(20); // Renderizado procedural
 
-  // Cargar productos del usuario
+  // Cargar productos del usuario con renderizado procedural
   useEffect(() => {
     const fetchProductos = async () => {
       if (!user || !userProfile?.organization_id) return;
       setCargando(true);
       
-      console.log('🔍 Cargando productos para Caja, organization_id:', userProfile.organization_id);
+      console.log('🔍 Cargando productos para Caja (renderizado procedural), organization_id:', userProfile.organization_id);
       
       const { data, error } = await supabase
         .from('productos')
         .select('*')
         .eq('organization_id', userProfile.organization_id)
-        .order('created_at', { ascending: false })
-        .limit(1000);
+        .order('created_at', { ascending: false });
         
       if (!error) {
         console.log('✅ Productos cargados en Caja:', data?.length || 0);
@@ -80,6 +82,29 @@ export default function Caja() {
     if (!q) return productos;
     return productos.filter((p) => p.nombre.toLowerCase().includes(q));
   }, [query, productos]);
+
+  // Cargar más productos al hacer scroll (renderizado procedural)
+  useEffect(() => {
+    const handleScroll = () => {
+      const productGrid = document.querySelector('.caja-product-grid');
+      if (!productGrid) return;
+
+      const scrollTop = productGrid.scrollTop;
+      const scrollHeight = productGrid.scrollHeight;
+      const clientHeight = productGrid.clientHeight;
+
+      // Si llegó al 80% del scroll, cargar más productos
+      if (scrollTop + clientHeight >= scrollHeight * 0.8) {
+        setProductosVisibles(prev => Math.min(prev + 20, filteredProducts.length));
+      }
+    };
+
+    const productGrid = document.querySelector('.caja-product-grid');
+    if (productGrid) {
+      productGrid.addEventListener('scroll', handleScroll);
+      return () => productGrid.removeEventListener('scroll', handleScroll);
+    }
+  }, [filteredProducts.length]);
 
   const subtotal = useMemo(() => calcTotal(cart.map((c) => ({ id: c.id, price: c.precio_venta, qty: c.qty }))), [cart]);
   const impuestos = useMemo(() => incluirIva ? subtotal * (porcentajeIva / 100) : 0, [subtotal, incluirIva, porcentajeIva]);
@@ -544,8 +569,9 @@ export default function Caja() {
           />
         </div>
 
-        <div className="caja-products-list">
-          {filteredProducts.map((producto, index) => (
+        <div className="caja-products-list caja-product-grid">
+          {/* Renderizado procedural: Solo renderizar productos visibles */}
+          {filteredProducts.slice(0, productosVisibles).map((producto, index) => (
             <motion.div 
               key={producto.id} 
               className="caja-product-card"
@@ -553,7 +579,7 @@ export default function Caja() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ 
                 duration: 0.3, 
-                delay: index * 0.05,
+                delay: Math.min(index * 0.05, 1), // Límite de delay
                 ease: "easeOut"
               }}
               whileHover={{ 
@@ -568,6 +594,7 @@ export default function Caja() {
                   imagePath={producto.imagen} 
                   alt={producto.nombre} 
                   className="caja-product-image"
+                  loading="lazy"
                 />
                 <div className="caja-product-info">
                   <p className="caja-product-name">{producto.nombre}</p>
@@ -577,6 +604,13 @@ export default function Caja() {
               </div>
             </motion.div>
           ))}
+
+          {/* Indicador de carga de más productos */}
+          {productosVisibles < filteredProducts.length && (
+            <div className="caja-loading-more">
+              <p>Mostrando {productosVisibles} de {filteredProducts.length} productos...</p>
+            </div>
+          )}
 
           {filteredProducts.length === 0 && (
             <p className="caja-no-products">No se encontraron productos para "{query}"</p>
@@ -811,22 +845,26 @@ export default function Caja() {
       {/* Pago en efectivo */}
       {mostrandoPagoEfectivo && <PagoEfectivo />}
 
-      {/* Recibo de venta */}
+      {/* Recibo de venta con lazy loading */}
       {ventaCompletada && (
-        <ReciboVenta 
-          venta={ventaCompletada} 
-          onNuevaVenta={handleNuevaVenta}
-        />
+        <Suspense fallback={<div className="loading-fallback">Cargando recibo...</div>}>
+          <ReciboVenta 
+            venta={ventaCompletada} 
+            onNuevaVenta={handleNuevaVenta}
+          />
+        </Suspense>
       )}
 
-      {/* Modal de confirmación de venta */}
-      <ConfirmacionVenta
-        isVisible={mostrandoConfirmacion}
-        isLoading={confirmacionCargando}
-        isSuccess={confirmacionExito}
-        onClose={handleCerrarConfirmacion}
-        ventaData={datosVentaConfirmada}
-      />
+      {/* Modal de confirmación de venta con lazy loading */}
+      <Suspense fallback={null}>
+        <ConfirmacionVenta
+          isVisible={mostrandoConfirmacion}
+          isLoading={confirmacionCargando}
+          isSuccess={confirmacionExito}
+          onClose={handleCerrarConfirmacion}
+          ventaData={datosVentaConfirmada}
+        />
+      </Suspense>
     </div>
   );
 }

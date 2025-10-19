@@ -1908,3 +1908,52 @@
   }
 }
 
+/* ============================================
+   RENDERIZADO PROCEDURAL - OPTIMIZACIÓN
+   ============================================ */
+
+/* Grid para productos con scroll suave */
+.caja-product-grid {
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  will-change: scroll-position;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Indicador de carga de más productos */
+.caja-loading-more {
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  background: linear-gradient(to bottom, transparent, var(--bg-secondary));
+  border-radius: 0.5rem;
+  margin: 1rem 0;
+}
+
+.caja-loading-more p {
+  margin: 0;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* Loading fallback para componentes lazy */
+.loading-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  color: var(--text-secondary);
+  font-size: 1rem;
+}
+
+/* Optimización de animaciones */
+.caja-product-card {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 120px;
+}
+
+/* Animación de pulse para loading */
+@keyframes pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
