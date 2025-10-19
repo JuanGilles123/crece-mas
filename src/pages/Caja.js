@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import OptimizedProductImage from '../components/OptimizedProductImage';
@@ -30,7 +31,8 @@ function calcTotal(cart) {
 }
 
 export default function Caja() {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
+  const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState([]);
   const [method, setMethod] = useState("Efectivo");
@@ -52,23 +54,26 @@ export default function Caja() {
   // Cargar productos del usuario
   useEffect(() => {
     const fetchProductos = async () => {
-      if (!user) return;
+      if (!user || !userProfile?.organization_id) return;
       setCargando(true);
+      
+      console.log('🔍 Cargando productos para Caja, organization_id:', userProfile.organization_id);
       
       const { data, error } = await supabase
         .from('productos')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('organization_id', userProfile.organization_id)
         .order('created_at', { ascending: false })
         .limit(1000);
         
       if (!error) {
+        console.log('✅ Productos cargados en Caja:', data?.length || 0);
         setProductos(data || []);
       }
       setCargando(false);
     };
     fetchProductos();
-  }, [user]);
+  }, [user, userProfile?.organization_id]);
 
   const filteredProducts = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -402,9 +407,10 @@ export default function Caja() {
     try {
       console.log('Guardando venta en base de datos...');
       
-      // Guardar la venta en la base de datos
+      // Guardar la venta en la base de datos con organization_id
       const ventaData = {
         user_id: user.id,
+        organization_id: userProfile.organization_id,
         total: total,
         metodo_pago: method,
         items: cart,
@@ -490,19 +496,12 @@ export default function Caja() {
         }, 2000);
       }, 1500);
       
-      // Recargar productos para actualizar stock
-      console.log('Recargando productos...');
-      const { data: productosActualizados, error: productosError } = await supabase
-        .from('productos')
-        .select('*')
-        .eq('user_id', user.id);
-      
-      if (productosError) {
-        console.error('Error recargando productos:', productosError);
-      } else {
-        setProductos(productosActualizados || []);
-        console.log('Productos recargados exitosamente');
-      }
+      // Invalidar cache de react-query para actualizar automáticamente
+      console.log('Invalidando cache de productos y ventas...');
+      queryClient.invalidateQueries(['productos', userProfile.organization_id]);
+      queryClient.invalidateQueries(['productos-paginados', userProfile.organization_id]);
+      queryClient.invalidateQueries(['ventas', userProfile.organization_id]);
+      console.log('✅ Cache invalidado - Inventario se actualizará automáticamente');
       
     } catch (error) {
       console.error('Error confirmando venta:', error);

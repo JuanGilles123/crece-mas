@@ -1,0 +1,140 @@
+.invitation-banner {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  max-width: 600px;
+  width: 90%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(102, 126, 234, 0.4);
+  padding: 0;
+  overflow: hidden;
+}
+
+.invitation-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  color: white;
+}
+
+.invitation-banner-icon {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.invitation-banner-text {
+  flex: 1;
+}
+
+.invitation-banner-text h4 {
+  margin: 0 0 4px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+}
+
+.invitation-banner-text p {
+  margin: 0;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.invitation-banner-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.invitation-banner-btn {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.invitation-banner-btn.primary {
+  background: white;
+  color: #667eea;
+}
+
+.invitation-banner-btn.primary:hover {
+  background: #f8f9fa;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.invitation-banner-btn.dismiss {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 10px;
+  width: 36px;
+  height: 36px;
+  justify-content: center;
+}
+
+.invitation-banner-btn.dismiss:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .invitation-banner {
+    top: 10px;
+    width: 95%;
+    max-width: none;
+  }
+
+  .invitation-banner-content {
+    padding: 12px 16px;
+    gap: 12px;
+  }
+
+  .invitation-banner-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .invitation-banner-text h4 {
+    font-size: 14px;
+  }
+
+  .invitation-banner-text p {
+    font-size: 12px;
+  }
+
+  .invitation-banner-btn.primary {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .invitation-banner-btn.dismiss {
+    width: 32px;
+    height: 32px;
+  }
+}

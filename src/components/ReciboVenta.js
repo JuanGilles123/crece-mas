@@ -22,38 +22,20 @@ function formatCOP(value) {
 }
 
 export default function ReciboVenta({ venta, onNuevaVenta, onCerrar }) {
-  const { user } = useAuth();
+  const { user, organization } = useAuth();
   const [generandoPDF, setGenerandoPDF] = useState(false);
-  const [datosEmpresa, setDatosEmpresa] = useState(null);
-  const [cargandoDatos, setCargandoDatos] = useState(true);
   const reciboRef = useRef(null);
 
-  const cargarDatosEmpresa = useCallback(async () => {
-    if (!user) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('datos_empresa')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error cargando datos empresa:', error);
-      } else if (data) {
-        setDatosEmpresa(data);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setCargandoDatos(false);
-    }
-  }, [user]);
-
-  // Cargar datos de la empresa
-  useEffect(() => {
-    cargarDatosEmpresa();
-  }, [cargarDatosEmpresa]);
+  // Usar datos de la organización directamente desde AuthContext
+  const datosEmpresa = organization ? {
+    razon_social: organization.razon_social || organization.name || 'Mi Negocio',
+    nit: organization.nit || '',
+    direccion: organization.direccion || '',
+    telefono: organization.telefono || '',
+    email: organization.email || '',
+    ciudad: organization.ciudad || '',
+    mensaje_factura: organization.mensaje_factura || 'Gracias por su compra'
+  } : null;
 
   if (!venta) return null;
 
@@ -61,12 +43,9 @@ export default function ReciboVenta({ venta, onNuevaVenta, onCerrar }) {
   const total = venta.total || subtotal; // Usar el total que viene de la venta
   const cambio = venta.pagoCliente - total;
 
-  // Validar que los datos de empresa estén configurados
+  // Validar que los datos de organización estén configurados
   const datosCompletos = datosEmpresa && 
-    datosEmpresa.nombre_empresa && 
-    datosEmpresa.direccion && 
-    datosEmpresa.telefono && 
-    datosEmpresa.nit;
+    datosEmpresa.razon_social; // Solo requerimos razon_social como mínimo
 
   const generarPDF = async () => {
     if (!reciboRef.current) return;
@@ -116,11 +95,11 @@ export default function ReciboVenta({ venta, onNuevaVenta, onCerrar }) {
       const hora = new Date().toTimeString().split(' ')[0].replace(/:/g, '-');
       const fileName = `recibo_${venta.id}_${fecha}_${hora}.pdf`;
       
-      // Guardar en Supabase Storage
+      // Guardar en Supabase Storage (usando organization_id)
       const pdfBlob = pdf.output('blob');
       const { data, error } = await supabase.storage
         .from('recibos')
-        .upload(`${user.id}/${fileName}`, pdfBlob, {
+        .upload(`${organization?.id || user.id}/${fileName}`, pdfBlob, {
           contentType: 'application/pdf',
           upsert: true
         });
@@ -385,14 +364,14 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
     }
   };
 
-  // Mostrar mensaje si no hay datos de empresa
-  if (cargandoDatos) {
+  // Mostrar mensaje si no hay organización cargada
+  if (!organization) {
     return (
       <div className="recibo-overlay">
         <div className="recibo-container">
           <div className="recibo-loading">
             <div className="recibo-loading-spinner"></div>
-            <p>Cargando datos de la empresa...</p>
+            <p>Cargando información de la organización...</p>
           </div>
         </div>
       </div>

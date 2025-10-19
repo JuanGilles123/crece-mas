@@ -1,0 +1,472 @@
+/* ============================================
+   INVITACIONES - ESTILOS
+   ============================================ */
+
+.invitaciones-container {
+  min-height: 100vh;
+  background: var(--bg-primary);
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.invitaciones-header {
+  text-align: center;
+  margin-bottom: 3rem;
+  max-width: 600px;
+}
+
+.invitaciones-header h1 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.invitaciones-header p {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* ============================================
+   CONTENIDO DE INVITACIONES
+   ============================================ */
+
+.invitations-content {
+  width: 100%;
+  max-width: 800px;
+}
+
+.invitation-detail-card {
+  background: var(--bg-card);
+  border: 2px solid var(--border-color);
+  border-radius: 24px;
+  padding: 2.5rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.invitation-detail-card.expired {
+  opacity: 0.7;
+  border-color: #ef4444;
+}
+
+.expired-banner {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  margin: -2.5rem -2.5rem 2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 600;
+}
+
+/* ============================================
+   HEADER DE INVITACIÓN
+   ============================================ */
+
+.invitation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 2rem;
+  margin-bottom: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.organization-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+}
+
+.organization-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  flex-shrink: 0;
+}
+
+.organization-info h2 {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0 0 0.25rem 0;
+}
+
+.business-type {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.role-info {
+  text-align: right;
+}
+
+.role-badge-large {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 0.5rem;
+}
+
+.role-description {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* ============================================
+   MENSAJE DE INVITACIÓN
+   ============================================ */
+
+.invitation-message {
+  background: var(--bg-secondary);
+  border-left: 4px solid var(--accent-primary);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  display: flex;
+  gap: 1rem;
+}
+
+.invitation-message svg {
+  color: var(--accent-primary);
+  flex-shrink: 0;
+}
+
+.invitation-message p {
+  margin: 0;
+  color: var(--text-primary);
+  line-height: 1.6;
+  font-style: italic;
+}
+
+/* ============================================
+   PERMISOS
+   ============================================ */
+
+.permissions-section {
+  margin-bottom: 2rem;
+}
+
+.permissions-section h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 1rem 0;
+}
+
+.permissions-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.permissions-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  background: var(--bg-secondary);
+  border-radius: 10px;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+}
+
+.permissions-list li:hover {
+  background: var(--bg-tertiary);
+  transform: translateX(4px);
+}
+
+.permissions-list li svg {
+  color: var(--accent-success);
+  flex-shrink: 0;
+}
+
+/* ============================================
+   METADATA
+   ============================================ */
+
+.invitation-meta {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 2rem;
+  padding: 1.25rem;
+  background: var(--bg-secondary);
+  border-radius: 12px;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.meta-item svg {
+  color: var(--accent-primary);
+}
+
+/* ============================================
+   ACCIONES
+   ============================================ */
+
+.invitation-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.btn {
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-accept {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  flex: 1;
+}
+
+.btn-accept:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+}
+
+.btn-reject {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.btn-reject:hover:not(:disabled) {
+  background: #ef4444;
+  color: white;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  color: white;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(79, 70, 229, 0.3);
+}
+
+.btn-secondary {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.btn-secondary:hover {
+  background: var(--bg-quaternary);
+}
+
+/* ============================================
+   LISTA DE INVITACIONES
+   ============================================ */
+
+.invitations-list-view h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 1.5rem;
+}
+
+.invitation-list-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-bottom: 1rem;
+}
+
+.invitation-list-item:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.list-item-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  flex-shrink: 0;
+}
+
+.list-item-info {
+  flex: 1;
+}
+
+.list-item-info h4 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 0.25rem 0;
+}
+
+.list-item-info p {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* ============================================
+   ESTADOS
+   ============================================ */
+
+.loading-state,
+.empty-invitations,
+.auth-required {
+  text-align: center;
+  padding: 4rem 2rem;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.loading-state svg,
+.empty-invitations svg,
+.auth-required svg {
+  color: var(--text-tertiary);
+  margin-bottom: 1.5rem;
+}
+
+.loading-state h2,
+.empty-invitations h2,
+.auth-required h2 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 1rem 0;
+}
+
+.loading-state p,
+.empty-invitations p,
+.auth-required p {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin: 0 0 2rem 0;
+  line-height: 1.6;
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--border-color);
+  border-top-color: var(--accent-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 1.5rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 768px) {
+  .invitaciones-container {
+    padding: 1rem;
+  }
+
+  .invitaciones-header h1 {
+    font-size: 1.75rem;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .invitation-detail-card {
+    padding: 1.5rem;
+  }
+
+  .expired-banner {
+    margin: -1.5rem -1.5rem 1.5rem;
+  }
+
+  .invitation-header {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .role-info {
+    text-align: left;
+    width: 100%;
+  }
+
+  .invitation-meta {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .invitation-actions {
+    flex-direction: column;
+  }
+
+  .btn-accept,
+  .btn-reject {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .organization-info {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .organization-info h2 {
+    font-size: 1.5rem;
+  }
+}

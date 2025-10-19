@@ -30,7 +30,7 @@ const productoSchema = z.object({
 });
 
 const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const [imagen, setImagen] = useState(null);
   const [subiendo, setSubiendo] = useState(false);
   const [comprimiendo, setComprimiendo] = useState(false);
@@ -102,22 +102,27 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
       const imagenComprimida = await compressProductImage(imagen);
       setComprimiendo(false);
       
-      // Subir imagen comprimida a Supabase Storage
-      const nombreArchivo = `${user.id}/${Date.now()}_${imagenComprimida.name}`;
+      // Subir imagen comprimida a Supabase Storage usando organization_id
+      const organizationId = userProfile?.organization_id;
+      if (!organizationId) {
+        throw new Error('No se encontró organization_id');
+      }
+      const nombreArchivo = `${organizationId}/${Date.now()}_${imagenComprimida.name}`;
       const { error: errorUpload } = await supabase.storage.from('productos').upload(nombreArchivo, imagenComprimida);
       if (errorUpload) throw errorUpload;
       // Guardar la ruta del archivo en lugar de la URL
       // Usaremos signed URLs cuando necesitemos mostrar la imagen
-      console.log('Archivo guardado:', nombreArchivo);
+      console.log('✅ Archivo guardado con organization_id:', nombreArchivo);
       // Usar React Query mutation
       const productoData = {
         user_id: user.id,
+        organization_id: organizationId,
         codigo: data.codigo,
         nombre: data.nombre,
         precio_compra: Number(data.precioCompra.replace(/\D/g, '')),
         precio_venta: Number(data.precioVenta.replace(/\D/g, '')),
         stock: Number(data.stock),
-        imagen: nombreArchivo, // Guardamos la ruta del archivo, no la URL
+        imagen: nombreArchivo, // Guardamos la ruta del archivo con organization_id
       };
 
       agregarProductoMutation.mutate(productoData);

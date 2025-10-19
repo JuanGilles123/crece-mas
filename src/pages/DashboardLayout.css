@@ -84,6 +84,13 @@
   max-height: 60px;
   object-fit: contain;
 }
+
+/* Contenedor del selector de organizaciones */
+.org-switcher-container {
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
 .dashboard-nav {
   display: flex;
   flex-direction: column;
@@ -369,4 +376,63 @@
     max-width: 70px;
     max-height: 35px;
   }
+}
+
+/* ============================================
+   ESTILOS PARA ROLES Y ORGANIZACIÓN
+   ============================================ */
+
+.organization-name {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  text-align: center;
+  margin-top: 0.5rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.user-role-badge {
+  margin-top: auto;
+  padding: 0.75rem;
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  width: 100%;
+  text-align: center;
+}
+
+.role-indicator {
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  display: inline-block;
+  width: 100%;
+}
+
+.role-indicator.role-owner {
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  color: #000;
+}
+
+.role-indicator.role-admin {
+  background: linear-gradient(135deg, #3B82F6, #2563EB);
+  color: white;
+}
+
+.role-indicator.role-inventory_manager {
+  background: linear-gradient(135deg, #10B981, #059669);
+  color: white;
+}
+
+.role-indicator.role-cashier {
+  background: linear-gradient(135deg, #8B5CF6, #7C3AED);
+  color: white;
+}
+
+.role-indicator.role-viewer {
+  background: linear-gradient(135deg, #6B7280, #4B5563);
+  color: white;
 }

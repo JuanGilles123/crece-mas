@@ -6,6 +6,7 @@ import Caja from './Caja';
 import Inventario from './Inventario';
 import ResumenVentas from './ResumenVentas';
 import Perfil from './Perfil';
+import GestionEquipo from './GestionEquipo';
 import styles from './Dashboard.module.css';
 
 const Dashboard = () => (
@@ -17,6 +18,7 @@ const Dashboard = () => (
         <Route path="inventario" element={<Inventario />} />
         <Route path="resumen-ventas" element={<ResumenVentas />} />
         <Route path="perfil" element={<Perfil />} />
+        <Route path="equipo" element={<GestionEquipo />} />
         <Route path="*" element={<Navigate to="/dashboard" />} />
       </Route>
     </Routes>

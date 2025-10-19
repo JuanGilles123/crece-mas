@@ -1053,3 +1053,18 @@
     border-radius: var(--pwa-radius-sm);
   }
 }
+
+/* Spinner para carga infinita */
+.spinner {
+  animation: spin 1s linear infinite;
+  color: var(--accent-primary);
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

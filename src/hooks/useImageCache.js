@@ -62,7 +62,10 @@ export const useImageCache = (imagePath) => {
           .from('productos')
           .createSignedUrl(filePath, 3600);
 
-        if (error) throw error;
+        if (error) {
+          console.warn('⚠️ Imagen no encontrada en storage:', filePath);
+          throw error;
+        }
 
         return data.signedUrl;
       } catch (err) {

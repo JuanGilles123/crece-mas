@@ -3,16 +3,18 @@ import { supabase } from '../supabaseClient';
 import toast from 'react-hot-toast';
 
 // Hook para obtener ventas
-export const useVentas = (userId) => {
+export const useVentas = (organizationId) => {
   return useQuery({
-    queryKey: ['ventas', userId],
+    queryKey: ['ventas', organizationId],
     queryFn: async () => {
-      if (!userId) return [];
+      if (!organizationId) return [];
+      
+      console.log('🔍 Consultando ventas para organization_id:', organizationId);
       
       const { data, error } = await supabase
         .from('ventas')
         .select('*')
-        .eq('user_id', userId)
+        .eq('organization_id', organizationId)
         .order('created_at', { ascending: false })
         .limit(1000);
 
@@ -21,9 +23,10 @@ export const useVentas = (userId) => {
         throw new Error('Error al cargar ventas');
       }
 
+      console.log('✅ Ventas cargadas:', data?.length || 0);
       return data || [];
     },
-    enabled: !!userId,
+    enabled: !!organizationId,
     staleTime: 2 * 60 * 1000, // 2 minutos (más frecuente que productos)
     cacheTime: 5 * 60 * 1000, // 5 minutos
   });
@@ -48,10 +51,10 @@ export const useCrearVenta = () => {
       return data[0];
     },
     onSuccess: (newVenta) => {
-      // Invalidar y refetch ventas
-      queryClient.invalidateQueries(['ventas', newVenta.user_id]);
+      // Invalidar y refetch ventas usando organization_id
+      queryClient.invalidateQueries(['ventas', newVenta.organization_id]);
       // También invalidar productos para actualizar stock
-      queryClient.invalidateQueries(['productos', newVenta.user_id]);
+      queryClient.invalidateQueries(['productos', newVenta.organization_id]);
     },
     onError: (error) => {
       console.error('Error creating venta:', error);
@@ -80,8 +83,8 @@ export const useActualizarStock = () => {
       return data[0];
     },
     onSuccess: (updatedProducto) => {
-      // Invalidar y refetch productos
-      queryClient.invalidateQueries(['productos', updatedProducto.user_id]);
+      // Invalidar y refetch productos usando organization_id
+      queryClient.invalidateQueries(['productos', updatedProducto.organization_id]);
     },
     onError: (error) => {
       console.error('Error updating stock:', error);

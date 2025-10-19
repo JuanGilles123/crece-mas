@@ -2,13 +2,27 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Outlet, NavLink } from 'react-router-dom';
 import { DashboardSkeleton } from '../components/SkeletonLoader';
-import { BarChart3, CreditCard, Package, User, TrendingUp, Menu, X } from 'lucide-react';
+import { BarChart3, CreditCard, Package, User, TrendingUp, Menu, X, Users } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import InvitationBanner from '../components/InvitationBanner';
+import OrganizationSwitcher from '../components/OrganizationSwitcher';
 import './DashboardLayout.css';
 
 const DashboardLayout = () => {
+  const { hasPermission, hasRole, userProfile, organization } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+
+  // DEBUG: Log para verificar datos del usuario
+  useEffect(() => {
+    console.log('🔍 DEBUG DashboardLayout:', {
+      userProfile,
+      organization,
+      hasRoleOwner: hasRole('owner'),
+      hasRoleAdmin: hasRole('admin')
+    });
+  }, [userProfile, organization]);
 
   useEffect(() => {
     // Detectar si es móvil
@@ -41,6 +55,53 @@ const DashboardLayout = () => {
   if (isLoading) {
     return <DashboardSkeleton />;
   }
+
+  // Definir elementos del menú con control de permisos
+  const menuItems = [
+    { 
+      to: "/dashboard", 
+      icon: BarChart3, 
+      label: "Dashboard", 
+      title: "Dashboard", 
+      end: true,
+      visible: hasPermission('dashboard') || true // Dashboard visible para todos
+    },
+    { 
+      to: "/dashboard/caja", 
+      icon: CreditCard, 
+      label: "Caja", 
+      title: "Punto de Venta",
+      visible: hasPermission('sales') || true
+    },
+    { 
+      to: "/dashboard/inventario", 
+      icon: Package, 
+      label: "Inventario", 
+      title: "Gestión de Inventario",
+      visible: hasPermission('inventory') || true
+    },
+    { 
+      to: "/dashboard/resumen-ventas", 
+      icon: TrendingUp, 
+      label: "Resumen", 
+      title: "Resumen de Ventas",
+      visible: hasPermission('reports') || true
+    },
+    { 
+      to: "/dashboard/equipo", 
+      icon: Users, 
+      label: "Equipo", 
+      title: "Gestión de Equipo",
+      visible: hasRole('owner', 'admin') // Solo owner y admin
+    },
+    { 
+      to: "/dashboard/perfil", 
+      icon: User, 
+      label: "Perfil", 
+      title: "Perfil de Usuario",
+      visible: true // Siempre visible
+    }
+  ].filter(item => item.visible);
 
   const sidebarVariants = {
     hidden: { x: -300, opacity: 0 },
@@ -83,6 +144,9 @@ const DashboardLayout = () => {
 
   return (
     <div className="dashboard-layout">
+      {/* Banner de invitaciones pendientes */}
+      <InvitationBanner />
+      
       {/* Botón de toggle para sidebar */}
       <motion.button
         className="sidebar-toggle"
@@ -109,15 +173,18 @@ const DashboardLayout = () => {
           transition={{ delay: 0.2, duration: 0.3 }}
         >
           <img src="/logo.png" alt="Logo Crece" className="dashboard-logo-img" />
+          {organization && (
+            <div className="organization-name">{organization.name}</div>
+          )}
         </motion.div>
+
+        {/* Selector de organizaciones */}
+        <div className="org-switcher-container">
+          <OrganizationSwitcher />
+        </div>
+
         <nav className="dashboard-nav">
-          {[
-            { to: "/dashboard", icon: BarChart3, label: "Dashboard", title: "Dashboard", end: true },
-            { to: "/dashboard/caja", icon: CreditCard, label: "Caja", title: "Punto de Venta" },
-            { to: "/dashboard/inventario", icon: Package, label: "Inventario", title: "Gestión de Inventario" },
-            { to: "/dashboard/resumen-ventas", icon: TrendingUp, label: "Resumen", title: "Resumen de Ventas" },
-            { to: "/dashboard/perfil", icon: User, label: "Perfil", title: "Perfil de Usuario" }
-          ].map((item, index) => {
+          {menuItems.map((item, index) => {
             const Icon = item.icon;
             return (
               <motion.div
@@ -139,6 +206,24 @@ const DashboardLayout = () => {
             );
           })}
         </nav>
+
+        {/* Mostrar rol del usuario */}
+        {userProfile && (
+          <motion.div 
+            className="user-role-badge"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8 }}
+          >
+            <span className={`role-indicator role-${userProfile.role}`}>
+              {userProfile.role === 'owner' && '👑 Propietario'}
+              {userProfile.role === 'admin' && '🛡️ Administrador'}
+              {userProfile.role === 'inventory_manager' && '📦 Encargado'}
+              {userProfile.role === 'cashier' && '💰 Cajero'}
+              {userProfile.role === 'viewer' && '👁️ Visualizador'}
+            </span>
+          </motion.div>
+        )}
       </motion.aside>
       
       {/* Overlay para móvil */}

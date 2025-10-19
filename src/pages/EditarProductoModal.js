@@ -19,7 +19,7 @@ const deleteImageFromStorage = async (imagePath) => {
 };
 
 const EditarProductoModal = ({ open, onClose, producto, onProductoEditado }) => {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const [codigo, setCodigo] = useState(producto?.codigo || '');
   const [nombre, setNombre] = useState(producto?.nombre || '');
   const [precioCompra, setPrecioCompra] = useState(producto?.precio_compra?.toString() || '');
@@ -90,7 +90,13 @@ const EditarProductoModal = ({ open, onClose, producto, onProductoEditado }) => 
         console.log('Comprimiendo nueva imagen antes de subir...');
         const imagenComprimida = await compressProductImage(imagen);
         setComprimiendo(false);
-        const nombreArchivo = `${user.id}/${Date.now()}_${imagenComprimida.name}`;
+        
+        // Usar organization_id en vez de user.id
+        const organizationId = userProfile?.organization_id || producto?.organization_id;
+        if (!organizationId) {
+          throw new Error('No se encontró organization_id');
+        }
+        const nombreArchivo = `${organizationId}/${Date.now()}_${imagenComprimida.name}`;
         const { error: errorUpload } = await supabase.storage.from('productos').upload(nombreArchivo, imagenComprimida);
         if (errorUpload) throw errorUpload;
         
@@ -101,6 +107,7 @@ const EditarProductoModal = ({ open, onClose, producto, onProductoEditado }) => 
         }
         
         imagenPath = nombreArchivo;
+        console.log('✅ Nueva imagen guardada con organization_id:', nombreArchivo);
       }
 
       // Actualizar producto en la base de datos

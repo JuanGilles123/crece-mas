@@ -11,6 +11,8 @@ import Dashboard from './pages/Dashboard';
 import RestablecerContrasena from './pages/ResetPassword';
 import Confirmacion from './pages/Confirmacion';
 import ConfirmacionExitosa from './components/ConfirmacionExitosa';
+import Invitaciones from './pages/Invitaciones';
+import InvitePublic from './pages/InvitePublic';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -48,6 +50,13 @@ function App() {
             } />
             <Route path="/confirmar" element={<Confirmacion />} />
             <Route path="/confirmacion-exitosa" element={<ConfirmacionExitosa />} />
+            {/* Ruta pública para invitaciones - NO requiere autenticación */}
+            <Route path="/invite/:token" element={<InvitePublic />} />
+            <Route path="/invitaciones" element={
+              <ProtectedRoute>
+                <Invitaciones />
+              </ProtectedRoute>
+            } />
           </Routes>
         </Router>
         {/* Configuración de React Hot Toast */}

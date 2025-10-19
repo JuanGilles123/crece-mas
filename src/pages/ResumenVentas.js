@@ -43,7 +43,7 @@ ChartJS.register(
 );
 
 const ResumenVentas = () => {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const [cargando, setCargando] = useState(true);
   const [ventas, setVentas] = useState([]);
   const [productos, setProductos] = useState([]);
@@ -58,35 +58,38 @@ const ResumenVentas = () => {
 
   // Cargar datos de ventas
   const cargarVentas = useCallback(async () => {
-    if (!user) return;
+    if (!user || !userProfile?.organization_id) return;
     setCargando(true);
+    
+    console.log('🔍 Cargando ventas para organization_id:', userProfile.organization_id);
     
     try {
       const { data, error } = await supabase
         .from('ventas')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('organization_id', userProfile.organization_id)
         .order('created_at', { ascending: false })
         .limit(1000);
 
       if (!error) {
+        console.log('✅ Ventas cargadas:', data?.length || 0);
         setVentas(data || []);
       }
     } catch (error) {
       console.error('Error cargando ventas:', error);
     }
     setCargando(false);
-  }, [user]);
+  }, [user, userProfile?.organization_id]);
 
   // Cargar productos para análisis
   const cargarProductos = useCallback(async () => {
-    if (!user) return;
+    if (!user || !userProfile?.organization_id) return;
     
     try {
       const { data, error } = await supabase
         .from('productos')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('organization_id', userProfile.organization_id)
         .limit(1000);
 
       if (!error) {
@@ -95,7 +98,7 @@ const ResumenVentas = () => {
     } catch (error) {
       console.error('Error cargando productos:', error);
     }
-  }, [user]);
+  }, [user, userProfile?.organization_id]);
 
   useEffect(() => {
     cargarVentas();

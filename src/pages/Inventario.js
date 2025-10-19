@@ -1,6 +1,6 @@
 
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './Inventario.css';
 import AgregarProductoModal from './AgregarProductoModal';
@@ -11,8 +11,8 @@ import { ProductCardSkeleton, ProductListSkeleton, InventoryHeaderSkeleton } fro
 import LottieLoader from '../components/LottieLoader';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
-import { Search, List, Grid3X3 } from 'lucide-react';
-import { useProductos, useEliminarProducto } from '../hooks/useProductos';
+import { Search, List, Grid3X3, Loader } from 'lucide-react';
+import { useProductosPaginados, useEliminarProducto } from '../hooks/useProductos';
 import toast from 'react-hot-toast';
 
 // Función para eliminar imagen del storage
@@ -37,19 +37,60 @@ const productosIniciales = [];
 
 
 const Inventario = () => {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const [modalOpen, setModalOpen] = useState(false);
   const [editarModalOpen, setEditarModalOpen] = useState(false);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
   const [modoLista, setModoLista] = useState(false);
   const [query, setQuery] = useState('');
-  // Suponiendo que el usuario tiene moneda en user.user_metadata.moneda
   const moneda = user?.user_metadata?.moneda || 'COP';
+  
+  // Referencias para scroll infinito
+  const observerRef = useRef(null);
+  const loadMoreRef = useRef(null);
 
-  // React Query hooks
-  const { data: productos = [], isLoading: cargando, error } = useProductos(user?.id);
+  // React Query hooks con paginación - 20 productos por página
+  const { 
+    data, 
+    isLoading: cargando, 
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage 
+  } = useProductosPaginados(userProfile?.organization_id, 20);
+  
   const eliminarProductoMutation = useEliminarProducto();
+
+  // Combinar todas las páginas en un solo array
+  const productos = data?.pages?.flatMap(page => page.data) || [];
+
+  // Implementar IntersectionObserver para scroll infinito
+  useEffect(() => {
+    if (cargando || !hasNextPage) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          console.log('🔄 Cargando más productos...');
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (loadMoreRef.current) {
+      observer.observe(loadMoreRef.current);
+    }
+
+    observerRef.current = observer;
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+    };
+  }, [cargando, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // Mostrar error si hay problemas cargando productos
   if (error) {
@@ -85,7 +126,7 @@ const Inventario = () => {
 
   // Eliminar producto
   const handleEliminarProducto = async (producto) => {
-    if (!user) return;
+    if (!user || !userProfile) return;
     
     const confirmar = window.confirm(`¿Estás seguro de que quieres eliminar "${producto.nombre}"?`);
     if (!confirmar) return;
@@ -100,10 +141,10 @@ const Inventario = () => {
         }
       }
 
-      // Usar React Query mutation para eliminar
+      // Usar React Query mutation para eliminar con organization_id
       eliminarProductoMutation.mutate({ 
         id: producto.id, 
-        userId: user.id 
+        organizationId: userProfile.organization_id 
       });
     } catch (error) {
       console.error('Error:', error);
@@ -264,6 +305,43 @@ const Inventario = () => {
             ))}
           </div>
         )}
+        
+        {/* Infinite Scroll Trigger */}
+        {!query && hasNextPage && (
+          <div 
+            ref={loadMoreRef} 
+            style={{ 
+              padding: '2rem', 
+              textAlign: 'center',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '1rem'
+            }}
+          >
+            {isFetchingNextPage ? (
+              <>
+                <Loader className="spinner" size={32} />
+                <p style={{ color: 'var(--text-secondary)' }}>Cargando más productos...</p>
+              </>
+            ) : (
+              <button 
+                onClick={() => fetchNextPage()}
+                className="inventario-btn inventario-btn-primary"
+                style={{ maxWidth: '300px' }}
+              >
+                Cargar más productos
+              </button>
+            )}
+          </div>
+        )}
+        
+        {!cargando && !hasNextPage && productos.length > 0 && (
+          <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+            ✅ Todos los productos cargados ({productos.length})
+          </div>
+        )}
+        
         {/* Panel lateral eliminado por solicitud */}
       </div>
       <AgregarProductoModal open={modalOpen} onClose={() => setModalOpen(false)} onProductoAgregado={handleAgregarProducto} moneda={moneda} />
