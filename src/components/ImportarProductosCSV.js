@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import * as XLSX from 'xlsx';
 import { compressProductImage } from '../utils/imageCompression';
+import { ClipboardList } from 'lucide-react';
 import './ImportarProductosCSV.css';
 
 const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
@@ -591,7 +592,7 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
 
         <div className="importar-csv-body">
           <div className="importar-csv-section">
-            <h3>📋 Plantillas de Importación</h3>
+            <h3><ClipboardList size={20} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.5rem' }} /> Plantillas de Importación</h3>
             <p>Descarga la plantilla oficial para importar tus productos:</p>
             <div className="importar-csv-plantilla-container">
               <button 

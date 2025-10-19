@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Outlet, NavLink } from 'react-router-dom';
 import { DashboardSkeleton } from '../components/SkeletonLoader';
-import { BarChart3, CreditCard, Package, User, TrendingUp, Menu, X, Users } from 'lucide-react';
+import { BarChart3, CreditCard, Package, User, TrendingUp, Menu, X, Users, Zap, Crown, Shield, Package2, Wallet, Eye } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import InvitationBanner from '../components/InvitationBanner';
 import OrganizationSwitcher from '../components/OrganizationSwitcher';
@@ -71,6 +71,13 @@ const DashboardLayout = () => {
       icon: CreditCard, 
       label: "Caja", 
       title: "Punto de Venta",
+      visible: hasPermission('sales') || true
+    },
+    { 
+      to: "/dashboard/venta-rapida", 
+      icon: Zap, 
+      label: "Venta Rápida", 
+      title: "Venta sin Inventario",
       visible: hasPermission('sales') || true
     },
     { 
@@ -172,10 +179,16 @@ const DashboardLayout = () => {
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.2, duration: 0.3 }}
         >
-          <img src="/logo.png" alt="Logo Crece" className="dashboard-logo-img" />
-          {organization && (
-            <div className="organization-name">{organization.name}</div>
-          )}
+          <img 
+            src="/logo-crece.svg" 
+            alt="Crece+" 
+            className="dashboard-logo-img"
+            onError={(e) => {
+              console.error('Error cargando logo SVG');
+              e.target.style.display = 'none';
+              e.target.parentElement.innerHTML = '<h2 style="color: white; font-size: 1.5rem; margin: 0;">Crece+</h2>';
+            }}
+          />
         </motion.div>
 
         {/* Selector de organizaciones */}
@@ -216,11 +229,11 @@ const DashboardLayout = () => {
             transition={{ delay: 0.8 }}
           >
             <span className={`role-indicator role-${userProfile.role}`}>
-              {userProfile.role === 'owner' && '👑 Propietario'}
-              {userProfile.role === 'admin' && '🛡️ Administrador'}
-              {userProfile.role === 'inventory_manager' && '📦 Encargado'}
-              {userProfile.role === 'cashier' && '💰 Cajero'}
-              {userProfile.role === 'viewer' && '👁️ Visualizador'}
+              {userProfile.role === 'owner' && <><Crown size={14} /> Propietario</>}
+              {userProfile.role === 'admin' && <><Shield size={14} /> Administrador</>}
+              {userProfile.role === 'inventory_manager' && <><Package2 size={14} /> Encargado</>}
+              {userProfile.role === 'cashier' && <><Wallet size={14} /> Cajero</>}
+              {userProfile.role === 'viewer' && <><Eye size={14} /> Visualizador</>}
             </span>
           </motion.div>
         )}

@@ -11,9 +11,35 @@ import { ProductCardSkeleton, ProductListSkeleton, InventoryHeaderSkeleton } fro
 import LottieLoader from '../components/LottieLoader';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
-import { Search, List, Grid3X3, Loader } from 'lucide-react';
+import { Search, List, Grid3X3, Loader, Calendar, AlertTriangle } from 'lucide-react';
 import { useProductosPaginados, useEliminarProducto } from '../hooks/useProductos';
 import toast from 'react-hot-toast';
+
+// Función para calcular estado de vencimiento
+const getEstadoVencimiento = (fechaVencimiento) => {
+  if (!fechaVencimiento) return null;
+  
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  
+  const fechaVenc = new Date(fechaVencimiento);
+  fechaVenc.setHours(0, 0, 0, 0);
+  
+  const diffTime = fechaVenc - hoy;
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays < 0) {
+    return { estado: 'vencido', dias: Math.abs(diffDays), texto: `Vencido hace ${Math.abs(diffDays)} día${Math.abs(diffDays) !== 1 ? 's' : ''}` };
+  } else if (diffDays === 0) {
+    return { estado: 'hoy', dias: 0, texto: 'Vence hoy' };
+  } else if (diffDays <= 3) {
+    return { estado: 'critico', dias: diffDays, texto: `Vence en: ${diffDays} día${diffDays !== 1 ? 's' : ''}` };
+  } else if (diffDays <= 7) {
+    return { estado: 'proximo', dias: diffDays, texto: `Vence en: ${diffDays} días` };
+  } else {
+    return { estado: 'normal', dias: diffDays, texto: `Vence en: ${diffDays} días` };
+  }
+};
 
 // Función para eliminar imagen del storage
 const deleteImageFromStorage = async (imagePath) => {
@@ -226,6 +252,21 @@ const Inventario = () => {
                     <span style={{color:'var(--accent-success)',fontWeight:700}}>Venta: {prod.precio_venta?.toLocaleString('es-CO')}</span>
                   </div>
                   <div className="inventario-stock">Stock: {prod.stock}</div>
+                  
+                  {/* Badge de Vencimiento en Lista */}
+                  {prod.fecha_vencimiento && (() => {
+                    const estadoVenc = getEstadoVencimiento(prod.fecha_vencimiento);
+                    return estadoVenc ? (
+                      <div className={`badge-vencimiento badge-${estadoVenc.estado}`} style={{ marginTop: '0.5rem', width: 'fit-content' }}>
+                        {estadoVenc.estado === 'vencido' ? (
+                          <AlertTriangle size={14} />
+                        ) : (
+                          <Calendar size={14} />
+                        )}
+                        <span>{estadoVenc.texto}</span>
+                      </div>
+                    ) : null;
+                  })()}
                 </div>
                 <div className="inventario-lista-actions">
                   <button 
@@ -286,6 +327,21 @@ const Inventario = () => {
                     <span style={{color:'var(--accent-success)',fontWeight:700}}>Venta: {prod.precio_venta?.toLocaleString('es-CO')}</span>
                   </div>
                   <div className="inventario-stock">Stock: {prod.stock}</div>
+                  
+                  {/* Badge de Vencimiento */}
+                  {prod.fecha_vencimiento && (() => {
+                    const estadoVenc = getEstadoVencimiento(prod.fecha_vencimiento);
+                    return estadoVenc ? (
+                      <div className={`badge-vencimiento badge-${estadoVenc.estado}`} style={{ marginTop: '0.5rem', marginLeft: 'auto', marginRight: 'auto' }}>
+                        {estadoVenc.estado === 'vencido' ? (
+                          <AlertTriangle size={14} />
+                        ) : (
+                          <Calendar size={14} />
+                        )}
+                        <span>{estadoVenc.texto}</span>
+                      </div>
+                    ) : null;
+                  })()}
                 </div>
                 <div className="inventario-card-actions">
                   <button 

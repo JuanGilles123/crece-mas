@@ -1,0 +1,401 @@
+.venta-rapida {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0;
+  background: transparent;
+  min-height: auto;
+}
+
+.venta-rapida-header {
+  background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+  border-radius: 12px;
+  padding: 1.5rem 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.header-icon {
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  color: white;
+  width: 60px;
+  height: 60px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.header-text h1 {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #ffffff !important;
+  text-shadow: 0 3px 8px rgba(0, 0, 0, 0.6);
+}
+
+.header-text .subtitle {
+  margin: 0.25rem 0 0 0;
+  color: #ffffff !important;
+  font-size: 1.05rem;
+  font-weight: 600;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+  letter-spacing: 0.3px;
+  opacity: 1 !important;
+}
+
+.venta-rapida-container {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Sección de Monto */
+.monto-section {
+  margin-bottom: 2rem;
+}
+
+.monto-section label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  color: #2d3748;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+}
+
+.monto-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.monto-simbolo {
+  position: absolute;
+  left: 1.5rem;
+  font-size: 3rem;
+  font-weight: 700;
+  color: #a0aec0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.monto-input {
+  width: 100%;
+  padding: 1.5rem 1.5rem 1.5rem 4rem;
+  border: 3px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 3rem;
+  font-weight: 700;
+  text-align: left;
+  transition: all 0.3s ease;
+  background: #f7fafc;
+  color: #2d3748;
+}
+
+.monto-input:focus {
+  outline: none;
+  border-color: #8B5CF6;
+  background: white;
+  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1);
+}
+
+.monto-input::placeholder {
+  color: #cbd5e0;
+}
+
+.monto-preview {
+  margin-top: 0.75rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+  color: white;
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-align: center;
+  border-radius: 10px;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Montos Rápidos */
+.montos-rapidos {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: #f7fafc;
+  border-radius: 12px;
+  border: 2px dashed #cbd5e0;
+}
+
+.montos-label {
+  margin: 0 0 1rem 0;
+  font-weight: 600;
+  color: #4a5568;
+  font-size: 0.95rem;
+}
+
+.opcional {
+  color: #a0aec0;
+  font-weight: 400;
+  font-size: 0.85rem;
+  margin-left: 0.5rem;
+}
+
+.montos-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+.monto-btn {
+  padding: 1rem;
+  border: 2px solid #e2e8f0;
+  background: white;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #2d3748;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.monto-btn:hover {
+  border-color: #8B5CF6;
+  background: #f5f3ff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
+}
+
+.monto-btn.active {
+  border-color: #8B5CF6;
+  background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+  color: white;
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(139, 92, 246, 0.3);
+}
+
+/* Secciones del Formulario */
+.form-section {
+  margin-bottom: 2rem;
+}
+
+.form-section label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  color: #2d3748;
+  margin-bottom: 0.75rem;
+  font-size: 1.1rem;
+}
+
+.form-section textarea {
+  width: 100%;
+  padding: 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-family: inherit;
+  transition: all 0.3s ease;
+  resize: vertical;
+  background: #f7fafc;
+}
+
+.form-section textarea:focus {
+  outline: none;
+  border-color: #8B5CF6;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+.char-count {
+  display: block;
+  margin-top: 0.5rem;
+  text-align: right;
+  color: #718096;
+  font-size: 0.875rem;
+}
+
+/* Métodos de Pago */
+.metodos-pago {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.metodo-btn {
+  padding: 1.25rem;
+  border: 2px solid #e2e8f0;
+  background: white;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2d3748;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.metodo-btn:hover {
+  border-color: #8B5CF6;
+  background: #f5f3ff;
+  transform: translateY(-2px);
+}
+
+.metodo-btn.active {
+  border-color: #8B5CF6;
+  background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+  color: white;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+/* Botones de Acción */
+.acciones {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.btn-cancelar,
+.btn-registrar {
+  padding: 1.25rem 2rem;
+  border: none;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  transition: all 0.3s ease;
+}
+
+.btn-cancelar {
+  background: #e2e8f0;
+  color: #4a5568;
+}
+
+.btn-cancelar:hover:not(:disabled) {
+  background: #cbd5e0;
+  transform: translateY(-2px);
+}
+
+.btn-registrar {
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);
+}
+
+.btn-registrar:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(72, 187, 120, 0.4);
+}
+
+.btn-registrar:disabled,
+.btn-cancelar:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Info Box */
+.info-box {
+  padding: 1.25rem;
+  background: linear-gradient(135deg, #e0f2fe 0%, #dbeafe 100%);
+  border-left: 4px solid #3b82f6;
+  border-radius: 10px;
+  color: #1e40af;
+}
+
+.info-box p {
+  margin: 0;
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+.info-box strong {
+  color: #1e3a8a;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .venta-rapida {
+    padding: 1rem;
+  }
+
+  .venta-rapida-header {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .header-icon {
+    width: 70px;
+    height: 70px;
+  }
+
+  .header-text h1 {
+    font-size: 1.75rem;
+  }
+
+  .venta-rapida-container {
+    padding: 1.5rem;
+  }
+
+  .monto-input {
+    font-size: 2.5rem;
+    padding: 1.25rem 1.25rem 1.25rem 3.5rem;
+  }
+
+  .monto-simbolo {
+    font-size: 2.5rem;
+    left: 1.25rem;
+  }
+
+  .montos-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .metodos-pago {
+    grid-template-columns: 1fr;
+  }
+
+  .acciones {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .monto-input {
+    font-size: 2rem;
+  }
+
+  .monto-simbolo {
+    font-size: 2rem;
+  }
+
+  .montos-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -19,6 +19,7 @@ const productoSchema = z.object({
   precioCompra: z.string().min(1, 'El precio de compra es requerido'),
   precioVenta: z.string().min(1, 'El precio de venta es requerido'),
   stock: z.string().min(1, 'El stock es requerido'),
+  fecha_vencimiento: z.string().optional(),
   imagen: z.any().optional()
 }).refine((data) => {
   const precioCompra = parseFloat(data.precioCompra.replace(/[^\d]/g, ''));
@@ -122,6 +123,7 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
         precio_compra: Number(data.precioCompra.replace(/\D/g, '')),
         precio_venta: Number(data.precioVenta.replace(/\D/g, '')),
         stock: Number(data.stock),
+        fecha_vencimiento: data.fecha_vencimiento || null,
         imagen: nombreArchivo, // Guardamos la ruta del archivo con organization_id
       };
 
@@ -208,6 +210,18 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
             placeholder="Cantidad en stock"
           />
           {errors.stock && <span className="error-message">{errors.stock.message}</span>}
+          
+          <label>Fecha de Vencimiento <span style={{ color: '#6b7280', fontWeight: 400 }}>(Opcional)</span></label>
+          <input 
+            {...register('fecha_vencimiento')} 
+            type="date"
+            className="input-form" 
+            placeholder="Seleccionar fecha"
+            min={new Date().toISOString().split('T')[0]}
+          />
+          <span style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '-0.5rem' }}>
+            Solo para productos perecederos o con fecha de caducidad
+          </span>
           
           <label>Imagen</label>
           <div className="input-upload-wrapper input-upload-centro">

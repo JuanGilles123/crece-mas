@@ -1,0 +1,344 @@
+/* Configuración de Facturación - Estilos */
+
+.config-facturacion {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+  background: var(--bg-card);
+  border-radius: 1rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.config-facturacion-header {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 2px solid var(--border-primary);
+}
+
+.config-facturacion-icon {
+  width: 3rem;
+  height: 3rem;
+  color: var(--accent-success);
+  margin: 0 auto 1rem;
+}
+
+.config-facturacion-title {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 0.5rem 0;
+}
+
+.config-facturacion-subtitle {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.config-mensaje {
+  padding: 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1.5rem;
+  font-weight: 500;
+}
+
+.config-mensaje-success {
+  background: var(--bg-success);
+  color: var(--accent-success);
+  border: 1px solid var(--accent-success);
+}
+
+.config-mensaje-error {
+  background: var(--bg-error);
+  color: var(--accent-error);
+  border: 1px solid var(--accent-error);
+}
+
+.config-facturacion-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.config-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.config-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.config-form-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+}
+
+.config-input-icon {
+  width: 1rem;
+  height: 1rem;
+  color: var(--text-secondary);
+}
+
+.config-form-input {
+  padding: 0.75rem;
+  border: 2px solid var(--border-primary);
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  transition: all 0.2s;
+  background: var(--bg-card);
+}
+
+.config-form-input:focus {
+  outline: none;
+  border-color: var(--accent-success);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.config-form-input::placeholder {
+  color: var(--text-placeholder);
+}
+
+/* Logo Section */
+.config-logo-group {
+  background: var(--bg-secondary);
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  border: 2px dashed var(--border-primary);
+}
+
+.config-logo-container {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.config-logo-preview {
+  width: 4rem;
+  height: 4rem;
+  object-fit: contain;
+  border-radius: 0.5rem;
+  border: 2px solid var(--border-primary);
+  background: var(--bg-card);
+  padding: 0.5rem;
+}
+
+.config-logo-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.config-logo-input {
+  display: none;
+}
+
+.config-logo-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--accent-success);
+  color: var(--text-inverse);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+  border: none;
+  font-size: 0.875rem;
+}
+
+.config-logo-button:hover {
+  background: var(--accent-success);
+  transform: translateY(-1px);
+}
+
+.config-logo-button:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.config-logo-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.config-logo-help {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* Actions */
+.config-form-actions {
+  display: flex;
+  justify-content: center;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-primary);
+}
+
+.config-save-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 2rem;
+  background: var(--accent-success);
+  color: var(--text-inverse);
+  border: none;
+  border-radius: 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 200px;
+  justify-content: center;
+}
+
+.config-save-button:hover:not(:disabled) {
+  background: var(--accent-success);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.config-save-button:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.config-save-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* Loading States */
+.config-facturacion-loading {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.config-facturacion-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.config-skeleton-header {
+  height: 120px;
+  background: linear-gradient(90deg, var(--bg-tertiary) 30%, var(--bg-secondary) 50%, var(--bg-tertiary) 70%);
+  background-size: 300px 100%;
+  animation: shimmer 3s ease-in-out infinite;
+  border-radius: 1rem;
+}
+
+.config-skeleton-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.config-skeleton-input {
+  height: 60px;
+  background: linear-gradient(90deg, var(--bg-tertiary) 30%, var(--bg-secondary) 50%, var(--bg-tertiary) 70%);
+  background-size: 300px 100%;
+  animation: shimmer 3s ease-in-out infinite;
+  border-radius: 0.5rem;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -300px 0;
+  }
+  100% {
+    background-position: calc(300px + 100%) 0;
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .config-facturacion {
+    padding: 1rem;
+    margin: 1rem;
+  }
+  
+  .config-form-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .config-logo-container {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  
+  .config-facturacion-title {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .config-facturacion {
+    padding: 0.75rem;
+    margin: 0.5rem;
+  }
+  
+  .config-facturacion-title {
+    font-size: 1.25rem;
+  }
+  
+  .config-save-button {
+    padding: 0.875rem 1.5rem;
+    font-size: 0.9rem;
+  }
+}
+
+/* Animaciones */
+.config-facturacion {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Estados de validación */
+.config-form-input:invalid {
+  border-color: var(--accent-error);
+}
+
+.config-form-input:valid {
+  border-color: var(--accent-success);
+}
+
+/* Mejoras de accesibilidad */
+.config-form-input:focus,
+.config-logo-button:focus,
+.config-save-button:focus {
+  outline: 2px solid var(--accent-success);
+  outline-offset: 2px;
+}
+
+/* Transiciones suaves */
+.config-form-input,
+.config-logo-button,
+.config-save-button {
+  transition: all 0.2s ease-in-out;
+}

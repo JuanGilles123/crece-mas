@@ -266,6 +266,9 @@ export function AuthProvider({ children }) {
     return roles.includes(userProfile.role);
   };
 
+  // Helper específico para verificar si es owner
+  const hasRoleOwner = userProfile?.role === 'owner';
+
   const value = {
     user,
     loading,
@@ -274,7 +277,8 @@ export function AuthProvider({ children }) {
     permissions,
     refreshProfile,
     hasPermission,
-    hasRole
+    hasRole,
+    hasRoleOwner
   };
 
   return (
