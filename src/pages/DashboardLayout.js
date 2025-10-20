@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Outlet, NavLink } from 'react-router-dom';
 import { DashboardSkeleton } from '../components/SkeletonLoader';
-import { BarChart3, CreditCard, Package, User, TrendingUp, Menu, X, Users, Zap, Crown, Shield, Package2, Wallet, Eye } from 'lucide-react';
+import { BarChart3, CreditCard, Package, User, TrendingUp, Menu, X, Users, Zap, Crown, Shield, Package2, Wallet, Eye, Calculator } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import InvitationBanner from '../components/InvitationBanner';
 import OrganizationSwitcher from '../components/OrganizationSwitcher';
 import './DashboardLayout.css';
 
@@ -81,6 +80,13 @@ const DashboardLayout = () => {
       visible: hasPermission('sales') || true
     },
     { 
+      to: "/dashboard/cierre-caja", 
+      icon: Calculator, 
+      label: "Cierre de Caja", 
+      title: "Cierre de Caja Diario",
+      visible: hasPermission('sales') || true
+    },
+    { 
       to: "/dashboard/inventario", 
       icon: Package, 
       label: "Inventario", 
@@ -151,9 +157,6 @@ const DashboardLayout = () => {
 
   return (
     <div className="dashboard-layout">
-      {/* Banner de invitaciones pendientes */}
-      <InvitationBanner />
-      
       {/* Botón de toggle para sidebar */}
       <motion.button
         className="sidebar-toggle"
@@ -206,14 +209,16 @@ const DashboardLayout = () => {
                 variants={navItemVariants}
                 initial="hidden"
                 animate="visible"
+                className="nav-item-wrapper"
               >
                 <NavLink 
                   to={item.to} 
                   end={item.end}
                   className={({ isActive }) => isActive ? 'active' : ''} 
-                  title={item.title}
+                  data-tooltip={item.label}
                 >
-                  <Icon size={20} /> {item.label}
+                  <Icon size={22} />
+                  <span className="nav-label">{item.label}</span>
                 </NavLink>
               </motion.div>
             );
@@ -228,13 +233,38 @@ const DashboardLayout = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.8 }}
           >
-            <span className={`role-indicator role-${userProfile.role}`}>
-              {userProfile.role === 'owner' && <><Crown size={14} /> Propietario</>}
-              {userProfile.role === 'admin' && <><Shield size={14} /> Administrador</>}
-              {userProfile.role === 'inventory_manager' && <><Package2 size={14} /> Encargado</>}
-              {userProfile.role === 'cashier' && <><Wallet size={14} /> Cajero</>}
-              {userProfile.role === 'viewer' && <><Eye size={14} /> Visualizador</>}
-            </span>
+            <div className={`role-indicator role-${userProfile.role}`}>
+              {userProfile.role === 'owner' && (
+                <>
+                  <Crown size={14} />
+                  <span>Propietario</span>
+                </>
+              )}
+              {userProfile.role === 'admin' && (
+                <>
+                  <Shield size={14} />
+                  <span>Administrador</span>
+                </>
+              )}
+              {userProfile.role === 'inventory_manager' && (
+                <>
+                  <Package2 size={14} />
+                  <span>Encargado</span>
+                </>
+              )}
+              {userProfile.role === 'cashier' && (
+                <>
+                  <Wallet size={14} />
+                  <span>Cajero</span>
+                </>
+              )}
+              {userProfile.role === 'viewer' && (
+                <>
+                  <Eye size={14} />
+                  <span>Visualizador</span>
+                </>
+              )}
+            </div>
           </motion.div>
         )}
       </motion.aside>
@@ -253,9 +283,6 @@ const DashboardLayout = () => {
         initial="hidden"
         animate="visible"
       >
-        <header className="dashboard-header">
-          {/* Aquí puedes agregar el buscador, notificaciones, perfil, etc. */}
-        </header>
         <motion.section 
           className="dashboard-content"
           initial={{ opacity: 0, y: 20 }}

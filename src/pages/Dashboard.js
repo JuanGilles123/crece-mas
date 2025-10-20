@@ -8,6 +8,7 @@ import ResumenVentas from './ResumenVentas';
 import Perfil from './Perfil';
 import GestionEquipo from './GestionEquipo';
 import VentaRapida from './VentaRapida';
+import CierreCaja from './CierreCaja';
 import styles from './Dashboard.module.css';
 
 const Dashboard = () => (
@@ -17,6 +18,7 @@ const Dashboard = () => (
         <Route index element={<DashboardHome />} />
         <Route path="caja" element={<Caja />} />
         <Route path="venta-rapida" element={<VentaRapida />} />
+        <Route path="cierre-caja" element={<CierreCaja />} />
         <Route path="inventario" element={<Inventario />} />
         <Route path="resumen-ventas" element={<ResumenVentas />} />
         <Route path="perfil" element={<Perfil />} />
