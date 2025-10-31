@@ -109,7 +109,6 @@ export default function ReciboVenta({ venta, onNuevaVenta, onCerrar }) {
         alert('Error al guardar el PDF. Se descargará localmente.');
         pdf.save(fileName);
       } else {
-        console.log('PDF guardado en storage:', data);
         alert(`✅ PDF generado exitosamente: ${fileName}`);
         // También descargar localmente
         pdf.save(fileName);

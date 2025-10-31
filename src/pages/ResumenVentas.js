@@ -60,9 +60,6 @@ const ResumenVentas = () => {
   const cargarVentas = useCallback(async () => {
     if (!user || !userProfile?.organization_id) return;
     setCargando(true);
-    
-    console.log('🔍 Cargando ventas para organization_id:', userProfile.organization_id);
-    
     try {
       const { data, error } = await supabase
         .from('ventas')
@@ -72,7 +69,6 @@ const ResumenVentas = () => {
         .limit(1000);
 
       if (!error) {
-        console.log('✅ Ventas cargadas:', data?.length || 0);
         setVentas(data || []);
       }
     } catch (error) {
@@ -208,12 +204,8 @@ const ResumenVentas = () => {
   const obtenerHistorialVentas = () => {
     const ventasFiltradas = filtrarVentas();
     const historialDetallado = [];
-    
-    console.log('Ventas filtradas para historial:', ventasFiltradas);
-    
     // Si no hay ventas reales, crear datos de prueba
     if (ventasFiltradas.length === 0) {
-      console.log('No hay ventas reales, creando datos de prueba');
       return [
         {
           id: 'test-1',
@@ -242,20 +234,16 @@ const ResumenVentas = () => {
           vendedor: 'Usuario Actual',
           cantidad: 1,
           total: 120000,
-          metodoPago: 'Nequi',
+          metodoPago: 'Tarjeta',
           fechaFormateada: format(new Date(), 'dd/MM/yyyy', { locale: es })
         }
       ];
     }
     
     ventasFiltradas.slice(0, 50).forEach(venta => {
-      console.log('Procesando venta:', venta);
-      console.log('Items de la venta:', venta.items);
       // Verificar si hay items en la venta
       if (venta.items && Array.isArray(venta.items) && venta.items.length > 0) {
         venta.items.forEach((item, index) => {
-          console.log(`Item ${index}:`, item);
-          
           // Extraer datos del item con múltiples fallbacks
           const nombreProducto = item.nombre || 
                                 item.producto_nombre || 
@@ -273,9 +261,6 @@ const ResumenVentas = () => {
                                 0;
           
           const totalItem = precioUnitario * cantidad;
-          
-          console.log(`Procesando item: ${nombreProducto}, cantidad: ${cantidad}, precio: ${precioUnitario}, total: ${totalItem}`);
-          
           historialDetallado.push({
             id: `${venta.id}-${item.id || index}`,
             fecha: venta.created_at,
@@ -289,7 +274,6 @@ const ResumenVentas = () => {
         });
       } else {
         // Si no hay items detallados, crear una entrada general
-        console.log('Venta sin items detallados, creando entrada general');
         historialDetallado.push({
           id: venta.id,
           fecha: venta.created_at,
@@ -302,8 +286,6 @@ const ResumenVentas = () => {
         });
       }
     });
-    
-    console.log('Historial detallado final:', historialDetallado);
     return historialDetallado.slice(0, 20);
   };
 

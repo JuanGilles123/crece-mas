@@ -87,7 +87,6 @@ const EditarProductoModal = ({ open, onClose, producto, onProductoEditado }) => 
       // Si hay nueva imagen, comprimirla y subirla
       if (imagen) {
         setComprimiendo(true);
-        console.log('Comprimiendo nueva imagen antes de subir...');
         const imagenComprimida = await compressProductImage(imagen);
         setComprimiendo(false);
         
@@ -102,12 +101,10 @@ const EditarProductoModal = ({ open, onClose, producto, onProductoEditado }) => 
         
         // Eliminar la imagen anterior del storage si existe
         if (producto?.imagen) {
-          console.log('Eliminando imagen anterior del storage...');
           await deleteImageFromStorage(producto.imagen);
         }
         
         imagenPath = nombreArchivo;
-        console.log('✅ Nueva imagen guardada con organization_id:', nombreArchivo);
       }
 
       // Actualizar producto en la base de datos

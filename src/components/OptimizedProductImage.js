@@ -54,10 +54,8 @@ const OptimizedProductImage = ({ imagePath, alt, className, onError }) => {
       loading="lazy"
       decoding="async"
       onLoad={() => {
-        console.log('Imagen cargada exitosamente:', imageUrl);
       }}
       onError={(e) => {
-        console.log('Error cargando imagen:', imageUrl);
         if (onError) onError(e);
       }}
       style={{

@@ -99,7 +99,6 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
     setComprimiendo(true);
     try {
       // Comprimir imagen antes de subir
-      console.log('Comprimiendo imagen antes de subir...');
       const imagenComprimida = await compressProductImage(imagen);
       setComprimiendo(false);
       
@@ -113,7 +112,6 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
       if (errorUpload) throw errorUpload;
       // Guardar la ruta del archivo en lugar de la URL
       // Usaremos signed URLs cuando necesitemos mostrar la imagen
-      console.log('✅ Archivo guardado con organization_id:', nombreArchivo);
       // Usar React Query mutation
       const productoData = {
         user_id: user.id,

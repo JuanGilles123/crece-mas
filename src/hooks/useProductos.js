@@ -8,9 +8,6 @@ export const useProductos = (organizationId) => {
     queryKey: ['productos', organizationId],
     queryFn: async () => {
       if (!organizationId) return [];
-      
-      console.log('🔍 Consultando productos para organization_id:', organizationId);
-      
       const { data, error } = await supabase
         .from('productos')
         .select('*')
@@ -22,8 +19,6 @@ export const useProductos = (organizationId) => {
         console.error('Error fetching productos:', error);
         throw new Error('Error al cargar productos');
       }
-
-      console.log('✅ Productos cargados:', data?.length || 0);
       return data || [];
     },
     enabled: !!organizationId,
@@ -38,9 +33,6 @@ export const useProductosPaginados = (organizationId, pageSize = 20) => {
     queryKey: ['productos-paginados', organizationId, pageSize],
     queryFn: async ({ pageParam = 0 }) => {
       if (!organizationId) return { data: [], hasMore: false };
-      
-      console.log(`🔍 Cargando productos página ${pageParam}, organization_id:`, organizationId);
-      
       const start = pageParam * pageSize;
       const end = start + pageSize - 1;
       
@@ -57,8 +49,6 @@ export const useProductosPaginados = (organizationId, pageSize = 20) => {
       }
 
       const hasMore = (start + data.length) < count;
-      
-      console.log(`✅ Cargados ${data.length} productos (${start + 1}-${start + data.length} de ${count})`);
       
       return {
         data: data || [],

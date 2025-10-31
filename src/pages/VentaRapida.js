@@ -64,17 +64,6 @@ export default function VentaRapida() {
 
     try {
       // Registrar venta rápida - COLUMNAS ACTUALIZADAS
-      console.log('📊 Datos a insertar:', {
-        organization_id: organization.id,
-        user_id: user.id,
-        total: montoNumerico,
-        metodo_pago: metodoPago,
-        tipo_venta: 'rapida',
-        descripcion: descripcion.trim() || 'Venta rápida', // Valor por defecto si está vacío
-        items: [],
-        fecha: new Date().toISOString()
-      });
-      
       const ventaData = {
         organization_id: organization.id,
         user_id: user.id,
@@ -99,8 +88,6 @@ export default function VentaRapida() {
         console.error('❌ Detalles:', ventaError.details);
         throw ventaError;
       }
-
-      console.log('✅ Venta registrada exitosamente:', venta);
       toast.success(`✅ Venta registrada: ${formatearMonto(montoNumerico)}`);
       limpiarFormulario();
     } catch (error) {

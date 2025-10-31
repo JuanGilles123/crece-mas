@@ -38,7 +38,7 @@ export const useTeamMembers = (organizationId) => {
     queryFn: async () => {
       if (!organizationId) return [];
       
-      // Obtener team_members
+      // Obtener team_members SIN el join (por ahora)
       const { data: members, error } = await supabase
         .from('team_members')
         .select('*')
@@ -56,19 +56,21 @@ export const useTeamMembers = (organizationId) => {
 
       // Obtener user_profiles por separado
       const userIds = members.map(m => m.user_id);
-      const { data: profiles } = await supabase
+      
+      const { data: profiles, error: profilesError } = await supabase
         .from('user_profiles')
-        .select('user_id, full_name, phone, avatar_url')
+        .select('user_id, full_name, phone, avatar_url, email')
         .in('user_id', userIds);
 
-      // Obtener auth users para emails
-      const { data: { users: authUsers } } = await supabase.auth.admin.listUsers();
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+      }
 
-      // Combinar toda la información
+      // Combinar manualmente
       return members.map(member => ({
         ...member,
         user_profiles: profiles?.find(p => p.user_id === member.user_id) || null,
-        email: authUsers?.find(u => u.id === member.user_id)?.email || 'No disponible'
+        email: profiles?.find(p => p.user_id === member.user_id)?.email || 'No disponible'
       }));
     },
     enabled: !!organizationId,
@@ -450,6 +452,178 @@ export const useUpdateOrganization = () => {
     onError: (error) => {
       console.error('Error updating organization:', error);
       toast.error('Error al actualizar organización');
+    },
+  });
+};
+
+// ============================================
+// HOOKS PARA ROLES PERSONALIZADOS
+// ============================================
+
+// Hook para obtener roles personalizados de una organización
+export const useCustomRoles = (organizationId) => {
+  return useQuery({
+    queryKey: ['customRoles', organizationId],
+    queryFn: async () => {
+      if (!organizationId) return [];
+      
+      const { data, error } = await supabase
+        .from('custom_roles')
+        .select('*')
+        .eq('organization_id', organizationId)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching custom roles:', error);
+        throw new Error('Error al cargar roles personalizados');
+      }
+
+      return data || [];
+    },
+    enabled: !!organizationId,
+    staleTime: 5 * 60 * 1000,
+  });
+};
+
+// Hook para crear un rol personalizado
+export const useCreateCustomRole = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ organizationId, name, description, color, icon, permissions }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const { data, error } = await supabase
+        .from('custom_roles')
+        .insert([{
+          organization_id: organizationId,
+          name,
+          description,
+          color,
+          icon,
+          permissions,
+          created_by: user.id,
+        }])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating custom role:', error);
+        throw new Error(error.message || 'Error al crear rol personalizado');
+      }
+
+      return data;
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries(['customRoles', variables.organizationId]);
+      toast.success(`Rol "${data.name}" creado exitosamente`);
+    },
+    onError: (error) => {
+      console.error('Error creating custom role:', error);
+      toast.error(error.message || 'Error al crear rol');
+    },
+  });
+};
+
+// Hook para actualizar un rol personalizado
+export const useUpdateCustomRole = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ roleId, organizationId, name, description, color, icon, permissions }) => {
+      const { data, error } = await supabase
+        .from('custom_roles')
+        .update({
+          name,
+          description,
+          color,
+          icon,
+          permissions,
+        })
+        .eq('id', roleId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating custom role:', error);
+        throw new Error(error.message || 'Error al actualizar rol');
+      }
+
+      return data;
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries(['customRoles', variables.organizationId]);
+      queryClient.invalidateQueries(['teamMembers', variables.organizationId]);
+      toast.success(`Rol "${data.name}" actualizado`);
+    },
+    onError: (error) => {
+      console.error('Error updating custom role:', error);
+      toast.error(error.message || 'Error al actualizar rol');
+    },
+  });
+};
+
+// Hook para eliminar un rol personalizado
+export const useDeleteCustomRole = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ roleId, organizationId }) => {
+      // Marcar como inactivo en lugar de eliminar
+      const { data, error } = await supabase
+        .from('custom_roles')
+        .update({ is_active: false })
+        .eq('id', roleId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error deleting custom role:', error);
+        throw new Error(error.message || 'Error al eliminar rol');
+      }
+
+      return data;
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries(['customRoles', variables.organizationId]);
+      queryClient.invalidateQueries(['teamMembers', variables.organizationId]);
+      toast.success('Rol eliminado');
+    },
+    onError: (error) => {
+      console.error('Error deleting custom role:', error);
+      toast.error(error.message || 'Error al eliminar rol');
+    },
+  });
+};
+
+// Hook para asignar un rol personalizado a un miembro
+export const useAssignCustomRole = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ memberId, customRoleId, organizationId }) => {
+      const { data, error } = await supabase
+        .from('team_members')
+        .update({ custom_role_id: customRoleId })
+        .eq('id', memberId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error assigning custom role:', error);
+        throw new Error(error.message || 'Error al asignar rol');
+      }
+
+      return data;
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries(['teamMembers', variables.organizationId]);
+      toast.success('Rol asignado exitosamente');
+    },
+    onError: (error) => {
+      console.error('Error assigning custom role:', error);
+      toast.error(error.message || 'Error al asignar rol');
     },
   });
 };

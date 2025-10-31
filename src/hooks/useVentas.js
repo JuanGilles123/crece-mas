@@ -8,9 +8,6 @@ export const useVentas = (organizationId) => {
     queryKey: ['ventas', organizationId],
     queryFn: async () => {
       if (!organizationId) return [];
-      
-      console.log('🔍 Consultando ventas para organization_id:', organizationId);
-      
       const { data, error } = await supabase
         .from('ventas')
         .select('*')
@@ -22,8 +19,6 @@ export const useVentas = (organizationId) => {
         console.error('Error fetching ventas:', error);
         throw new Error('Error al cargar ventas');
       }
-
-      console.log('✅ Ventas cargadas:', data?.length || 0);
       return data || [];
     },
     enabled: !!organizationId,

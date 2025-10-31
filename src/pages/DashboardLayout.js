@@ -15,12 +15,7 @@ const DashboardLayout = () => {
 
   // DEBUG: Log para verificar datos del usuario
   useEffect(() => {
-    console.log('🔍 DEBUG DashboardLayout:', {
-      userProfile,
-      organization,
-      hasRoleOwner: hasRole('owner'),
-      hasRoleAdmin: hasRole('admin')
-    });
+    // Verificación de datos del usuario
   }, [userProfile, organization]);
 
   useEffect(() => {

@@ -60,8 +60,6 @@ export default function Caja() {
       if (!user || !userProfile?.organization_id) return;
       setCargando(true);
       
-      console.log('🔍 Cargando productos para Caja (renderizado procedural), organization_id:', userProfile.organization_id);
-      
       const { data, error } = await supabase
         .from('productos')
         .select('*')
@@ -69,7 +67,6 @@ export default function Caja() {
         .order('created_at', { ascending: false });
         
       if (!error) {
-        console.log('✅ Productos cargados en Caja:', data?.length || 0);
         setProductos(data || []);
       }
       setCargando(false);
@@ -80,7 +77,44 @@ export default function Caja() {
   const filteredProducts = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return productos;
-    return productos.filter((p) => p.nombre.toLowerCase().includes(q));
+    
+    // Filtrar productos
+    const filtered = productos.filter((p) => {
+      const nombre = p.nombre.toLowerCase();
+      const codigoBarra = p.codigo_barra ? p.codigo_barra.toLowerCase() : '';
+      
+      // Verificar coincidencia exacta
+      const esCoincidenciaExacta = nombre === q || codigoBarra === q;
+      
+      if (esCoincidenciaExacta) return true;
+      
+      // Verificar si empieza con el término (más relevante)
+      const coincideDesdeInicio = nombre.startsWith(q) || codigoBarra.startsWith(q);
+      
+      if (coincideDesdeInicio) return true;
+      
+      // Como último recurso, buscar en cualquier parte
+      return nombre.includes(q) || codigoBarra.includes(q);
+    });
+    
+    // Ordenar resultados por relevancia
+    return filtered.sort((a, b) => {
+      const nombreA = a.nombre.toLowerCase();
+      const nombreB = b.nombre.toLowerCase();
+      
+      // Coincidencia exacta tiene máxima prioridad
+      const exactoA = nombreA === q ? 0 : 1;
+      const exactoB = nombreB === q ? 0 : 1;
+      if (exactoA !== exactoB) return exactoA - exactoB;
+      
+      // Luego, los que empiezan con el término
+      const inicioA = nombreA.startsWith(q) ? 0 : 1;
+      const inicioB = nombreB.startsWith(q) ? 0 : 1;
+      if (inicioA !== inicioB) return inicioA - inicioB;
+      
+      // Por último, orden alfabético
+      return nombreA.localeCompare(nombreB);
+    });
   }, [query, productos]);
 
   // Cargar más productos al hacer scroll (renderizado procedural)
@@ -175,8 +209,12 @@ export default function Caja() {
       setMontoEntregado('');
       setMostrandoPagoEfectivo(true);
     } else {
-      // Para otros métodos, proceder directamente
-      confirmSale();
+      // Para otros métodos, establecer el monto como el total
+      setMontoEntregado(total.toString());
+      // Usar setTimeout para asegurar que el estado se actualice antes de confirmar
+      setTimeout(() => {
+        confirmSale(metodo);
+      }, 50);
     }
   };
 
@@ -340,18 +378,18 @@ export default function Caja() {
             className="metodo-pago-btn"
             onClick={() => handleSeleccionarMetodoPago('Transferencia')}
           >
-            <CreditCard className="metodo-pago-icon" />
+            <Smartphone className="metodo-pago-icon" />
             <span className="metodo-pago-label">Transferencia</span>
-            <span className="metodo-pago-desc">Transferencia bancaria</span>
+            <span className="metodo-pago-desc">Total: {formatCOP(total)}</span>
           </button>
           
           <button 
             className="metodo-pago-btn"
-            onClick={() => handleSeleccionarMetodoPago('Nequi')}
+            onClick={() => handleSeleccionarMetodoPago('Tarjeta')}
           >
-            <Smartphone className="metodo-pago-icon" />
-            <span className="metodo-pago-label">Nequi</span>
-            <span className="metodo-pago-desc">Pago móvil</span>
+            <CreditCard className="metodo-pago-icon" />
+            <span className="metodo-pago-label">Tarjeta Débito/Crédito</span>
+            <span className="metodo-pago-desc">Total: {formatCOP(total)}</span>
           </button>
           
           <button 
@@ -360,7 +398,7 @@ export default function Caja() {
           >
             <Wallet className="metodo-pago-icon" />
             <span className="metodo-pago-label">Mixto</span>
-            <span className="metodo-pago-desc">Varios métodos</span>
+            <span className="metodo-pago-desc">Total: {formatCOP(total)}</span>
           </button>
         </div>
         
@@ -374,7 +412,7 @@ export default function Caja() {
     </div>
   );
 
-  async function confirmSale() {
+  async function confirmSale(metodoPago = null) {
     if (!user) {
       console.error('Usuario no autenticado');
       toast.error('Error: Usuario no autenticado');
@@ -386,65 +424,71 @@ export default function Caja() {
       return;
     }
 
+    // Usar el método pasado como parámetro o el del estado
+    const metodoFinal = metodoPago || method;
     // Mostrar modal de confirmación con carga
     setMostrandoConfirmacion(true);
     setConfirmacionCargando(true);
     setConfirmacionExito(false);
-    // NO establecer datosVentaConfirmada como null aquí
     
     setProcesandoVenta(true);
-    console.log('Iniciando confirmación de venta...', { cart, total, method });
-    
     // Validar que no se exceda el stock
     for (const item of cart) {
       const producto = productos.find(p => p.id === item.id);
       if (!producto) {
         console.error('Producto no encontrado:', item.id);
         toast.error(`Error: Producto ${item.nombre} no encontrado`);
+        setProcesandoVenta(false);
+        setMostrandoConfirmacion(false);
+        setConfirmacionCargando(false);
         return;
       }
       
       if (item.qty > producto.stock) {
         toast.error(`No hay suficiente stock para ${item.nombre}. Disponible: ${producto.stock}`);
         setProcesandoVenta(false);
+        setMostrandoConfirmacion(false);
+        setConfirmacionCargando(false);
         return;
       }
       
       if (producto.stock < item.qty) {
         toast.error(`No hay suficiente stock para ${item.nombre}. Disponible: ${producto.stock}`);
         setProcesandoVenta(false);
+        setMostrandoConfirmacion(false);
+        setConfirmacionCargando(false);
         return;
       }
     }
     
-    // Si es pago en efectivo, usar el monto del modal
+    // Determinar el monto pagado por el cliente según el método de pago
     let montoPagoCliente = total;
-    if (method === "Efectivo") {
+    if (metodoFinal === "Efectivo") {
       const montoNumero = parseFloat(montoEntregado.replace(/[^\d]/g, ''));
       if (isNaN(montoNumero) || montoNumero < total) {
         toast.error('El monto debe ser mayor o igual al total de la venta.');
         setProcesandoVenta(false);
+        setMostrandoConfirmacion(false);
+        setConfirmacionCargando(false);
         return;
       }
       montoPagoCliente = montoNumero;
+    } else {
+      // Para otros métodos de pago, el monto es exactamente el total
+      montoPagoCliente = total;
     }
     
     try {
-      console.log('Guardando venta en base de datos...');
-      
       // Guardar la venta en la base de datos con organization_id
       const ventaData = {
         user_id: user.id,
         organization_id: userProfile.organization_id,
         total: total,
-        metodo_pago: method,
+        metodo_pago: metodoFinal,
         items: cart,
         fecha: new Date().toISOString(),
         pago_cliente: montoPagoCliente
       };
-      
-      console.log('Datos de venta a insertar:', ventaData);
-      
       const { data: ventaResult, error: ventaError } = await supabase
         .from('ventas')
         .insert([ventaData])
@@ -463,17 +507,10 @@ export default function Caja() {
         setProcesandoVenta(false);
         return;
       }
-      
-      console.log("Venta guardada exitosamente:", ventaResult);
-      
       // Actualizar stock de productos
-      console.log('Actualizando stock de productos...');
       for (const item of cart) {
         const producto = productos.find(p => p.id === item.id);
         const nuevoStock = producto.stock - item.qty;
-        
-        console.log(`Actualizando stock de ${item.nombre}: ${producto.stock} -> ${nuevoStock}`);
-        
         const { error: stockError } = await supabase
           .from('productos')
           .update({ stock: nuevoStock })
@@ -494,14 +531,11 @@ export default function Caja() {
         cashier: user.user_metadata?.full_name || user.email || "Usuario",
         register: "Caja Principal",
         items: cart,
-        metodo_pago: method,
+        metodo_pago: metodoFinal,
         pagoCliente: montoPagoCliente,
         total: total,
         cantidadProductos: cart.length
       };
-      
-      console.log('Mostrando recibo:', ventaRecibo);
-      
       // Establecer datos y mostrar modal de éxito inmediatamente
       setDatosVentaConfirmada(ventaRecibo);
       setConfirmacionCargando(false);
@@ -522,12 +556,9 @@ export default function Caja() {
       }, 1500);
       
       // Invalidar cache de react-query para actualizar automáticamente
-      console.log('Invalidando cache de productos y ventas...');
       queryClient.invalidateQueries(['productos', userProfile.organization_id]);
       queryClient.invalidateQueries(['productos-paginados', userProfile.organization_id]);
       queryClient.invalidateQueries(['ventas', userProfile.organization_id]);
-      console.log('✅ Cache invalidado - Inventario se actualizará automáticamente');
-      
     } catch (error) {
       console.error('Error confirmando venta:', error);
       toast.error(`Error al procesar la venta: ${error.message}`);
@@ -757,7 +788,7 @@ export default function Caja() {
         </button>
         <button 
           className="caja-mobile-pay-btn"
-          onClick={() => setShowCartMobile(true)} 
+          onClick={handleContinuar} 
           disabled={cart.length === 0}
         >
           Cobrar

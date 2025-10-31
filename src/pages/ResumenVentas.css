@@ -633,7 +633,7 @@
   .resumen-ventas-metodo-efectivo { background: var(--bg-success); color: var(--accent-success); }
   .resumen-ventas-metodo-tarjeta { background: var(--bg-info); color: var(--accent-primary); }
   .resumen-ventas-metodo-transferencia { background: var(--bg-warning); color: var(--accent-warning); }
-  .resumen-ventas-metodo-nequi { background: var(--bg-error); color: var(--accent-error); }
+  .resumen-ventas-metodo-tarjeta { background: var(--bg-error); color: var(--accent-error); }
   .resumen-ventas-metodo-daviplata { background: var(--bg-info); color: var(--accent-secondary); }
   
   /* Estados mejorados */

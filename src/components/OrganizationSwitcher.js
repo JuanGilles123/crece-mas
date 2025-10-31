@@ -88,8 +88,6 @@ const OrganizationSwitcher = () => {
 
     setLoading(true);
     try {
-      console.log('🔄 Cambiando a organización:', orgId);
-      
       // Guardar la organización seleccionada en localStorage
       localStorage.setItem('selected_organization_id', orgId);
       

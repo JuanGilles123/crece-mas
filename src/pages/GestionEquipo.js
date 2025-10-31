@@ -12,7 +12,14 @@ import {
   XCircle,
   Clock,
   Copy,
-  Send
+  Send,
+  User,
+  Star,
+  Lock,
+  Briefcase,
+  Target,
+  Key,
+  Award
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -21,10 +28,34 @@ import {
   useCreateInvitation,
   useCancelInvitation,
   useUpdateMemberRole,
-  useRemoveTeamMember
+  useRemoveTeamMember,
+  useCustomRoles,
+  useCreateCustomRole,
+  useUpdateCustomRole,
+  useDeleteCustomRole,
+  useAssignCustomRole,
 } from '../hooks/useTeam';
+import CrearRolModal from '../components/CrearRolModal';
+import { PREDEFINED_ROLES } from '../constants/permissions';
 import toast from 'react-hot-toast';
 import './GestionEquipo.css';
+
+// Helper para renderizar iconos de roles personalizados
+const renderCustomIcon = (iconName) => {
+  const iconMap = {
+    User: User,
+    Star: Star,
+    Shield: Shield,
+    Briefcase: Briefcase,
+    Target: Target,
+    Key: Key,
+    Award: Award,
+    Users: Users,
+  };
+  
+  const IconComponent = iconMap[iconName] || User;
+  return <IconComponent size={16} />;
+};
 
 const ROLES = {
   owner: {
@@ -168,14 +199,40 @@ const InvitarModal = ({ open, onClose, onInvitar, cargando }) => {
   );
 };
 
-const MemberCard = ({ member, onUpdateRole, onRemove, isOwner }) => {
+const MemberCard = ({ member, onUpdateRole, onRemove, isOwner, customRoles = [], onAssignCustomRole }) => {
   const [editando, setEditando] = useState(false);
   const [nuevoRole, setNuevoRole] = useState(member.role);
+  const [customRoleId, setCustomRoleId] = useState(member.custom_role_id || '');
 
-  const roleInfo = ROLES[member.role] || ROLES.viewer;
+  // Determinar el rol a mostrar
+  let roleInfo;
+  let roleDisplay;
+
+  if (member.custom_role_id) {
+    const customRole = customRoles.find(r => r.id === member.custom_role_id);
+    if (customRole) {
+      roleInfo = {
+        label: customRole.name,
+        icon: renderCustomIcon(customRole.icon),
+        color: customRole.color,
+        description: customRole.description
+      };
+      roleDisplay = 'custom';
+    } else {
+      roleInfo = ROLES[member.role] || ROLES.viewer;
+      roleDisplay = 'predefined';
+    }
+  } else {
+    roleInfo = ROLES[member.role] || ROLES.viewer;
+    roleDisplay = 'predefined';
+  }
 
   const handleGuardarRole = () => {
-    if (nuevoRole !== member.role) {
+    if (customRoleId && customRoleId !== member.custom_role_id) {
+      // Asignar rol personalizado
+      onAssignCustomRole(member.id, customRoleId);
+    } else if (!customRoleId && nuevoRole !== member.role) {
+      // Cambiar rol predefinido
       onUpdateRole(member.id, nuevoRole);
     }
     setEditando(false);
@@ -214,30 +271,62 @@ const MemberCard = ({ member, onUpdateRole, onRemove, isOwner }) => {
       <div className="member-role">
         {editando && member.role !== 'owner' ? (
           <div className="role-edit">
-            <select
-              className="role-select"
-              value={nuevoRole}
-              onChange={(e) => setNuevoRole(e.target.value)}
-            >
-              {Object.entries(ROLES)
-                .filter(([key]) => key !== 'owner')
-                .map(([key, roleInfo]) => (
-                  <option key={key} value={key}>
-                    {roleInfo.label}
-                  </option>
-                ))}
-            </select>
-            <button className="btn-icon btn-success" onClick={handleGuardarRole}>
-              <CheckCircle size={16} />
-            </button>
-            <button className="btn-icon btn-cancel" onClick={() => setEditando(false)}>
-              <XCircle size={16} />
-            </button>
+            <div className="role-select-group">
+              <label>Rol Base:</label>
+              <select
+                className="role-select"
+                value={nuevoRole}
+                onChange={(e) => {
+                  setNuevoRole(e.target.value);
+                  setCustomRoleId(''); // Limpiar rol personalizado al cambiar rol base
+                }}
+              >
+                {Object.entries(ROLES)
+                  .filter(([key]) => key !== 'owner')
+                  .map(([key, roleInfo]) => (
+                    <option key={key} value={key}>
+                      {roleInfo.label}
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            {customRoles.length > 0 && (
+              <div className="role-select-group">
+                <label>Rol Personalizado (Opcional):</label>
+                <select
+                  className="role-select"
+                  value={customRoleId}
+                  onChange={(e) => setCustomRoleId(e.target.value)}
+                >
+                  <option value="">Sin rol personalizado</option>
+                  {customRoles.map(role => (
+                    <option key={role.id} value={role.id}>
+                      {role.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="role-edit-actions">
+              <button className="btn-icon btn-success" onClick={handleGuardarRole}>
+                <CheckCircle size={16} />
+              </button>
+              <button className="btn-icon btn-cancel" onClick={() => setEditando(false)}>
+                <XCircle size={16} />
+              </button>
+            </div>
           </div>
         ) : (
-          <div className="role-badge" style={{ backgroundColor: roleInfo.color }}>
-            {roleInfo.icon}
-            {roleInfo.label}
+          <div className="role-badges">
+            <div className="role-badge" style={{ backgroundColor: roleInfo.color }}>
+              {roleInfo.icon}
+              {roleInfo.label}
+            </div>
+            {roleDisplay === 'custom' && (
+              <span className="role-badge-type">Personalizado</span>
+            )}
           </div>
         )}
       </div>
@@ -330,16 +419,23 @@ const InvitationCard = ({ invitation, onCancel }) => {
 const GestionEquipo = () => {
   const { user, organization, hasRole } = useAuth();
   const [invitarModalOpen, setInvitarModalOpen] = useState(false);
+  const [crearRolModalOpen, setCrearRolModalOpen] = useState(false);
+  const [rolAEditar, setRolAEditar] = useState(null);
 
   // Hooks de datos
   const { data: teamMembers = [], isLoading: loadingMembers } = useTeamMembers(organization?.id);
   const { data: invitations = [], isLoading: loadingInvitations } = useInvitations(organization?.id);
+  const { data: customRoles = [], isLoading: loadingRoles } = useCustomRoles(organization?.id);
 
   // Hooks de mutaciones
   const createInvitation = useCreateInvitation();
   const cancelInvitation = useCancelInvitation();
   const updateMemberRole = useUpdateMemberRole();
   const removeTeamMember = useRemoveTeamMember();
+  const createCustomRole = useCreateCustomRole();
+  const updateCustomRole = useUpdateCustomRole();
+  const deleteCustomRole = useDeleteCustomRole();
+  const assignCustomRole = useAssignCustomRole();
 
   const isOwner = hasRole('owner', 'admin');
 
@@ -380,6 +476,51 @@ const GestionEquipo = () => {
         organizationId: organization.id
       });
     }
+  };
+
+  // Handlers para roles personalizados
+  const handleCrearRol = () => {
+    setRolAEditar(null);
+    setCrearRolModalOpen(true);
+  };
+
+  const handleEditarRol = (rol) => {
+    setRolAEditar(rol);
+    setCrearRolModalOpen(true);
+  };
+
+  const handleGuardarRol = async (roleData) => {
+    try {
+      if (rolAEditar) {
+        await updateCustomRole.mutateAsync({
+          roleId: rolAEditar.id,
+          ...roleData
+        });
+      } else {
+        await createCustomRole.mutateAsync({
+          organizationId: organization.id,
+          ...roleData
+        });
+      }
+      setCrearRolModalOpen(false);
+      setRolAEditar(null);
+    } catch (error) {
+      console.error('Error guardando rol:', error);
+    }
+  };
+
+  const handleEliminarRol = async (roleId) => {
+    if (window.confirm('¿Estás seguro de eliminar este rol personalizado? Los miembros con este rol volverán a su rol base.')) {
+      await deleteCustomRole.mutateAsync(roleId);
+    }
+  };
+
+  const handleAsignarRol = async (memberId, customRoleId) => {
+    await assignCustomRole.mutateAsync({
+      memberId,
+      customRoleId,
+      organizationId: organization.id
+    });
   };
 
   if (!organization) {
@@ -462,11 +603,95 @@ const GestionEquipo = () => {
                 onUpdateRole={handleActualizarRole}
                 onRemove={handleRemoverMiembro}
                 isOwner={isOwner}
+                customRoles={customRoles}
+                onAssignCustomRole={handleAsignarRol}
               />
             ))}
           </div>
         )}
       </div>
+
+      {/* Roles Personalizados */}
+      {isOwner && (
+        <div className="team-section">
+          <div className="section-header">
+            <h2>Roles Personalizados ({customRoles.length})</h2>
+            <button 
+              className="btn btn-secondary"
+              onClick={handleCrearRol}
+            >
+              <UserPlus size={20} />
+              Crear Rol Personalizado
+            </button>
+          </div>
+
+          {loadingRoles ? (
+            <div className="loading">Cargando roles...</div>
+          ) : customRoles.length === 0 ? (
+            <div className="empty-state">
+              <Shield size={48} />
+              <p>No hay roles personalizados todavía</p>
+              <p className="text-secondary">
+                Crea roles con permisos específicos para tu equipo
+              </p>
+            </div>
+          ) : (
+            <div className="roles-grid">
+              {customRoles.map(role => (
+                <motion.div
+                  key={role.id}
+                  className="role-card"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  layout
+                >
+                  <div className="role-card-header">
+                    <div className="role-badge-preview" style={{ backgroundColor: role.color }}>
+                      <span className="role-icon">{renderCustomIcon(role.icon)}</span>
+                      <span className="role-name">{role.name}</span>
+                    </div>
+                    <div className="role-actions">
+                      <button
+                        className="btn-icon btn-edit"
+                        onClick={() => handleEditarRol(role)}
+                        title="Editar rol"
+                      >
+                        <Edit3 size={16} />
+                      </button>
+                      <button
+                        className="btn-icon btn-danger"
+                        onClick={() => handleEliminarRol(role.id)}
+                        title="Eliminar rol"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {role.description && (
+                    <p className="role-description">{role.description}</p>
+                  )}
+
+                  <div className="role-permissions-summary">
+                    <Shield size={14} />
+                    {role.permissions?.length || 0} permisos asignados
+                  </div>
+
+                  <div className="role-meta">
+                    <span className="role-members-count">
+                      <Users size={14} />
+                      {teamMembers.filter(m => m.custom_role_id === role.id).length} miembros
+                    </span>
+                    <span className="role-created-date">
+                      Creado {new Date(role.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Invitaciones pendientes */}
       {isOwner && invitations.length > 0 && (
@@ -492,6 +717,19 @@ const GestionEquipo = () => {
             onClose={() => setInvitarModalOpen(false)}
             onInvitar={handleInvitar}
             cargando={createInvitation.isLoading}
+          />
+        )}
+
+        {crearRolModalOpen && (
+          <CrearRolModal
+            open={crearRolModalOpen}
+            onClose={() => {
+              setCrearRolModalOpen(false);
+              setRolAEditar(null);
+            }}
+            onGuardar={handleGuardarRol}
+            roleToEdit={rolAEditar}
+            loading={createCustomRole.isLoading || updateCustomRole.isLoading}
           />
         )}
       </AnimatePresence>

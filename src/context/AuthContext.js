@@ -20,8 +20,6 @@ export function AuthProvider({ children }) {
     }
 
     try {
-      console.log('🔄 Cargando perfil para userId:', userId);
-      
       // Obtener perfil del usuario
       const { data: profile, error: profileError } = await supabase
         .from('user_profiles')
@@ -33,8 +31,6 @@ export function AuthProvider({ children }) {
         console.error('❌ Error loading user profile:', profileError);
         return;
       }
-
-      console.log('✅ Perfil cargado:', profile);
       setUserProfile(profile);
 
       // Obtener organización principal (si es owner) o buscar en team_members
@@ -60,12 +56,10 @@ export function AuthProvider({ children }) {
         if (selectedMembership) {
           orgId = selectedOrgId;
           effectiveRole = selectedMembership.role;
-          console.log('🎯 Usando organización seleccionada manualmente:', { orgId, role: effectiveRole });
         } else if (selectedOrgId === profile.organization_id) {
           // Es su organización principal
           orgId = profile.organization_id;
           effectiveRole = profile.role;
-          console.log('🎯 Usando organización principal seleccionada:', { orgId, role: effectiveRole });
         } else {
           // La organización seleccionada ya no existe o no tiene acceso
           localStorage.removeItem('selected_organization_id');
@@ -77,7 +71,6 @@ export function AuthProvider({ children }) {
       if (!orgId && memberships && memberships.length > 0) {
         orgId = memberships[0].organization_id;
         effectiveRole = memberships[0].role;
-        console.log('🔄 Usando primera membresía disponible:', { orgId, role: effectiveRole });
       }
 
       if (orgId) {
@@ -89,7 +82,6 @@ export function AuthProvider({ children }) {
           .single();
 
         if (!orgError && org) {
-          console.log('✅ Organización cargada:', org);
           setOrganization(org);
 
           // Actualizar el perfil con el rol efectivo y organization_id si viene de team_members
@@ -100,10 +92,6 @@ export function AuthProvider({ children }) {
               organization_id: orgId // ✅ IMPORTANTE: Actualizar organization_id para que otros componentes lo usen
             };
             setUserProfile(updatedProfile);
-            console.log('🔄 Perfil actualizado:', { 
-              role: effectiveRole, 
-              organization_id: orgId 
-            });
           }
 
           // Obtener permisos
@@ -111,7 +99,6 @@ export function AuthProvider({ children }) {
             .rpc('get_user_permissions', { org_id: orgId });
 
           if (!permsError && perms) {
-            console.log('✅ Permisos cargados:', perms);
             setPermissions(perms);
           } else {
             console.error('❌ Error loading permissions:', permsError);
@@ -139,8 +126,6 @@ export function AuthProvider({ children }) {
 
     // Escuchar cambios de autenticación
     const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('🔔 Auth event:', event, 'User:', session?.user?.email);
-      
       setUser(session?.user ?? null);
       if (session?.user) {
         loadUserProfile(session.user.id);
@@ -151,8 +136,6 @@ export function AuthProvider({ children }) {
         
         // Solo procesar si hay token, NO se está procesando, y es un evento SIGNED_IN
         if (pendingToken && !isProcessing && (event === 'SIGNED_IN' || event === 'USER_UPDATED')) {
-          console.log('🎯 Token de invitación detectado, auto-aceptando...');
-          
           // Marcar como procesando INMEDIATAMENTE
           localStorage.setItem('processing_invitation', 'true');
           
@@ -179,9 +162,6 @@ export function AuthProvider({ children }) {
               localStorage.removeItem('processing_invitation');
               return;
             }
-
-            console.log('📧 Invitación encontrada:', invitation);
-
             // Crear el registro en team_members
             const { error: memberError } = await supabase
               .from('team_members')
@@ -208,20 +188,15 @@ export function AuthProvider({ children }) {
                 accepted_at: new Date().toISOString()
               })
               .eq('id', invitation.id);
-
-            console.log('✅ Invitación aceptada exitosamente!');
-            
             // Limpiar tokens
             localStorage.removeItem('pending_invitation_token');
             localStorage.removeItem('processing_invitation');
             
             // Recargar perfil después de 1 segundo
             setTimeout(() => {
-              console.log('🔄 Recargando perfil...');
               loadUserProfile(session.user.id).then(() => {
                 // Navegar al dashboard después de recargar perfil
                 setTimeout(() => {
-                  console.log('✅ Navegando al dashboard...');
                   window.location.href = '/dashboard';
                 }, 500);
               });
