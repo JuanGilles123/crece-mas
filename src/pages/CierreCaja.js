@@ -13,13 +13,12 @@ const CierreCaja = () => {
   const [efectivoReal, setEfectivoReal] = useState('');
   const [transferenciasReal, setTransferenciasReal] = useState('');
   const [tarjetaReal, setTarjetaReal] = useState('');
-  const [mixtosReal, setMixtosReal] = useState('');
   const [totalReal, setTotalReal] = useState(0);
   const [diferencia, setDiferencia] = useState(null);
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState({ tipo: '', texto: '' });
-  const [cierreGuardado, setCierreGuardado] = useState(false); // Nuevo estado para controlar los botones
-  const [yaCerrado, setYaCerrado] = useState(false); // Nuevo estado para saber si ya se cerró hoy
+  const [cierreGuardado, setCierreGuardado] = useState(false);
+  const [yaCerrado, setYaCerrado] = useState(false);
   
   // Desglose por método de pago
   const [desgloseSistema, setDesgloseSistema] = useState({
@@ -52,16 +51,15 @@ const CierreCaja = () => {
     const efectivo = obtenerValorNumerico(efectivoReal);
     const transferencias = obtenerValorNumerico(transferenciasReal);
     const tarjeta = obtenerValorNumerico(tarjetaReal);
-    const mixto = obtenerValorNumerico(mixtosReal);
-    const total = efectivo + transferencias + tarjeta + mixto;
+    const total = efectivo + transferencias + tarjeta;
     setTotalReal(total);
     
-    if (efectivoReal !== '' || transferenciasReal !== '' || tarjetaReal !== '' || mixtosReal !== '') {
+    if (efectivoReal !== '' || transferenciasReal !== '' || tarjetaReal !== '') {
       setDiferencia(total - totalSistema);
     } else {
       setDiferencia(null);
     }
-  }, [efectivoReal, transferenciasReal, tarjetaReal, mixtosReal, totalSistema]);
+  }, [efectivoReal, transferenciasReal, tarjetaReal, totalSistema]);
 
   const cargarVentasHoy = async () => {
     if (!userProfile?.organization_id) return;
@@ -106,17 +104,63 @@ const CierreCaja = () => {
       const total = data?.reduce((sum, venta) => sum + (venta.total || 0), 0) || 0;
       setTotalSistema(total);
       
-      // Calcular desglose por método de pago
+      // Calcular desglose por método de pago - procesando pagos mixtos
       const desglose = data?.reduce((acc, venta) => {
-        const metodo = (venta.metodo_pago || 'Mixto').toLowerCase();
-        if (metodo === 'efectivo') {
-          acc.efectivo += venta.total || 0;
+        const metodo = (venta.metodo_pago || '').toLowerCase();
+        const montoTotal = venta.total || 0;
+        
+        // OPCIÓN 1: Si existe la columna detalles_pago_mixto con JSONB
+        if (venta.detalles_pago_mixto && typeof venta.detalles_pago_mixto === 'object') {
+          const detalles = venta.detalles_pago_mixto;
+          const metodo1 = (detalles.metodo1 || '').toLowerCase();
+          const metodo2 = (detalles.metodo2 || '').toLowerCase();
+          const monto1 = parseFloat(detalles.monto1) || 0;
+          const monto2 = parseFloat(detalles.monto2) || 0;
+          
+          // Distribuir según método
+          if (metodo1 === 'efectivo') acc.efectivo += monto1;
+          else if (metodo1 === 'transferencia') acc.transferencias += monto1;
+          else if (metodo1 === 'tarjeta') acc.tarjeta += monto1;
+          
+          if (metodo2 === 'efectivo') acc.efectivo += monto2;
+          else if (metodo2 === 'transferencia') acc.transferencias += monto2;
+          else if (metodo2 === 'tarjeta') acc.tarjeta += monto2;
+        }
+        // OPCIÓN 2: Si es pago mixto pero en formato string (compatibilidad con ventas antiguas)
+        else if (metodo.startsWith('mixto (') || metodo.startsWith('mixto(')) {
+          // Extraer los detalles del pago mixto del string
+          // Formato esperado: "Mixto (Efectivo: $ 1.200 + Transferencia: $ 1.200)"
+          const match = venta.metodo_pago.match(/Mixto\s*\((.+?):\s*\$\s*([\d,.]+)\s*\+\s*(.+?):\s*\$\s*([\d,.]+)\)/i);
+          
+          if (match) {
+            const metodo1 = match[1].toLowerCase().trim();
+            const monto1String = match[2].replace(/\./g, '').replace(',', '.');
+            const monto1 = parseFloat(monto1String);
+            const metodo2 = match[3].toLowerCase().trim();
+            const monto2String = match[4].replace(/\./g, '').replace(',', '.');
+            const monto2 = parseFloat(monto2String);
+            
+            // Distribuir los montos según el método
+            if (metodo1 === 'efectivo') acc.efectivo += monto1;
+            else if (metodo1 === 'transferencia') acc.transferencias += monto1;
+            else if (metodo1 === 'tarjeta') acc.tarjeta += monto1;
+            
+            if (metodo2 === 'efectivo') acc.efectivo += monto2;
+            else if (metodo2 === 'transferencia') acc.transferencias += monto2;
+            else if (metodo2 === 'tarjeta') acc.tarjeta += monto2;
+          }
+        } else if (metodo === 'efectivo') {
+          acc.efectivo += montoTotal;
         } else if (metodo === 'transferencia') {
-          acc.transferencias += venta.total || 0;
+          acc.transferencias += montoTotal;
         } else if (metodo === 'tarjeta') {
-          acc.tarjeta += venta.total || 0;
+          acc.tarjeta += montoTotal;
+        } else if (metodo === 'mixto') {
+          // Pago mixto sin detalles (ventas viejas) - agregarlo a mixto para que se pueda contar
+          acc.mixto += montoTotal;
         } else {
-          acc.mixto += venta.total || 0;
+          // Otros métodos desconocidos
+          acc.mixto += montoTotal;
         }
         return acc;
       }, { efectivo: 0, transferencias: 0, tarjeta: 0, mixto: 0 });
@@ -146,17 +190,16 @@ const CierreCaja = () => {
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 💵 Efectivo: ${formatCOP(desgloseSistema.efectivo)}
 📲 Transferencias: ${formatCOP(desgloseSistema.transferencias)}
-💳 Tarjeta: ${formatCOP(desgloseSistema.tarjeta)}
-💰 Mixto: ${formatCOP(desgloseSistema.mixto)}
+💳 Tarjeta: ${formatCOP(desgloseSistema.tarjeta)}${desgloseSistema.mixto > 0 ? `
+💰 Mixto: ${formatCOP(desgloseSistema.mixto)}` : ''}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 TOTAL SISTEMA: ${formatCOP(totalSistema)}
 
-💼 CONTEO REAL:
+� CONTEO REAL:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-💵 Efectivo: ${formatCOP(parseFloat(efectivoReal) || 0)}
-📲 Transferencias: ${formatCOP(parseFloat(transferenciasReal) || 0)}
-💳 Tarjeta: ${formatCOP(parseFloat(tarjetaReal) || 0)}
-💰 Mixto: ${formatCOP(parseFloat(mixtosReal) || 0)}
+💵 Efectivo: ${formatCOP(obtenerValorNumerico(efectivoReal))}
+📲 Transferencias: ${formatCOP(obtenerValorNumerico(transferenciasReal))}
+💳 Tarjeta: ${formatCOP(obtenerValorNumerico(tarjetaReal))}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 TOTAL REAL: ${formatCOP(totalReal)}
 
@@ -220,7 +263,7 @@ Generado por Crece+ 🚀
   };
 
   const guardarCierre = async () => {
-    if (efectivoReal === '' && transferenciasReal === '' && tarjetaReal === '' && mixtosReal === '') {
+    if (efectivoReal === '' && transferenciasReal === '' && tarjetaReal === '') {
       setMensaje({ tipo: 'error', texto: 'Por favor ingresa al menos un monto' });
       return;
     }
@@ -237,13 +280,13 @@ Generado por Crece+ 🚀
           sistema_efectivo: desgloseSistema.efectivo,
           sistema_transferencias: desgloseSistema.transferencias,
           sistema_tarjeta: desgloseSistema.tarjeta,
-          sistema_otros: desgloseSistema.mixto,
+          sistema_otros: 0,
           total_sistema: totalSistema,
           // Desglose real contado
           real_efectivo: obtenerValorNumerico(efectivoReal),
           real_transferencias: obtenerValorNumerico(transferenciasReal),
           real_tarjeta: obtenerValorNumerico(tarjetaReal),
-          real_otros: obtenerValorNumerico(mixtosReal),
+          real_otros: 0,
           total_real: totalReal,
           // Diferencia y metadata
           diferencia: diferencia,
@@ -264,7 +307,6 @@ Generado por Crece+ 🚀
         setEfectivoReal('');
         setTransferenciasReal('');
         setTarjetaReal('');
-        setMixtosReal('');
         setTotalReal(0);
         setDiferencia(null);
         setMensaje({ tipo: '', texto: '' });
@@ -502,23 +544,7 @@ Generado por Crece+ 🚀
               <span className="sistema-vs-real">Sistema: {formatCOP(desgloseSistema.tarjeta)}</span>
             </div>
             
-            <div className="input-group">
-              <label>
-                <DollarSign size={20} />
-                Mixto Real
-              </label>
-              <input
-                type="text"
-                value={mixtosReal}
-                onChange={(e) => setMixtosReal(formatearNumero(e.target.value))}
-                placeholder="0"
-                className="input-total-real"
-              />
-              <span className="input-hint">Pagos mixtos o combinados</span>
-              <span className="sistema-vs-real">Sistema: {formatCOP(desgloseSistema.mixto)}</span>
-            </div>
-            
-            {(efectivoReal !== '' || transferenciasReal !== '' || tarjetaReal !== '' || mixtosReal !== '') && (
+            {(efectivoReal !== '' || transferenciasReal !== '' || tarjetaReal !== '') && (
               <div className="total-real-calculado">
                 <DollarSign size={20} />
                 <span>Total Real:</span>
@@ -586,7 +612,7 @@ Generado por Crece+ 🚀
             <button
               className="btn-guardar-cierre"
               onClick={guardarCierre}
-              disabled={guardando || (efectivoReal === '' && transferenciasReal === '' && tarjetaReal === '' && mixtosReal === '')}
+              disabled={guardando || (efectivoReal === '' && transferenciasReal === '' && tarjetaReal === '')}
             >
               <Save size={20} />
               {guardando ? 'Guardando...' : 'Guardar Cierre de Caja'}

@@ -53,6 +53,12 @@ export default function Caja() {
   const [incluirIva, setIncluirIva] = useState(false);
   const [porcentajeIva, setPorcentajeIva] = useState(19);
   const [productosVisibles, setProductosVisibles] = useState(20); // Renderizado procedural
+  
+  // Estados para pago mixto
+  const [mostrandoPagoMixto, setMostrandoPagoMixto] = useState(false);
+  const [metodo1, setMetodo1] = useState('Efectivo');
+  const [metodo2, setMetodo2] = useState('Transferencia');
+  const [montoMetodo1, setMontoMetodo1] = useState('');
 
   // Cargar productos del usuario con renderizado procedural
   useEffect(() => {
@@ -208,6 +214,12 @@ export default function Caja() {
       // Mostrar modal de pago en efectivo
       setMontoEntregado('');
       setMostrandoPagoEfectivo(true);
+    } else if (metodo === 'Mixto') {
+      // Mostrar modal de pago mixto
+      setMetodo1('Efectivo');
+      setMetodo2('Transferencia');
+      setMontoMetodo1('');
+      setMostrandoPagoMixto(true);
     } else {
       // Para otros métodos, establecer el monto como el total
       setMontoEntregado(total.toString());
@@ -246,6 +258,329 @@ export default function Caja() {
     setConfirmacionCargando(false);
     setConfirmacionExito(false);
     setDatosVentaConfirmada(null);
+  };
+
+  // Handlers para pago mixto
+  const handleConfirmarPagoMixto = () => {
+    const monto1 = parseFloat(montoMetodo1.replace(/[^\d]/g, '')) || 0;
+    const monto2 = total - monto1;
+    
+    if (monto1 <= 0 || monto1 >= total) {
+      toast.error('El monto debe ser mayor a 0 y menor al total.');
+      return;
+    }
+    
+    // Guardar los datos del pago mixto
+    setMontoEntregado(total.toString());
+    setMostrandoPagoMixto(false);
+    
+    // Confirmar venta con información de pago mixto
+    confirmSale('Mixto', {
+      metodo1,
+      metodo2,
+      monto1,
+      monto2
+    });
+  };
+
+  const handleCancelarPagoMixto = () => {
+    setMostrandoPagoMixto(false);
+    setMontoMetodo1('');
+  };
+
+  // Componente para pago mixto
+  const PagoMixto = () => {
+    const monto1 = parseFloat(montoMetodo1.replace(/[^\d]/g, '')) || 0;
+    const [montoMetodo2Input, setMontoMetodo2Input] = useState('');
+    const monto2Calculado = total - monto1;
+    
+    // Sincronizar monto2 cuando cambia monto1
+    useEffect(() => {
+      if (monto1 > 0 && monto1 < total) {
+        setMontoMetodo2Input(monto2Calculado.toLocaleString('es-CO'));
+      }
+    }, [monto1, monto2Calculado, total]);
+    
+    const metodosDisponibles = ['Efectivo', 'Transferencia', 'Tarjeta'];
+    
+    // Obtener icono según método
+    const getIconoMetodo = (metodo) => {
+      switch(metodo) {
+        case 'Efectivo': return <Banknote size={20} />;
+        case 'Transferencia': return <Smartphone size={20} />;
+        case 'Tarjeta': return <CreditCard size={20} />;
+        default: return <Wallet size={20} />;
+      }
+    };
+
+    const handleMonto1Change = (value) => {
+      const cleanValue = value.replace(/[^\d,.]/g, '');
+      const numValue = parseFloat(cleanValue.replace(/[^\d]/g, '')) || 0;
+      
+      if (numValue <= total) {
+        setMontoMetodo1(cleanValue);
+        const resto = total - numValue;
+        setMontoMetodo2Input(resto > 0 ? resto.toLocaleString('es-CO') : '');
+      }
+    };
+
+    const handleMonto2Change = (value) => {
+      const cleanValue = value.replace(/[^\d,.]/g, '');
+      const numValue = parseFloat(cleanValue.replace(/[^\d]/g, '')) || 0;
+      
+      if (numValue <= total) {
+        setMontoMetodo2Input(cleanValue);
+        const resto = total - numValue;
+        setMontoMetodo1(resto > 0 ? resto.toLocaleString('es-CO') : '');
+      }
+    };
+
+    return (
+      <div className="pago-efectivo-overlay">
+        <div className="pago-efectivo-container" style={{ maxWidth: '600px' }}>
+          <div className="pago-efectivo-header">
+            <Wallet size={32} style={{ color: '#10b981', marginBottom: '0.5rem' }} />
+            <h3>Pago Mixto</h3>
+            <p>Total a pagar: {formatCOP(total)}</p>
+          </div>
+          
+          <div className="pago-efectivo-content">
+            {/* Selección de métodos */}
+            <div className="pago-mixto-metodos">
+              <div className="pago-mixto-metodo-group">
+                <label className="pago-efectivo-label">
+                  {getIconoMetodo(metodo1)}
+                  <span style={{ marginLeft: '0.5rem' }}>Primer método</span>
+                </label>
+                <select 
+                  className="pago-mixto-select"
+                  value={metodo1}
+                  onChange={(e) => setMetodo1(e.target.value)}
+                >
+                  {metodosDisponibles.filter(m => m !== metodo2).map(metodo => (
+                    <option key={metodo} value={metodo}>{metodo}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="pago-mixto-metodo-group">
+                <label className="pago-efectivo-label">
+                  {getIconoMetodo(metodo2)}
+                  <span style={{ marginLeft: '0.5rem' }}>Segundo método</span>
+                </label>
+                <select 
+                  className="pago-mixto-select"
+                  value={metodo2}
+                  onChange={(e) => setMetodo2(e.target.value)}
+                >
+                  {metodosDisponibles.filter(m => m !== metodo1).map(metodo => (
+                    <option key={metodo} value={metodo}>{metodo}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Inputs de montos */}
+            <div className="pago-mixto-inputs-container" style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '1rem',
+              marginTop: '1.5rem'
+            }}>
+              {/* Input monto 1 */}
+              <div className="pago-mixto-input-group">
+                <label className="pago-efectivo-label" style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  marginBottom: '0.5rem'
+                }}>
+                  {getIconoMetodo(metodo1)}
+                  <span>Monto {metodo1}</span>
+                </label>
+                <input
+                  type="text"
+                  value={montoMetodo1}
+                  onChange={(e) => handleMonto1Change(e.target.value)}
+                  className="pago-efectivo-input"
+                  placeholder="0"
+                  autoFocus
+                  style={{ 
+                    transition: 'none',
+                    willChange: 'auto',
+                    backfaceVisibility: 'hidden',
+                    transform: 'translateZ(0)',
+                    WebkitBackfaceVisibility: 'hidden',
+                    WebkitTransform: 'translateZ(0)',
+                    textAlign: 'center',
+                    fontSize: '1.5rem',
+                    fontWeight: '700',
+                    color: '#0ea5e9'
+                  }}
+                />
+              </div>
+
+              {/* Input monto 2 */}
+              <div className="pago-mixto-input-group">
+                <label className="pago-efectivo-label" style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  marginBottom: '0.5rem'
+                }}>
+                  {getIconoMetodo(metodo2)}
+                  <span>Monto {metodo2}</span>
+                </label>
+                <input
+                  type="text"
+                  value={montoMetodo2Input}
+                  onChange={(e) => handleMonto2Change(e.target.value)}
+                  className="pago-efectivo-input"
+                  placeholder="0"
+                  style={{ 
+                    transition: 'none',
+                    willChange: 'auto',
+                    backfaceVisibility: 'hidden',
+                    transform: 'translateZ(0)',
+                    WebkitBackfaceVisibility: 'hidden',
+                    WebkitTransform: 'translateZ(0)',
+                    textAlign: 'center',
+                    fontSize: '1.5rem',
+                    fontWeight: '700',
+                    color: '#0ea5e9'
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Resumen del pago */}
+            {monto1 > 0 && monto1 < total && (
+              <div style={{ 
+                background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+                border: '2px solid #0ea5e9',
+                borderRadius: '12px',
+                padding: '1rem',
+                marginTop: '1.5rem'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  marginBottom: '1rem',
+                  color: '#0c4a6e',
+                  fontWeight: '600'
+                }}>
+                  <CheckCircle size={20} />
+                  <span>Desglose del Pago</span>
+                </div>
+                
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '0.5rem',
+                  background: 'rgba(255, 255, 255, 0.6)',
+                  borderRadius: '8px',
+                  marginBottom: '0.5rem'
+                }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '600', color: '#374151' }}>
+                    {getIconoMetodo(metodo1)}
+                    {metodo1}
+                  </span>
+                  <span style={{ fontWeight: '700', color: '#0284c7', fontSize: '1.1rem' }}>{formatCOP(monto1)}</span>
+                </div>
+                
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '0.5rem',
+                  background: 'rgba(255, 255, 255, 0.6)',
+                  borderRadius: '8px',
+                  marginBottom: '1rem'
+                }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '600', color: '#374151' }}>
+                    {getIconoMetodo(metodo2)}
+                    {metodo2}
+                  </span>
+                  <span style={{ fontWeight: '700', color: '#0284c7', fontSize: '1.1rem' }}>{formatCOP(monto2Calculado)}</span>
+                </div>
+                
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  borderTop: '2px solid #0ea5e9',
+                  paddingTop: '0.75rem'
+                }}>
+                  <span style={{ fontWeight: '700', color: '#0c4a6e' }}>TOTAL</span>
+                  <span style={{ fontWeight: '700', fontSize: '1.5rem', color: '#0c4a6e' }}>
+                    {formatCOP(total)}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {monto1 <= 0 && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                background: '#fef3c7',
+                border: '1px solid #fbbf24',
+                borderRadius: '8px',
+                padding: '1rem',
+                marginTop: '1rem',
+                color: '#92400e',
+                fontSize: '0.9rem'
+              }}>
+                <Search size={18} />
+                <span>Ingresa los montos para cada método de pago</span>
+              </div>
+            )}
+
+            {monto1 >= total && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                background: '#fee2e2',
+                border: '1px solid #ef4444',
+                borderRadius: '8px',
+                padding: '1rem',
+                marginTop: '1rem',
+                color: '#991b1b',
+                fontSize: '0.9rem'
+              }}>
+                <X size={18} />
+                <span>El monto no puede ser igual o mayor al total</span>
+              </div>
+            )}
+          </div>
+          
+          <div className="pago-efectivo-actions">
+            <button 
+              className="pago-efectivo-btn pago-efectivo-cancelar"
+              onClick={handleCancelarPagoMixto}
+            >
+              <X size={18} />
+              Cancelar
+            </button>
+            <button 
+              className="pago-efectivo-btn pago-efectivo-confirmar"
+              onClick={handleConfirmarPagoMixto}
+              disabled={monto1 <= 0 || monto1 >= total}
+            >
+              <CheckCircle size={18} />
+              Confirmar Pago Mixto
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   // Componente para pago en efectivo
@@ -412,7 +747,7 @@ export default function Caja() {
     </div>
   );
 
-  async function confirmSale(metodoPago = null) {
+  async function confirmSale(metodoPago = null, datosPagoMixto = null) {
     if (!user) {
       console.error('Usuario no autenticado');
       toast.error('Error: Usuario no autenticado');
@@ -463,6 +798,8 @@ export default function Caja() {
     
     // Determinar el monto pagado por el cliente según el método de pago
     let montoPagoCliente = total;
+    let detallesPagoMixto = null;
+    
     if (metodoFinal === "Efectivo") {
       const montoNumero = parseFloat(montoEntregado.replace(/[^\d]/g, ''));
       if (isNaN(montoNumero) || montoNumero < total) {
@@ -473,6 +810,15 @@ export default function Caja() {
         return;
       }
       montoPagoCliente = montoNumero;
+    } else if (metodoFinal === "Mixto" && datosPagoMixto) {
+      // Para pago mixto, guardar los detalles
+      montoPagoCliente = total;
+      detallesPagoMixto = {
+        metodo1: datosPagoMixto.metodo1,
+        metodo2: datosPagoMixto.metodo2,
+        monto1: datosPagoMixto.monto1,
+        monto2: datosPagoMixto.monto2
+      };
     } else {
       // Para otros métodos de pago, el monto es exactamente el total
       montoPagoCliente = total;
@@ -484,11 +830,24 @@ export default function Caja() {
         user_id: user.id,
         organization_id: userProfile.organization_id,
         total: total,
-        metodo_pago: metodoFinal,
+        metodo_pago: metodoFinal === 'Mixto' && detallesPagoMixto 
+          ? `Mixto (${detallesPagoMixto.metodo1}: ${formatCOP(detallesPagoMixto.monto1)} + ${detallesPagoMixto.metodo2}: ${formatCOP(detallesPagoMixto.monto2)})`
+          : metodoFinal,
         items: cart,
         fecha: new Date().toISOString(),
         pago_cliente: montoPagoCliente
       };
+      
+      // Intentar agregar detalles del pago mixto en columna separada si existe
+      // Si la columna no existe, el error será silencioso y solo usará el string en metodo_pago
+      if (detallesPagoMixto) {
+        try {
+          ventaData.detalles_pago_mixto = detallesPagoMixto;
+        } catch (e) {
+          // Columna no existe, continuar sin ella
+          console.log('Usando formato de string para pago mixto');
+        }
+      }
       const { data: ventaResult, error: ventaError } = await supabase
         .from('ventas')
         .insert([ventaData])
@@ -534,7 +893,9 @@ export default function Caja() {
         metodo_pago: metodoFinal,
         pagoCliente: montoPagoCliente,
         total: total,
-        cantidadProductos: cart.length
+        cantidadProductos: cart.length,
+        // Agregar detalles de pago mixto si existen
+        ...(detallesPagoMixto && { detalles_pago_mixto: detallesPagoMixto })
       };
       // Establecer datos y mostrar modal de éxito inmediatamente
       setDatosVentaConfirmada(ventaRecibo);
@@ -875,6 +1236,9 @@ export default function Caja() {
 
       {/* Pago en efectivo */}
       {mostrandoPagoEfectivo && <PagoEfectivo />}
+
+      {/* Pago mixto */}
+      {mostrandoPagoMixto && <PagoMixto />}
 
       {/* Recibo de venta con lazy loading */}
       {ventaCompletada && (
