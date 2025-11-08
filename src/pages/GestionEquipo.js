@@ -15,7 +15,6 @@ import {
   Send,
   User,
   Star,
-  Lock,
   Briefcase,
   Target,
   Key,
@@ -36,7 +35,6 @@ import {
   useAssignCustomRole,
 } from '../hooks/useTeam';
 import CrearRolModal from '../components/CrearRolModal';
-import { PREDEFINED_ROLES } from '../constants/permissions';
 import toast from 'react-hot-toast';
 import './GestionEquipo.css';
 
@@ -417,14 +415,14 @@ const InvitationCard = ({ invitation, onCancel }) => {
 };
 
 const GestionEquipo = () => {
-  const { user, organization, hasRole } = useAuth();
+  const { organization, hasRole } = useAuth();
   const [invitarModalOpen, setInvitarModalOpen] = useState(false);
   const [crearRolModalOpen, setCrearRolModalOpen] = useState(false);
   const [rolAEditar, setRolAEditar] = useState(null);
 
   // Hooks de datos
   const { data: teamMembers = [], isLoading: loadingMembers } = useTeamMembers(organization?.id);
-  const { data: invitations = [], isLoading: loadingInvitations } = useInvitations(organization?.id);
+  const { data: invitations = [] } = useInvitations(organization?.id);
   const { data: customRoles = [], isLoading: loadingRoles } = useCustomRoles(organization?.id);
 
   // Hooks de mutaciones

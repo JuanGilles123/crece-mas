@@ -1,14 +1,13 @@
 
 
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 import './Inventario.css';
 import AgregarProductoModal from './AgregarProductoModal';
 import EditarProductoModal from './EditarProductoModal';
 import ImportarProductosCSV from '../components/ImportarProductosCSV';
 import OptimizedProductImage from '../components/OptimizedProductImage';
-import { ProductCardSkeleton, ProductListSkeleton, InventoryHeaderSkeleton } from '../components/SkeletonLoader';
 import LottieLoader from '../components/LottieLoader';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';

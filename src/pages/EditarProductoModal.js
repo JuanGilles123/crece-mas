@@ -3,7 +3,7 @@ import { supabase } from '../supabaseClient';
 import './Inventario.css';
 import { useAuth } from '../context/AuthContext';
 import { compressProductImage } from '../utils/imageCompression';
-import { useCurrencyInput, formatCurrency, getNumericValue } from '../hooks/useCurrencyInput';
+import { useCurrencyInput } from '../hooks/useCurrencyInput';
 // Función para eliminar imagen del storage
 const deleteImageFromStorage = async (imagePath) => {
   if (!imagePath) return;
@@ -58,7 +58,7 @@ const EditarProductoModal = ({ open, onClose, producto, onProductoEditado }) => 
       stockInput.setValue(producto.stock || '');
       setImagen(null); // Limpiar imagen nueva al cambiar producto
     }
-  }, [producto]);
+  }, [producto, precioCompraInput, precioVentaInput, stockInput]);
 
   // Limpiar imagen cuando se cierre el modal
   React.useEffect(() => {
