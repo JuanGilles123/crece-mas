@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
-import { Zap, DollarSign, FileText, CreditCard, Check, X, Banknote, Smartphone, Building2, RefreshCw } from 'lucide-react';
+import { Zap, DollarSign, FileText, CreditCard, Check, X, Banknote, Building2, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useCurrencyInput } from '../hooks/useCurrencyInput';
 import './VentaRapida.css';
@@ -76,7 +76,7 @@ export default function VentaRapida() {
         fecha: new Date().toISOString()
       };
 
-      const { data: venta, error: ventaError } = await supabase
+      const { error: ventaError } = await supabase
         .from('ventas')
         .insert(ventaData)
         .select()

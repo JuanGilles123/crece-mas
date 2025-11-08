@@ -60,9 +60,6 @@ const deleteImageFromStorage = async (imagePath) => {
   }
 };
 
-const productosIniciales = [];
-
-
 const Inventario = () => {
   const { user, userProfile } = useAuth();
   const queryClient = useQueryClient();
@@ -121,7 +118,6 @@ const Inventario = () => {
         if (errorStock) throw errorStock;
         
         // 3. Contar productos próximos a vencer (próximos 7 días)
-        const hoy = new Date();
         const proximaSemana = new Date();
         proximaSemana.setDate(proximaSemana.getDate() + 7);
         
@@ -173,14 +169,10 @@ const Inventario = () => {
   const eliminarProductoMutation = useEliminarProducto();
 
   // Combinar todas las páginas en un solo array
-  const productos = data?.pages?.flatMap(page => page.data) || [];
+  const productos = useMemo(() => {
+    return data?.pages?.flatMap(page => page.data) || [];
+  }, [data?.pages]);
   
-  // Debug: Log productos cargados
-  useEffect(() => {
-    if (productos.length > 0) {
-    }
-  }, [productos]);
-
   // Implementar IntersectionObserver para scroll infinito
   useEffect(() => {
     if (cargando || !hasNextPage) return;

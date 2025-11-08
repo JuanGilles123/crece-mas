@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, Lock, Eye, EyeOff, ArrowLeft, TrendingUp, Users, BarChart3, Phone, Globe, CheckCircle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowLeft, TrendingUp, Users, BarChart3, Phone, Globe } from 'lucide-react';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 import ConfirmacionCorreo from '../components/ConfirmacionCorreo';
@@ -42,7 +42,6 @@ const Registro = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const navigate = useNavigate();
 
   const validate = () => {
     if (!email.match(/^[^@\s]+@[^@\s]+\.[^@\s]+$/)) return 'Por favor ingresa un correo válido.';

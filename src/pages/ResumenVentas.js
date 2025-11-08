@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import './ResumenVentas.css';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
@@ -29,7 +29,7 @@ import {
   ArcElement,
 } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
-import { format, subDays, startOfDay, endOfDay, isToday, isYesterday, parseISO } from 'date-fns';
+import { format, subDays, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 ChartJS.register(
@@ -46,7 +46,6 @@ const ResumenVentas = () => {
   const { user, userProfile } = useAuth();
   const [cargando, setCargando] = useState(true);
   const [ventas, setVentas] = useState([]);
-  const [productos, setProductos] = useState([]);
   const [vistaActual, setVistaActual] = useState('general');
   const [filtros, setFiltros] = useState({
     fechaInicio: '',
