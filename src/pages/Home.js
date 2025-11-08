@@ -7,7 +7,6 @@ import {
   BarChart3, 
   Users, 
   Shield, 
-  Smartphone, 
   Clock, 
   CheckCircle, 
   ArrowRight,
@@ -22,7 +21,6 @@ import {
   Calculator,
   ShoppingCart,
   Share2,
-  UserPlus,
   Building2
 } from 'lucide-react';
 import styles from './Home.module.css';
