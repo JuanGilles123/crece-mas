@@ -1,8 +1,17 @@
-import React from 'react';
+import React, { memo, useState, useCallback } from 'react';
 import { useImageCache } from '../hooks/useImageCache';
 
-const OptimizedProductImage = ({ imagePath, alt, className, onError }) => {
+const OptimizedProductImage = memo(({ imagePath, alt, className, onError }) => {
   const { imageUrl, loading, error } = useImageCache(imagePath);
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  const handleLoad = useCallback(() => {
+    setImageLoaded(true);
+  }, []);
+
+  const handleError = useCallback((e) => {
+    if (onError) onError(e);
+  }, [onError]);
 
   if (loading) {
     return (
@@ -47,22 +56,46 @@ const OptimizedProductImage = ({ imagePath, alt, className, onError }) => {
   }
 
   return (
-    <img
-      src={imageUrl}
-      alt={alt}
-      className={className}
-      loading="lazy"
-      decoding="async"
-      onLoad={() => {
-      }}
-      onError={(e) => {
-        if (onError) onError(e);
-      }}
-      style={{
-        transition: 'opacity 0.3s ease-in-out'
-      }}
-    />
+    <>
+      {!imageLoaded && (
+        <div className={className} style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: '#f3f4f6',
+          borderRadius: '12px',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0
+        }}>
+          <div style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>Cargando...</div>
+        </div>
+      )}
+      <img
+        src={imageUrl}
+        alt={alt}
+        className={className}
+        loading="lazy"
+        decoding="async"
+        fetchpriority="low"
+        onLoad={handleLoad}
+        onError={handleError}
+        style={{
+          opacity: imageLoaded ? 1 : 0,
+          transition: 'opacity 0.3s ease-in-out'
+        }}
+      />
+    </>
   );
-};
+}, (prevProps, nextProps) => {
+  // Custom comparison para evitar re-renders innecesarios
+  return prevProps.imagePath === nextProps.imagePath &&
+         prevProps.alt === nextProps.alt &&
+         prevProps.className === nextProps.className;
+});
+
+OptimizedProductImage.displayName = 'OptimizedProductImage';
 
 export default OptimizedProductImage;

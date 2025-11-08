@@ -82,10 +82,15 @@ const Inventario = () => {
   // Referencias para scroll infinito
   const observerRef = useRef(null);
   const loadMoreRef = useRef(null);
+  const prevOrgIdRef = useRef(null);
 
-  // Invalidar cache cuando cambie la organización
+  // Invalidar cache cuando cambie la organización (optimizado)
   useEffect(() => {
-    if (userProfile?.organization_id) {
+    const currentOrgId = userProfile?.organization_id;
+    
+    // Solo invalidar si la organización realmente cambió
+    if (currentOrgId && currentOrgId !== prevOrgIdRef.current) {
+      prevOrgIdRef.current = currentOrgId;
       queryClient.invalidateQueries(['productos']);
       queryClient.invalidateQueries(['productos-paginados']);
     }

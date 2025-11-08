@@ -3,17 +3,19 @@ import { supabase } from '../supabaseClient';
 import toast from 'react-hot-toast';
 
 // Hook para obtener ventas
-export const useVentas = (organizationId) => {
+export const useVentas = (organizationId, limit = 100) => {
   return useQuery({
-    queryKey: ['ventas', organizationId],
+    queryKey: ['ventas', organizationId, limit],
     queryFn: async () => {
       if (!organizationId) return [];
+      
+      // Select solo campos necesarios
       const { data, error } = await supabase
         .from('ventas')
-        .select('*')
+        .select('id, total, metodo_pago, created_at, items, usuario_nombre, organization_id')
         .eq('organization_id', organizationId)
         .order('created_at', { ascending: false })
-        .limit(1000);
+        .limit(limit);
 
       if (error) {
         console.error('Error fetching ventas:', error);
@@ -22,8 +24,10 @@ export const useVentas = (organizationId) => {
       return data || [];
     },
     enabled: !!organizationId,
-    staleTime: 2 * 60 * 1000, // 2 minutos (más frecuente que productos)
-    cacheTime: 5 * 60 * 1000, // 5 minutos
+    staleTime: 3 * 60 * 1000, // 3 minutos
+    cacheTime: 15 * 60 * 1000, // 15 minutos
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 };
 

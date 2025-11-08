@@ -8,12 +8,14 @@ export const useProductos = (organizationId) => {
     queryKey: ['productos', organizationId],
     queryFn: async () => {
       if (!organizationId) return [];
+      
+      // Select solo los campos necesarios para mejor performance
       const { data, error } = await supabase
         .from('productos')
-        .select('*')
+        .select('id, nombre, precio, stock, imagen_url, categoria, codigo, organization_id, created_at')
         .eq('organization_id', organizationId)
         .order('created_at', { ascending: false })
-        .limit(1000);
+        .limit(500); // Reducido de 1000 a 500 para mejor performance
 
       if (error) {
         console.error('Error fetching productos:', error);
@@ -22,13 +24,15 @@ export const useProductos = (organizationId) => {
       return data || [];
     },
     enabled: !!organizationId,
-    staleTime: 5 * 60 * 1000, // 5 minutos
-    cacheTime: 10 * 60 * 1000, // 10 minutos
+    staleTime: 10 * 60 * 1000, // Aumentado a 10 minutos
+    cacheTime: 30 * 60 * 1000, // Aumentado a 30 minutos
+    refetchOnMount: false, // No refetch si hay cache válido
+    refetchOnWindowFocus: false,
   });
 };
 
 // Hook para obtener productos con paginación infinita
-export const useProductosPaginados = (organizationId, pageSize = 20) => {
+export const useProductosPaginados = (organizationId, pageSize = 50) => {
   return useInfiniteQuery({
     queryKey: ['productos-paginados', organizationId, pageSize],
     queryFn: async ({ pageParam = 0 }) => {
@@ -48,7 +52,7 @@ export const useProductosPaginados = (organizationId, pageSize = 20) => {
         throw new Error('Error al cargar productos');
       }
 
-      const hasMore = (start + data.length) < count;
+      const hasMore = count ? (start + (data?.length || 0)) < count : false;
       
       return {
         data: data || [],
@@ -58,8 +62,10 @@ export const useProductosPaginados = (organizationId, pageSize = 20) => {
     },
     getNextPageParam: (lastPage) => lastPage.nextPage,
     enabled: !!organizationId,
-    staleTime: 5 * 60 * 1000, // 5 minutos
-    cacheTime: 10 * 60 * 1000, // 10 minutos
+    staleTime: 10 * 60 * 1000, // Aumentado a 10 minutos
+    cacheTime: 30 * 60 * 1000, // Aumentado a 30 minutos
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 };
 
