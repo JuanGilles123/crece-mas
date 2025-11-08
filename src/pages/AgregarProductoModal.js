@@ -10,6 +10,7 @@ import './Inventario.css';
 import { useAuth } from '../context/AuthContext';
 import { compressProductImage } from '../utils/imageCompression';
 import { useAgregarProducto } from '../hooks/useProductos';
+import { useCurrencyInput } from '../hooks/useCurrencyInput';
 import toast from 'react-hot-toast';
 
 // Esquema de validación con Zod
@@ -37,6 +38,11 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
   const [comprimiendo, setComprimiendo] = useState(false);
   const fileInputRef = useRef();
 
+  // Currency inputs
+  const precioCompraInput = useCurrencyInput();
+  const precioVentaInput = useCurrencyInput();
+  const stockInput = useCurrencyInput();
+
   // React Query mutation
   const agregarProductoMutation = useAgregarProducto();
 
@@ -61,22 +67,20 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
 
   if (!open) return null;
 
-  // Funciones para formatear precios
+  // Funciones optimizadas para manejar inputs
   const handlePrecioCompraChange = (e) => {
-    let val = e.target.value.replace(/\D/g, '');
-    const formatted = val ? Number(val).toLocaleString('es-CO') : '';
-    setValue('precioCompra', formatted);
+    const formatted = precioCompraInput.handleChange(e);
+    setValue('precioCompra', formatted, { shouldValidate: true });
   };
 
   const handlePrecioVentaChange = (e) => {
-    let val = e.target.value.replace(/\D/g, '');
-    const formatted = val ? Number(val).toLocaleString('es-CO') : '';
-    setValue('precioVenta', formatted);
+    const formatted = precioVentaInput.handleChange(e);
+    setValue('precioVenta', formatted, { shouldValidate: true });
   };
 
   const handleStockChange = (e) => {
-    let val = e.target.value.replace(/\D/g, '');
-    setValue('stock', val);
+    const formatted = stockInput.handleChange(e);
+    setValue('stock', formatted, { shouldValidate: true });
   };
 
   const handleImagenChange = e => {

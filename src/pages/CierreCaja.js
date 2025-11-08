@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
+import { useCurrencyInput } from '../hooks/useCurrencyInput';
 import { Calculator, TrendingUp, DollarSign, ShoppingCart, AlertCircle, CheckCircle, XCircle, Save, Banknote, CreditCard, Smartphone, Share2, Download } from 'lucide-react';
 import './CierreCaja.css';
 
@@ -10,9 +11,12 @@ const CierreCaja = () => {
   const [cargando, setCargando] = useState(true);
   const [ventasHoy, setVentasHoy] = useState([]);
   const [totalSistema, setTotalSistema] = useState(0);
-  const [efectivoReal, setEfectivoReal] = useState('');
-  const [transferenciasReal, setTransferenciasReal] = useState('');
-  const [tarjetaReal, setTarjetaReal] = useState('');
+  
+  // Currency inputs optimizados
+  const efectivoRealInput = useCurrencyInput();
+  const transferenciasRealInput = useCurrencyInput();
+  const tarjetaRealInput = useCurrencyInput();
+  
   const [totalReal, setTotalReal] = useState(0);
   const [diferencia, setDiferencia] = useState(null);
   const [guardando, setGuardando] = useState(false);
@@ -32,34 +36,19 @@ const CierreCaja = () => {
     cargarVentasHoy();
   }, [userProfile?.organization_id]);
 
-  // Función para formatear número con separador de miles
-  const formatearNumero = (valor) => {
-    if (!valor) return '';
-    // Eliminar todo excepto números
-    const numero = valor.toString().replace(/\D/g, '');
-    // Formatear con puntos
-    return numero.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  };
-
-  // Función para obtener valor numérico limpio
-  const obtenerValorNumerico = (valorFormateado) => {
-    if (!valorFormateado) return 0;
-    return parseFloat(valorFormateado.replace(/\./g, '')) || 0;
-  };
-
   useEffect(() => {
-    const efectivo = obtenerValorNumerico(efectivoReal);
-    const transferencias = obtenerValorNumerico(transferenciasReal);
-    const tarjeta = obtenerValorNumerico(tarjetaReal);
+    const efectivo = efectivoRealInput.numericValue;
+    const transferencias = transferenciasRealInput.numericValue;
+    const tarjeta = tarjetaRealInput.numericValue;
     const total = efectivo + transferencias + tarjeta;
     setTotalReal(total);
     
-    if (efectivoReal !== '' || transferenciasReal !== '' || tarjetaReal !== '') {
+    if (efectivoRealInput.displayValue !== '' || transferenciasRealInput.displayValue !== '' || tarjetaRealInput.displayValue !== '') {
       setDiferencia(total - totalSistema);
     } else {
       setDiferencia(null);
     }
-  }, [efectivoReal, transferenciasReal, tarjetaReal, totalSistema]);
+  }, [efectivoRealInput.displayValue, transferenciasRealInput.displayValue, tarjetaRealInput.displayValue, totalSistema]);
 
   const cargarVentasHoy = async () => {
     if (!userProfile?.organization_id) return;
@@ -197,9 +186,9 @@ TOTAL SISTEMA: ${formatCOP(totalSistema)}
 
 � CONTEO REAL:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-💵 Efectivo: ${formatCOP(obtenerValorNumerico(efectivoReal))}
-📲 Transferencias: ${formatCOP(obtenerValorNumerico(transferenciasReal))}
-💳 Tarjeta: ${formatCOP(obtenerValorNumerico(tarjetaReal))}
+💵 Efectivo: ${formatCOP(efectivoRealInput.numericValue)}
+📲 Transferencias: ${formatCOP(transferenciasRealInput.numericValue)}
+💳 Tarjeta: ${formatCOP(tarjetaRealInput.numericValue)}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 TOTAL REAL: ${formatCOP(totalReal)}
 
@@ -263,7 +252,7 @@ Generado por Crece+ 🚀
   };
 
   const guardarCierre = async () => {
-    if (efectivoReal === '' && transferenciasReal === '' && tarjetaReal === '') {
+    if (efectivoRealInput.displayValue === '' && transferenciasRealInput.displayValue === '' && tarjetaRealInput.displayValue === '') {
       setMensaje({ tipo: 'error', texto: 'Por favor ingresa al menos un monto' });
       return;
     }
@@ -283,9 +272,9 @@ Generado por Crece+ 🚀
           sistema_otros: 0,
           total_sistema: totalSistema,
           // Desglose real contado
-          real_efectivo: obtenerValorNumerico(efectivoReal),
-          real_transferencias: obtenerValorNumerico(transferenciasReal),
-          real_tarjeta: obtenerValorNumerico(tarjetaReal),
+          real_efectivo: efectivoRealInput.numericValue,
+          real_transferencias: transferenciasRealInput.numericValue,
+          real_tarjeta: tarjetaRealInput.numericValue,
           real_otros: 0,
           total_real: totalReal,
           // Diferencia y metadata
@@ -304,9 +293,9 @@ Generado por Crece+ 🚀
       
       // Limpiar después de 3 segundos
       setTimeout(() => {
-        setEfectivoReal('');
-        setTransferenciasReal('');
-        setTarjetaReal('');
+        efectivoRealInput.reset();
+        transferenciasRealInput.reset();
+        tarjetaRealInput.reset();
         setTotalReal(0);
         setDiferencia(null);
         setMensaje({ tipo: '', texto: '' });
@@ -503,9 +492,10 @@ Generado por Crece+ 🚀
               </label>
               <input
                 type="text"
-                value={efectivoReal}
-                onChange={(e) => setEfectivoReal(formatearNumero(e.target.value))}
+                value={efectivoRealInput.displayValue}
+                onChange={efectivoRealInput.handleChange}
                 placeholder="0"
+                inputMode="numeric"
                 className="input-total-real"
               />
               <span className="input-hint">Cuenta el efectivo físico en caja</span>
@@ -519,9 +509,10 @@ Generado por Crece+ 🚀
               </label>
               <input
                 type="text"
-                value={transferenciasReal}
-                onChange={(e) => setTransferenciasReal(formatearNumero(e.target.value))}
+                value={transferenciasRealInput.displayValue}
+                onChange={transferenciasRealInput.handleChange}
                 placeholder="0"
+                inputMode="numeric"
                 className="input-total-real"
               />
               <span className="input-hint">Verifica las transferencias recibidas</span>
@@ -535,16 +526,17 @@ Generado por Crece+ 🚀
               </label>
               <input
                 type="text"
-                value={tarjetaReal}
-                onChange={(e) => setTarjetaReal(formatearNumero(e.target.value))}
+                value={tarjetaRealInput.displayValue}
+                onChange={tarjetaRealInput.handleChange}
                 placeholder="0"
+                inputMode="numeric"
                 className="input-total-real"
               />
               <span className="input-hint">Verifica los pagos con tarjeta</span>
               <span className="sistema-vs-real">Sistema: {formatCOP(desgloseSistema.tarjeta)}</span>
             </div>
             
-            {(efectivoReal !== '' || transferenciasReal !== '' || tarjetaReal !== '') && (
+            {(efectivoRealInput.displayValue !== '' || transferenciasRealInput.displayValue !== '' || tarjetaRealInput.displayValue !== '') && (
               <div className="total-real-calculado">
                 <DollarSign size={20} />
                 <span>Total Real:</span>
@@ -612,7 +604,7 @@ Generado por Crece+ 🚀
             <button
               className="btn-guardar-cierre"
               onClick={guardarCierre}
-              disabled={guardando || (efectivoReal === '' && transferenciasReal === '' && tarjetaReal === '')}
+              disabled={guardando || (efectivoRealInput.displayValue === '' && transferenciasRealInput.displayValue === '' && tarjetaRealInput.displayValue === '')}
             >
               <Save size={20} />
               {guardando ? 'Guardando...' : 'Guardar Cierre de Caja'}

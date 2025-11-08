@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
+import useCurrencyInput from '../hooks/useCurrencyInputOptimized';
 import OptimizedProductImage from '../components/OptimizedProductImage';
 import { ShoppingCart, Trash2, Plus, Minus, Search, CheckCircle, X, CreditCard, Banknote, Smartphone, Wallet } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -45,7 +46,7 @@ export default function Caja() {
   const [procesandoVenta, setProcesandoVenta] = useState(false);
   const [mostrandoMetodosPago, setMostrandoMetodosPago] = useState(false);
   const [mostrandoPagoEfectivo, setMostrandoPagoEfectivo] = useState(false);
-  const [montoEntregado, setMontoEntregado] = useState('');
+  const montoEntregadoInput = useCurrencyInput();
   const [mostrandoConfirmacion, setMostrandoConfirmacion] = useState(false);
   const [confirmacionCargando, setConfirmacionCargando] = useState(false);
   const [confirmacionExito, setConfirmacionExito] = useState(false);
@@ -58,7 +59,8 @@ export default function Caja() {
   const [mostrandoPagoMixto, setMostrandoPagoMixto] = useState(false);
   const [metodo1, setMetodo1] = useState('Efectivo');
   const [metodo2, setMetodo2] = useState('Transferencia');
-  const [montoMetodo1, setMontoMetodo1] = useState('');
+  const montoMetodo1Input = useCurrencyInput();
+  const montoMetodo2Input = useCurrencyInput();
 
   // Cargar productos del usuario con renderizado procedural
   useEffect(() => {
@@ -212,17 +214,18 @@ export default function Caja() {
     
     if (metodo === 'Efectivo') {
       // Mostrar modal de pago en efectivo
-      setMontoEntregado('');
+      montoEntregadoInput.reset();
       setMostrandoPagoEfectivo(true);
     } else if (metodo === 'Mixto') {
       // Mostrar modal de pago mixto
       setMetodo1('Efectivo');
       setMetodo2('Transferencia');
-      setMontoMetodo1('');
+      montoMetodo1Input.reset();
+      montoMetodo2Input.reset();
       setMostrandoPagoMixto(true);
     } else {
       // Para otros métodos, establecer el monto como el total
-      setMontoEntregado(total.toString());
+      montoEntregadoInput.setValue(total);
       // Usar setTimeout para asegurar que el estado se actualice antes de confirmar
       setTimeout(() => {
         confirmSale(metodo);
@@ -231,15 +234,13 @@ export default function Caja() {
   };
 
   const handleValorPredefinido = useCallback((valor) => {
-    setMontoEntregado(prev => {
-      const montoActual = parseFloat(prev.replace(/[^\d]/g, '')) || 0;
-      const nuevoMonto = montoActual + valor;
-      return nuevoMonto.toLocaleString('es-CO');
-    });
-  }, []);
+    const montoActual = montoEntregadoInput.numericValue;
+    const nuevoMonto = montoActual + valor;
+    montoEntregadoInput.setValue(nuevoMonto);
+  }, [montoEntregadoInput]);
 
   const handleConfirmarPagoEfectivo = () => {
-    const monto = parseFloat(montoEntregado.replace(/[^\d]/g, ''));
+    const monto = montoEntregadoInput.numericValue;
     if (isNaN(monto) || monto < total) {
       toast.error('El monto debe ser mayor o igual al total de la venta.');
       return;
@@ -250,7 +251,7 @@ export default function Caja() {
 
   const handleCancelarPagoEfectivo = () => {
     setMostrandoPagoEfectivo(false);
-    setMontoEntregado('');
+    montoEntregadoInput.reset();
   };
 
   const handleCerrarConfirmacion = () => {
@@ -262,7 +263,7 @@ export default function Caja() {
 
   // Handlers para pago mixto
   const handleConfirmarPagoMixto = () => {
-    const monto1 = parseFloat(montoMetodo1.replace(/[^\d]/g, '')) || 0;
+    const monto1 = montoMetodo1Input.numericValue;
     const monto2 = total - monto1;
     
     if (monto1 <= 0 || monto1 >= total) {
@@ -271,7 +272,7 @@ export default function Caja() {
     }
     
     // Guardar los datos del pago mixto
-    setMontoEntregado(total.toString());
+    montoEntregadoInput.setValue(total);
     setMostrandoPagoMixto(false);
     
     // Confirmar venta con información de pago mixto
@@ -285,12 +286,13 @@ export default function Caja() {
 
   const handleCancelarPagoMixto = () => {
     setMostrandoPagoMixto(false);
-    setMontoMetodo1('');
+    montoMetodo1Input.reset();
+    montoMetodo2Input.reset();
   };
 
   // Componente para pago mixto
   const PagoMixto = () => {
-    const monto1 = parseFloat(montoMetodo1.replace(/[^\d]/g, '')) || 0;
+    const monto1 = montoMetodo1Input.numericValue;
     const [montoMetodo2Input, setMontoMetodo2Input] = useState('');
     const monto2Calculado = total - monto1;
     
@@ -313,25 +315,23 @@ export default function Caja() {
       }
     };
 
-    const handleMonto1Change = (value) => {
-      const cleanValue = value.replace(/[^\d,.]/g, '');
-      const numValue = parseFloat(cleanValue.replace(/[^\d]/g, '')) || 0;
+    const handleMonto1Change = (e) => {
+      montoMetodo1Input.handleChange(e);
+      const numValue = montoMetodo1Input.numericValue;
       
       if (numValue <= total) {
-        setMontoMetodo1(cleanValue);
         const resto = total - numValue;
-        setMontoMetodo2Input(resto > 0 ? resto.toLocaleString('es-CO') : '');
+        montoMetodo2Input.setValue(resto);
       }
     };
 
-    const handleMonto2Change = (value) => {
-      const cleanValue = value.replace(/[^\d,.]/g, '');
-      const numValue = parseFloat(cleanValue.replace(/[^\d]/g, '')) || 0;
+    const handleMonto2Change = (e) => {
+      montoMetodo2Input.handleChange(e);
+      const numValue = montoMetodo2Input.numericValue;
       
       if (numValue <= total) {
-        setMontoMetodo2Input(cleanValue);
         const resto = total - numValue;
-        setMontoMetodo1(resto > 0 ? resto.toLocaleString('es-CO') : '');
+        montoMetodo1Input.setValue(resto);
       }
     };
 
@@ -399,19 +399,15 @@ export default function Caja() {
                   <span>Monto {metodo1}</span>
                 </label>
                 <input
+                  ref={montoMetodo1Input.inputRef}
                   type="text"
-                  value={montoMetodo1}
-                  onChange={(e) => handleMonto1Change(e.target.value)}
+                  value={montoMetodo1Input.displayValue}
+                  onChange={handleMonto1Change}
                   className="pago-efectivo-input"
                   placeholder="0"
                   autoFocus
+                  inputMode="numeric"
                   style={{ 
-                    transition: 'none',
-                    willChange: 'auto',
-                    backfaceVisibility: 'hidden',
-                    transform: 'translateZ(0)',
-                    WebkitBackfaceVisibility: 'hidden',
-                    WebkitTransform: 'translateZ(0)',
                     textAlign: 'center',
                     fontSize: '1.5rem',
                     fontWeight: '700',
@@ -432,18 +428,14 @@ export default function Caja() {
                   <span>Monto {metodo2}</span>
                 </label>
                 <input
+                  ref={montoMetodo2Input.inputRef}
                   type="text"
-                  value={montoMetodo2Input}
-                  onChange={(e) => handleMonto2Change(e.target.value)}
+                  value={montoMetodo2Input.displayValue}
+                  onChange={handleMonto2Change}
                   className="pago-efectivo-input"
                   placeholder="0"
+                  inputMode="numeric"
                   style={{ 
-                    transition: 'none',
-                    willChange: 'auto',
-                    backfaceVisibility: 'hidden',
-                    transform: 'translateZ(0)',
-                    WebkitBackfaceVisibility: 'hidden',
-                    WebkitTransform: 'translateZ(0)',
                     textAlign: 'center',
                     fontSize: '1.5rem',
                     fontWeight: '700',
@@ -585,7 +577,7 @@ export default function Caja() {
 
   // Componente para pago en efectivo
   const PagoEfectivo = () => {
-    const monto = parseFloat(montoEntregado.replace(/[^\d]/g, '')) || 0;
+    const monto = montoEntregadoInput.numericValue;
     const cambio = monto - total;
     const valoresComunes = [1000, 5000, 10000, 20000, 50000, 100000];
 
@@ -601,28 +593,14 @@ export default function Caja() {
             <div className="pago-efectivo-input-section">
               <label className="pago-efectivo-label">Monto entregado por el cliente</label>
               <input
+                ref={montoEntregadoInput.inputRef}
                 type="text"
-                value={montoEntregado}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  // Permitir solo números y comas/puntos para formato
-                  const cleanValue = value.replace(/[^\d,.]/g, '');
-                  // Solo actualizar si el valor es diferente para evitar re-renders innecesarios
-                  if (cleanValue !== montoEntregado) {
-                    setMontoEntregado(cleanValue);
-                  }
-                }}
+                value={montoEntregadoInput.displayValue}
+                onChange={montoEntregadoInput.handleChange}
                 className="pago-efectivo-input"
                 placeholder="Ingresa el monto"
                 autoFocus
-                style={{ 
-                  transition: 'none',
-                  willChange: 'auto',
-                  backfaceVisibility: 'hidden',
-                  transform: 'translateZ(0)',
-                  WebkitBackfaceVisibility: 'hidden',
-                  WebkitTransform: 'translateZ(0)'
-                }}
+                inputMode="numeric"
               />
             </div>
 
@@ -631,7 +609,7 @@ export default function Caja() {
                 <p className="pago-efectivo-subtitle">Valores comunes:</p>
                 <button 
                   className="pago-efectivo-limpiar-btn"
-                  onClick={() => setMontoEntregado('')}
+                  onClick={montoEntregadoInput.reset}
                   title="Limpiar monto"
                 >
                   Limpiar
@@ -801,7 +779,7 @@ export default function Caja() {
     let detallesPagoMixto = null;
     
     if (metodoFinal === "Efectivo") {
-      const montoNumero = parseFloat(montoEntregado.replace(/[^\d]/g, ''));
+      const montoNumero = montoEntregadoInput.numericValue;
       if (isNaN(montoNumero) || montoNumero < total) {
         toast.error('El monto debe ser mayor o igual al total de la venta.');
         setProcesandoVenta(false);

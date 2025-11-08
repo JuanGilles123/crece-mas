@@ -3,11 +3,12 @@ import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { Zap, DollarSign, FileText, CreditCard, Check, X, Banknote, Smartphone, Building2, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useCurrencyInput } from '../hooks/useCurrencyInput';
 import './VentaRapida.css';
 
 export default function VentaRapida() {
   const { user, organization } = useAuth();
-  const [monto, setMonto] = useState('');
+  const montoInput = useCurrencyInput();
   const [descripcion, setDescripcion] = useState('');
   const [metodoPago, setMetodoPago] = useState('efectivo');
   const [procesando, setProcesando] = useState(false);
@@ -23,7 +24,7 @@ export default function VentaRapida() {
   ];
 
   const handleMontoRapido = (valor) => {
-    setMonto(valor.toString());
+    montoInput.setValue(valor);
   };
 
   const formatearMonto = (valor) => {
@@ -37,7 +38,7 @@ export default function VentaRapida() {
   };
 
   const limpiarFormulario = () => {
-    setMonto('');
+    montoInput.reset();
     setDescripcion('');
     setMetodoPago('efectivo');
   };
@@ -48,7 +49,7 @@ export default function VentaRapida() {
       return;
     }
 
-    const montoNumerico = parseFloat(monto);
+    const montoNumerico = montoInput.numericValue;
     if (!montoNumerico || montoNumerico <= 0) {
       toast.error('Ingresa un monto válido');
       return;
@@ -108,11 +109,6 @@ export default function VentaRapida() {
     }
   };
 
-  const handleMontoChange = (e) => {
-    const valor = e.target.value.replace(/[^0-9]/g, '');
-    setMonto(valor);
-  };
-
   return (
     <div className="venta-rapida">
       <div className="venta-rapida-header">
@@ -137,16 +133,16 @@ export default function VentaRapida() {
             <input
               type="text"
               inputMode="numeric"
-              value={monto}
-              onChange={handleMontoChange}
+              value={montoInput.displayValue}
+              onChange={montoInput.handleChange}
               placeholder="0"
               className="monto-input"
               autoFocus
             />
           </div>
-          {monto && (
+          {montoInput.displayValue && (
             <div className="monto-preview">
-              {formatearMonto(monto)}
+              {formatearMonto(montoInput.numericValue)}
             </div>
           )}
         </div>
@@ -159,7 +155,7 @@ export default function VentaRapida() {
               <button
                 key={item.valor}
                 onClick={() => handleMontoRapido(item.valor)}
-                className={`monto-btn ${monto === item.valor.toString() ? 'active' : ''}`}
+                className={`monto-btn ${montoInput.numericValue === item.valor ? 'active' : ''}`}
                 type="button"
               >
                 {item.label}
@@ -240,7 +236,7 @@ export default function VentaRapida() {
           <button
             onClick={registrarVenta}
             className="btn-registrar"
-            disabled={procesando || !monto}
+            disabled={procesando || !montoInput.numericValue}
           >
             <Check size={24} />
             {procesando ? 'Procesando...' : 'Registrar Venta'}

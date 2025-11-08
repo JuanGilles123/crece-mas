@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient';
 import './Inventario.css';
 import { useAuth } from '../context/AuthContext';
 import { compressProductImage } from '../utils/imageCompression';
+import { useCurrencyInput, formatCurrency, getNumericValue } from '../hooks/useCurrencyInput';
 // Función para eliminar imagen del storage
 const deleteImageFromStorage = async (imagePath) => {
   if (!imagePath) return;
@@ -22,9 +23,12 @@ const EditarProductoModal = ({ open, onClose, producto, onProductoEditado }) => 
   const { user, userProfile } = useAuth();
   const [codigo, setCodigo] = useState(producto?.codigo || '');
   const [nombre, setNombre] = useState(producto?.nombre || '');
-  const [precioCompra, setPrecioCompra] = useState(producto?.precio_compra?.toString() || '');
-  const [precioVenta, setPrecioVenta] = useState(producto?.precio_venta?.toString() || '');
-  const [stock, setStock] = useState(producto?.stock?.toString() || '');
+  
+  // Currency inputs con hook personalizado
+  const precioCompraInput = useCurrencyInput(producto?.precio_compra || '');
+  const precioVentaInput = useCurrencyInput(producto?.precio_venta || '');
+  const stockInput = useCurrencyInput(producto?.stock || '');
+  
   const [imagen, setImagen] = useState(null);
   const [subiendo, setSubiendo] = useState(false);
   const [comprimiendo, setComprimiendo] = useState(false);
@@ -49,9 +53,9 @@ const EditarProductoModal = ({ open, onClose, producto, onProductoEditado }) => 
     if (producto) {
       setCodigo(producto.codigo || '');
       setNombre(producto.nombre || '');
-      setPrecioCompra(producto.precio_compra?.toString() || '');
-      setPrecioVenta(producto.precio_venta?.toString() || '');
-      setStock(producto.stock?.toString() || '');
+      precioCompraInput.setValue(producto.precio_compra || '');
+      precioVentaInput.setValue(producto.precio_venta || '');
+      stockInput.setValue(producto.stock || '');
       setImagen(null); // Limpiar imagen nueva al cambiar producto
     }
   }, [producto]);
@@ -73,8 +77,8 @@ const EditarProductoModal = ({ open, onClose, producto, onProductoEditado }) => 
     setError('');
     setSubiendo(true);
 
-    // Validar que el stock no sea negativo
-    const stockNum = Number(stock);
+    // Validar que el stock no sea negativo usando el valor numérico
+    const stockNum = stockInput.numericValue;
     if (stockNum < 0) {
       setError('El stock no puede ser negativo');
       setSubiendo(false);
@@ -107,15 +111,15 @@ const EditarProductoModal = ({ open, onClose, producto, onProductoEditado }) => 
         imagenPath = nombreArchivo;
       }
 
-      // Actualizar producto en la base de datos
+      // Actualizar producto en la base de datos usando valores numéricos
       const { error: updateError } = await supabase
         .from('productos')
         .update({
           codigo,
           nombre,
-          precio_compra: Number(precioCompra.replace(/\D/g, '')),
-          precio_venta: Number(precioVenta.replace(/\D/g, '')),
-          stock: Number(stock),
+          precio_compra: precioCompraInput.numericValue,
+          precio_venta: precioVentaInput.numericValue,
+          stock: stockInput.numericValue,
           imagen: imagenPath,
         })
         .eq('id', producto.id);
@@ -126,18 +130,18 @@ const EditarProductoModal = ({ open, onClose, producto, onProductoEditado }) => 
         id: producto.id,
         codigo,
         nombre,
-        precio_compra: Number(precioCompra.replace(/\D/g, '')),
-        precio_venta: Number(precioVenta.replace(/\D/g, '')),
-        stock: Number(stock),
+        precio_compra: precioCompraInput.numericValue,
+        precio_venta: precioVentaInput.numericValue,
+        stock: stockInput.numericValue,
         imagen: imagenPath,
       });
 
       // Limpiar formulario
       setCodigo('');
       setNombre('');
-      setPrecioCompra('');
-      setPrecioVenta('');
-      setStock('');
+      precioCompraInput.reset();
+      precioVentaInput.reset();
+      stockInput.reset();
       setImagen(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
       
@@ -178,8 +182,8 @@ const EditarProductoModal = ({ open, onClose, producto, onProductoEditado }) => 
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
               <span style={{ fontWeight: 600, fontSize: '0.98rem', marginBottom: 4, textAlign: 'center', color: 'var(--text-secondary)' }}>Precio de Compra</span>
               <input 
-                value={precioCompra} 
-                onChange={e => setPrecioCompra(e.target.value)} 
+                value={precioCompraInput.displayValue} 
+                onChange={precioCompraInput.handleChange} 
                 required 
                 inputMode="numeric"
                 placeholder="Ej: 30.000" 
@@ -189,8 +193,8 @@ const EditarProductoModal = ({ open, onClose, producto, onProductoEditado }) => 
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
               <span style={{ fontWeight: 600, fontSize: '0.98rem', marginBottom: 4, textAlign: 'center', color: 'var(--text-secondary)' }}>Precio de Venta</span>
               <input 
-                value={precioVenta} 
-                onChange={e => setPrecioVenta(e.target.value)} 
+                value={precioVentaInput.displayValue} 
+                onChange={precioVentaInput.handleChange} 
                 required 
                 inputMode="numeric"
                 placeholder="Ej: 50.000" 
@@ -200,17 +204,10 @@ const EditarProductoModal = ({ open, onClose, producto, onProductoEditado }) => 
           </div>
           <label>Stock</label>
           <input 
-            value={stock} 
-            onChange={e => {
-              const value = e.target.value;
-              // No permitir valores negativos
-              if (value === '' || (Number(value) >= 0 && !isNaN(Number(value)))) {
-                setStock(value);
-              }
-            }} 
+            value={stockInput.displayValue} 
+            onChange={stockInput.handleChange} 
             required 
-            type="number" 
-            min="0" 
+            inputMode="numeric"
             className="input-form" 
             placeholder="Cantidad en stock" 
           />
