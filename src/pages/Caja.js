@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useCallback, Suspense, lazy } from "react";
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
@@ -293,16 +293,9 @@ export default function Caja() {
   // Componente para pago mixto
   const PagoMixto = () => {
     const monto1 = montoMetodo1Input.numericValue;
-    const [montoMetodo2Input, setMontoMetodo2Input] = useState('');
     const monto2Calculado = total - monto1;
     
     // Sincronizar monto2 cuando cambia monto1
-    useEffect(() => {
-      if (monto1 > 0 && monto1 < total) {
-        setMontoMetodo2Input(monto2Calculado.toLocaleString('es-CO'));
-      }
-    }, [monto1, monto2Calculado, total]);
-    
     const metodosDisponibles = ['Efectivo', 'Transferencia', 'Tarjeta'];
     
     // Obtener icono según método

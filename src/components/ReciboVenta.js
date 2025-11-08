@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef } from "react";
 import { CheckCircle, Printer, Share2, Download, Banknote, CreditCard, Smartphone } from "lucide-react";
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';

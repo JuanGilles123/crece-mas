@@ -1,5 +1,15 @@
 import { useState, useCallback, useRef } from 'react';
 
+// Formatear número con separador de miles
+const formatNumber = (value) => {
+  if (!value) return '';
+  // Eliminar todo excepto números
+  const numero = value.toString().replace(/\D/g, '');
+  if (!numero) return '';
+  // Formatear con puntos como separador de miles
+  return numero.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+};
+
 /**
  * Hook para manejar inputs de moneda con formato de miles
  * Optimizado para evitar re-renders y pantallazos
@@ -9,16 +19,6 @@ export const useCurrencyInput = (initialValue = '') => {
     initialValue ? formatNumber(initialValue.toString()) : ''
   );
   const numericValueRef = useRef(0);
-
-  // Formatear número con separador de miles
-  const formatNumber = useCallback((value) => {
-    if (!value) return '';
-    // Eliminar todo excepto números
-    const numero = value.toString().replace(/\D/g, '');
-    if (!numero) return '';
-    // Formatear con puntos como separador de miles
-    return numero.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  }, []);
 
   // Manejar cambio en el input - OPTIMIZADO
   const handleChange = useCallback((e) => {

@@ -23,7 +23,7 @@ const useCurrencyInputOptimized = (initialValue = 0) => {
   // Inicializar el displayValue
   useEffect(() => {
     setDisplayValue(formatNumber(initialValue));
-  }, []);
+  }, [initialValue]);
 
   const handleChange = useCallback((e) => {
     const input = e.target;

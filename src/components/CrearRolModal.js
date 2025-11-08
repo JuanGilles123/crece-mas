@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Save, Check, Shield, User, Star, Lock, Briefcase, Target, Key, Award, Users } from 'lucide-react';
-import { MODULES, PREDEFINED_ROLES } from '../constants/permissions';
+import { motion } from 'framer-motion';
+import { X, Save, Check, Shield, User, Star, Briefcase, Target, Key, Award, Users } from 'lucide-react';
+import { MODULES } from '../constants/permissions';
 import toast from 'react-hot-toast';
 import './CrearRolModal.css';
 

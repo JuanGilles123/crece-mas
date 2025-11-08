@@ -4,7 +4,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { supabase } from '../supabaseClient';
-import { FormSkeleton } from '../components/SkeletonLoader';
 import LottieLoader from '../components/LottieLoader';
 import './Inventario.css';
 import { useAuth } from '../context/AuthContext';
@@ -52,8 +51,7 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
     handleSubmit,
     formState: { errors, isSubmitting },
     reset,
-    setValue,
-    watch
+    setValue
   } = useForm({
     resolver: zodResolver(productoSchema),
     defaultValues: {

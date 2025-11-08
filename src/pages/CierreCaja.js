@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
@@ -32,25 +32,7 @@ const CierreCaja = () => {
     mixto: 0
   });
 
-  useEffect(() => {
-    cargarVentasHoy();
-  }, [userProfile?.organization_id]);
-
-  useEffect(() => {
-    const efectivo = efectivoRealInput.numericValue;
-    const transferencias = transferenciasRealInput.numericValue;
-    const tarjeta = tarjetaRealInput.numericValue;
-    const total = efectivo + transferencias + tarjeta;
-    setTotalReal(total);
-    
-    if (efectivoRealInput.displayValue !== '' || transferenciasRealInput.displayValue !== '' || tarjetaRealInput.displayValue !== '') {
-      setDiferencia(total - totalSistema);
-    } else {
-      setDiferencia(null);
-    }
-  }, [efectivoRealInput.displayValue, transferenciasRealInput.displayValue, tarjetaRealInput.displayValue, totalSistema]);
-
-  const cargarVentasHoy = async () => {
+  const cargarVentasHoy = useCallback(async () => {
     if (!userProfile?.organization_id) return;
 
     setCargando(true);
@@ -161,7 +143,25 @@ const CierreCaja = () => {
     } finally {
       setCargando(false);
     }
-  };
+  }, [userProfile?.organization_id]);
+
+  useEffect(() => {
+    cargarVentasHoy();
+  }, [cargarVentasHoy]);
+
+  useEffect(() => {
+    const efectivo = efectivoRealInput.numericValue;
+    const transferencias = transferenciasRealInput.numericValue;
+    const tarjeta = tarjetaRealInput.numericValue;
+    const total = efectivo + transferencias + tarjeta;
+    setTotalReal(total);
+    
+    if (efectivoRealInput.displayValue !== '' || transferenciasRealInput.displayValue !== '' || tarjetaRealInput.displayValue !== '') {
+      setDiferencia(total - totalSistema);
+    } else {
+      setDiferencia(null);
+    }
+  }, [efectivoRealInput.numericValue, transferenciasRealInput.numericValue, tarjetaRealInput.numericValue, efectivoRealInput.displayValue, transferenciasRealInput.displayValue, tarjetaRealInput.displayValue, totalSistema]);
 
   const generarTextoCierre = () => {
     const fecha = new Date().toLocaleDateString('es-CO', { 
@@ -259,7 +259,7 @@ Generado por Crece+ 🚀
 
     setGuardando(true);
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('cierres_caja')
         .insert({
           organization_id: userProfile.organization_id,

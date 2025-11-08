@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Building2, Check, ChevronDown } from 'lucide-react';
 import { supabase } from '../supabaseClient';
@@ -6,18 +6,12 @@ import { useAuth } from '../context/AuthContext';
 import './OrganizationSwitcher.css';
 
 const OrganizationSwitcher = () => {
-  const { user, organization, refreshProfile } = useAuth();
+  const { user, organization } = useAuth();
   const [organizations, setOrganizations] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      loadOrganizations();
-    }
-  }, [user]);
-
-  const loadOrganizations = async () => {
+  const loadOrganizations = useCallback(async () => {
     try {
       // Obtener perfil del usuario
       const { data: profile } = await supabase
@@ -77,7 +71,13 @@ const OrganizationSwitcher = () => {
     } catch (error) {
       console.error('Error loading organizations:', error);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      loadOrganizations();
+    }
+  }, [user, loadOrganizations]);
 
   const switchOrganization = async (orgId) => {
     if (orgId === organization?.id) {
