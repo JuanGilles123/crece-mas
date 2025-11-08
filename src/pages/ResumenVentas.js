@@ -76,29 +76,9 @@ const ResumenVentas = () => {
     setCargando(false);
   }, [user, userProfile?.organization_id]);
 
-  // Cargar productos para análisis
-  const cargarProductos = useCallback(async () => {
-    if (!user || !userProfile?.organization_id) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('productos')
-        .select('*')
-        .eq('organization_id', userProfile.organization_id)
-        .limit(1000);
-
-      if (!error) {
-        setProductos(data || []);
-      }
-    } catch (error) {
-      console.error('Error cargando productos:', error);
-    }
-  }, [user, userProfile?.organization_id]);
-
   useEffect(() => {
     cargarVentas();
-    cargarProductos();
-  }, [cargarVentas, cargarProductos]);
+  }, [cargarVentas]);
 
   // Calcular métricas
   const calcularMetricas = () => {
