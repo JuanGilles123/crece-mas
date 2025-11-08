@@ -328,8 +328,26 @@
 
 .featuresGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 2rem;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+}
+
+@media (max-width: 1200px) {
+  .featuresGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .featuresGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .featuresGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .featureCard {
@@ -337,7 +355,7 @@
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 1rem;
-  padding: 2rem;
+  padding: 1.5rem;
   text-align: center;
   color: white;
   transition: all 0.3s ease;
@@ -352,24 +370,26 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 4rem;
-  height: 4rem;
+  width: 3rem;
+  height: 3rem;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 1rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
   color: #fbbf24;
 }
 
 .featureCard h3 {
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   font-weight: 600;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
   color: white;
 }
 
 .featureCard p {
-  opacity: 0.8;
-  line-height: 1.6;
+  font-size: 0.95rem;
+  opacity: 0.9;
+  color: white;
+  line-height: 1.5;
 }
 
 /* Benefits Section */
@@ -855,5 +875,245 @@
   .floatingCard {
     padding: 1rem;
     font-size: 0.9rem;
+  }
+}
+
+/* Dashboard Section Styles */
+.dashboardSection {
+  padding: 6rem 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, transparent 100%);
+  position: relative;
+  z-index: 1;
+}
+
+.dashboardContainer {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.dashboardContent {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 3rem;
+  margin-top: 3rem;
+  align-items: start;
+}
+
+.dashboardPreviewLarge {
+  background: white;
+  border-radius: 1.5rem;
+  padding: 1.5rem;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.dashboardMockup {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+.dashboardHeader {
+  background: white;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.dashboardNav {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #64748b;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: color 0.3s;
+}
+
+.navItem:first-child {
+  color: #3b82f6;
+  position: relative;
+}
+
+.navItem:first-child::after {
+  content: '';
+  position: absolute;
+  bottom: -1rem;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #3b82f6;
+}
+
+.dashboardBody {
+  padding: 2rem 1.5rem;
+}
+
+.statsRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.statBox {
+  background: white;
+  padding: 1.25rem;
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.statInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.statLabel {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.statValue {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.chartArea {
+  background: white;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.chartBars {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  height: 120px;
+}
+
+.bar {
+  flex: 1;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  border-radius: 0.5rem 0.5rem 0 0;
+  animation: growBar 1s ease-out;
+}
+
+@keyframes growBar {
+  from {
+    height: 0;
+  }
+}
+
+.alertsArea {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.alert {
+  background: white;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #475569;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.dashboardFeaturesGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.dashboardFeatureCard {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  display: flex;
+  align-items: start;
+  gap: 1rem;
+  transition: all 0.3s;
+}
+
+.dashboardFeatureCard:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateX(5px);
+}
+
+.dashboardFeatureIcon {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.dashboardFeatureCard h4 {
+  color: white;
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.dashboardFeatureCard p {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.floatingCard {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.floatingCard strong {
+  display: block;
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+}
+
+.floatingCard span {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+@media (max-width: 968px) {
+  .dashboardContent {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+  
+  .statsRow {
+    grid-template-columns: 1fr;
+  }
+  
+  .dashboardNav {
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+  }
+  
+  .navItem {
+    white-space: nowrap;
   }
 }
