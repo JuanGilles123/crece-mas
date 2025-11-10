@@ -1,40 +1,34 @@
-/* Página de Perfil - Estilos */
+/* Página de Perfil - iOS Native Style */
 
 .perfil-container {
   width: 100%;
   margin: 0;
   padding: 0;
-  background: var(--bg-primary);
-  min-height: 100vh;
+  background: transparent;
+  min-height: auto;
   overflow-x: hidden;
   box-sizing: border-box;
 }
 
-/* Header del perfil */
+/* Header del perfil - iOS Card */
 .perfil-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--bg-card);
-  padding: 1rem 1.5rem;
-  border-radius: 0;
-  box-shadow: none;
-  margin-bottom: 0;
-  border-bottom: 1px solid var(--border-primary);
-  border-bottom: none;
+  background: white;
+  padding: 24px;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  margin-bottom: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
   position: relative;
   width: 100%;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .perfil-header::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.08) 20%, rgba(0, 0, 0, 0.12) 50%, rgba(0, 0, 0, 0.08) 80%, transparent 100%);
+  content: none;
 }
 
 .perfil-user-info {
@@ -110,12 +104,12 @@
   height: 1rem;
 }
 
-/* Contenido principal */
+/* Contenido principal - iOS Style */
 .perfil-content {
   display: grid;
   grid-template-columns: 280px 1fr;
-  gap: 0;
-  background: var(--bg-input);
+  gap: 16px;
+  background: transparent;
   border-radius: 0;
   box-shadow: none;
   overflow: visible;
@@ -124,24 +118,16 @@
   box-sizing: border-box;
 }
 
-/* Sidebar de navegación */
+/* Sidebar de navegación - iOS Card */
 .perfil-sidebar {
-  background: var(--bg-card);
-  border-right: none;
-  padding: 1rem 0;
+  background: white;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  padding: 12px;
   position: relative;
   min-height: auto;
   width: 100%;
-}
-
-.perfil-sidebar::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.08) 20%, rgba(0, 0, 0, 0.12) 50%, rgba(0, 0, 0, 0.08) 80%, transparent 100%);
 }
 
 .perfil-nav {
@@ -153,29 +139,31 @@
 .perfil-nav-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
+  gap: 12px;
+  padding: 12px 16px;
   background: none;
   border: none;
-  color: var(--text-secondary);
-  font-size: 0.8rem;
+  border-radius: 10px;
+  color: #000;
+  font-size: 15px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   text-align: left;
   width: 100%;
   word-break: break-word;
   overflow-wrap: break-word;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
 }
 
 .perfil-nav-item:hover {
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
+  background: rgba(0, 0, 0, 0.05);
+  color: #000;
 }
 
 .perfil-nav-item.active {
-  background: #10b981;
-  color: var(--text-inverse);
+  background: #007AFF;
+  color: white;
   font-weight: 600;
 }
 
@@ -184,11 +172,11 @@
   height: 1.25rem;
 }
 
-/* Contenido principal */
+/* Contenido principal - iOS Card */
 .perfil-main {
-  padding: 2rem;
+  padding: 0;
   overflow: visible;
-  background: var(--bg-card);
+  background: transparent;
   width: 100%;
   box-sizing: border-box;
   min-height: auto;
@@ -218,11 +206,11 @@
   box-sizing: border-box;
 }
 
-/* Datos personales */
+/* Datos personales - iOS Card */
 .perfil-datos-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1.5rem;
+  gap: 16px;
   width: 100%;
   box-sizing: border-box;
   max-width: none;
@@ -230,15 +218,22 @@
 }
 
 .perfil-dato-item {
-  background: var(--bg-card);
-  padding: 1.5rem;
-  border-radius: 0.75rem;
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  background: white;
+  padding: 24px;
+  border-radius: 16px;
+  border: 1.5px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   width: 100%;
   box-sizing: border-box;
-  overflow: visible;
+  overflow: hidden;
   min-width: 0;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.perfil-dato-item:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+  border-color: rgba(0, 0, 0, 0.15);
 }
 
 .perfil-dato-label {
@@ -246,7 +241,7 @@
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 0.5rem;
+  margin-bottom: 8px;
 }
 
 .perfil-dato-value {
@@ -259,6 +254,7 @@
   width: 100%;
   box-sizing: border-box;
   min-width: 0;
+  line-height: 1.5;
 }
 
 /* Funcionalidad de edición */
@@ -789,4 +785,125 @@
 .perfil-logout-btn,
 .perfil-config-btn {
   transition: all 0.2s ease-in-out;
+}
+
+/* ============================================
+   MODO OSCURO iOS NATIVO
+   ============================================ */
+
+.dark .perfil-container {
+  background: transparent;
+}
+
+.dark .perfil-header {
+  background: #1C1C1E;
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.dark .perfil-header::after {
+  content: none;
+  background: transparent;
+}
+
+.dark .perfil-user-details h1 {
+  color: #FFFFFF;
+}
+
+.dark .perfil-user-email {
+  color: #8E8E93;
+}
+
+.dark .perfil-user-role {
+  color: #34C759;
+}
+
+.dark .perfil-content {
+  background: transparent;
+}
+
+.dark .perfil-sidebar {
+  background: #1C1C1E;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .perfil-sidebar::after {
+  background: transparent;
+}
+
+.dark .perfil-nav-item {
+  color: #8E8E93;
+}
+
+.dark .perfil-nav-item:hover {
+  background: #2C2C2E;
+  color: #FFFFFF;
+}
+
+.dark .perfil-nav-item.active {
+  background: #007AFF;
+  color: #FFFFFF;
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+}
+
+.dark .perfil-main {
+  background: #1C1C1E;
+}
+
+.dark .perfil-section-title {
+  color: #FFFFFF;
+}
+
+.dark .perfil-section-description {
+  color: #8E8E93;
+}
+
+.dark .perfil-dato-item,
+.dark .perfil-config-item {
+  background: #1C1C1E;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.dark .perfil-dato-item:hover,
+.dark .perfil-config-item:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.dark .perfil-dato-label,
+.dark .perfil-config-item h3 {
+  color: #8E8E93;
+}
+
+.dark .perfil-dato-value,
+.dark .perfil-config-item p {
+  color: #FFFFFF;
+}
+
+.dark .perfil-edit-input {
+  background: #1C1C1E;
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #FFFFFF;
+}
+
+.dark .perfil-edit-input:focus {
+  border-color: #34C759;
+  box-shadow: 0 0 0 3px rgba(52, 199, 89, 0.3);
+}
+
+.dark .perfil-edit-input:disabled {
+  background: #2C2C2E;
+  color: #8E8E93;
+}
+
+.dark .perfil-edit-start {
+  background: #2C2C2E;
+  color: #8E8E93;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .perfil-edit-start:hover {
+  background: #3A3A3C;
+  color: #FFFFFF;
 }

@@ -1,0 +1,237 @@
+/* 🍎 iOS Dashboard Global Styles - Aplicar a todas las páginas */
+
+/* Contenedores principales de páginas */
+.inventario-container,
+.caja-container,
+.venta-rapida-container,
+.cierre-caja-container,
+.resumen-ventas-container,
+.gestion-equipo-container,
+.invitaciones-container,
+.perfil-container,
+.dashboard-home-container {
+  background: transparent !important;
+  min-height: auto !important;
+  padding: 0 !important;
+}
+
+/* Cards y contenedores blancos - Convertir a iOS cards */
+.inventario-container > *,
+.caja-container > *,
+.venta-rapida-container > *,
+.cierre-caja-container > *,
+.resumen-ventas-container > *,
+.gestion-equipo-container > *,
+.invitaciones-container > *,
+.dashboard-home-content > * {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Perfil tiene su propio sistema de cards en Perfil.css */
+
+/* Headers de páginas */
+.inventario-header,
+.caja-header,
+.resumen-header {
+  background: white !important;
+  border-radius: 16px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  margin-bottom: 16px !important;
+}
+
+/* VentaRapida header es diferente - sin card */
+.venta-rapida-header {
+  background: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  border: none !important;
+  margin-bottom: 20px !important;
+  padding: 0 0 20px 0 !important;
+}
+
+/* Perfil header - tiene sus propios estilos en Perfil.css */
+
+/* Grids y listas */
+.productos-grid,
+.ventas-list,
+.equipo-grid,
+.invitaciones-list {
+  display: grid;
+  gap: 16px;
+  background: transparent !important;
+}
+
+/* Cards individuales (productos, ventas, etc) */
+.producto-card,
+.venta-card,
+.equipo-card,
+.invitacion-card {
+  background: white !important;
+  border-radius: 12px !important;
+  padding: 16px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.producto-card:hover,
+.venta-card:hover,
+.equipo-card:hover,
+.invitacion-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Tablas */
+table {
+  background: white !important;
+  border-radius: 12px !important;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+
+thead {
+  background: #F2F2F7 !important;
+}
+
+tbody tr {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+
+tbody tr:last-child {
+  border-bottom: none !important;
+}
+
+/* Inputs y formularios */
+input,
+textarea,
+select {
+  background: white !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  border-radius: 10px !important;
+  padding: 12px 16px !important;
+  font-size: 16px !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: #007AFF !important;
+  box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1) !important;
+  outline: none !important;
+}
+
+/* Botones iOS style */
+button {
+  border-radius: 10px !important;
+  font-weight: 600 !important;
+  padding: 12px 24px !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  border: none !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif !important;
+}
+
+button:active {
+  transform: scale(0.96) !important;
+}
+
+/* Modo oscuro */
+.dark .inventario-container > *,
+.dark .caja-container > *,
+.dark .venta-rapida-container > *,
+.dark .cierre-caja-container > *,
+.dark .resumen-ventas-container > *,
+.dark .gestion-equipo-container > *,
+.dark .invitaciones-container > *,
+.dark .dashboard-home-content > * {
+  background: #1C1C1E !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Perfil dark mode manejado en Perfil.css */
+
+.dark .producto-card,
+.dark .venta-card,
+.dark .equipo-card,
+.dark .invitacion-card {
+  background: #1C1C1E !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .producto-card:hover,
+.dark .venta-card:hover,
+.dark .equipo-card:hover,
+.dark .invitacion-card:hover {
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark table {
+  background: #1C1C1E !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark thead {
+  background: #2C2C2E !important;
+}
+
+.dark tbody tr {
+  border-bottom-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark input,
+.dark textarea,
+.dark select {
+  background: #2C2C2E !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: white !important;
+}
+
+.dark input:focus,
+.dark textarea:focus,
+.dark select:focus {
+  border-color: #0A84FF !important;
+  box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.2) !important;
+}
+
+/* Stats cards y métricas */
+.stats-card,
+.metric-card {
+  background: white !important;
+  border-radius: 16px !important;
+  padding: 20px !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06) !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+
+.dark .stats-card,
+.dark .metric-card {
+  background: #1C1C1E !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Modales */
+.modal-bg {
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+}
+
+.modal-card {
+  background: white !important;
+  border-radius: 20px !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+.dark .modal-card {
+  background: #1C1C1E !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}

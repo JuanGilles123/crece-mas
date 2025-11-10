@@ -211,6 +211,12 @@ const DashboardLayout = () => {
                   end={item.end}
                   className={({ isActive }) => isActive ? 'active' : ''} 
                   data-tooltip={item.label}
+                  onClick={() => {
+                    // Cerrar sidebar en móvil al hacer clic
+                    if (isMobile) {
+                      setSidebarCollapsed(true);
+                    }
+                  }}
                 >
                   <Icon size={22} />
                   <span className="nav-label">{item.label}</span>

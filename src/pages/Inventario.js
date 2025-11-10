@@ -393,22 +393,24 @@ const Inventario = () => {
 
           <div className="inventario-header">
             <div className="inventario-search-container">
-              <Search className="inventario-search-icon" size={20} />
-              <input 
-                className="inventario-search" 
-                placeholder="Buscar por nombre, código de barras o categoría..." 
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-              {query && (
-                <button 
-                  className="clear-search"
-                  onClick={() => setQuery('')}
-                  title="Limpiar búsqueda"
-                >
-                  ×
-                </button>
-              )}
+              <div className="search-input-wrapper">
+                <Search className="inventario-search-icon" size={20} />
+                <input 
+                  className="inventario-search" 
+                  placeholder="Buscar por nombre, código de barras o categoría..." 
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+                {query && (
+                  <button 
+                    className="clear-search"
+                    onClick={() => setQuery('')}
+                    title="Limpiar búsqueda"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
             </div>
             <div className="inventario-actions">
               <button className="inventario-btn inventario-btn-primary" onClick={() => setModalOpen(true)}>Nuevo producto</button>

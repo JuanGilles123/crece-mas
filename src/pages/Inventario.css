@@ -556,47 +556,130 @@
   margin-bottom: 1.5rem;
   padding: 0;
   flex-wrap: wrap;
+  background: transparent;
 }
+
 .inventario-search-container {
-  flex: 1 1 350px; /* Crece, se encoge, base 350px */
+  flex: 1 1 350px;
   min-width: 250px;
-  position: relative;
   display: flex;
   align-items: center;
-  min-width: 0; /* Permite que se encoja si es necesario */
+  min-width: 0;
+  background: transparent;
 }
 
-.inventario-search-icon {
-  position: absolute;
-  left: 1rem;
-  color: var(--text-tertiary);
-  z-index: 1;
-  pointer-events: none; /* El ícono no interfiere con el click */
-}
-
-.inventario-search {
+.search-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   width: 100%;
-  padding: 0.7rem 2.5rem 0.7rem 2.8rem; /* Reducido padding derecho */
-  border-radius: 10px;
-  border: 1px solid var(--border-primary);
   background: var(--bg-input);
-  color: var(--text-primary);
-  font-size: 1rem;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border-primary);
   box-shadow: var(--shadow-sm);
   transition: all 0.3s ease;
-  box-sizing: border-box; /* Asegura que el padding se incluya en el width */
 }
 
-.inventario-search:focus {
-  outline: none;
+.search-input-wrapper:focus-within {
   border-color: var(--accent-primary);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
   transform: translateY(-1px);
 }
 
-.inventario-search::placeholder {
-  color: var(--text-placeholder);
+.inventario-search-icon {
+  color: #6B7280;
+  flex-shrink: 0;
 }
+
+.inventario-search {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 1rem;
+  outline: none;
+  padding: 0;
+}
+
+.inventario-search::placeholder {
+  color: #9CA3AF;
+}
+
+/* ============================================
+   MODO OSCURO - Dark Mode Support
+   ============================================ */
+
+.dark .inventario-header {
+  background: transparent !important;
+}
+
+.dark .inventario-search-container {
+  background: transparent !important;
+}
+
+.dark .search-input-wrapper {
+  background: #2C2C2E !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+.dark .search-input-wrapper:focus-within {
+  border-color: #0A84FF !important;
+  box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.2) !important;
+}
+
+.dark .inventario-search {
+  background: transparent !important;
+  color: #fff !important;
+}
+
+.dark .inventario-search::placeholder {
+  color: #8E8E93 !important;
+}
+
+.dark .inventario-search-icon {
+  color: #9CA3AF !important;
+}
+
+.dark .stat-card {
+  background: #1C1C1E;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.dark .stat-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.dark .stat-card.active {
+  border-color: #0A84FF;
+  background: rgba(10, 132, 255, 0.15);
+}
+
+.dark .stat-card.warning {
+  border-color: #FF9F0A;
+}
+
+.dark .stat-card.warning.active {
+  background: rgba(255, 159, 10, 0.15);
+}
+
+.dark .stat-card.danger {
+  border-color: #FF453A;
+}
+
+.dark .stat-card.danger.active {
+  background: rgba(255, 69, 58, 0.15);
+}
+
+.dark .stat-label {
+  color: #8E8E93;
+}
+
+.dark .stat-value {
+  color: #fff;
+}
+
 .inventario-actions {
   display: flex;
   gap: 0.75rem;

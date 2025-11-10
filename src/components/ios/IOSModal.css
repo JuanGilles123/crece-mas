@@ -1,0 +1,348 @@
+/* 🍎 iOS Modal/Bottom Sheet Styles */
+
+.ios-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: backdropFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes backdropFadeIn {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(10px);
+  }
+}
+
+/* === CONTENT === */
+.ios-modal-content {
+  position: relative;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 
+    0 10px 40px rgba(0, 0, 0, 0.2),
+    0 0 1px rgba(0, 0, 0, 0.1);
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  will-change: transform, opacity;
+}
+
+/* === VARIANTS === */
+.ios-modal-center {
+  margin: 20px;
+}
+
+.ios-modal-bottom {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  max-height: 85vh;
+}
+
+.ios-modal-fullscreen {
+  width: 100vw;
+  height: 100vh;
+  max-height: 100vh;
+  margin: 0;
+  border-radius: 0;
+}
+
+/* === SIZES === */
+.ios-modal-small {
+  width: 100%;
+  max-width: 400px;
+}
+
+.ios-modal-medium {
+  width: 100%;
+  max-width: 600px;
+}
+
+.ios-modal-large {
+  width: 100%;
+  max-width: 900px;
+}
+
+.ios-modal-full {
+  width: 100%;
+}
+
+/* === ANIMATIONS === */
+.ios-modal-center.ios-modal-enter {
+  animation: modalCenterEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ios-modal-center.ios-modal-exit {
+  animation: modalCenterExit 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ios-modal-bottom.ios-modal-enter {
+  animation: modalBottomEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ios-modal-bottom.ios-modal-exit {
+  animation: modalBottomExit 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ios-modal-fullscreen.ios-modal-enter {
+  animation: modalFullscreenEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ios-modal-fullscreen.ios-modal-exit {
+  animation: modalFullscreenExit 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalCenterEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes modalCenterExit {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.9) translateY(20px);
+  }
+}
+
+@keyframes modalBottomEnter {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes modalBottomExit {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes modalFullscreenEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes modalFullscreenExit {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+/* === HANDLE (for bottom sheet) === */
+.ios-modal-handle {
+  display: flex;
+  justify-content: center;
+  padding: 12px 0 8px 0;
+  cursor: grab;
+}
+
+.ios-modal-handle:active {
+  cursor: grabbing;
+}
+
+.ios-modal-handle-bar {
+  width: 36px;
+  height: 5px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+  transition: background 0.2s ease;
+}
+
+.ios-modal-handle:hover .ios-modal-handle-bar {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* === HEADER === */
+.ios-modal-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.ios-modal-title {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #000;
+  margin: 0;
+}
+
+.ios-modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.05);
+  border: none;
+  border-radius: 50%;
+  color: #000;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ios-modal-close:hover {
+  background: rgba(0, 0, 0, 0.1);
+  transform: scale(1.1);
+}
+
+.ios-modal-close:active {
+  transform: scale(0.95);
+}
+
+/* === BODY === */
+.ios-modal-body {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Scrollbar styling */
+.ios-modal-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.ios-modal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ios-modal-body::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.ios-modal-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* === DARK MODE === */
+@media (prefers-color-scheme: dark) {
+  .ios-modal-content {
+    background: #1C1C1E;
+    box-shadow: 
+      0 10px 40px rgba(0, 0, 0, 0.5),
+      0 0 1px rgba(255, 255, 255, 0.1);
+  }
+  
+  .ios-modal-header {
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .ios-modal-title {
+    color: white;
+  }
+  
+  .ios-modal-close {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+  }
+  
+  .ios-modal-close:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
+  
+  .ios-modal-handle-bar {
+    background: rgba(255, 255, 255, 0.3);
+  }
+  
+  .ios-modal-handle:hover .ios-modal-handle-bar {
+    background: rgba(255, 255, 255, 0.4);
+  }
+  
+  .ios-modal-body::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+  }
+  
+  .ios-modal-body::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.4);
+  }
+}
+
+/* === RESPONSIVE === */
+@media (max-width: 768px) {
+  .ios-modal-center {
+    margin: 16px;
+  }
+  
+  .ios-modal-small,
+  .ios-modal-medium,
+  .ios-modal-large {
+    max-width: 100%;
+  }
+  
+  .ios-modal-header {
+    padding: 16px 20px;
+  }
+  
+  .ios-modal-body {
+    padding: 20px;
+  }
+}
+
+/* === SAFE AREA === */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .ios-modal-bottom .ios-modal-body {
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  }
+}
+
+/* === ACCESSIBILITY === */
+@media (prefers-reduced-motion: reduce) {
+  .ios-modal-content,
+  .ios-modal-overlay {
+    animation: none;
+  }
+}

@@ -1,0 +1,244 @@
+/* 🍎 iOS Button Styles */
+
+.ios-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+  text-align: center;
+  white-space: nowrap;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, box-shadow;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* === SIZES === */
+.ios-btn-small {
+  padding: 8px 16px;
+  font-size: 14px;
+  border-radius: 10px;
+}
+
+.ios-btn-medium {
+  padding: 12px 24px;
+  font-size: 16px;
+  border-radius: 12px;
+}
+
+.ios-btn-large {
+  padding: 16px 32px;
+  font-size: 18px;
+  border-radius: 14px;
+}
+
+.ios-btn-full {
+  width: 100%;
+}
+
+/* === VARIANTS === */
+.ios-btn-primary {
+  background: linear-gradient(135deg, #007AFF 0%, #0051D5 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.4);
+}
+
+.ios-btn-primary:hover {
+  background: linear-gradient(135deg, #0051D5 0%, #003DA5 100%);
+  box-shadow: 0 6px 16px rgba(0, 122, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+.ios-btn-primary:active {
+  transform: scale(0.96) translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+}
+
+.ios-btn-secondary {
+  background: linear-gradient(135deg, #5AC8FA 0%, #00A3E0 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(90, 200, 250, 0.4);
+}
+
+.ios-btn-secondary:hover {
+  background: linear-gradient(135deg, #00A3E0 0%, #0084B4 100%);
+  box-shadow: 0 6px 16px rgba(90, 200, 250, 0.5);
+  transform: translateY(-2px);
+}
+
+.ios-btn-secondary:active {
+  transform: scale(0.96) translateY(0);
+}
+
+.ios-btn-outline {
+  background: transparent;
+  color: #007AFF;
+  border: 2px solid #007AFF;
+  box-shadow: none;
+}
+
+.ios-btn-outline:hover {
+  background: rgba(0, 122, 255, 0.1);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.2);
+}
+
+.ios-btn-outline:active {
+  background: rgba(0, 122, 255, 0.2);
+  transform: scale(0.96);
+}
+
+.ios-btn-ghost {
+  background: rgba(0, 122, 255, 0.1);
+  color: #007AFF;
+  box-shadow: none;
+}
+
+.ios-btn-ghost:hover {
+  background: rgba(0, 122, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+.ios-btn-ghost:active {
+  background: rgba(0, 122, 255, 0.25);
+  transform: scale(0.96);
+}
+
+.ios-btn-danger {
+  background: linear-gradient(135deg, #FF3B30 0%, #D32F2F 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(255, 59, 48, 0.4);
+}
+
+.ios-btn-danger:hover {
+  background: linear-gradient(135deg, #D32F2F 0%, #B71C1C 100%);
+  box-shadow: 0 6px 16px rgba(255, 59, 48, 0.5);
+  transform: translateY(-2px);
+}
+
+.ios-btn-danger:active {
+  transform: scale(0.96) translateY(0);
+}
+
+/* === STATES === */
+.ios-btn-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.ios-btn-loading {
+  pointer-events: none;
+}
+
+/* === RIPPLE EFFECT === */
+.ios-btn-ripple {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  transition: width 0.6s ease-out, height 0.6s ease-out, opacity 0.6s ease-out;
+  opacity: 0;
+}
+
+.ios-btn:active .ios-btn-ripple {
+  width: 300px;
+  height: 300px;
+  opacity: 1;
+  transition: width 0s, height 0s, opacity 0s;
+}
+
+/* === LOADING SPINNER === */
+.ios-btn-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spinner-circle {
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* === ICONS === */
+.ios-btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2em;
+}
+
+.ios-btn-icon-left {
+  margin-right: -4px;
+}
+
+.ios-btn-icon-right {
+  margin-left: -4px;
+}
+
+/* === TEXT === */
+.ios-btn-text {
+  position: relative;
+  z-index: 1;
+}
+
+/* === DARK MODE === */
+@media (prefers-color-scheme: dark) {
+  .ios-btn-outline {
+    border-color: #0A84FF;
+    color: #0A84FF;
+  }
+  
+  .ios-btn-outline:hover {
+    background: rgba(10, 132, 255, 0.15);
+  }
+  
+  .ios-btn-ghost {
+    background: rgba(10, 132, 255, 0.15);
+    color: #0A84FF;
+  }
+  
+  .ios-btn-ghost:hover {
+    background: rgba(10, 132, 255, 0.25);
+  }
+}
+
+/* === ACCESSIBILITY === */
+.ios-btn:focus-visible {
+  outline: 3px solid rgba(0, 122, 255, 0.5);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ios-btn,
+  .ios-btn-ripple,
+  .spinner-circle {
+    animation: none;
+    transition: none;
+  }
+}

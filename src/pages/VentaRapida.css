@@ -1,73 +1,80 @@
+/* 🍎 Venta Rápida - iOS Native Style */
+
 .venta-rapida {
-  max-width: 1200px;
+  max-width: 900px;
   margin: 0 auto;
   padding: 0;
   background: transparent;
   min-height: auto;
 }
 
+/* Header iOS Style - Limpio sin card */
 .venta-rapida-header {
-  background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
-  border-radius: 12px;
-  padding: 1.5rem 2rem;
-  margin-bottom: 2rem;
-  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
+  background: none !important;
+  border-radius: 0 !important;
+  padding: 0 0 20px 0 !important;
+  margin-bottom: 20px !important;
+  box-shadow: none !important;
+  border: none !important;
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 16px;
 }
 
-.header-icon {
-  background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(10px);
+.venta-rapida-header .header-icon {
+  background: linear-gradient(135deg, #007AFF, #5856D6);
   color: white;
-  width: 60px;
-  height: 60px;
-  border-radius: 16px;
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
 }
 
-.header-text h1 {
+.venta-rapida-header .header-text h1 {
   margin: 0;
-  font-size: 1.75rem;
-  font-weight: 800;
-  color: #ffffff !important;
-  text-shadow: 0 3px 8px rgba(0, 0, 0, 0.6);
+  font-size: 34px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+  letter-spacing: -0.5px;
 }
 
-.header-text .subtitle {
-  margin: 0.25rem 0 0 0;
-  color: #ffffff !important;
-  font-size: 1.05rem;
-  font-weight: 600;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
-  letter-spacing: 0.3px;
-  opacity: 1 !important;
+.venta-rapida-header .header-text p,
+.venta-rapida-header .header-text .subtitle {
+  margin: 4px 0 0 0;
+  color: var(--text-secondary);
+  font-size: 17px;
+  font-weight: 400;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
 }
 
+/* Container principal - iOS Card */
 .venta-rapida-container {
   background: white;
-  border-radius: 12px;
-  padding: 2rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-/* Sección de Monto */
+/* Sección de Monto - iOS Style */
 .monto-section {
-  margin-bottom: 2rem;
+  margin-bottom: 24px;
 }
 
 .monto-section label {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-weight: 700;
-  color: #2d3748;
-  margin-bottom: 1rem;
-  font-size: 1.1rem;
+  gap: 8px;
+  font-weight: 600;
+  color: #000;
+  margin-bottom: 12px;
+  font-size: 17px;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
 }
 
 .monto-input-wrapper {
@@ -78,299 +85,461 @@
 
 .monto-simbolo {
   position: absolute;
-  left: 1.5rem;
-  font-size: 3rem;
-  font-weight: 700;
-  color: #a0aec0;
+  left: 20px;
+  font-size: 40px;
+  font-weight: 600;
+  color: #C7C7CC;
   pointer-events: none;
   z-index: 1;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
 }
 
 .monto-input {
   width: 100%;
-  padding: 1.5rem 1.5rem 1.5rem 4rem;
-  border: 3px solid #e2e8f0;
+  padding: 20px 20px 20px 60px;
+  border: 2px solid rgba(0, 0, 0, 0.1);
   border-radius: 12px;
-  font-size: 3rem;
-  font-weight: 700;
+  font-size: 40px;
+  font-weight: 600;
   text-align: left;
-  transition: all 0.3s ease;
-  background: #f7fafc;
-  color: #2d3748;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  background: #F2F2F7;
+  color: #000;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
 }
 
 .monto-input:focus {
   outline: none;
-  border-color: #8B5CF6;
+  border-color: #007AFF;
   background: white;
-  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1);
+  box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1);
 }
 
 .monto-input::placeholder {
-  color: #cbd5e0;
+  color: #C7C7CC;
 }
 
 .monto-preview {
-  margin-top: 0.75rem;
-  padding: 1rem;
-  background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+  margin-top: 12px;
+  padding: 16px;
+  background: linear-gradient(135deg, #007AFF, #5856D6);
   color: white;
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-size: 24px;
+  font-weight: 600;
   text-align: center;
-  border-radius: 10px;
-  animation: slideIn 0.3s ease;
+  border-radius: 12px;
+  animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
 }
 
 @keyframes slideIn {
   from {
     opacity: 0;
-    transform: translateY(-10px);
+    transform: translateY(-10px) scale(0.95);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
 }
 
-/* Montos Rápidos */
+/* Montos Rápidos - iOS Style */
 .montos-rapidos {
-  margin-bottom: 2rem;
-  padding: 1.5rem;
-  background: #f7fafc;
+  margin-bottom: 24px;
+  padding: 20px;
+  background: #F2F2F7;
   border-radius: 12px;
-  border: 2px dashed #cbd5e0;
+  border: none;
 }
 
 .montos-label {
-  margin: 0 0 1rem 0;
+  margin: 0 0 12px 0;
   font-weight: 600;
-  color: #4a5568;
-  font-size: 0.95rem;
+  color: #000;
+  font-size: 15px;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
 }
 
 .opcional {
-  color: #a0aec0;
+  color: #8E8E93;
   font-weight: 400;
-  font-size: 0.85rem;
-  margin-left: 0.5rem;
+  font-size: 13px;
+  margin-left: 6px;
 }
 
 .montos-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 0.75rem;
+  gap: 12px;
 }
 
 .monto-btn {
-  padding: 1rem;
-  border: 2px solid #e2e8f0;
+  padding: 14px;
+  border: 1.5px solid rgba(0, 0, 0, 0.1);
   background: white;
   border-radius: 10px;
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #2d3748;
+  font-size: 17px;
+  font-weight: 600;
+  color: #000;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   text-align: center;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
 }
 
 .monto-btn:hover {
-  border-color: #8B5CF6;
-  background: #f5f3ff;
+  border-color: #007AFF;
+  background: rgba(0, 122, 255, 0.05);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.15);
 }
 
 .monto-btn.active {
-  border-color: #8B5CF6;
-  background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+  border-color: #007AFF;
+  background: #007AFF;
   color: white;
-  transform: scale(1.05);
-  box-shadow: 0 6px 16px rgba(139, 92, 246, 0.3);
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
 }
 
-/* Secciones del Formulario */
+/* Secciones del Formulario - iOS Style */
 .form-section {
-  margin-bottom: 2rem;
+  margin-bottom: 24px;
 }
 
 .form-section label {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-weight: 700;
-  color: #2d3748;
-  margin-bottom: 0.75rem;
-  font-size: 1.1rem;
+  gap: 8px;
+  font-weight: 600;
+  color: #000;
+  margin-bottom: 12px;
+  font-size: 17px;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
 }
 
 .form-section textarea {
   width: 100%;
-  padding: 1rem;
-  border: 2px solid #e2e8f0;
+  padding: 12px 16px;
+  border: 1.5px solid rgba(0, 0, 0, 0.1);
   border-radius: 10px;
-  font-size: 1rem;
-  font-family: inherit;
-  transition: all 0.3s ease;
+  font-size: 16px;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   resize: vertical;
-  background: #f7fafc;
+  background: #F2F2F7;
+  color: #000;
 }
 
 .form-section textarea:focus {
   outline: none;
-  border-color: #8B5CF6;
+  border-color: #007AFF;
   background: white;
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+  box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1);
 }
 
 .char-count {
   display: block;
-  margin-top: 0.5rem;
+  margin-top: 8px;
   text-align: right;
-  color: #718096;
-  font-size: 0.875rem;
+  color: #8E8E93;
+  font-size: 13px;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
 }
 
-/* Métodos de Pago */
+/* Métodos de Pago - iOS Style */
 .metodos-pago {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 1rem;
+  gap: 12px;
 }
 
 .metodo-btn {
-  padding: 1.25rem;
-  border: 2px solid #e2e8f0;
+  padding: 16px;
+  border: 1.5px solid rgba(0, 0, 0, 0.1);
   background: white;
   border-radius: 10px;
-  font-size: 1.1rem;
+  font-size: 16px;
   font-weight: 600;
-  color: #2d3748;
+  color: #000;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
+  gap: 10px;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
 }
 
 .metodo-btn:hover {
-  border-color: #8B5CF6;
-  background: #f5f3ff;
+  border-color: #007AFF;
+  background: rgba(0, 122, 255, 0.05);
   transform: translateY(-2px);
 }
 
 .metodo-btn.active {
-  border-color: #8B5CF6;
-  background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+  border-color: #007AFF;
+  background: #007AFF;
   color: white;
-  transform: scale(1.05);
-  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
 }
 
-/* Botones de Acción */
+/* Botones de Acción - iOS Style */
 .acciones {
   display: grid;
   grid-template-columns: 1fr 2fr;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  gap: 12px;
+  margin-bottom: 0;
 }
 
 .btn-cancelar,
 .btn-registrar {
-  padding: 1.25rem 2rem;
+  padding: 16px 24px;
   border: none;
   border-radius: 12px;
-  font-size: 1.1rem;
-  font-weight: 700;
+  font-size: 17px;
+  font-weight: 600;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.75rem;
-  transition: all 0.3s ease;
+  gap: 8px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
 }
 
 .btn-cancelar {
-  background: #e2e8f0;
-  color: #4a5568;
+  background: #F2F2F7;
+  color: #000;
 }
 
 .btn-cancelar:hover:not(:disabled) {
-  background: #cbd5e0;
-  transform: translateY(-2px);
+  background: #E5E5EA;
+  transform: scale(0.98);
+}
+
+.btn-cancelar:active:not(:disabled) {
+  transform: scale(0.95);
 }
 
 .btn-registrar {
-  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  background: #007AFF;
   color: white;
-  box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
 }
 
 .btn-registrar:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(72, 187, 120, 0.4);
+  background: #0051D5;
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.4);
+  transform: scale(0.98);
+}
+
+.btn-registrar:active:not(:disabled) {
+  transform: scale(0.95);
 }
 
 .btn-registrar:disabled,
 .btn-cancelar:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
   transform: none;
 }
 
-/* Info Box */
+/* Info Box - iOS Style */
 .info-box {
-  padding: 1.25rem;
-  background: linear-gradient(135deg, #e0f2fe 0%, #dbeafe 100%);
-  border-left: 4px solid #3b82f6;
+  padding: 16px;
+  background: rgba(0, 122, 255, 0.08);
+  border-left: 3px solid #007AFF;
   border-radius: 10px;
-  color: #1e40af;
+  color: #000;
 }
 
 .info-box p {
   margin: 0;
-  line-height: 1.6;
-  font-size: 0.95rem;
+  line-height: 1.5;
+  font-size: 15px;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
 }
 
 .info-box strong {
-  color: #1e3a8a;
+  color: #007AFF;
+  font-weight: 600;
+}
+
+/* Dark Mode */
+.dark .venta-rapida-header {
+  background: none;
+}
+
+.dark .venta-rapida-header .header-text h1 {
+  color: #fff;
+}
+
+.dark .venta-rapida-header .header-text p,
+.dark .venta-rapida-header .header-text .subtitle {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.dark .venta-rapida-container {
+  background: #1C1C1E;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .monto-section label {
+  color: #fff;
+}
+
+.dark .monto-input {
+  background: #2C2C2E;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.dark .monto-simbolo {
+  color: #636366;
+}
+
+.dark .monto-input:focus {
+  border-color: #0A84FF;
+  box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.2);
+}
+
+.dark .monto-preview {
+  background: linear-gradient(135deg, #0A84FF, #5E5CE6);
+  color: #fff;
+}
+
+.dark .montos-section {
+  background: #2C2C2E;
+}
+
+.dark .optional-text {
+  color: #8E8E93;
+}
+
+.dark .monto-btn {
+  background: #2C2C2E;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.dark .monto-btn:hover {
+  border-color: #0A84FF;
+  background: rgba(10, 132, 255, 0.1);
+}
+
+.dark .monto-btn.active {
+  background: #0A84FF;
+  border-color: #0A84FF;
+  color: #fff;
+}
+
+.dark .form-section label {
+  color: #fff;
+}
+
+.dark .form-section input,
+.dark .form-section select,
+.dark .form-section textarea {
+  background: #2C2C2E;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.dark .form-section input:focus,
+.dark .form-section select:focus,
+.dark .form-section textarea:focus {
+  border-color: #0A84FF;
+  box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.2);
+}
+
+.dark .char-count {
+  color: #8E8E93;
+}
+
+.dark .metodo-btn {
+  background: #2C2C2E;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.dark .metodo-btn:hover {
+  border-color: #0A84FF;
+  background: rgba(10, 132, 255, 0.1);
+}
+
+.dark .metodo-btn.active {
+  background: #0A84FF;
+  border-color: #0A84FF;
+  color: #fff;
+}
+
+.dark .btn-cancelar {
+  background: #2C2C2E;
+  color: #fff;
+}
+
+.dark .btn-cancelar:hover:not(:disabled) {
+  background: #3A3A3C;
+}
+
+.dark .btn-registrar {
+  background: #0A84FF;
+}
+
+.dark .btn-registrar:hover:not(:disabled) {
+  background: #0077ED;
+}
+
+.dark .info-box {
+  background: rgba(10, 132, 255, 0.15);
+  border-left-color: #0A84FF;
+  color: #fff;
+}
+
+.dark .info-box strong {
+  color: #0A84FF;
 }
 
 /* Responsive */
 @media (max-width: 768px) {
   .venta-rapida {
-    padding: 1rem;
+    padding: 16px;
   }
 
   .venta-rapida-header {
     flex-direction: column;
     text-align: center;
+    gap: 16px;
   }
 
   .header-icon {
-    width: 70px;
-    height: 70px;
+    width: 64px;
+    height: 64px;
   }
 
   .header-text h1 {
-    font-size: 1.75rem;
+    font-size: 28px;
+  }
+
+  .header-text p {
+    font-size: 15px;
   }
 
   .venta-rapida-container {
-    padding: 1.5rem;
+    padding: 20px;
   }
 
   .monto-input {
-    font-size: 2.5rem;
-    padding: 1.25rem 1.25rem 1.25rem 3.5rem;
+    font-size: 32px;
+    padding: 14px 14px 14px 52px;
   }
 
   .monto-simbolo {
-    font-size: 2.5rem;
-    left: 1.25rem;
+    font-size: 32px;
+    left: 14px;
   }
 
   .montos-grid {
@@ -388,7 +557,7 @@
 
 @media (max-width: 480px) {
   .monto-input {
-    font-size: 2rem;
+    font-size: 28px;
   }
 
   .monto-simbolo {

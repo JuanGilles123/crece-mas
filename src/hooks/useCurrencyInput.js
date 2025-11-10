@@ -29,9 +29,11 @@ export const useCurrencyInput = (initialValue = '') => {
       const formatted = numero.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
       numericValueRef.current = parseInt(numero, 10);
       setDisplayValue(formatted);
+      return formatted;
     } else {
       numericValueRef.current = 0;
       setDisplayValue('');
+      return '';
     }
   }, []);
 

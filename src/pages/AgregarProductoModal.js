@@ -19,7 +19,7 @@ const productoSchema = z.object({
   precioCompra: z.string().min(1, 'El precio de compra es requerido'),
   precioVenta: z.string().min(1, 'El precio de venta es requerido'),
   stock: z.string().min(1, 'El stock es requerido'),
-  fecha_vencimiento: z.string().optional(),
+  fecha_vencimiento: z.union([z.string(), z.undefined()]).optional(),
   imagen: z.any().optional()
 }).refine((data) => {
   const precioCompra = parseFloat(data.precioCompra.replace(/[^\d]/g, ''));
@@ -68,17 +68,17 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
   // Funciones optimizadas para manejar inputs
   const handlePrecioCompraChange = (e) => {
     const formatted = precioCompraInput.handleChange(e);
-    setValue('precioCompra', formatted, { shouldValidate: true });
+    setValue('precioCompra', formatted || '', { shouldValidate: true });
   };
 
   const handlePrecioVentaChange = (e) => {
     const formatted = precioVentaInput.handleChange(e);
-    setValue('precioVenta', formatted, { shouldValidate: true });
+    setValue('precioVenta', formatted || '', { shouldValidate: true });
   };
 
   const handleStockChange = (e) => {
     const formatted = stockInput.handleChange(e);
-    setValue('stock', formatted, { shouldValidate: true });
+    setValue('stock', formatted || '', { shouldValidate: true });
   };
 
   const handleImagenChange = e => {
@@ -182,6 +182,7 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
               <span style={{ fontWeight: 600, fontSize: '0.98rem', marginBottom: 4, textAlign: 'center' }}>Precio de Compra</span>
               <input 
                 {...register('precioCompra')} 
+                value={precioCompraInput.displayValue}
                 onChange={handlePrecioCompraChange} 
                 inputMode="numeric" 
                 placeholder="Ej: 30.000" 
@@ -193,6 +194,7 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
               <span style={{ fontWeight: 600, fontSize: '0.98rem', marginBottom: 4, textAlign: 'center' }}>Precio de Venta</span>
               <input 
                 {...register('precioVenta')} 
+                value={precioVentaInput.displayValue}
                 onChange={handlePrecioVentaChange} 
                 inputMode="numeric" 
                 placeholder="Ej: 50.000" 
@@ -204,6 +206,7 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
           <label>Stock</label>
           <input 
             {...register('stock')} 
+            value={stockInput.displayValue}
             onChange={handleStockChange} 
             inputMode="numeric" 
             className={`input-form ${errors.stock ? 'error' : ''}`} 

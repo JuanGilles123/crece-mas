@@ -1,74 +1,75 @@
-/* Variables CSS para temas */
+/* Variables CSS para temas - iOS Native */
 :root {
-  /* Colores base - Modo Claro */
-  --bg-primary: #ffffff;
-  --bg-secondary: #f8fafc;
-  --bg-tertiary: #f1f5f9;
-  --bg-card: #ffffff;
-  --bg-hover: #f1f5f9;
-  --bg-input: #ffffff;
-  --bg-modal: #ffffff;
+  /* Colores base - Modo Claro iOS */
+  --bg-primary: #F2F2F7;
+  --bg-secondary: #FFFFFF;
+  --bg-tertiary: #E5E5EA;
+  --bg-card: #FFFFFF;
+  --bg-hover: #F2F2F7;
+  --bg-input: #FFFFFF;
+  --bg-modal: #FFFFFF;
   
-  --text-primary: #1e293b;
-  --text-secondary: #64748b;
-  --text-tertiary: #94a3b8;
-  --text-inverse: #ffffff;
-  --text-placeholder: #9ca3af;
+  --text-primary: #000000;
+  --text-secondary: #8E8E93;
+  --text-tertiary: #C7C7CC;
+  --text-inverse: #FFFFFF;
+  --text-placeholder: #C7C7CC;
   
-  --border-primary: #e2e8f0;
-  --border-secondary: #cbd5e1;
-  --border-focus: #3b82f6;
+  --border-primary: rgba(0, 0, 0, 0.08);
+  --border-secondary: rgba(0, 0, 0, 0.12);
+  --border-focus: #007AFF;
   
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-xl: 0 12px 32px rgba(0, 0, 0, 0.16);
   
-  --accent-primary: #3b82f6;
-  --accent-secondary: #8b5cf6;
-  --accent-success: #22c55e;
-  --accent-warning: #f59e0b;
-  --accent-error: #ef4444;
+  --accent-primary: #007AFF;
+  --accent-secondary: #5856D6;
+  --accent-success: #34C759;
+  --accent-warning: #FF9500;
+  --accent-error: #FF3B30;
   
-  --gradient-primary: linear-gradient(135deg, #3b82f6, #8b5cf6);
-  --gradient-secondary: linear-gradient(135deg, #f1f5f9, #e2e8f0);
-  --gradient-accent: linear-gradient(135deg, #fbbf24, #f59e0b);
+  --gradient-primary: linear-gradient(135deg, #007AFF, #5856D6);
+  --gradient-secondary: linear-gradient(135deg, #F2F2F7, #E5E5EA);
+  --gradient-accent: linear-gradient(135deg, #FF9500, #FF3B30);
 }
 
-/* Variables CSS para modo oscuro */
-.dark-theme {
-  --bg-primary: #0f172a;
-  --bg-secondary: #1e293b;
-  --bg-tertiary: #334155;
-  --bg-card: #1e293b;
-  --bg-hover: #334155;
-  --bg-input: #334155;
-  --bg-modal: #1e293b;
+/* Variables CSS para modo oscuro - iOS Native */
+.dark-theme,
+.dark {
+  --bg-primary: #000000;
+  --bg-secondary: #1C1C1E;
+  --bg-tertiary: #2C2C2E;
+  --bg-card: #1C1C1E;
+  --bg-hover: #2C2C2E;
+  --bg-input: #1C1C1E;
+  --bg-modal: #1C1C1E;
   
-  --text-primary: #f8fafc;
-  --text-secondary: #cbd5e1;
-  --text-tertiary: #94a3b8;
-  --text-inverse: #ffffff;
-  --text-placeholder: #64748b;
+  --text-primary: #FFFFFF;
+  --text-secondary: #8E8E93;
+  --text-tertiary: #636366;
+  --text-inverse: #000000;
+  --text-placeholder: #636366;
   
-  --border-primary: #334155;
-  --border-secondary: #475569;
-  --border-focus: #60a5fa;
+  --border-primary: rgba(255, 255, 255, 0.1);
+  --border-secondary: rgba(255, 255, 255, 0.15);
+  --border-focus: #0A84FF;
   
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.7);
+  --shadow-xl: 0 12px 32px rgba(0, 0, 0, 0.8);
   
-  --accent-primary: #60a5fa;
-  --accent-secondary: #a78bfa;
-  --accent-success: #4ade80;
-  --accent-warning: #fbbf24;
-  --accent-error: #f87171;
+  --accent-primary: #0A84FF;
+  --accent-secondary: #5E5CE6;
+  --accent-success: #32D74B;
+  --accent-warning: #FF9F0A;
+  --accent-error: #FF453A;
   
-  --gradient-primary: linear-gradient(135deg, #60a5fa, #a78bfa);
-  --gradient-secondary: linear-gradient(135deg, #334155, #475569);
-  --gradient-accent: linear-gradient(135deg, #fbbf24, #f59e0b);
+  --gradient-primary: linear-gradient(135deg, #0A84FF, #5E5CE6);
+  --gradient-secondary: linear-gradient(135deg, #2C2C2E, #3A3A3C);
+  --gradient-accent: linear-gradient(135deg, #FF9F0A, #FF453A);
 }
 
 /* Aplicar variables a elementos base */
@@ -120,114 +121,140 @@ body {
               stroke 0.3s ease;
 }
 
-/* Scrollbar personalizado para modo oscuro */
-.dark-theme ::-webkit-scrollbar {
+/* Scrollbar personalizado iOS style */
+.dark-theme ::-webkit-scrollbar,
+.dark ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
-.dark-theme ::-webkit-scrollbar-track {
-  background: var(--bg-secondary);
+.dark-theme ::-webkit-scrollbar-track,
+.dark ::-webkit-scrollbar-track {
+  background: #1C1C1E;
   border-radius: 4px;
 }
 
-.dark-theme ::-webkit-scrollbar-thumb {
-  background: var(--border-secondary);
+.dark-theme ::-webkit-scrollbar-thumb,
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
   border-radius: 4px;
 }
 
-.dark-theme ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-tertiary);
+.dark-theme ::-webkit-scrollbar-thumb:hover,
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
-/* Efectos especiales para modo oscuro */
-.dark-theme .glass-effect {
-  background: rgba(30, 41, 59, 0.8);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(148, 163, 184, 0.2);
+/* Efectos especiales iOS */
+.dark-theme .glass-effect,
+.dark .glass-effect {
+  background: rgba(28, 28, 30, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .light-theme .glass-effect {
   background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(226, 232, 240, 0.5);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
-/* Mejoras específicas para modo oscuro */
-.dark-theme {
-  /* Mejorar contraste en inputs */
-  --input-bg: #1e293b;
-  --input-border: #334155;
-  --input-text: #f8fafc;
-  --input-placeholder: #94a3b8;
+/* Mejoras específicas iOS para modo oscuro */
+.dark-theme,
+.dark {
+  /* Inputs iOS dark */
+  --input-bg: #1C1C1E;
+  --input-border: rgba(255, 255, 255, 0.15);
+  --input-text: #FFFFFF;
+  --input-placeholder: #8E8E93;
   
-  /* Mejorar contraste en botones */
-  --btn-primary-bg: #3b82f6;
-  --btn-primary-hover: #2563eb;
-  --btn-secondary-bg: #334155;
-  --btn-secondary-hover: #475569;
+  /* Botones iOS dark */
+  --btn-primary-bg: #0A84FF;
+  --btn-primary-hover: #0066CC;
+  --btn-secondary-bg: #2C2C2E;
+  --btn-secondary-hover: #3A3A3C;
   
-  /* Mejorar contraste en tablas */
-  --table-bg: #1e293b;
-  --table-border: #334155;
-  --table-header-bg: #334155;
-  --table-row-hover: #475569;
+  /* Tablas iOS dark */
+  --table-bg: #1C1C1E;
+  --table-border: rgba(255, 255, 255, 0.1);
+  --table-header-bg: #2C2C2E;
+  --table-row-hover: #2C2C2E;
 }
 
-/* Aplicar mejoras a elementos específicos */
+/* Aplicar mejoras iOS a elementos específicos */
 .dark-theme input,
 .dark-theme textarea,
-.dark-theme select {
+.dark-theme select,
+.dark input,
+.dark textarea,
+.dark select {
   background-color: var(--input-bg);
   border-color: var(--input-border);
   color: var(--input-text);
 }
 
 .dark-theme input::placeholder,
-.dark-theme textarea::placeholder {
+.dark-theme textarea::placeholder,
+.dark input::placeholder,
+.dark textarea::placeholder {
   color: var(--input-placeholder);
 }
 
-.dark-theme .btn-primary {
+.dark-theme .btn-primary,
+.dark .btn-primary {
   background-color: var(--btn-primary-bg);
   border-color: var(--btn-primary-bg);
 }
 
-.dark-theme .btn-primary:hover {
+.dark-theme .btn-primary:hover,
+.dark .btn-primary:hover {
   background-color: var(--btn-primary-hover);
   border-color: var(--btn-primary-hover);
 }
 
-.dark-theme .btn-secondary {
+.dark-theme .btn-secondary,
+.dark .btn-secondary {
   background-color: var(--btn-secondary-bg);
   border-color: var(--btn-secondary-bg);
 }
 
-.dark-theme .btn-secondary:hover {
+.dark-theme .btn-secondary:hover,
+.dark .btn-secondary:hover {
   background-color: var(--btn-secondary-hover);
   border-color: var(--btn-secondary-hover);
 }
 
 /* Mejorar visibilidad de iconos en modo oscuro */
-.dark-theme svg {
-  filter: brightness(1.2);
+.dark-theme svg,
+.dark svg {
+  filter: none; /* iOS no necesita ajustes de brillo */
 }
 
-/* Mejorar contraste de texto en modo oscuro */
+/* Mejorar contraste de texto iOS */
 .dark-theme h1,
 .dark-theme h2,
 .dark-theme h3,
 .dark-theme h4,
 .dark-theme h5,
-.dark-theme h6 {
+.dark-theme h6,
+.dark h1,
+.dark h2,
+.dark h3,
+.dark h4,
+.dark h5,
+.dark h6 {
   color: var(--text-primary);
 }
 
-/* Mejorar visibilidad de enlaces */
-.dark-theme a {
+/* Mejorar visibilidad de enlaces iOS */
+.dark-theme a,
+.dark a {
   color: var(--accent-primary);
 }
 
-.dark-theme a:hover {
+.dark-theme a:hover,
+.dark a:hover {
   color: var(--accent-secondary);
 }

@@ -2,16 +2,17 @@
   max-width: 1400px;
   margin: 0 auto;
   padding: 2rem;
-  background: #f8f9fa;
+  background: transparent;
   min-height: 100vh;
 }
 
 .config-header {
   background: white;
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 2rem;
   margin-bottom: 2rem;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  border: 1px solid rgba(0, 0, 0, 0.06);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -26,7 +27,7 @@
 }
 
 .header-icon {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #007AFF 0%, #5856D6 100%);
   color: white;
   width: 70px;
   height: 70px;
@@ -35,6 +36,7 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
 }
 
 .header-text h1 {
@@ -51,24 +53,26 @@
 }
 
 .btn-guardar-principal {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #007AFF;
   color: white;
   border: none;
   padding: 0.875rem 2rem;
-  border-radius: 10px;
+  border-radius: 12px;
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
 }
 
 .btn-guardar-principal:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+  background: #0051D5;
+  transform: scale(0.98);
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.4);
 }
 
 .btn-guardar-principal:disabled {
@@ -114,15 +118,16 @@
 
 .config-card {
   background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  border: 1px solid rgba(0, 0, 0, 0.06);
   overflow: hidden;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
 }
 
 .config-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.08);
 }
 
 .config-card.full-width {
@@ -130,18 +135,20 @@
 }
 
 .card-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #007AFF 0%, #5856D6 100%);
   color: white;
   padding: 1.5rem;
   display: flex;
   align-items: center;
   gap: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .card-header h2 {
   margin: 0;
   font-size: 1.25rem;
   font-weight: 600;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
 }
 
 .card-body {
@@ -178,20 +185,22 @@
 .form-group textarea {
   width: 100%;
   padding: 0.875rem 1rem;
-  border: 2px solid #e2e8f0;
-  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
   font-size: 1rem;
-  transition: all 0.3s ease;
-  background: white;
-  color: #2d3748;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  background: #F2F2F7;
+  color: #000;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
 }
 
 .form-group input:focus,
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: #007AFF;
+  background: white;
+  box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1);
 }
 
 .form-group input.disabled,
@@ -218,9 +227,9 @@
 
 .checkbox-group {
   padding: 1rem;
-  background: #f7fafc;
-  border-radius: 8px;
-  border: 2px solid #e2e8f0;
+  background: #F2F2F7;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .checkbox-label {
@@ -261,30 +270,32 @@
 .config-footer {
   text-align: center;
   padding: 2rem;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  background: transparent;
+  border-radius: 16px;
+  box-shadow: none;
 }
 
 .btn-guardar {
-  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  background: #007AFF;
   color: white;
   border: none;
   padding: 1rem 3rem;
-  border-radius: 10px;
+  border-radius: 12px;
   font-size: 1.1rem;
   font-weight: 600;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 0.75rem;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
 }
 
 .btn-guardar:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(72, 187, 120, 0.4);
+  background: #0051D5;
+  transform: scale(0.98);
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.4);
 }
 
 .btn-guardar:disabled {
@@ -327,6 +338,144 @@
   margin-top: 1rem;
   font-size: 1.1rem;
   color: #2d3748;
+}
+
+/* ============================================
+   MODO OSCURO - Dark Mode Support
+   ============================================ */
+
+.dark .config-facturacion {
+  background: transparent;
+}
+
+.dark .config-header {
+  background: #1C1C1E;
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.dark .header-text h1 {
+  color: #fff;
+}
+
+.dark .header-text .subtitle {
+  color: #8E8E93;
+}
+
+.dark .alert-warning {
+  background: rgba(255, 193, 7, 0.15);
+  border-left-color: #FFC107;
+}
+
+.dark .alert-content h3 {
+  color: #FFA726;
+}
+
+.dark .alert-content p {
+  color: #E0E0E0;
+}
+
+.dark .config-card {
+  background: #1C1C1E;
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.dark .config-card:hover {
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
+}
+
+.dark .card-header {
+  background: linear-gradient(135deg, #0A84FF, #5E5CE6);
+  color: #fff;
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .card-body {
+  background: #1C1C1E;
+}
+
+.dark .form-group label {
+  color: #fff;
+}
+
+.dark .form-group input[type="text"],
+.dark .form-group input[type="email"],
+.dark .form-group input[type="tel"],
+.dark .form-group select,
+.dark .form-group textarea {
+  background: #2C2C2E;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.dark .form-group input:focus,
+.dark .form-group select:focus,
+.dark .form-group textarea:focus {
+  border-color: #0A84FF;
+  box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.2);
+  background: #2C2C2E;
+}
+
+.dark .form-group input::placeholder,
+.dark .form-group textarea::placeholder {
+  color: #8E8E93;
+}
+
+.dark .form-group small {
+  color: #8E8E93;
+}
+
+.dark .form-group input.disabled,
+.dark .form-group select.disabled,
+.dark .form-group textarea.disabled {
+  background: #1C1C1E;
+  color: #636366;
+}
+
+.dark .checkbox-label {
+  color: #E0E0E0;
+}
+
+.dark .checkbox-description {
+  color: #8E8E93;
+}
+
+.dark .checkbox-group {
+  background: #2C2C2E;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.dark .checkbox-text strong {
+  color: #fff;
+}
+
+.dark .config-footer {
+  background: transparent;
+}
+
+.dark .btn-guardar-principal {
+  background: #0A84FF;
+  color: #fff;
+}
+
+.dark .btn-guardar-principal:hover:not(:disabled) {
+  background: #0077ED;
+  box-shadow: 0 4px 12px rgba(10, 132, 255, 0.4);
+}
+
+.dark .btn-guardar {
+  background: #0A84FF;
+  color: #fff;
+}
+
+.dark .btn-guardar:hover:not(:disabled) {
+  background: #0077ED;
+}
+
+.dark .loading-state p,
+.dark .error-state p {
+  color: #E0E0E0;
 }
 
 @media (max-width: 1024px) {

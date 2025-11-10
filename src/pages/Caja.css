@@ -1,102 +1,88 @@
-/* Caja - Sistema de Venta Responsive */
+/* Caja - Sistema de Venta iOS Native Style */
 
 .caja-container {
   display: flex;
   height: 100%;
   flex-direction: column;
-  background: var(--bg-primary);
+  background: transparent;
+  gap: 16px;
+  padding: 0;
 }
 
-/* Panel de productos */
+/* Panel de productos - iOS Card */
 .caja-products-panel {
   width: 100%;
   border-right: none;
-  padding: 0;
+  padding: 20px;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  gap: 0;
+  gap: 16px;
   flex: 1;
   min-height: 0;
   position: relative;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-.caja-products-panel::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.08) 20%, rgba(0, 0, 0, 0.12) 50%, rgba(0, 0, 0, 0.08) 80%, transparent 100%);
-}
-
-/* Búsqueda */
+/* Búsqueda - iOS Style */
 .caja-search-container {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 12px;
   margin-bottom: 0;
   position: sticky;
   top: 0;
-  background: var(--bg-card);
-  padding: 0.5rem 1rem;
+  background: white;
+  padding: 0;
   z-index: 10;
   border-bottom: none;
   position: relative;
-  flex-shrink: 0; /* Evita que se comprima */
-}
-
-.caja-search-container::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.08) 20%, rgba(0, 0, 0, 0.12) 50%, rgba(0, 0, 0, 0.08) 80%, transparent 100%);
+  flex-shrink: 0;
 }
 
 .caja-search-icon {
-  color: var(--text-tertiary);
-  font-size: 1.2rem;
-  flex-shrink: 0; /* Evita que el ícono se comprima */
+  color: #8E8E93;
+  font-size: 20px;
+  flex-shrink: 0;
 }
 
 .caja-search-input {
-  flex: 1; /* Usa flex: 1 en lugar de width: 100% */
-  min-width: 0; /* Permite que se encoja si es necesario */
-  padding: 0.75rem;
-  border: 1px solid transparent;
-  border-radius: 0.5rem;
-  font-size: 1rem;
+  flex: 1;
+  min-width: 0;
+  padding: 12px 16px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+  font-size: 16px;
   outline: none;
-  transition: all 0.2s;
-  background: var(--bg-card);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
-  color: var(--text-primary); /* Asegurar que el texto sea visible */
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  background: #F2F2F7;
+  color: #000;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
 }
 
 .caja-search-input::placeholder {
-  color: var(--text-tertiary);
-  opacity: 0.7;
+  color: #8E8E93;
+  opacity: 1;
 }
 
 .caja-search-input:focus {
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1), inset 0 1px 2px rgba(0, 0, 0, 0.05);
-  background: var(--bg-input);
+  border-color: #007AFF;
+  box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1);
+  background: white;
 }
 
-/* Lista de productos */
+/* Lista de productos - iOS Style */
 .caja-products-list {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 8px;
   flex: 1;
   overflow-y: auto;
   min-height: 0;
-  padding: 0.5rem 1rem;
+  padding: 0;
 }
 
 .caja-product-card {
@@ -2075,6 +2061,135 @@
   .pago-mixto-input-group input {
     font-size: 1.25rem !important;
   }
+}
+
+/* ============================================
+   MODO OSCURO - Dark Mode Support
+   ============================================ */
+
+.dark .caja-products-panel {
+  background: #1C1C1E;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .caja-search-container {
+  background: #1C1C1E;
+}
+
+.dark .caja-search-input {
+  background: #2C2C2E;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.dark .caja-search-input::placeholder {
+  color: #8E8E93;
+}
+
+.dark .caja-search-input:focus {
+  border-color: #0A84FF;
+  background: #2C2C2E;
+  box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.1);
+}
+
+.dark .caja-product-card {
+  background: #2C2C2E;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .caja-product-card:hover {
+  background: #3A3A3C;
+  border-color: #0A84FF;
+}
+
+.dark .caja-product-name {
+  color: #fff;
+}
+
+.dark .caja-product-sku {
+  color: #8E8E93;
+}
+
+.dark .caja-product-price {
+  color: #fff;
+}
+
+.dark .caja-product-stock {
+  color: #8E8E93;
+}
+
+.dark .caja-cart-panel {
+  background: #1C1C1E;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .caja-cart-header h2 {
+  color: #fff;
+}
+
+.dark .caja-cart-item {
+  background: #2C2C2E;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .caja-cart-item-name {
+  color: #fff;
+}
+
+.dark .caja-cart-item-sku {
+  color: #8E8E93;
+}
+
+.dark .caja-cart-item-price {
+  color: #fff;
+}
+
+.dark .caja-totals {
+  background: #2C2C2E;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .caja-total-row {
+  color: #fff;
+}
+
+.dark .caja-total-row.total-final {
+  color: #0A84FF;
+}
+
+.dark .caja-payment-methods button {
+  background: #2C2C2E;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.dark .caja-payment-methods button:hover {
+  background: #3A3A3C;
+  border-color: #0A84FF;
+}
+
+.dark .caja-payment-methods button.active {
+  background: #0A84FF;
+  border-color: #0A84FF;
+  color: #fff;
+}
+
+.dark .caja-action-button {
+  background: #0A84FF;
+  color: #fff;
+}
+
+.dark .caja-action-button:hover:not(:disabled) {
+  background: #0077ED;
+}
+
+.dark .caja-cancel-button {
+  background: #2C2C2E;
+  color: #fff;
+}
+
+.dark .caja-cancel-button:hover:not(:disabled) {
+  background: #3A3A3C;
 }
 
 @media (max-width: 480px) {
