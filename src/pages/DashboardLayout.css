@@ -52,6 +52,23 @@
   padding: 4px 0;
 }
 
+/* Bloquear hover del sidebar cuando un modal está abierto */
+body[data-modal-open="true"] .dashboard-sidebar {
+  pointer-events: none !important;
+}
+
+body[data-modal-open="true"] .dashboard-sidebar:hover {
+  width: 70px !important;
+  min-width: 70px !important;
+  background: #F2F2F7 !important;
+  backdrop-filter: none !important;
+  border-right: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
 /* Sidebar collapsed en móvil */
 .dashboard-sidebar.collapsed {
   transform: translateX(-100%);
@@ -138,11 +155,14 @@
   border-bottom: none;
   overflow: hidden;
   background: transparent;
+  position: relative;
+  z-index: 100;
 }
 
 .dashboard-sidebar:hover .org-switcher-container {
   padding: 12px 16px;
   border-bottom: none;
+  overflow: visible;
 }
 
 .dark .org-switcher-container {

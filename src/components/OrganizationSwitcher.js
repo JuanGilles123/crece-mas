@@ -79,6 +79,41 @@ const OrganizationSwitcher = () => {
     }
   }, [user, loadOrganizations]);
 
+  // Cerrar modal con clicks fuera o tecla ESC
+  useEffect(() => {
+    if (!isOpen) {
+      document.body.removeAttribute('data-modal-open');
+      return;
+    }
+
+    // Prevenir scroll del body y marcar modal abierto
+    document.body.style.overflow = 'hidden';
+    document.body.setAttribute('data-modal-open', 'true');
+
+    const handleClickOutside = (event) => {
+      // Solo cerrar si se hace click en el overlay (no en el modal)
+      if (event.target.classList.contains('org-switcher-modal-overlay')) {
+        setIsOpen(false);
+      }
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.body.style.overflow = '';
+      document.body.removeAttribute('data-modal-open');
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isOpen]);
+
   const switchOrganization = async (orgId) => {
     if (orgId === organization?.id) {
       // Ya estás en esa organización
@@ -121,14 +156,28 @@ const OrganizationSwitcher = () => {
 
       <AnimatePresence>
         {isOpen && (
-          <>
-            <div className="org-switcher-overlay" onClick={() => setIsOpen(false)} />
+          <motion.div 
+            className="org-switcher-modal-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setIsOpen(false)}
+          >
             <motion.div
-              className="org-switcher-dropdown"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
+              className="org-switcher-modal"
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              onClick={(e) => e.stopPropagation()}
             >
+              <div className="org-modal-header">
+                <h2>Selecciona una Organización</h2>
+                <p>Cambiar entre tus negocios</p>
+              </div>
+              
+              <div className="org-modal-content">
               {organizations.map(org => (
                 <button
                   key={org.id}
@@ -152,8 +201,9 @@ const OrganizationSwitcher = () => {
                   {org.id === organization?.id && <Check size={18} />}
                 </button>
               ))}
+              </div>
             </motion.div>
-          </>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

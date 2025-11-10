@@ -22,9 +22,22 @@ const Perfil = () => {
   const handleLogout = async () => {
     setLoading(true);
     try {
-      await supabase.auth.signOut();
+      // Usar signOut con scope local en lugar de global
+      const { error } = await supabase.auth.signOut({ scope: 'local' });
+      
+      if (error) {
+        console.error('Error al cerrar sesión:', error);
+        // Forzar limpieza local si falla el logout en servidor
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.href = '/login';
+      }
     } catch (error) {
       console.error('Error al cerrar sesión:', error);
+      // Forzar limpieza local en caso de error
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = '/login';
     } finally {
       setLoading(false);
     }

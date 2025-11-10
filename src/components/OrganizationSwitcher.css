@@ -1,5 +1,6 @@
 .organization-switcher {
   position: relative;
+  z-index: 100;
 }
 
 .org-switcher-button {
@@ -14,6 +15,7 @@
   transition: all 0.3s ease;
   width: 100%;
   box-sizing: border-box;
+  position: relative;
 }
 
 .org-switcher-button:hover {
@@ -32,6 +34,34 @@
   align-items: flex-start;
   flex: 1;
   min-width: 0;
+  overflow: hidden;
+}
+
+/* Ocultar texto cuando sidebar está colapsado */
+.dashboard-sidebar:not(:hover) .org-info {
+  opacity: 0;
+  max-width: 0;
+  min-width: 0;
+  overflow: hidden;
+  transition: opacity 0.2s ease, max-width 0.3s ease;
+}
+
+/* Mostrar texto cuando sidebar está expandido */
+.dashboard-sidebar:hover .org-info {
+  opacity: 1;
+  max-width: 200px;
+  transition: opacity 0.3s ease 0.1s, max-width 0.3s ease;
+}
+
+/* Centrar solo el icono cuando está colapsado */
+.dashboard-sidebar:not(:hover) .org-switcher-button {
+  justify-content: center;
+  padding: 0.75rem;
+}
+
+/* Ocultar ChevronDown cuando está colapsado */
+.dashboard-sidebar:not(:hover) .org-switcher-button svg:last-child {
+  display: none;
 }
 
 .org-name {
@@ -60,61 +90,141 @@
   transform: rotate(180deg);
 }
 
-.org-switcher-overlay {
+/* Modal Overlay - Fondo difuminado centrado */
+.org-switcher-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 999;
+  z-index: 999999;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  pointer-events: all;
+}
+
+/* Modal Centrado */
+.org-switcher-modal {
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-width: 600px;
+  width: 100%;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 1000000;
+  position: relative;
+  pointer-events: all;
+}
+
+/* Header del modal */
+.org-modal-header {
+  padding: 2rem;
+  border-bottom: 2px solid #e2e8f0;
+  text-align: center;
+  background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+}
+
+.org-modal-header h2 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #1a202c;
+}
+
+.org-modal-header p {
+  margin: 0;
+  font-size: 1rem;
+  color: #718096;
+}
+
+/* Contenido del modal */
+.org-modal-content {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Eliminar estilos antiguos del dropdown */
+.org-switcher-overlay {
+  display: none !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
 }
 
 .org-switcher-dropdown {
-  position: absolute;
-  top: calc(100% + 0.5rem);
-  left: 0;
-  right: 0;
-  background: white;
-  border: 2px solid #e2e8f0;
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-  z-index: 1000;
-  max-height: 400px;
-  overflow-y: auto;
-  min-width: 300px;
+  display: none !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+.org-switcher-dropdown * {
+  pointer-events: none !important;
+}
+
+/* Scrollbar personalizado del modal */
+.org-modal-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.org-modal-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.org-modal-content::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 4px;
+}
+
+.org-modal-content::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
 }
 
 .org-option {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-  padding: 1rem;
+  padding: 1.5rem;
   background: white;
-  border: none;
-  border-bottom: 1px solid #e2e8f0;
+  border: 2px solid #e2e8f0;
+  border-radius: 16px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   width: 100%;
   text-align: left;
-}
-
-.org-option:last-child {
-  border-bottom: none;
+  box-sizing: border-box;
+  min-height: 90px;
 }
 
 .org-option:hover {
   background: #f7fafc;
+  border-color: #667eea;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
 }
 
 .org-option.active {
   background: linear-gradient(135deg, #f0f4ff 0%, #e8edff 100%);
-  border-left: 4px solid #667eea;
+  border-color: #667eea;
+  border-width: 3px;
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.2);
 }
 
 .org-option:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  transform: none !important;
 }
 
 .org-option-content {
@@ -122,12 +232,23 @@
   align-items: flex-start;
   gap: 0.75rem;
   flex: 1;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.org-option-content > div {
+  flex: 1;
+  min-width: 0;
+  max-width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .org-option-content svg {
   color: #667eea;
   margin-top: 2px;
   flex-shrink: 0;
+  min-width: 18px;
 }
 
 .org-option-name {
@@ -138,16 +259,23 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex-wrap: wrap;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+  line-height: 1.4;
 }
 
 .badge-primary {
   display: inline-block;
-  padding: 0.125rem 0.5rem;
+  padding: 0.15rem 0.6rem;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   font-size: 0.7rem;
   border-radius: 12px;
   font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .org-option-meta {
@@ -155,33 +283,182 @@
   align-items: center;
   gap: 0.5rem;
   font-size: 0.8rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
 }
 
 .role-badge {
-  padding: 0.125rem 0.5rem;
+  padding: 0.15rem 0.6rem;
   background: #e2e8f0;
   color: #4a5568;
   border-radius: 8px;
   font-size: 0.75rem;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .business-type {
   font-size: 1rem;
+  flex-shrink: 0;
 }
 
 .org-option > svg {
   color: #48bb78;
   flex-shrink: 0;
+  min-width: 18px;
 }
 
 /* Responsive */
 @media (max-width: 768px) {
   .org-switcher-button {
     max-width: 100%;
+    padding: 0.65rem 0.85rem;
   }
 
   .org-switcher-dropdown {
     min-width: 100%;
+    max-height: 350px;
   }
+  
+  .org-option {
+    padding: 0.85rem;
+  }
+  
+  .org-option-name {
+    font-size: 0.9rem;
+  }
+  
+  .org-option-meta {
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .org-switcher-button {
+    padding: 0.6rem 0.75rem;
+    gap: 0.5rem;
+  }
+  
+  .org-name {
+    font-size: 0.875rem;
+  }
+  
+  .org-count {
+    font-size: 0.7rem;
+  }
+  
+  .org-switcher-dropdown {
+    max-height: 300px;
+  }
+  
+  .org-option {
+    padding: 0.75rem;
+  }
+  
+  .org-option-content {
+    gap: 0.5rem;
+  }
+  
+  .org-option-name {
+    font-size: 0.85rem;
+  }
+  
+  .badge-primary {
+    font-size: 0.65rem;
+    padding: 0.1rem 0.4rem;
+  }
+  
+  .role-badge {
+    font-size: 0.7rem;
+    padding: 0.1rem 0.4rem;
+  }
+}
+
+/* Modo Oscuro */
+.dark .org-switcher-button {
+  background: #1C1C1E;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.dark .org-switcher-button:hover {
+  border-color: #0A84FF;
+  box-shadow: 0 2px 8px rgba(10, 132, 255, 0.2);
+}
+
+.dark .org-name {
+  color: #FFFFFF;
+}
+
+.dark .org-count {
+  color: #8E8E93;
+}
+
+/* Modal Dark Mode */
+.dark .org-switcher-modal-overlay {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.dark .org-switcher-modal {
+  background: #1C1C1E;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+}
+
+.dark .org-modal-header {
+  background: linear-gradient(135deg, #1C1C1E 0%, #2C2C2E 100%);
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .org-modal-header h2 {
+  color: #FFFFFF;
+}
+
+.dark .org-modal-header p {
+  color: #8E8E93;
+}
+
+.dark .org-modal-content::-webkit-scrollbar-track {
+  background: #2C2C2E;
+}
+
+.dark .org-modal-content::-webkit-scrollbar-thumb {
+  background: #48484A;
+}
+
+.dark .org-modal-content::-webkit-scrollbar-thumb:hover {
+  background: #5E5E60;
+}
+
+.dark .org-option {
+  background: #2C2C2E;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.dark .org-option:hover {
+  background: #3A3A3C;
+  border-color: #0A84FF;
+  box-shadow: 0 4px 12px rgba(10, 132, 255, 0.2);
+}
+
+.dark .org-option.active {
+  background: linear-gradient(135deg, rgba(10, 132, 255, 0.2) 0%, rgba(10, 132, 255, 0.15) 100%);
+  border-color: #0A84FF;
+  box-shadow: 0 4px 16px rgba(10, 132, 255, 0.3);
+}
+
+.dark .org-option:hover {
+  background: #2C2C2E;
+}
+
+.dark .org-option.active {
+  background: linear-gradient(135deg, rgba(10, 132, 255, 0.15) 0%, rgba(10, 132, 255, 0.1) 100%);
+  border-left-color: #0A84FF;
+}
+
+.dark .org-option-name {
+  color: #FFFFFF;
+}
+
+.dark .role-badge {
+  background: #2C2C2E;
+  color: #8E8E93;
 }
