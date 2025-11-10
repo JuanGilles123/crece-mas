@@ -1,15 +1,19 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
-import { User, Settings, Building2, LogOut, Edit3, Save, X } from 'lucide-react';
+import { User, Settings, Building2, LogOut, Edit3, Save, X, Lock, Sliders, Bell } from 'lucide-react';
 import ConfiguracionFacturacion from '../components/ConfiguracionFacturacion';
 import ThemeToggle from '../components/ThemeToggle';
+import CambiarContrasena from '../components/CambiarContrasena';
+import PreferenciasAplicacion from '../components/PreferenciasAplicacion';
+import ConfiguracionNotificaciones from '../components/ConfiguracionNotificaciones';
 import { supabase } from '../supabaseClient';
 import './Perfil.css';
 
 const Perfil = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('datos');
+  const [activeConfigSection, setActiveConfigSection] = useState(null);
   const [loading, setLoading] = useState(false);
   const [editandoNombre, setEditandoNombre] = useState(false);
   const [nombreCompleto, setNombreCompleto] = useState(user?.user_metadata?.full_name || '');
@@ -283,34 +287,106 @@ const Perfil = () => {
             >
               <div className="perfil-section">
               <h2 className="perfil-section-title">Configuración General</h2>
-              <div className="perfil-config-grid">
-                <div className="perfil-config-item">
-                  <h3>Modo Oscuro</h3>
-                  <p>Cambiar entre tema claro y oscuro</p>
-                  <ThemeToggle size="medium" showLabel={true} />
+              
+              {/* Vista por defecto - Grid de opciones */}
+              {!activeConfigSection && (
+                <div className="perfil-config-grid">
+                  <div className="perfil-config-item">
+                    <h3>Modo Oscuro</h3>
+                    <p>Cambiar entre tema claro y oscuro</p>
+                    <ThemeToggle size="medium" showLabel={true} />
+                  </div>
+                  
+                  <motion.div 
+                    className="perfil-config-item clickable"
+                    onClick={() => setActiveConfigSection('preferencias')}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <div className="config-icon-wrapper">
+                      <Sliders size={24} />
+                    </div>
+                    <h3>Preferencias de la Aplicación</h3>
+                    <p>Configuraciones generales del sistema</p>
+                  </motion.div>
+                  
+                  <motion.div 
+                    className="perfil-config-item clickable"
+                    onClick={() => setActiveConfigSection('notificaciones')}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <div className="config-icon-wrapper">
+                      <Bell size={24} />
+                    </div>
+                    <h3>Notificaciones</h3>
+                    <p>Configurar alertas y notificaciones</p>
+                  </motion.div>
+                  
+                  <motion.div 
+                    className="perfil-config-item clickable"
+                    onClick={() => setActiveConfigSection('seguridad')}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <div className="config-icon-wrapper">
+                      <Lock size={24} />
+                    </div>
+                    <h3>Seguridad</h3>
+                    <p>Cambiar contraseña y configuraciones de seguridad</p>
+                  </motion.div>
                 </div>
-                <div className="perfil-config-item">
-                  <h3>Preferencias de la Aplicación</h3>
-                  <p>Configuraciones generales del sistema</p>
-                  <button className="perfil-config-btn" disabled>
-                    Próximamente
+              )}
+
+              {/* Vistas de cada sección */}
+              {activeConfigSection === 'preferencias' && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                >
+                  <button 
+                    className="perfil-back-btn"
+                    onClick={() => setActiveConfigSection(null)}
+                  >
+                    ← Volver a Configuración
                   </button>
-                </div>
-                <div className="perfil-config-item">
-                  <h3>Notificaciones</h3>
-                  <p>Configurar alertas y notificaciones</p>
-                  <button className="perfil-config-btn" disabled>
-                    Próximamente
+                  <PreferenciasAplicacion />
+                </motion.div>
+              )}
+
+              {activeConfigSection === 'notificaciones' && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                >
+                  <button 
+                    className="perfil-back-btn"
+                    onClick={() => setActiveConfigSection(null)}
+                  >
+                    ← Volver a Configuración
                   </button>
-                </div>
-                <div className="perfil-config-item">
-                  <h3>Seguridad</h3>
-                  <p>Cambiar contraseña y configuraciones de seguridad</p>
-                  <button className="perfil-config-btn" disabled>
-                    Próximamente
+                  <ConfiguracionNotificaciones />
+                </motion.div>
+              )}
+
+              {activeConfigSection === 'seguridad' && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                >
+                  <button 
+                    className="perfil-back-btn"
+                    onClick={() => setActiveConfigSection(null)}
+                  >
+                    ← Volver a Configuración
                   </button>
-                </div>
-              </div>
+                  <CambiarContrasena />
+                </motion.div>
+              )}
+              
               </div>
             </motion.div>
           )}

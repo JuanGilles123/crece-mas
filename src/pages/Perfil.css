@@ -370,6 +370,32 @@
   border: 1px solid rgba(0, 0, 0, 0.05);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   text-align: center;
+  position: relative;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.perfil-config-item.clickable {
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.perfil-config-item.clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-color: #007AFF;
+}
+
+.config-icon-wrapper {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
+  background: linear-gradient(135deg, #007AFF 0%, #0051D5 100%);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
 }
 
 .perfil-config-item h3 {
@@ -406,6 +432,34 @@
   background: #9ca3af;
   cursor: not-allowed;
   transform: none;
+}
+
+/* Botón de volver */
+.perfil-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: transparent;
+  border: 2px solid #007AFF;
+  color: #007AFF;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  margin-bottom: 24px;
+}
+
+.perfil-back-btn:hover {
+  background: #007AFF;
+  color: white;
+  transform: translateX(-4px);
+}
+
+.perfil-back-btn:active {
+  transform: scale(0.96);
 }
 
 /* Responsive */
@@ -906,4 +960,24 @@
 .dark .perfil-edit-start:hover {
   background: #3A3A3C;
   color: #FFFFFF;
+}
+
+.dark .perfil-config-item.clickable:hover {
+  border-color: #0A84FF;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.dark .config-icon-wrapper {
+  background: linear-gradient(135deg, #0A84FF 0%, #0077ED 100%);
+  box-shadow: 0 4px 12px rgba(10, 132, 255, 0.4);
+}
+
+.dark .perfil-back-btn {
+  border-color: #0A84FF;
+  color: #0A84FF;
+}
+
+.dark .perfil-back-btn:hover {
+  background: #0A84FF;
+  color: white;
 }
