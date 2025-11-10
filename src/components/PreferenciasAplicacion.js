@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Globe, Calendar, DollarSign, Save } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
@@ -17,11 +17,7 @@ const PreferenciasAplicacion = () => {
     umbralStockBajo: 10
   });
 
-  useEffect(() => {
-    cargarPreferencias();
-  }, [user]);
-
-  const cargarPreferencias = async () => {
+  const cargarPreferencias = useCallback(async () => {
     if (!user) return;
     
     setLoading(true);
@@ -41,7 +37,11 @@ const PreferenciasAplicacion = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    cargarPreferencias();
+  }, [cargarPreferencias]);
 
   const handleChange = (campo, valor) => {
     setPreferencias(prev => ({ ...prev, [campo]: valor }));

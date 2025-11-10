@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Bell, Package, DollarSign, AlertTriangle, TrendingUp, Save } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
@@ -17,11 +17,7 @@ const ConfiguracionNotificaciones = () => {
     umbralVentaGrande: 100000
   });
 
-  useEffect(() => {
-    cargarNotificaciones();
-  }, [user]);
-
-  const cargarNotificaciones = async () => {
+  const cargarNotificaciones = useCallback(async () => {
     if (!user) return;
     
     setLoading(true);
@@ -40,7 +36,11 @@ const ConfiguracionNotificaciones = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    cargarNotificaciones();
+  }, [cargarNotificaciones]);
 
   const handleToggle = (campo) => {
     setNotificaciones(prev => ({ ...prev, [campo]: !prev[campo] }));
