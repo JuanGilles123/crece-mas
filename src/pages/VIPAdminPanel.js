@@ -247,7 +247,6 @@ const VIPAdminPanel = () => {
 
   const handleEditSubscription = (org) => {
     setSelectedOrg(org);
-    setModalMode('edit');
 
     if (org.subscription) {
       setFormData({
