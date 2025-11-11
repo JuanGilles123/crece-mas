@@ -7,6 +7,7 @@ import { supabase } from '../supabaseClient';
 import LottieLoader from '../components/LottieLoader';
 import './Inventario.css';
 import { useAuth } from '../context/AuthContext';
+import { useSubscription } from '../hooks/useSubscription';
 import { compressProductImage } from '../utils/imageCompression';
 import { useAgregarProducto } from '../hooks/useProductos';
 import { useCurrencyInput } from '../hooks/useCurrencyInput';
@@ -32,10 +33,14 @@ const productoSchema = z.object({
 
 const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => {
   const { user, userProfile } = useAuth();
+  const { hasFeature } = useSubscription();
   const [imagen, setImagen] = useState(null);
   const [subiendo, setSubiendo] = useState(false);
   const [comprimiendo, setComprimiendo] = useState(false);
   const fileInputRef = useRef();
+  
+  // Verificar si tiene acceso a imágenes
+  const puedeSubirImagenes = hasFeature('productImages');
 
   // Currency inputs
   const precioCompraInput = useCurrencyInput();
@@ -226,14 +231,25 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
             Solo para productos perecederos o con fecha de caducidad
           </span>
           
-          <label>Imagen</label>
+          <label>Imagen {!puedeSubirImagenes && <span style={{ color: '#ef4444', fontWeight: 600 }}>🔒 Solo plan Profesional</span>}</label>
           <div className="input-upload-wrapper input-upload-centro">
-            <button type="button" className="input-upload-btn" onClick={handleClickUpload}>
+            <button 
+              type="button" 
+              className="input-upload-btn" 
+              onClick={puedeSubirImagenes ? handleClickUpload : () => toast.error('Actualiza al plan Profesional para subir imágenes')}
+              disabled={!puedeSubirImagenes}
+              style={!puedeSubirImagenes ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+            >
               <svg width="22" height="22" fill="none" viewBox="0 0 24 24"><path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><rect x="4" y="16" width="16" height="4" rx="2" fill="#2563eb" fillOpacity=".08"/></svg>
-              {imagen ? imagen.name : 'Seleccionar imagen'}
+              {imagen ? imagen.name : puedeSubirImagenes ? 'Seleccionar imagen' : '🔒 Bloqueado'}
             </button>
-            <input type="file" accept="image/*" onChange={handleImagenChange} ref={fileInputRef} style={{ display: 'none' }} required />
+            <input type="file" accept="image/*" onChange={handleImagenChange} ref={fileInputRef} style={{ display: 'none' }} disabled={!puedeSubirImagenes} />
           </div>
+          {!puedeSubirImagenes && (
+            <span style={{ fontSize: '0.875rem', color: '#ef4444', marginTop: '-0.5rem' }}>
+              Las imágenes de productos están disponibles en el plan Profesional
+            </span>
+          )}
           <div className="form-actions form-actions-centro">
             <button type="button" className="inventario-btn inventario-btn-secondary" onClick={onClose} disabled={subiendo}>Cancelar</button>
             <button type="submit" className="inventario-btn inventario-btn-primary" disabled={subiendo || isSubmitting}>

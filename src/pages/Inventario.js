@@ -11,8 +11,10 @@ import OptimizedProductImage from '../components/OptimizedProductImage';
 import LottieLoader from '../components/LottieLoader';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
-import { Search, List, Grid3X3, Loader, Calendar, AlertTriangle } from 'lucide-react';
+import { Search, List, Grid3X3, Loader, Calendar, AlertTriangle, Lock, Crown, Zap, Sparkles } from 'lucide-react';
 import { useProductosPaginados, useEliminarProducto } from '../hooks/useProductos';
+import { useSubscription } from '../hooks/useSubscription';
+import UpgradePrompt from '../components/UpgradePrompt';
 import toast from 'react-hot-toast';
 
 // Función para calcular estado de vencimiento
@@ -62,6 +64,20 @@ const deleteImageFromStorage = async (imagePath) => {
 const Inventario = () => {
   const { user, userProfile } = useAuth();
   const queryClient = useQueryClient();
+  
+  // Hook de suscripción
+  const { 
+    subscription, 
+    loading: subscriptionLoading,
+    planSlug,
+    planName,
+    hasFeature,
+    getLimit,
+    checkLimit,
+    canPerformAction,
+    isFreePlan
+  } = useSubscription();
+  
   const [modalOpen, setModalOpen] = useState(false);
   const [editarModalOpen, setEditarModalOpen] = useState(false);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
@@ -69,6 +85,8 @@ const Inventario = () => {
   const [modoLista, setModoLista] = useState(false);
   const [query, setQuery] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('todos'); // todos, stock-bajo, proximoVencer
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
+  const [upgradeReason, setUpgradeReason] = useState('');
   const moneda = user?.user_metadata?.moneda || 'COP';
   
   // Estados para estadísticas reales de la BD
@@ -376,8 +394,52 @@ const Inventario = () => {
         </div>
       ) : (
         <>
+          {!estadisticas.cargando && (
+            <motion.div 
+              className="stats-badge"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              {subscription?.is_vip ? (
+                <div className="plan-badge vip-badge">
+                  <div className="badge-icon-wrapper">
+                    <Crown size={20} className="badge-icon" />
+                  </div>
+                  <div className="badge-content">
+                    <span className="badge-label">VIP Developer</span>
+                    <span className="badge-value">Acceso Ilimitado</span>
+                  </div>
+                  <Sparkles size={16} className="badge-sparkle" />
+                </div>
+              ) : isFreePlan && getLimit('maxProducts') !== null ? (
+                <div className="plan-badge free-badge">
+                  <div className="badge-icon-wrapper">
+                    <Zap size={18} className="badge-icon" />
+                  </div>
+                  <div className="badge-content">
+                    <span className="badge-label">Plan Gratuito</span>
+                    <span className="badge-value">
+                      {estadisticas.total} / {getLimit('maxProducts')} productos
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="plan-badge premium-badge">
+                  <div className="badge-icon-wrapper">
+                    <Crown size={18} className="badge-icon" />
+                  </div>
+                  <div className="badge-content">
+                    <span className="badge-label">Plan {planName}</span>
+                    <span className="badge-value">Acceso Completo</span>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          )}
+          
           <div className="inventario-stats">
-            <div className={`stat-card ${filtroEstado === 'todos' ? 'active' : ''}`} onClick={() => setFiltroEstado('todos')}>
+            <div className={`stat-card primary ${filtroEstado === 'todos' ? 'active' : ''}`} onClick={() => setFiltroEstado('todos')}>
               <span className="stat-label">Total Productos</span>
               <span className="stat-value">{estadisticas.cargando ? '...' : estadisticas.total}</span>
             </div>
@@ -413,8 +475,38 @@ const Inventario = () => {
               </div>
             </div>
             <div className="inventario-actions">
-              <button className="inventario-btn inventario-btn-primary" onClick={() => setModalOpen(true)}>Nuevo producto</button>
-              <button className="inventario-btn inventario-btn-secondary" onClick={() => setCsvModalOpen(true)}>Importar CSV</button>
+              <button 
+                className="inventario-btn inventario-btn-primary" 
+                onClick={async () => {
+                  // Verificar límite antes de abrir modal
+                  const canCreate = await canPerformAction('createProduct');
+                  if (!canCreate.allowed) {
+                    setUpgradeReason(canCreate.reason);
+                    setShowUpgradePrompt(true);
+                    toast.error(canCreate.reason);
+                  } else {
+                    setModalOpen(true);
+                  }
+                }}
+                disabled={subscriptionLoading}
+              >
+                Nuevo producto
+              </button>
+              <button 
+                className="inventario-btn inventario-btn-secondary" 
+                onClick={() => {
+                  if (!hasFeature('importCSV')) {
+                    toast.error('Esta función no está disponible en tu plan actual');
+                    setUpgradeReason('Necesitas el plan Profesional para importar productos desde CSV');
+                    setShowUpgradePrompt(true);
+                  } else {
+                    setCsvModalOpen(true);
+                  }
+                }}
+                disabled={subscriptionLoading}
+              >
+                Importar CSV
+              </button>
               <button className="inventario-btn inventario-btn-secondary" onClick={() => setModoLista(m => !m)}>
                 {modoLista ? <Grid3X3 size={18} /> : <List size={18} />}
               </button>
@@ -633,6 +725,17 @@ const Inventario = () => {
         onClose={() => setCsvModalOpen(false)}
         onProductosImportados={handleProductosImportados}
       />
+      
+      {/* Modal de Upgrade */}
+      {showUpgradePrompt && (
+        <UpgradePrompt 
+          feature="Límite de productos alcanzado"
+          reason={upgradeReason}
+          currentPlan={planSlug}
+          recommendedPlan="professional"
+          onClose={() => setShowUpgradePrompt(false)}
+        />
+      )}
     </div>
   );
 };

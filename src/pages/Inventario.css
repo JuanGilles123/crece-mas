@@ -1,4 +1,196 @@
 /* --- Estadísticas de inventario --- */
+.stats-badge {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.plan-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  border: 2px solid;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.plan-badge:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+/* VIP Badge - Dorado premium */
+.vip-badge {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 165, 0, 0.15));
+  border-color: #FFD700;
+  box-shadow: 0 4px 20px rgba(255, 215, 0, 0.3);
+}
+
+.vip-badge::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  animation: shine 3s infinite;
+}
+
+@keyframes shine {
+  0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+  100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+}
+
+.vip-badge .badge-icon-wrapper {
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  padding: 0.5rem;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
+}
+
+.vip-badge .badge-icon {
+  color: #000;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.vip-badge .badge-sparkle {
+  color: #FFD700;
+  animation: rotate 4s linear infinite;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Free Badge - Violeta */
+.free-badge {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(59, 130, 246, 0.1));
+  border-color: rgba(139, 92, 246, 0.3);
+}
+
+.free-badge .badge-icon-wrapper {
+  background: linear-gradient(135deg, #8B5CF6, #3B82F6);
+  padding: 0.45rem;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.free-badge .badge-icon {
+  color: white;
+}
+
+/* Premium Badge - Verde */
+.premium-badge {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.1));
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.premium-badge .badge-icon-wrapper {
+  background: linear-gradient(135deg, #10B981, #059669);
+  padding: 0.45rem;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.premium-badge .badge-icon {
+  color: white;
+}
+
+/* Badge Content */
+.badge-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.badge-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  opacity: 0.8;
+}
+
+.vip-badge .badge-label {
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 700;
+}
+
+.badge-value {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.vip-badge .badge-value {
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-size: 1rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .plan-badge {
+    padding: 0.75rem 1.25rem;
+    gap: 0.5rem;
+  }
+  
+  .badge-label {
+    font-size: 0.7rem;
+  }
+  
+  .badge-value {
+    font-size: 0.875rem;
+  }
+  
+  .vip-badge .badge-value {
+    font-size: 0.95rem;
+  }
+}
+
+.plan-usage {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--accent-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.plan-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--accent-success);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .inventario-stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

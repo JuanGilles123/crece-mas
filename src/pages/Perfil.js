@@ -1,23 +1,29 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
-import { User, Settings, Building2, LogOut, Edit3, Save, X, Lock, Sliders, Bell } from 'lucide-react';
-import ConfiguracionFacturacion from '../components/ConfiguracionFacturacion';
+import { useNavigate } from 'react-router-dom';
+import { User, Settings, Building2, LogOut, Edit3, Save, X, Lock, Sliders, Bell, CreditCard, BarChart3, Crown, Sparkles, Shield } from 'lucide-react';
+import { useSubscription } from '../hooks/useSubscription';
+// import ConfiguracionFacturacion from '../components/ConfiguracionFacturacion';
 import ThemeToggle from '../components/ThemeToggle';
-import CambiarContrasena from '../components/CambiarContrasena';
-import PreferenciasAplicacion from '../components/PreferenciasAplicacion';
-import ConfiguracionNotificaciones from '../components/ConfiguracionNotificaciones';
+// import CambiarContrasena from '../components/CambiarContrasena';
+// import PreferenciasAplicacion from '../components/PreferenciasAplicacion';
+// import ConfiguracionNotificaciones from '../components/ConfiguracionNotificaciones';
 import { supabase } from '../supabaseClient';
 import './Perfil.css';
 
 const Perfil = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const { isVIP, planName } = useSubscription();
   const [activeTab, setActiveTab] = useState('datos');
   const [activeConfigSection, setActiveConfigSection] = useState(null);
   const [loading, setLoading] = useState(false);
   const [editandoNombre, setEditandoNombre] = useState(false);
   const [nombreCompleto, setNombreCompleto] = useState(user?.user_metadata?.full_name || '');
   const [guardandoNombre, setGuardandoNombre] = useState(false);
+
+  const isSuperAdmin = user?.email === 'juanjosegilarbelaez@gmail.com';
 
   const handleLogout = async () => {
     setLoading(true);
@@ -83,7 +89,6 @@ const Perfil = () => {
 
   const tabs = [
     { id: 'datos', label: 'Datos Personales', icon: User },
-    { id: 'facturacion', label: 'Configuración de Facturación', icon: Building2 },
     { id: 'configuracion', label: 'Configuración', icon: Settings },
   ];
 
@@ -206,6 +211,60 @@ const Perfil = () => {
               >
             <div className="perfil-section">
               <h2 className="perfil-section-title">Datos Personales</h2>
+              
+              {/* Banner de Suscripción de la Organización */}
+              {!isVIP && (
+                <motion.div 
+                  className={`org-subscription-banner ${(planName || 'gratis').toLowerCase()}`}
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <div className="banner-icon">
+                    {(planName === 'Gratis' || !planName) ? (
+                      <Building2 size={24} />
+                    ) : (
+                      <Crown size={24} />
+                    )}
+                  </div>
+                  <div className="banner-content">
+                    <h4>Plan de tu Organización</h4>
+                    <p>
+                      {(planName === 'Gratis' || !planName)
+                        ? 'Tu organización está en el plan gratuito. Actualiza para desbloquear más funciones.'
+                        : `Tu organización tiene acceso completo con el plan ${planName}. ¡Disfruta de todas las funciones!`
+                      }
+                    </p>
+                  </div>
+                  <button 
+                    className="banner-btn"
+                    onClick={() => navigate('/dashboard/suscripcion')}
+                  >
+                    Ver Plan
+                  </button>
+                </motion.div>
+              )}
+
+              {/* Banner VIP */}
+              {isVIP && (
+                <motion.div 
+                  className="org-subscription-banner vip"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <div className="banner-icon vip-icon">
+                    <Sparkles size={24} />
+                  </div>
+                  <div className="banner-content">
+                    <h4>🌟 VIP Developer Access</h4>
+                    <p>
+                      Tienes acceso ilimitado a todas las funciones de la plataforma como desarrollador VIP.
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+
               <div className="perfil-datos-grid">
                 <div className="perfil-dato-item">
                   <label className="perfil-dato-label">Nombre Completo</label>
@@ -272,24 +331,6 @@ const Perfil = () => {
             </motion.div>
           )}
 
-          {activeTab === 'facturacion' && (
-            <motion.div
-              key="facturacion"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className="perfil-section">
-                <h2 className="perfil-section-title">Configuración de Facturación</h2>
-                <p className="perfil-section-description">
-                  Configure los datos de su empresa para generar recibos profesionales.
-                </p>
-                <ConfiguracionFacturacion />
-              </div>
-            </motion.div>
-          )}
-
           {activeTab === 'configuracion' && (
             <motion.div
               key="configuracion"
@@ -309,6 +350,75 @@ const Perfil = () => {
                     <p>Cambiar entre tema claro y oscuro</p>
                     <ThemeToggle size="medium" showLabel={true} />
                   </div>
+                  
+                  {/* Mi Suscripción - Todos los usuarios */}
+                  <motion.div 
+                    className="perfil-config-item clickable suscripcion-item"
+                    onClick={() => navigate('/dashboard/suscripcion')}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <div className="config-icon-wrapper">
+                      <CreditCard size={24} />
+                      {isVIP && <Sparkles size={16} className="vip-sparkle" />}
+                    </div>
+                    <h3>
+                      Mi Suscripción
+                      {isVIP && <Crown size={18} className="vip-crown" />}
+                    </h3>
+                    <p>
+                      {isVIP 
+                        ? '✨ VIP Developer - Acceso Ilimitado'
+                        : `Plan ${planName} - Gestionar suscripción`
+                      }
+                    </p>
+                  </motion.div>
+
+                  {/* Platform Analytics - Solo VIP o Super Admin */}
+                  {(isVIP || isSuperAdmin) && (
+                    <motion.div 
+                      className="perfil-config-item clickable analytics-item"
+                      onClick={() => navigate('/dashboard/analytics')}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.2 }}
+                    >
+                      <div className="config-icon-wrapper">
+                        <BarChart3 size={24} />
+                        <Crown size={16} className="admin-crown" />
+                      </div>
+                      <h3>
+                        Platform Analytics
+                        <Shield size={18} className="admin-badge" />
+                      </h3>
+                      <p>📊 Métricas y análisis de la plataforma</p>
+                    </motion.div>
+                  )}
+
+                  {/* Panel de Administración VIP */}
+                  {(isVIP || isSuperAdmin) && (
+                    <motion.div 
+                      className="perfil-config-item clickable vip-admin-item"
+                      onClick={() => navigate('/vip-admin')}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.3 }}
+                    >
+                      <div className="config-icon-wrapper">
+                        <Crown size={24} />
+                        <Sparkles size={16} className="vip-sparkle-admin" />
+                      </div>
+                      <h3>
+                        Panel VIP
+                        <Crown size={18} className="vip-crown-admin" />
+                      </h3>
+                      <p>👑 Gestionar suscripciones de organizaciones</p>
+                    </motion.div>
+                  )}
                   
                   <motion.div 
                     className="perfil-config-item clickable"
@@ -364,7 +474,10 @@ const Perfil = () => {
                   >
                     ← Volver a Configuración
                   </button>
-                  <PreferenciasAplicacion />
+                  <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                    <p>Sección en desarrollo</p>
+                  </div>
+                  {/* <PreferenciasAplicacion /> */}
                 </motion.div>
               )}
 
@@ -380,7 +493,10 @@ const Perfil = () => {
                   >
                     ← Volver a Configuración
                   </button>
-                  <ConfiguracionNotificaciones />
+                  <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                    <p>Sección en desarrollo</p>
+                  </div>
+                  {/* <ConfiguracionNotificaciones /> */}
                 </motion.div>
               )}
 
@@ -396,7 +512,10 @@ const Perfil = () => {
                   >
                     ← Volver a Configuración
                   </button>
-                  <CambiarContrasena />
+                  <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                    <p>Sección en desarrollo</p>
+                  </div>
+                  {/* <CambiarContrasena /> */}
                 </motion.div>
               )}
               

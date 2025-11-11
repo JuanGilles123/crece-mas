@@ -18,9 +18,12 @@ import {
   Briefcase,
   Target,
   Key,
-  Award
+  Award,
+  Lock
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useSubscription } from '../hooks/useSubscription';
+import UpgradePrompt from '../components/UpgradePrompt';
 import {
   useTeamMembers,
   useInvitations,
@@ -416,9 +419,16 @@ const InvitationCard = ({ invitation, onCancel }) => {
 
 const GestionEquipo = () => {
   const { organization, hasRole } = useAuth();
+  
+  // Hook de suscripción para verificar acceso
+  const { hasFeature, planSlug, loading: subscriptionLoading, isVIP } = useSubscription();
+  
   const [invitarModalOpen, setInvitarModalOpen] = useState(false);
   const [crearRolModalOpen, setCrearRolModalOpen] = useState(false);
   const [rolAEditar, setRolAEditar] = useState(null);
+
+  // Verificar si tiene acceso a gestión de equipo
+  const tieneAccesoEquipo = hasFeature('teamManagement');
 
   // Hooks de datos
   const { data: teamMembers = [], isLoading: loadingMembers } = useTeamMembers(organization?.id);
@@ -436,6 +446,21 @@ const GestionEquipo = () => {
   const assignCustomRole = useAssignCustomRole();
 
   const isOwner = hasRole('owner', 'admin');
+  
+  // Si no tiene acceso, mostrar prompt de upgrade
+  if (!subscriptionLoading && !tieneAccesoEquipo) {
+    return (
+      <div className="equipo-container">
+        <UpgradePrompt 
+          feature="Gestión de Equipo"
+          reason="La gestión de equipo está disponible en el plan Profesional. Actualiza para invitar miembros, asignar roles y gestionar permisos."
+          currentPlan={planSlug}
+          recommendedPlan="professional"
+          inline={true}
+        />
+      </div>
+    );
+  }
 
   const handleInvitar = async ({ email, role, mensaje }) => {
     try {
@@ -559,7 +584,7 @@ const GestionEquipo = () => {
         )}
       </div>
 
-      {limitReached && isOwner && (
+      {limitReached && isOwner && !isVIP && (
         <div className="alert alert-warning">
           <span>⚠️ Has alcanzado el límite de {organization.max_team_members} miembros en tu plan.</span>
           <button className="btn btn-link">Actualizar plan</button>
@@ -577,7 +602,9 @@ const GestionEquipo = () => {
           <div className="stat-label">Invitaciones Pendientes</div>
         </div>
         <div className="stat-card">
-          <div className="stat-value">{organization.max_team_members - activeMembers.length}</div>
+          <div className="stat-value">
+            {isVIP ? '∞' : organization.max_team_members - activeMembers.length}
+          </div>
           <div className="stat-label">Espacios Disponibles</div>
         </div>
       </div>

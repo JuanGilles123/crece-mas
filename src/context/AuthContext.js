@@ -82,9 +82,33 @@ export function AuthProvider({ children }) {
           .single();
 
         if (!orgError && org) {
-          setOrganization(org);
-
-          // Actualizar el perfil con el rol efectivo y organization_id si viene de team_members
+          // Obtener el email del owner usando la función RPC
+          let ownerEmail = null;
+          if (org.owner_id) {
+            try {
+              const { data: email, error: emailError } = await supabase
+                .rpc('get_user_email', { user_id: org.owner_id });
+              
+              if (!emailError && email) {
+                ownerEmail = email;
+              }
+            } catch (err) {
+              console.warn('Could not fetch owner email via RPC:', err);
+            }
+          }
+          
+          const orgWithOwnerEmail = {
+            ...org,
+            owner_email: ownerEmail
+          };
+          
+          console.log('🏢 Organization loaded:', {
+            name: orgWithOwnerEmail.name,
+            owner_id: orgWithOwnerEmail.owner_id,
+            owner_email: ownerEmail,
+          });
+          
+          setOrganization(orgWithOwnerEmail);          // Actualizar el perfil con el rol efectivo y organization_id si viene de team_members
           if (effectiveRole !== profile.role || orgId !== profile.organization_id) {
             const updatedProfile = {
               ...profile,

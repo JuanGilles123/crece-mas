@@ -1,0 +1,349 @@
+/* ===================================
+   PLATFORM ANALYTICS - ESTILOS
+   =================================== */
+
+.platform-analytics-page {
+  padding: 1.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.platform-analytics-loading,
+.platform-analytics-denied {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.denied-card {
+  background: var(--bg-card);
+  border-radius: 16px;
+  padding: 3rem;
+  text-align: center;
+  border: 2px solid var(--accent-error);
+  max-width: 400px;
+}
+
+.denied-card svg {
+  margin-bottom: 1.5rem;
+  color: var(--accent-error);
+}
+
+.denied-card h2 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 1rem 0;
+}
+
+.denied-card p {
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* Header */
+.analytics-header {
+  background: var(--bg-card);
+  padding: 2rem;
+  border-radius: 16px;
+  margin-bottom: 2rem;
+  border: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.header-content h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.header-content h1 svg {
+  color: var(--primary-color);
+}
+
+.header-content .subtitle {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.period-selector {
+  display: flex;
+  gap: 0.5rem;
+  background: var(--bg-secondary);
+  padding: 0.5rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+}
+
+.period-selector button {
+  padding: 0.5rem 1.25rem;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.period-selector button:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border-color: transparent;
+}
+
+.period-selector button.active {
+  background: transparent;
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+  font-weight: 700;
+}
+
+/* Content */
+.analytics-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* Metrics Section */
+.metrics-section {
+  background: var(--bg-card);
+  border-radius: 16px;
+  padding: 2rem;
+  border: 1px solid var(--border-color);
+}
+
+.metrics-section h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 1.5rem 0;
+  color: var(--text-primary);
+}
+
+.metrics-section h2 svg {
+  color: var(--primary-color);
+}
+
+/* Metrics Grid */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+.metric-card {
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.metric-card:hover {
+  border-color: var(--primary-color);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.metric-card.highlight {
+  border-color: var(--accent-success);
+  background: var(--bg-card);
+}
+
+.metric-card.warning {
+  border-color: var(--accent-warning);
+  background: var(--bg-card);
+}
+
+.metric-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.metric-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.metric-header svg {
+  color: var(--primary-color);
+}
+
+.metric-card.highlight .metric-header svg {
+  color: var(--accent-success);
+}
+
+.metric-card.warning .metric-header svg {
+  color: var(--accent-warning);
+}
+
+.metric-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
+  line-height: 1;
+}
+
+.metric-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.metric-footer .positive {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--accent-success);
+  font-weight: 600;
+}
+
+.metric-footer .negative {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--accent-error);
+  font-weight: 600;
+}
+
+.metric-sublabel {
+  color: var(--text-tertiary);
+}
+
+.metric-highlight {
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+/* Plan Distribution */
+.plan-distribution {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.plan-bar {
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  padding: 1.5rem;
+  border: 1px solid var(--border-color);
+}
+
+.plan-bar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.plan-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.plan-count {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.plan-bar-track {
+  width: 100%;
+  height: 12px;
+  background: var(--bg-tertiary);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.plan-bar-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.3s ease;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .metrics-grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+
+  .metric-value {
+    font-size: 2rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .platform-analytics-page {
+    padding: 1rem;
+  }
+
+  .analytics-header {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 1.5rem;
+  }
+
+  .header-content h1 {
+    font-size: 1.5rem;
+  }
+
+  .period-selector {
+    width: 100%;
+  }
+
+  .period-selector button {
+    flex: 1;
+    text-align: center;
+  }
+
+  .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .metric-value {
+    font-size: 2rem;
+  }
+
+  .metrics-section {
+    padding: 1.5rem;
+  }
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.metric-card {
+  animation: fadeIn 0.5s ease-out;
+}

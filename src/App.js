@@ -21,6 +21,8 @@ const Confirmacion = lazy(() => import('./pages/Confirmacion'));
 const ConfirmacionExitosa = lazy(() => import('./components/ConfirmacionExitosa'));
 const Invitaciones = lazy(() => import('./pages/Invitaciones'));
 const InvitePublic = lazy(() => import('./pages/InvitePublic'));
+const Pricing = lazy(() => import('./pages/Pricing'));
+const VIPAdminPanel = lazy(() => import('./pages/VIPAdminPanel'));
 
 // Componente de carga
 const LoadingFallback = () => (
@@ -89,6 +91,18 @@ function App() {
                 <Route path="/invitaciones" element={
                   <ProtectedRoute>
                     <Invitaciones />
+                  </ProtectedRoute>
+                } />
+                {/* Ruta para página de precios */}
+                <Route path="/pricing" element={
+                  <ProtectedRoute>
+                    <Pricing />
+                  </ProtectedRoute>
+                } />
+                {/* Ruta para panel de administración VIP */}
+                <Route path="/vip-admin" element={
+                  <ProtectedRoute>
+                    <VIPAdminPanel />
                   </ProtectedRoute>
                 } />
               </Routes>

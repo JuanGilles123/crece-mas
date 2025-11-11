@@ -1,0 +1,342 @@
+/* 🎨 UPGRADE PROMPT - iOS Style */
+
+/* ================== INLINE VERSION ================== */
+.upgrade-prompt-inline {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 16px;
+  color: white;
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+  margin: 1rem 0;
+}
+
+.upgrade-inline-icon {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+}
+
+.upgrade-inline-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.upgrade-inline-content h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: white;
+}
+
+.upgrade-inline-content p {
+  margin: 0 0 1rem 0;
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.5;
+}
+
+.upgrade-inline-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: white;
+  color: #667eea;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.upgrade-inline-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.upgrade-inline-button:active {
+  transform: translateY(0);
+}
+
+/* ================== MODAL VERSION ================== */
+.upgrade-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  padding: 20px;
+}
+
+.upgrade-modal {
+  background: white;
+  border-radius: 20px;
+  padding: 2.5rem;
+  max-width: 550px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  position: relative;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.upgrade-modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: rgba(0, 0, 0, 0.05);
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #666;
+}
+
+.upgrade-modal-close:hover {
+  background: rgba(0, 0, 0, 0.1);
+  transform: scale(1.1);
+}
+
+.upgrade-modal-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 1.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.upgrade-modal h2 {
+  margin: 0 0 1rem 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+  text-align: center;
+  color: #1a202c;
+}
+
+.upgrade-reason {
+  text-align: center;
+  color: #718096;
+  font-size: 1rem;
+  line-height: 1.6;
+  margin: 0 0 1.5rem 0;
+}
+
+.upgrade-plan-info {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.upgrade-plan-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.upgrade-plan-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: white;
+}
+
+.upgrade-plan-price {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: white;
+}
+
+.upgrade-benefits {
+  margin: 1.5rem 0;
+}
+
+.upgrade-benefits h4 {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #4a5568;
+}
+
+.upgrade-benefits ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.upgrade-benefits ul li {
+  padding: 0.75rem 0;
+  font-size: 0.95rem;
+  color: #2d3748;
+  border-bottom: 1px solid #e2e8f0;
+  line-height: 1.5;
+}
+
+.upgrade-benefits ul li:last-child {
+  border-bottom: none;
+}
+
+.upgrade-modal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 2rem;
+}
+
+.btn-upgrade-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn-upgrade-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.btn-upgrade-primary:active {
+  transform: translateY(0);
+}
+
+.btn-upgrade-secondary {
+  padding: 0.875rem;
+  background: transparent;
+  color: #718096;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-upgrade-secondary:hover {
+  background: #f7fafc;
+  border-color: #cbd5e0;
+  color: #4a5568;
+}
+
+/* ================== DARK MODE ================== */
+.dark .upgrade-modal {
+  background: #1C1C1E;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark .upgrade-modal h2 {
+  color: white;
+}
+
+.dark .upgrade-reason {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.dark .upgrade-modal-close {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.dark .upgrade-modal-close:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.dark .upgrade-benefits h4 {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.dark .upgrade-benefits ul li {
+  color: rgba(255, 255, 255, 0.8);
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .btn-upgrade-secondary {
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.dark .btn-upgrade-secondary:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* ================== RESPONSIVE ================== */
+@media (max-width: 768px) {
+  .upgrade-prompt-inline {
+    flex-direction: column;
+    text-align: center;
+    padding: 1.25rem;
+  }
+
+  .upgrade-inline-button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .upgrade-modal {
+    padding: 2rem 1.5rem;
+    max-height: 95vh;
+  }
+
+  .upgrade-modal-icon {
+    width: 64px;
+    height: 64px;
+  }
+
+  .upgrade-modal h2 {
+    font-size: 1.5rem;
+  }
+
+  .upgrade-benefits ul li {
+    font-size: 0.9rem;
+    padding: 0.625rem 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .upgrade-modal {
+    padding: 1.5rem 1rem;
+    border-radius: 16px;
+  }
+
+  .upgrade-plan-header {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-start;
+  }
+}

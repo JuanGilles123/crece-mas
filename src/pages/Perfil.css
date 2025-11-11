@@ -981,3 +981,298 @@
   background: #0A84FF;
   color: white;
 }
+
+/* ===================================
+   NUEVAS TARJETAS: SUSCRIPCIÓN Y ANALYTICS
+   =================================== */
+
+/* Banner de Suscripción de la Organización */
+.org-subscription-banner {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  border-radius: 16px;
+  margin-bottom: 2rem;
+  border: 2px solid;
+  transition: all 0.3s ease;
+}
+
+.org-subscription-banner.gratis {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(124, 58, 237, 0.1) 100%);
+  border-color: #8B5CF6;
+}
+
+.org-subscription-banner.profesional,
+.org-subscription-banner.empresarial {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%);
+  border-color: #10B981;
+}
+
+.org-subscription-banner.vip {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 165, 0, 0.15) 100%);
+  border-color: #FFD700;
+  box-shadow: 0 4px 16px rgba(255, 215, 0, 0.2);
+}
+
+.banner-icon {
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
+  background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+.org-subscription-banner.profesional .banner-icon,
+.org-subscription-banner.empresarial .banner-icon {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.banner-icon.vip-icon {
+  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
+  animation: vipPulse 2s ease-in-out infinite;
+}
+
+@keyframes vipPulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4); }
+  50% { transform: scale(1.05); box-shadow: 0 6px 20px rgba(255, 215, 0, 0.6); }
+}
+
+.banner-content {
+  flex: 1;
+}
+
+.banner-content h4 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+  color: var(--text-primary);
+}
+
+.banner-content p {
+  font-size: 0.875rem;
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.banner-btn {
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.banner-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+/* Dark Mode para Banner */
+.dark .org-subscription-banner.gratis {
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.15) 0%, rgba(124, 58, 237, 0.15) 100%);
+  border-color: #9333EA;
+}
+
+.dark .org-subscription-banner.profesional,
+.dark .org-subscription-banner.empresarial {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.15) 100%);
+  border-color: #10B981;
+}
+
+.dark .org-subscription-banner.vip {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 165, 0, 0.2) 100%);
+  border-color: #FFD700;
+  box-shadow: 0 4px 16px rgba(255, 215, 0, 0.3);
+}
+
+/* Responsive Banner */
+@media (max-width: 768px) {
+  .org-subscription-banner {
+    flex-direction: column;
+    text-align: center;
+    padding: 1.25rem;
+  }
+
+  .banner-icon {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+  }
+
+  .banner-btn {
+    width: 100%;
+  }
+}
+
+/* Mi Suscripción */
+.perfil-config-item.suscripcion-item {
+  position: relative;
+  overflow: visible;
+}
+
+.perfil-config-item.suscripcion-item .config-icon-wrapper {
+  background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+  position: relative;
+}
+
+.perfil-config-item.suscripcion-item:hover {
+  border-color: #8B5CF6;
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.2);
+}
+
+.vip-sparkle {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  color: #FFD700;
+  animation: sparkleRotate 3s linear infinite;
+}
+
+@keyframes sparkleRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.vip-crown {
+  display: inline-block;
+  margin-left: 8px;
+  color: #FFD700;
+  animation: crownPulse 2s ease-in-out infinite;
+}
+
+@keyframes crownPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+/* Platform Analytics */
+.perfil-config-item.analytics-item {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%);
+  border: 2px solid #10B981;
+}
+
+.perfil-config-item.analytics-item:hover {
+  border-color: #059669;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+}
+
+.perfil-config-item.analytics-item .config-icon-wrapper {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.admin-crown {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  color: #FFD700;
+  animation: crownFloat 3s ease-in-out infinite;
+}
+
+@keyframes crownFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+/* Panel VIP Admin */
+.perfil-config-item.vip-admin-item {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.1) 100%);
+  border: 2px solid #F59E0B;
+  position: relative;
+  overflow: visible;
+}
+
+.perfil-config-item.vip-admin-item:hover {
+  border-color: #D97706;
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.3);
+}
+
+.perfil-config-item.vip-admin-item .config-icon-wrapper {
+  background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+  position: relative;
+}
+
+.vip-sparkle-admin {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  color: #FFF;
+  animation: sparkleRotate 3s linear infinite;
+}
+
+.vip-crown-admin {
+  display: inline-block;
+  margin-left: 8px;
+  color: #FFD700;
+  animation: crownFloat 2s ease-in-out infinite;
+}
+
+.config-icon-wrapper.analytics-icon {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+  position: relative;
+}
+
+.admin-crown {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  color: #FFD700;
+  animation: crownFloat 2s ease-in-out infinite;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+@keyframes crownFloat {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-4px); }
+}
+
+.perfil-config-item.analytics-item h3 {
+  color: #059669;
+  font-weight: 700;
+}
+
+/* Dark Mode para nuevas tarjetas */
+.dark .perfil-config-item.suscripcion-item .config-icon-wrapper {
+  background: linear-gradient(135deg, #9333EA 0%, #7C3AED 100%);
+  box-shadow: 0 4px 12px rgba(147, 51, 234, 0.4);
+}
+
+.dark .perfil-config-item.suscripcion-item:hover {
+  border-color: #9333EA;
+  box-shadow: 0 6px 20px rgba(147, 51, 234, 0.3);
+}
+
+.dark .perfil-config-item.analytics-item {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.15) 100%);
+  border-color: #10B981;
+}
+
+.dark .perfil-config-item.analytics-item:hover {
+  border-color: #10B981;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
+.dark .config-icon-wrapper.analytics-icon {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.5);
+}
+
+.dark .perfil-config-item.analytics-item h3 {
+  color: #10B981;
+}

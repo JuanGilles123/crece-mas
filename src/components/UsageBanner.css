@@ -1,0 +1,252 @@
+/* 📊 USAGE BANNER - iOS Style */
+
+.usage-banner {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 700px;
+  width: calc(100% - 40px);
+  padding: 1.25rem 1.5rem;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  z-index: 9998;
+  border: 2px solid transparent;
+}
+
+/* Niveles de alerta */
+.usage-banner-warning {
+  border-color: #F59E0B;
+  background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+}
+
+.usage-banner-high {
+  border-color: #F97316;
+  background: linear-gradient(135deg, #FED7AA 0%, #FDE047 100%);
+}
+
+.usage-banner-critical {
+  border-color: #EF4444;
+  background: linear-gradient(135deg, #FEE2E2 0%, #FCA5A5 100%);
+}
+
+.usage-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.usage-banner-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.usage-banner-warning .usage-banner-icon {
+  color: #D97706;
+}
+
+.usage-banner-high .usage-banner-icon {
+  color: #EA580C;
+}
+
+.usage-banner-critical .usage-banner-icon {
+  color: #DC2626;
+}
+
+.usage-banner-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.usage-banner-info h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1a202c;
+}
+
+.usage-banner-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+  color: #4a5568;
+}
+
+.usage-banner-details span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.usage-banner-details strong {
+  font-weight: 700;
+  color: #2d3748;
+}
+
+.usage-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.usage-banner-upgrade-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  white-space: nowrap;
+}
+
+.usage-banner-upgrade-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.usage-banner-upgrade-btn:active {
+  transform: translateY(0);
+}
+
+.usage-banner-dismiss-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: rgba(0, 0, 0, 0.05);
+  border: none;
+  border-radius: 8px;
+  color: #718096;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.usage-banner-dismiss-btn:hover {
+  background: rgba(0, 0, 0, 0.1);
+  color: #4a5568;
+  transform: scale(1.1);
+}
+
+/* ================== DARK MODE ================== */
+.dark .usage-banner {
+  background: #1C1C1E;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+}
+
+.dark .usage-banner-warning {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(217, 119, 6, 0.15) 100%);
+  border-color: #F59E0B;
+}
+
+.dark .usage-banner-high {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.2) 0%, rgba(234, 88, 12, 0.15) 100%);
+  border-color: #F97316;
+}
+
+.dark .usage-banner-critical {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(220, 38, 38, 0.15) 100%);
+  border-color: #EF4444;
+}
+
+.dark .usage-banner-info h4 {
+  color: white;
+}
+
+.dark .usage-banner-details {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.dark .usage-banner-details strong {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.dark .usage-banner-icon {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dark .usage-banner-dismiss-btn {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.dark .usage-banner-dismiss-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* ================== RESPONSIVE ================== */
+@media (max-width: 768px) {
+  .usage-banner {
+    top: 10px;
+    width: calc(100% - 20px);
+    padding: 1rem;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .usage-banner-content {
+    width: 100%;
+  }
+
+  .usage-banner-details {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .usage-banner-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .usage-banner-upgrade-btn {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .usage-banner {
+    padding: 0.875rem;
+  }
+
+  .usage-banner-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .usage-banner-info h4 {
+    font-size: 0.9rem;
+  }
+
+  .usage-banner-details {
+    font-size: 0.8rem;
+  }
+
+  .usage-banner-upgrade-btn {
+    padding: 0.625rem 1rem;
+    font-size: 0.85rem;
+  }
+}

@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
+import { useSubscription } from '../hooks/useSubscription';
+import UpgradePrompt from './UpgradePrompt';
 import { Save, Building2, MapPin, Phone, Hash, Mail, AlertCircle, FileText, CreditCard, ShieldAlert } from 'lucide-react';
 import toast from 'react-hot-toast';
 import './ConfiguracionFacturacion.css';
 
 export default function ConfiguracionFacturacion() {
   const { organization, hasRoleOwner } = useAuth();
+  const { hasFeature, planSlug, loading: subscriptionLoading } = useSubscription();
   const [datosEmpresa, setDatosEmpresa] = useState({
     razon_social: '',
     nit: '',
@@ -20,6 +23,9 @@ export default function ConfiguracionFacturacion() {
   });
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
+  
+  // Verificar si tiene acceso a configuración de facturas
+  const tieneAccesoConfiguracion = hasFeature('invoiceCustomization');
 
   const cargarDatosEmpresa = useCallback(async () => {
     if (!organization) return;
@@ -103,6 +109,21 @@ export default function ConfiguracionFacturacion() {
           <AlertCircle size={48} />
           <p>No se pudo cargar la organización</p>
         </div>
+      </div>
+    );
+  }
+  
+  // Si no tiene acceso, mostrar prompt de upgrade
+  if (!subscriptionLoading && !tieneAccesoConfiguracion) {
+    return (
+      <div className="config-facturacion">
+        <UpgradePrompt 
+          feature="Configuración de Facturación"
+          reason="La personalización de facturas está disponible en el plan Profesional. Actualiza para configurar tu información tributaria, logotipo y mensajes personalizados."
+          currentPlan={planSlug}
+          recommendedPlan="professional"
+          inline={true}
+        />
       </div>
     );
   }

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
+import { useSubscription } from '../hooks/useSubscription';
 import useCurrencyInput from '../hooks/useCurrencyInputOptimized';
 import OptimizedProductImage from '../components/OptimizedProductImage';
 import { ShoppingCart, Trash2, Plus, Minus, Search, CheckCircle, X, CreditCard, Banknote, Smartphone, Wallet } from 'lucide-react';
@@ -35,6 +36,7 @@ function calcTotal(cart) {
 
 export default function Caja() {
   const { user, userProfile } = useAuth();
+  const { canPerformAction } = useSubscription();
   const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState([]);
@@ -727,6 +729,13 @@ export default function Caja() {
     
     if (cart.length === 0) {
       toast.error('El carrito está vacío');
+      return;
+    }
+    
+    // Verificar límite de ventas ANTES de procesar
+    const puedeCrearVenta = await canPerformAction('createSale');
+    if (!puedeCrearVenta.allowed) {
+      toast.error(puedeCrearVenta.reason);
       return;
     }
 

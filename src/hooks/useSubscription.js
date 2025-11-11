@@ -1,0 +1,393 @@
+// 🎯 Hook para gestionar suscripciones y verificar límites
+import { useAuth } from '../context/AuthContext';
+import { PLAN_FEATURES } from '../constants/subscriptionFeatures';
+import { hasBypassAccess } from '../constants/vipUsers';
+import { supabase } from '../supabaseClient';
+import { useState, useEffect, useCallback } from 'react';
+
+export const useSubscription = () => {
+  const { organization, user } = useAuth();
+  const [subscription, setSubscription] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // Cargar suscripción de la organización
+  // IMPORTANTE: La suscripción está asociada a la ORGANIZACIÓN, no al usuario individual.
+  // Esto significa que TODOS los miembros de una organización (owner, admin, vendedor)
+  // tienen acceso a las mismas funciones basadas en el plan de la organización.
+  const loadSubscription = useCallback(async () => {
+    if (!organization?.id) {
+      setLoading(false);
+      return;
+    }
+    
+    // 🌟 PRIORIDAD 1: Verificar si el USUARIO es VIP directamente
+    const userIsVIP = hasBypassAccess(user, organization);
+    
+    // 🌟 PRIORIDAD 2: Verificar si la ORGANIZACIÓN pertenece a un usuario VIP
+    // Esto permite que todos los miembros de una org VIP tengan acceso VIP
+    let orgIsVIP = false;
+    if (organization?.owner_email) {
+      orgIsVIP = hasBypassAccess({ email: organization.owner_email }, organization);
+    }
+    
+    // Si el usuario O la organización es VIP, otorgar acceso completo
+    if (userIsVIP || orgIsVIP) {
+      console.log('🌟 VIP Access detected - Full access granted');
+      console.log(`   User: ${user?.email}`);
+      console.log(`   Organization: ${organization?.name}`);
+      console.log(`   Owner email: ${organization?.owner_email}`);
+      console.log(`   User is VIP: ${userIsVIP}`);
+      console.log(`   Organization is VIP: ${orgIsVIP}`);
+      setSubscription({
+        plan: { slug: 'enterprise', name: 'VIP Access' },
+        status: 'active',
+        is_vip: true
+      });
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // Obtener la suscripción de la organización
+      // TODOS los miembros de esta org obtendrán la misma suscripción
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .select(`
+          *,
+          plan:subscription_plans(*)
+        `)
+        .eq('organization_id', organization.id)
+        .eq('status', 'active')
+        .single();
+
+      if (error) {
+        // Si no tiene suscripción activa, usar plan gratis por defecto
+        console.log('No active subscription found, using free plan');
+        setSubscription({
+          plan: { slug: 'free', name: 'Gratis' },
+          status: 'active'
+        });
+      } else {
+        console.log(`✅ Organization subscription loaded: ${data.plan.name} (${data.plan.slug})`);
+        console.log(`   Organization: "${organization.name}"`);
+        console.log(`   All members have ${data.plan.name} access`);
+        setSubscription(data);
+      }
+    } catch (err) {
+      console.error('Error loading subscription:', err);
+      // Fallback al plan gratis
+      setSubscription({
+        plan: { slug: 'free', name: 'Gratis' },
+        status: 'active'
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [organization?.id, organization?.name, organization?.owner_email, user?.email]);
+
+  useEffect(() => {
+    loadSubscription();
+  }, [loadSubscription]);
+
+  // Obtener el slug del plan actual
+  const getPlanSlug = () => {
+    return subscription?.plan?.slug || 'free';
+  };
+
+  // Obtener las features del plan actual
+  const getPlanFeatures = () => {
+    const planSlug = getPlanSlug();
+    return PLAN_FEATURES[planSlug] || PLAN_FEATURES.free;
+  };
+
+  // Verificar si tiene acceso a una feature específica
+  const hasFeature = useCallback((featureName) => {
+    // VIP siempre tiene acceso (calcular dinámicamente)
+    const userIsVIP = hasBypassAccess(user, organization);
+    const orgIsVIP = organization?.owner_email ? 
+      hasBypassAccess({ email: organization.owner_email }, organization) : false;
+    
+    if (userIsVIP || orgIsVIP) return true;
+    
+    const features = getPlanFeatures();
+    return features.features[featureName] === true;
+  }, [subscription, user, organization]);
+
+  // Obtener un límite específico
+  const getLimit = useCallback((limitName) => {
+    // VIP no tiene límites (calcular dinámicamente)
+    const userIsVIP = hasBypassAccess(user, organization);
+    const orgIsVIP = organization?.owner_email ? 
+      hasBypassAccess({ email: organization.owner_email }, organization) : false;
+    
+    if (userIsVIP || orgIsVIP) return null;
+    
+    const features = getPlanFeatures();
+    return features.limits[limitName];
+  }, [subscription, user, organization]);
+
+  // Verificar si alcanzó un límite
+  const checkLimit = useCallback(async (limitType) => {
+    // VIP siempre tiene límites ilimitados (calcular dinámicamente)
+    const userIsVIP = hasBypassAccess(user, organization);
+    const orgIsVIP = organization?.owner_email ? 
+      hasBypassAccess({ email: organization.owner_email }, organization) : false;
+    
+    if (userIsVIP || orgIsVIP) {
+      return { 
+        allowed: true, 
+        current: null, 
+        limit: null,
+        unlimited: true,
+        isVIP: true
+      };
+    }
+    
+    const limit = getLimit(limitType);
+    
+    // null = ilimitado
+    if (limit === null) {
+      return { 
+        allowed: true, 
+        current: null, 
+        limit: null,
+        unlimited: true
+      };
+    }
+
+    if (!organization?.id) {
+      return { allowed: false, current: 0, limit, remaining: 0 };
+    }
+
+    let current = 0;
+
+    try {
+      switch(limitType) {
+        case 'maxProducts':
+          const { count: productsCount } = await supabase
+            .from('productos')
+            .select('*', { count: 'exact', head: true })
+            .eq('organization_id', organization.id);
+          current = productsCount || 0;
+          break;
+
+        case 'maxSalesPerMonth':
+          const startOfMonth = new Date();
+          startOfMonth.setDate(1);
+          startOfMonth.setHours(0, 0, 0, 0);
+
+          const { count: salesCount } = await supabase
+            .from('ventas')
+            .select('*', { count: 'exact', head: true })
+            .eq('organization_id', organization.id)
+            .gte('created_at', startOfMonth.toISOString());
+          current = salesCount || 0;
+          break;
+
+        case 'maxUsers':
+          const { count: usersCount } = await supabase
+            .from('team_members')
+            .select('*', { count: 'exact', head: true })
+            .eq('organization_id', organization.id)
+            .eq('status', 'active');
+          current = (usersCount || 0) + 1; // +1 por el dueño
+          break;
+
+        case 'maxOrganizations':
+          if (!user?.id) {
+            current = 1;
+          } else {
+            // Contar organizaciones donde el usuario es owner
+            const { count: ownedOrgs } = await supabase
+              .from('organizations')
+              .select('*', { count: 'exact', head: true })
+              .eq('owner_id', user.id);
+            
+            // Contar organizaciones donde es miembro activo
+            const { count: memberOrgs } = await supabase
+              .from('team_members')
+              .select('organization_id', { count: 'exact', head: true })
+              .eq('user_id', user.id)
+              .eq('status', 'active');
+            
+            current = (ownedOrgs || 0) + (memberOrgs || 0);
+          }
+          break;
+
+        default:
+          current = 0;
+      }
+
+      return {
+        allowed: current < limit,
+        current,
+        limit,
+        remaining: Math.max(0, limit - current),
+        percentage: (current / limit) * 100
+      };
+    } catch (error) {
+      console.error(`Error checking limit ${limitType}:`, error);
+      return { allowed: false, current: 0, limit, remaining: 0 };
+    }
+  }, [organization?.id, user?.id, getLimit]);
+
+  // Verificar si puede realizar una acción específica
+  const canPerformAction = useCallback(async (action) => {
+    // VIP siempre puede realizar cualquier acción (calcular dinámicamente)
+    const userIsVIP = hasBypassAccess(user, organization);
+    const orgIsVIP = organization?.owner_email ? 
+      hasBypassAccess({ email: organization.owner_email }, organization) : false;
+    
+    if (userIsVIP || orgIsVIP) {
+      return {
+        allowed: true,
+        reason: null,
+        isVIP: true,
+        unlimited: true
+      };
+    }
+    
+    const planSlug = getPlanSlug();
+    
+    switch(action) {
+      case 'createProduct': {
+        const productLimit = await checkLimit('maxProducts');
+        return {
+          allowed: productLimit.allowed || productLimit.unlimited,
+          reason: !productLimit.allowed && !productLimit.unlimited
+            ? `Has alcanzado el límite de ${productLimit.limit} productos en el plan ${planSlug}`
+            : null,
+          ...productLimit
+        };
+      }
+
+      case 'createSale': {
+        const salesLimit = await checkLimit('maxSalesPerMonth');
+        return {
+          allowed: salesLimit.allowed || salesLimit.unlimited,
+          reason: !salesLimit.allowed && !salesLimit.unlimited
+            ? `Has alcanzado el límite de ${salesLimit.limit} ventas este mes`
+            : null,
+          ...salesLimit
+        };
+      }
+
+      case 'inviteUser': {
+        if (!hasFeature('inviteUsers')) {
+          return {
+            allowed: false,
+            reason: 'La gestión de equipo no está disponible en tu plan'
+          };
+        }
+        const usersLimit = await checkLimit('maxUsers');
+        return {
+          allowed: usersLimit.allowed || usersLimit.unlimited,
+          reason: !usersLimit.allowed && !usersLimit.unlimited
+            ? `Has alcanzado el límite de ${usersLimit.limit} usuarios`
+            : null,
+          ...usersLimit
+        };
+      }
+
+      case 'uploadProductImage': {
+        const allowed = hasFeature('productImages');
+        return {
+          allowed,
+          reason: !allowed 
+            ? 'Las imágenes de productos no están disponibles en tu plan' 
+            : null
+        };
+      }
+
+      case 'exportData': {
+        const allowed = hasFeature('exportData');
+        return {
+          allowed,
+          reason: !allowed 
+            ? 'La exportación de datos no está disponible en tu plan' 
+            : null
+        };
+      }
+
+      case 'importCSV': {
+        const allowed = hasFeature('importCSV');
+        return {
+          allowed,
+          reason: !allowed 
+            ? 'La importación CSV no está disponible en tu plan' 
+            : null
+        };
+      }
+
+      case 'accessTeam': {
+        const allowed = hasFeature('teamManagement');
+        return {
+          allowed,
+          reason: !allowed 
+            ? 'La gestión de equipo requiere el plan Profesional o superior' 
+            : null
+        };
+      }
+
+      case 'viewAdvancedReports': {
+        const allowed = hasFeature('advancedReports');
+        return {
+          allowed,
+          reason: !allowed 
+            ? 'Los reportes avanzados requieren el plan Profesional o superior' 
+            : null
+        };
+      }
+
+      case 'configureMultiOrg': {
+        const allowed = hasFeature('multiOrg');
+        return {
+          allowed,
+          reason: !allowed 
+            ? 'La gestión multi-sucursal requiere el plan Empresarial' 
+            : null
+        };
+      }
+
+      default:
+        return { allowed: true };
+    }
+  }, [getPlanSlug, checkLimit, hasFeature, user, organization]);
+
+  // Recargar suscripción manualmente
+  const refreshSubscription = useCallback(() => {
+    return loadSubscription();
+  }, [loadSubscription]);
+
+  // Calcular isVIP para retornar
+  const userIsVIP = hasBypassAccess(user, organization);
+  const orgIsVIP = organization?.owner_email ? 
+    hasBypassAccess({ email: organization.owner_email }, organization) : false;
+  const isVIPValue = userIsVIP || orgIsVIP;
+
+  return {
+    // Estado
+    subscription,
+    loading,
+    
+    // Helpers de plan
+    planSlug: getPlanSlug(),
+    planName: subscription?.plan?.name || 'Gratis',
+    planFeatures: getPlanFeatures(),
+    
+    // Funciones de verificación
+    hasFeature,
+    getLimit,
+    checkLimit,
+    canPerformAction,
+    
+    // Flags útiles
+    isFreePlan: getPlanSlug() === 'free',
+    isProfessional: getPlanSlug() === 'professional',
+    isEnterprise: getPlanSlug() === 'enterprise' || getPlanSlug() === 'custom',
+    isVIP: isVIPValue, // Usar el valor calculado
+    
+    // Acciones
+    refreshSubscription,
+  };
+};

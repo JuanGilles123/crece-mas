@@ -2,13 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Outlet, NavLink } from 'react-router-dom';
 import { DashboardSkeleton } from '../components/SkeletonLoader';
-import { BarChart3, CreditCard, Package, User, TrendingUp, Menu, X, Users, Zap, Crown, Shield, Package2, Wallet, Eye, Calculator } from 'lucide-react';
+import { BarChart3, CreditCard, Package, User, TrendingUp, Menu, X, Users, Zap, Crown, Shield, Package2, Wallet, Eye, Calculator, Activity, CreditCard as SubscriptionIcon, FileText } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useSubscription } from '../hooks/useSubscription';
 import OrganizationSwitcher from '../components/OrganizationSwitcher';
+import UsageBanner from '../components/UsageBanner';
 import './DashboardLayout.css';
 
 const DashboardLayout = () => {
-  const { hasPermission, hasRole, userProfile, organization } = useAuth();
+  const { hasPermission, hasRole, userProfile, organization, user } = useAuth();
+  const { hasFeature, loading: subscriptionLoading } = useSubscription();
   const [isLoading, setIsLoading] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -51,6 +54,8 @@ const DashboardLayout = () => {
   }
 
   // Definir elementos del menú con control de permisos
+  const isSuperAdmin = user?.email === 'juanjosegilarbelaez@gmail.com';
+
   const menuItems = [
     { 
       to: "/dashboard", 
@@ -100,7 +105,28 @@ const DashboardLayout = () => {
       icon: Users, 
       label: "Equipo", 
       title: "Gestión de Equipo",
-      visible: hasRole('owner', 'admin') // Solo owner y admin
+      visible: hasRole('owner', 'admin') && hasFeature('teamManagement') // Solo owner/admin Y con feature
+    },
+    { 
+      to: "/dashboard/configuracion-facturacion", 
+      icon: FileText, 
+      label: "Configuración de Facturación", 
+      title: "Configuración de Facturación",
+      visible: hasRole('owner') // Solo propietarios
+    },
+    { 
+      to: "/dashboard/suscripcion", 
+      icon: SubscriptionIcon, 
+      label: "Mi Suscripción", 
+      title: "Gestionar Suscripción",
+      visible: true // Visible para todos
+    },
+    {
+      to: "/dashboard/analytics",
+      icon: Activity,
+      label: "Analytics",
+      title: "Analytics de Plataforma",
+      visible: isSuperAdmin // Solo super admin
     },
     { 
       to: "/dashboard/perfil", 
@@ -284,6 +310,9 @@ const DashboardLayout = () => {
         initial="hidden"
         animate="visible"
       >
+        {/* Banner de uso (solo para plan gratis) */}
+        <UsageBanner />
+        
         <motion.section 
           className="dashboard-content"
           initial={{ opacity: 0, y: 20 }}
