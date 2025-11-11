@@ -83,22 +83,24 @@ export const useSubscription = () => {
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organization?.id, organization?.name, organization?.owner_email, user?.email]);
+
+  // Obtener el slug del plan actual
+  const getPlanSlug = useCallback(() => {
+    return subscription?.plan?.slug || 'free';
+  }, [subscription]);
+
+  // Obtener las features del plan actual
+  const getPlanFeatures = useCallback(() => {
+    const planSlug = getPlanSlug();
+    return PLAN_FEATURES[planSlug] || PLAN_FEATURES.free;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getPlanSlug, user, organization]);
 
   useEffect(() => {
     loadSubscription();
   }, [loadSubscription]);
-
-  // Obtener el slug del plan actual
-  const getPlanSlug = () => {
-    return subscription?.plan?.slug || 'free';
-  };
-
-  // Obtener las features del plan actual
-  const getPlanFeatures = () => {
-    const planSlug = getPlanSlug();
-    return PLAN_FEATURES[planSlug] || PLAN_FEATURES.free;
-  };
 
   // Verificar si tiene acceso a una feature específica
   const hasFeature = useCallback((featureName) => {
@@ -111,7 +113,8 @@ export const useSubscription = () => {
     
     const features = getPlanFeatures();
     return features.features[featureName] === true;
-  }, [subscription, user, organization]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, organization, getPlanFeatures]);
 
   // Obtener un límite específico
   const getLimit = useCallback((limitName) => {
@@ -124,112 +127,82 @@ export const useSubscription = () => {
     
     const features = getPlanFeatures();
     return features.limits[limitName];
-  }, [subscription, user, organization]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, organization, getPlanFeatures]);
 
   // Verificar si alcanzó un límite
-  const checkLimit = useCallback(async (limitType) => {
-    // VIP siempre tiene límites ilimitados (calcular dinámicamente)
+  const checkLimit = useCallback(async (limitName, entityType, where) => {
+    // VIP no tiene límites (calcular dinámicamente)
     const userIsVIP = hasBypassAccess(user, organization);
     const orgIsVIP = organization?.owner_email ? 
       hasBypassAccess({ email: organization.owner_email }, organization) : false;
     
     if (userIsVIP || orgIsVIP) {
-      return { 
-        allowed: true, 
-        current: null, 
-        limit: null,
-        unlimited: true,
-        isVIP: true
-      };
+      return { canPerform: true, current: 0, limit: null, isVIP: true };
     }
+
+    const limit = getLimit(limitName);
     
-    const limit = getLimit(limitType);
-    
-    // null = ilimitado
-    if (limit === null) {
-      return { 
-        allowed: true, 
-        current: null, 
-        limit: null,
-        unlimited: true
-      };
+    // Si no hay límite (null o undefined), permitir
+    if (limit === null || limit === undefined) {
+      return { canPerform: true, current: 0, limit: null };
+    }
+
+    // Si el límite es infinito, permitir
+    if (limit === Infinity || limit === -1) {
+      return { canPerform: true, current: 0, limit };
     }
 
     if (!organization?.id) {
-      return { allowed: false, current: 0, limit, remaining: 0 };
+      return { canPerform: false, current: 0, limit, reason: 'No organization' };
     }
-
-    let current = 0;
 
     try {
-      switch(limitType) {
-        case 'maxProducts':
-          const { count: productsCount } = await supabase
-            .from('productos')
-            .select('*', { count: 'exact', head: true })
-            .eq('organization_id', organization.id);
-          current = productsCount || 0;
-          break;
-
-        case 'maxSalesPerMonth':
-          const startOfMonth = new Date();
-          startOfMonth.setDate(1);
-          startOfMonth.setHours(0, 0, 0, 0);
-
-          const { count: salesCount } = await supabase
-            .from('ventas')
-            .select('*', { count: 'exact', head: true })
-            .eq('organization_id', organization.id)
-            .gte('created_at', startOfMonth.toISOString());
-          current = salesCount || 0;
-          break;
-
-        case 'maxUsers':
-          const { count: usersCount } = await supabase
-            .from('team_members')
-            .select('*', { count: 'exact', head: true })
-            .eq('organization_id', organization.id)
-            .eq('status', 'active');
-          current = (usersCount || 0) + 1; // +1 por el dueño
-          break;
-
-        case 'maxOrganizations':
-          if (!user?.id) {
-            current = 1;
-          } else {
-            // Contar organizaciones donde el usuario es owner
-            const { count: ownedOrgs } = await supabase
-              .from('organizations')
-              .select('*', { count: 'exact', head: true })
-              .eq('owner_id', user.id);
-            
-            // Contar organizaciones donde es miembro activo
-            const { count: memberOrgs } = await supabase
-              .from('team_members')
-              .select('organization_id', { count: 'exact', head: true })
-              .eq('user_id', user.id)
-              .eq('status', 'active');
-            
-            current = (ownedOrgs || 0) + (memberOrgs || 0);
-          }
-          break;
-
-        default:
-          current = 0;
+      // Determinar la tabla correcta
+      let tableName;
+      if (entityType === 'products') {
+        tableName = 'productos';  // ✅ Usar nombre en español
+      } else if (entityType === 'sales') {
+        tableName = 'ventas';     // ✅ Usar nombre en español
+      } else {
+        tableName = entityType;
       }
 
+      // Construir la consulta
+      let query = supabase
+        .from(tableName)
+        .select('id', { count: 'exact', head: true })
+        .eq('organization_id', organization.id);
+
+      // Aplicar filtros adicionales si se proporcionan
+      if (where) {
+        Object.entries(where).forEach(([key, value]) => {
+          query = query.eq(key, value);
+        });
+      }
+
+      const { count, error } = await query;
+
+      if (error) {
+        console.error('Error checking limit:', error);
+        return { canPerform: false, current: 0, limit, error: error.message };
+      }
+
+      const current = count || 0;
+      const canPerform = current < limit;
+
       return {
-        allowed: current < limit,
+        canPerform,
         current,
         limit,
-        remaining: Math.max(0, limit - current),
-        percentage: (current / limit) * 100
+        remaining: limit - current
       };
+
     } catch (error) {
-      console.error(`Error checking limit ${limitType}:`, error);
-      return { allowed: false, current: 0, limit, remaining: 0 };
+      console.error('Error in checkLimit:', error);
+      return { canPerform: false, current: 0, limit, error: error.message };
     }
-  }, [organization?.id, user?.id, getLimit]);
+  }, [getLimit, organization, user]);
 
   // Verificar si puede realizar una acción específica
   const canPerformAction = useCallback(async (action) => {

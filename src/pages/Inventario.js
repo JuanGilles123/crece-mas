@@ -11,7 +11,7 @@ import OptimizedProductImage from '../components/OptimizedProductImage';
 import LottieLoader from '../components/LottieLoader';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
-import { Search, List, Grid3X3, Loader, Calendar, AlertTriangle, Lock, Crown, Zap, Sparkles } from 'lucide-react';
+import { Search, List, Grid3X3, Loader, Calendar, AlertTriangle, Crown, Zap, Sparkles } from 'lucide-react';
 import { useProductosPaginados, useEliminarProducto } from '../hooks/useProductos';
 import { useSubscription } from '../hooks/useSubscription';
 import UpgradePrompt from '../components/UpgradePrompt';
@@ -73,7 +73,6 @@ const Inventario = () => {
     planName,
     hasFeature,
     getLimit,
-    checkLimit,
     canPerformAction,
     isFreePlan
   } = useSubscription();

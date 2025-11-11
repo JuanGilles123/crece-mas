@@ -11,7 +11,7 @@ import './DashboardLayout.css';
 
 const DashboardLayout = () => {
   const { hasPermission, hasRole, userProfile, organization, user } = useAuth();
-  const { hasFeature, loading: subscriptionLoading } = useSubscription();
+  const { hasFeature } = useSubscription();
   const [isLoading, setIsLoading] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);

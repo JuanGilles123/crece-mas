@@ -18,8 +18,7 @@ import {
   Briefcase,
   Target,
   Key,
-  Award,
-  Lock
+  Award
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';

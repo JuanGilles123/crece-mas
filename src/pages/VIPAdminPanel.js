@@ -21,7 +21,6 @@ import {
   Zap,
   RefreshCw
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import toast from 'react-hot-toast';
 import LottieLoader from '../components/LottieLoader';

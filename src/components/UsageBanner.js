@@ -7,16 +7,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import './UsageBanner.css';
 
 const UsageBanner = () => {
-  const { checkLimit, isFreePlan, planSlug } = useSubscription();
+  const { checkLimit, isFreePlan } = useSubscription();
   const [limits, setLimits] = useState({});
   const [dismissed, setDismissed] = useState(false);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    if (isFreePlan) {
-      loadLimits();
-    }
-  }, [isFreePlan]);
 
   const loadLimits = async () => {
     try {
@@ -31,6 +25,13 @@ const UsageBanner = () => {
       console.error('Error loading limits:', error);
     }
   };
+
+  useEffect(() => {
+    if (isFreePlan) {
+      loadLimits();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFreePlan]);
 
   const handleUpgrade = () => {
     navigate('/pricing');
