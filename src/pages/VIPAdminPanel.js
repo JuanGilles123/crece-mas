@@ -5,15 +5,12 @@ import {
   Crown,
   Building2,
   Users,
-  CreditCard,
   Search,
   Filter,
   ArrowLeft,
   Check,
   X,
   Edit2,
-  Trash2,
-  Plus,
   AlertTriangle,
   TrendingUp,
   Calendar,
@@ -22,7 +19,6 @@ import {
   Sparkles,
   Shield,
   Zap,
-  ChevronDown,
   RefreshCw
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -33,7 +29,6 @@ import './VIPAdminPanel.css';
 
 const VIPAdminPanel = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [organizations, setOrganizations] = useState([]);
   const [filteredOrgs, setFilteredOrgs] = useState([]);
@@ -41,7 +36,6 @@ const VIPAdminPanel = () => {
   const [filterPlan, setFilterPlan] = useState('all');
   const [selectedOrg, setSelectedOrg] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  const [modalMode, setModalMode] = useState('edit');
   const [procesando, setProcesando] = useState(false);
   
   // Planes disponibles (cargados desde la DB)
@@ -63,6 +57,7 @@ const VIPAdminPanel = () => {
 
   useEffect(() => {
     filterOrganizations();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, filterPlan, organizations]);
 
   // Cargar planes desde subscription_plans

@@ -20,8 +20,7 @@ import './Pricing.css';
 
 const Pricing = () => {
   const navigate = useNavigate();
-  const { userProfile } = useAuth();
-  const { subscription, loading, planSlug, isFreePlan } = useSubscription();
+  const { subscription, loading, planSlug } = useSubscription();
   const [billingCycle, setBillingCycle] = useState('monthly'); // monthly | yearly
 
   const plans = [

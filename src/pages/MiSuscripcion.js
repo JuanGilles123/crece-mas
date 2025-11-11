@@ -2,12 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { 
-  CreditCard, 
   Calendar, 
   DollarSign, 
   AlertCircle, 
   CheckCircle,
-  XCircle,
   TrendingUp,
   Users,
   Package,
@@ -29,7 +27,6 @@ const MiSuscripcion = () => {
   const { 
     subscription, 
     loading, 
-    planSlug, 
     planName,
     checkLimit,
     refreshSubscription,
@@ -46,6 +43,7 @@ const MiSuscripcion = () => {
   // Cargar estadísticas de uso
   React.useEffect(() => {
     loadUsageStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organization?.id]);
 
   const loadUsageStats = async () => {

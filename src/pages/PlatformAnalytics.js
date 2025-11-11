@@ -5,7 +5,6 @@ import {
   DollarSign,
   Users,
   Building,
-  Calendar,
   ArrowUp,
   ArrowDown,
   CreditCard,
@@ -38,6 +37,7 @@ const PlatformAnalytics = () => {
     if (isSuperAdmin) {
       loadAnalytics();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPeriod, isSuperAdmin]);
 
   const loadAnalytics = async () => {
