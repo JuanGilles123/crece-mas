@@ -51,18 +51,22 @@ const LoadingFallback = () => (
   </div>
 );
 
-// Configuración de React Query con optimizaciones
+// Configuración de React Query con optimizaciones agresivas
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutos
-      cacheTime: 30 * 60 * 1000, // 30 minutos (aumentado para mejor cache)
+      staleTime: 10 * 60 * 1000, // 10 minutos - Aumentado para reducir refetches
+      cacheTime: 60 * 60 * 1000, // 60 minutos - Cache más largo
       retry: 1,
       refetchOnWindowFocus: false,
-      refetchOnMount: false, // No refetch si hay datos en cache
-      refetchOnReconnect: false,
+      refetchOnMount: false, // No refetch al montar si hay cache válido
+      refetchOnReconnect: false, // No refetch al reconectar
+      suspense: false,
     },
-  },
+    mutations: {
+      retry: 1,
+    }
+  }
 });
 
 function App() {

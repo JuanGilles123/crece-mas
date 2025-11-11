@@ -24,10 +24,11 @@ export const useVentas = (organizationId, limit = 100) => {
       return data || [];
     },
     enabled: !!organizationId,
-    staleTime: 3 * 60 * 1000, // 3 minutos
-    cacheTime: 15 * 60 * 1000, // 15 minutos
+    staleTime: 10 * 60 * 1000, // Aumentado a 10 minutos
+    cacheTime: 60 * 60 * 1000, // Aumentado a 60 minutos
     refetchOnMount: false,
     refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 };
 

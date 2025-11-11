@@ -15,7 +15,7 @@ export const useProductos = (organizationId) => {
         .select('id, nombre, precio, stock, imagen_url, categoria, codigo, organization_id, created_at')
         .eq('organization_id', organizationId)
         .order('created_at', { ascending: false })
-        .limit(500); // Reducido de 1000 a 500 para mejor performance
+        .limit(300); // Reducido de 500 a 300 para mejor performance
 
       if (error) {
         console.error('Error fetching productos:', error);
@@ -24,10 +24,11 @@ export const useProductos = (organizationId) => {
       return data || [];
     },
     enabled: !!organizationId,
-    staleTime: 10 * 60 * 1000, // Aumentado a 10 minutos
-    cacheTime: 30 * 60 * 1000, // Aumentado a 30 minutos
+    staleTime: 15 * 60 * 1000, // Aumentado a 15 minutos
+    cacheTime: 60 * 60 * 1000, // Aumentado a 60 minutos
     refetchOnMount: false, // No refetch si hay cache válido
     refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 };
 

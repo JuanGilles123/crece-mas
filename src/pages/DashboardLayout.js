@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { motion } from 'framer-motion';
 import { Outlet, NavLink } from 'react-router-dom';
 import { DashboardSkeleton } from '../components/SkeletonLoader';
@@ -9,12 +9,164 @@ import OrganizationSwitcher from '../components/OrganizationSwitcher';
 import UsageBanner from '../components/UsageBanner';
 import './DashboardLayout.css';
 
+// Memoizar el componente del sidebar
+const SidebarLink = memo(({ to, icon: Icon, label, onClick, end }) => (
+  <NavLink
+    to={to}
+    end={end}
+    className={({ isActive }) => `sidebar-item ${isActive ? 'active' : ''}`}
+    onClick={onClick}
+  >
+    <Icon className="sidebar-icon" size={20} />
+    <span className="sidebar-text">{label}</span>
+  </NavLink>
+));
+
+SidebarLink.displayName = 'SidebarLink';
+
 const DashboardLayout = () => {
   const { hasPermission, hasRole, userProfile, organization, user } = useAuth();
   const { hasFeature } = useSubscription();
   const [isLoading, setIsLoading] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+
+  // Memoizar el handler del sidebar
+  const toggleSidebar = useCallback(() => {
+    setSidebarCollapsed(prev => !prev);
+  }, []);
+
+  const closeSidebarOnMobile = useCallback(() => {
+    if (isMobile) {
+      setSidebarCollapsed(true);
+    }
+  }, [isMobile]);
+
+  // Memoizar menuItems para evitar recalcular en cada render (ANTES de cualquier return)
+  const menuItems = useMemo(() => {
+    const isSuperAdmin = user?.email === 'juanjosegilarbelaez@gmail.com';
+    
+    return [
+      { 
+        to: "/dashboard", 
+        icon: BarChart3, 
+        label: "Dashboard", 
+        title: "Dashboard", 
+        end: true,
+        visible: hasPermission('dashboard') || true
+      },
+      { 
+        to: "/dashboard/caja", 
+        icon: CreditCard, 
+        label: "Caja", 
+        title: "Punto de Venta",
+        visible: hasPermission('sales') || true
+      },
+      { 
+        to: "/dashboard/venta-rapida", 
+        icon: Zap, 
+        label: "Venta Rápida", 
+        title: "Venta sin Inventario",
+        visible: hasPermission('sales') || true
+      },
+      { 
+        to: "/dashboard/cierre-caja", 
+        icon: Calculator, 
+        label: "Cierre de Caja", 
+        title: "Cierre de Caja Diario",
+        visible: hasPermission('sales') || true
+      },
+      { 
+        to: "/dashboard/inventario", 
+        icon: Package, 
+        label: "Inventario", 
+        title: "Gestión de Inventario",
+        visible: hasPermission('inventory') || true
+      },
+      { 
+        to: "/dashboard/resumen-ventas", 
+        icon: TrendingUp, 
+        label: "Resumen", 
+        title: "Resumen de Ventas",
+        visible: hasPermission('reports') || true
+      },
+      { 
+        to: "/dashboard/equipo", 
+        icon: Users, 
+        label: "Equipo", 
+        title: "Gestión de Equipo",
+        visible: hasRole('owner', 'admin') && hasFeature('teamManagement')
+      },
+      { 
+        to: "/dashboard/configuracion-facturacion", 
+        icon: FileText, 
+        label: "Configuración de Facturación", 
+        title: "Configuración de Facturación",
+        visible: hasRole('owner')
+      },
+      { 
+        to: "/dashboard/suscripcion", 
+        icon: SubscriptionIcon, 
+        label: "Mi Suscripción", 
+        title: "Gestionar Suscripción",
+        visible: true
+      },
+      {
+        to: "/dashboard/analytics",
+        icon: Activity,
+        label: "Analytics",
+        title: "Analytics de Plataforma",
+        visible: isSuperAdmin
+      },
+      { 
+        to: "/dashboard/perfil", 
+        icon: User, 
+        label: "Perfil", 
+        title: "Perfil de Usuario",
+        visible: true
+      }
+    ].filter(item => item.visible);
+  }, [user?.email, hasPermission, hasRole, hasFeature]);
+
+  // Memoizar variantes de animación (solo se crean una vez) - ANTES de cualquier return
+  const sidebarVariants = useMemo(() => ({
+    hidden: { x: -300, opacity: 0 },
+    visible: {
+      x: 0,
+      opacity: 1,
+      transition: {
+        type: "spring",
+        damping: 25,
+        stiffness: 200,
+        duration: 0.4
+      }
+    }
+  }), []);
+
+  const navItemVariants = useMemo(() => ({
+    hidden: { x: -20, opacity: 0 },
+    visible: (index) => ({
+      x: 0,
+      opacity: 1,
+      transition: {
+        delay: index * 0.05,
+        duration: 0.2,
+        ease: "easeOut"
+      }
+    })
+  }), []);
+
+  const mainVariants = useMemo(() => ({
+    hidden: { opacity: 0, x: 20 },
+    visible: {
+      opacity: 1,
+      x: 0,
+      transition: {
+        duration: 0.3,
+        delay: 0.1
+      }
+    }
+  }), []);
 
   // DEBUG: Log para verificar datos del usuario
   useEffect(() => {
@@ -38,10 +190,10 @@ const DashboardLayout = () => {
     // Escuchar cambios de tamaño
     window.addEventListener('resize', checkIsMobile);
 
-    // Simular tiempo de carga inicial
+    // Simular tiempo de carga inicial - REDUCIDO para mejor UX
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 800);
+    }, 300); // Reducido de 800ms a 300ms
 
     return () => {
       clearTimeout(timer);
@@ -53,135 +205,12 @@ const DashboardLayout = () => {
     return <DashboardSkeleton />;
   }
 
-  // Definir elementos del menú con control de permisos
-  const isSuperAdmin = user?.email === 'juanjosegilarbelaez@gmail.com';
-
-  const menuItems = [
-    { 
-      to: "/dashboard", 
-      icon: BarChart3, 
-      label: "Dashboard", 
-      title: "Dashboard", 
-      end: true,
-      visible: hasPermission('dashboard') || true // Dashboard visible para todos
-    },
-    { 
-      to: "/dashboard/caja", 
-      icon: CreditCard, 
-      label: "Caja", 
-      title: "Punto de Venta",
-      visible: hasPermission('sales') || true
-    },
-    { 
-      to: "/dashboard/venta-rapida", 
-      icon: Zap, 
-      label: "Venta Rápida", 
-      title: "Venta sin Inventario",
-      visible: hasPermission('sales') || true
-    },
-    { 
-      to: "/dashboard/cierre-caja", 
-      icon: Calculator, 
-      label: "Cierre de Caja", 
-      title: "Cierre de Caja Diario",
-      visible: hasPermission('sales') || true
-    },
-    { 
-      to: "/dashboard/inventario", 
-      icon: Package, 
-      label: "Inventario", 
-      title: "Gestión de Inventario",
-      visible: hasPermission('inventory') || true
-    },
-    { 
-      to: "/dashboard/resumen-ventas", 
-      icon: TrendingUp, 
-      label: "Resumen", 
-      title: "Resumen de Ventas",
-      visible: hasPermission('reports') || true
-    },
-    { 
-      to: "/dashboard/equipo", 
-      icon: Users, 
-      label: "Equipo", 
-      title: "Gestión de Equipo",
-      visible: hasRole('owner', 'admin') && hasFeature('teamManagement') // Solo owner/admin Y con feature
-    },
-    { 
-      to: "/dashboard/configuracion-facturacion", 
-      icon: FileText, 
-      label: "Configuración de Facturación", 
-      title: "Configuración de Facturación",
-      visible: hasRole('owner') // Solo propietarios
-    },
-    { 
-      to: "/dashboard/suscripcion", 
-      icon: SubscriptionIcon, 
-      label: "Mi Suscripción", 
-      title: "Gestionar Suscripción",
-      visible: true // Visible para todos
-    },
-    {
-      to: "/dashboard/analytics",
-      icon: Activity,
-      label: "Analytics",
-      title: "Analytics de Plataforma",
-      visible: isSuperAdmin // Solo super admin
-    },
-    { 
-      to: "/dashboard/perfil", 
-      icon: User, 
-      label: "Perfil", 
-      title: "Perfil de Usuario",
-      visible: true // Siempre visible
-    }
-  ].filter(item => item.visible);
-
-  const sidebarVariants = {
-    hidden: { x: -300, opacity: 0 },
-    visible: {
-      x: 0,
-      opacity: 1,
-      transition: {
-        type: "spring",
-        damping: 25,
-        stiffness: 200,
-        duration: 0.6
-      }
-    }
-  };
-
-  const navItemVariants = {
-    hidden: { x: -20, opacity: 0 },
-    visible: (index) => ({
-      x: 0,
-      opacity: 1,
-      transition: {
-        delay: index * 0.1,
-        duration: 0.3,
-        ease: "easeOut"
-      }
-    })
-  };
-
-  const mainVariants = {
-    hidden: { opacity: 0, x: 20 },
-    visible: {
-      opacity: 1,
-      x: 0,
-      transition: {
-        duration: 0.5,
-        delay: 0.3
-      }
-    }
-  };
-
   return (
     <div className="dashboard-layout">
       {/* Botón de toggle para sidebar */}
       <motion.button
         className="sidebar-toggle"
-        onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+        onClick={toggleSidebar}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         initial={{ opacity: 0, x: -20 }}
@@ -232,21 +261,13 @@ const DashboardLayout = () => {
                 animate="visible"
                 className="nav-item-wrapper"
               >
-                <NavLink 
-                  to={item.to} 
+                <SidebarLink
+                  to={item.to}
+                  icon={Icon}
+                  label={item.label}
                   end={item.end}
-                  className={({ isActive }) => isActive ? 'active' : ''} 
-                  data-tooltip={item.label}
-                  onClick={() => {
-                    // Cerrar sidebar en móvil al hacer clic
-                    if (isMobile) {
-                      setSidebarCollapsed(true);
-                    }
-                  }}
-                >
-                  <Icon size={22} />
-                  <span className="nav-label">{item.label}</span>
-                </NavLink>
+                  onClick={closeSidebarOnMobile}
+                />
               </motion.div>
             );
           })}
@@ -300,7 +321,7 @@ const DashboardLayout = () => {
       {isMobile && !sidebarCollapsed && (
         <div 
           className="sidebar-overlay"
-          onClick={() => setSidebarCollapsed(true)}
+          onClick={toggleSidebar}
         />
       )}
       

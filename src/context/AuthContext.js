@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 
 const AuthContext = createContext();
@@ -10,8 +10,8 @@ export function AuthProvider({ children }) {
   const [organization, setOrganization] = useState(null);
   const [permissions, setPermissions] = useState(null);
 
-  // Cargar perfil del usuario y su organización
-  const loadUserProfile = async (userId) => {
+  // Cargar perfil del usuario y su organización (memoizado con useCallback)
+  const loadUserProfile = useCallback(async (userId) => {
     if (!userId) {
       setUserProfile(null);
       setOrganization(null);
@@ -136,7 +136,7 @@ export function AuthProvider({ children }) {
     } catch (error) {
       console.error('❌ Error loading user data:', error);
     }
-  };
+  }, []); // Dependencias vacías porque setUserProfile, setOrganization, setPermissions son estables
 
   useEffect(() => {
     // Cargar sesión inicial
@@ -244,6 +244,7 @@ export function AuthProvider({ children }) {
     return () => {
       listener.subscription.unsubscribe();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Función para recargar perfil (útil después de cambios)
