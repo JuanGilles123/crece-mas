@@ -50,17 +50,14 @@ export const useSubscription = () => {
     try {
       // Obtener la suscripción de la organización
       // TODOS los miembros de esta org obtendrán la misma suscripción
-      const { data, error } = await supabase
+      const { data: subscriptionData, error: subError } = await supabase
         .from('subscriptions')
-        .select(`
-          *,
-          plan:subscription_plans(*)
-        `)
+        .select('*')
         .eq('organization_id', organization.id)
         .eq('status', 'active')
         .single();
 
-      if (error) {
+      if (subError || !subscriptionData) {
         // Si no tiene suscripción activa, usar plan gratis por defecto
         console.log('No active subscription found, using free plan');
         setSubscription({
@@ -68,10 +65,31 @@ export const useSubscription = () => {
           status: 'active'
         });
       } else {
-        console.log(`✅ Organization subscription loaded: ${data.plan.name} (${data.plan.slug})`);
-        console.log(`   Organization: "${organization.name}"`);
-        console.log(`   All members have ${data.plan.name} access`);
-        setSubscription(data);
+        // Obtener el plan por separado
+        const { data: planData, error: planError } = await supabase
+          .from('subscription_plans')
+          .select('*')
+          .eq('id', subscriptionData.plan_id)
+          .single();
+
+        if (planError || !planData) {
+          console.error('Error loading plan:', planError);
+          setSubscription({
+            plan: { slug: 'free', name: 'Gratis' },
+            status: 'active'
+          });
+        } else {
+          // Combinar los datos
+          const mappedData = {
+            ...subscriptionData,
+            plan: planData
+          };
+          
+          console.log(`✅ Organization subscription loaded: ${mappedData.plan.name} (${mappedData.plan.slug})`);
+          console.log(`   Organization: "${organization.name}"`);
+          console.log(`   All members have ${mappedData.plan.name} access`);
+          setSubscription(mappedData);
+        }
       }
     } catch (err) {
       console.error('Error loading subscription:', err);

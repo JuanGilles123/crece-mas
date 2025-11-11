@@ -14,13 +14,15 @@ import {
 } from 'lucide-react';
 import { useSubscription } from '../hooks/useSubscription';
 import LottieLoader from '../components/LottieLoader';
+import { supabase } from '../supabaseClient';
 import toast from 'react-hot-toast';
 import './Pricing.css';
 
 const Pricing = () => {
   const navigate = useNavigate();
-  const { subscription, loading, planSlug } = useSubscription();
-  const [billingCycle, setBillingCycle] = useState('monthly'); // monthly | yearly
+  const { planSlug, planName, loading, isVIP } = useSubscription();
+  const [billingPeriod, setBillingPeriod] = useState('monthly'); // monthly | yearly
+  const [processingPlan, setProcessingPlan] = useState(null); // Para mostrar loading en el botón
 
   const plans = [
     {
@@ -118,23 +120,154 @@ const Pricing = () => {
     }).format(price);
   };
 
-  const handleSelectPlan = (plan) => {
+  const handleSelectPlan = async (plan) => {
+    if (isVIP) {
+      toast('Tienes acceso VIP ilimitado', { icon: '👑' });
+      return;
+    }
+
     if (plan.slug === planSlug) {
       toast('Ya estás en este plan', { icon: '✅' });
       return;
     }
 
     if (plan.slug === 'free') {
-      toast.error('No puedes cambiar al plan gratuito');
+      toast.error('No puedes cambiar al plan gratuito desde aquí');
       return;
     }
 
-    // Por ahora, solo mostrar mensaje
-    // TODO: Integrar con Wompi en Fase 2
-    toast.success(`Próximamente podrás actualizar a ${plan.name}`, {
-      icon: '🚀',
-      duration: 4000,
-    });
+    try {
+      setProcessingPlan(plan.slug);
+
+      // Obtener sesión actual
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        toast.error('Debes iniciar sesión');
+        navigate('/login');
+        return;
+      }
+
+      // Obtener el plan_id de la base de datos usando el slug
+      const { data: dbPlan, error: planError } = await supabase
+        .from('subscription_plans')
+        .select('id')
+        .eq('slug', plan.slug)
+        .single();
+
+      if (planError || !dbPlan) {
+        toast.error('Error al obtener información del plan');
+        console.error('Plan error:', planError);
+        return;
+      }
+
+      // Crear checkout en Wompi vía Edge Function usando fetch directo
+      console.log('Enviando a checkout:', { 
+        plan_id: dbPlan.id, 
+        billing_period: billingPeriod,
+        plan: plan 
+      });
+      
+      const response = await fetch(
+        `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/create-checkout`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+            'apikey': process.env.REACT_APP_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({
+            plan_id: dbPlan.id,
+            billing_period: billingPeriod,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('Error del servidor:', data);
+        throw new Error(data.error || data.details || 'Error al crear checkout');
+      }
+
+      console.log('✅ Respuesta exitosa del servidor:', data);
+
+      // Redirigir a Wompi
+      if (data.checkout_url) {
+        window.location.href = data.checkout_url;
+      } else {
+        console.error('❌ No hay checkout_url en la respuesta:', data);
+        throw new Error('No se recibió URL de checkout');
+      }
+
+    } catch (error) {
+      console.error('Error en handleSelectPlan:', error);
+      toast.error(error.message || 'Error al procesar el pago');
+      setProcessingPlan(null);
+    }
+  };
+
+  // Función de prueba para simular pago exitoso
+  const handleTestPayment = async (plan) => {
+    try {
+      setProcessingPlan(plan.slug);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Debes iniciar sesión');
+        return;
+      }
+
+      // Obtener plan de BD
+      const { data: dbPlan } = await supabase
+        .from('subscription_plans')
+        .select('id')
+        .eq('slug', plan.slug)
+        .single();
+
+      // Obtener organization_id
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('organization_id')
+        .eq('user_id', session.user.id)
+        .single();
+
+      console.log('🧪 Simulando pago para:', { plan: plan.name, billing: billingPeriod });
+
+      // Llamar a función de prueba
+      const response = await fetch(
+        `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/test-payment`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+            'apikey': process.env.REACT_APP_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({
+            plan_id: dbPlan.id,
+            billing_period: billingPeriod,
+            organization_id: profile.organization_id,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success('¡Pago simulado exitosamente! Suscripción activada');
+        navigate('/subscription/success?test=true');
+      } else {
+        toast.error(data.message || 'Error al simular pago');
+      }
+
+      setProcessingPlan(null);
+    } catch (error) {
+      console.error('Error en test payment:', error);
+      toast.error('Error al simular pago');
+      setProcessingPlan(null);
+    }
   };
 
   if (loading) {
@@ -177,14 +310,14 @@ const Pricing = () => {
           transition={{ delay: 0.2 }}
         >
           <button
-            className={`billing-option ${billingCycle === 'monthly' ? 'active' : ''}`}
-            onClick={() => setBillingCycle('monthly')}
+            className={`billing-option ${billingPeriod === 'monthly' ? 'active' : ''}`}
+            onClick={() => setBillingPeriod('monthly')}
           >
             Mensual
           </button>
           <button
-            className={`billing-option ${billingCycle === 'yearly' ? 'active' : ''}`}
-            onClick={() => setBillingCycle('yearly')}
+            className={`billing-option ${billingPeriod === 'yearly' ? 'active' : ''}`}
+            onClick={() => setBillingPeriod('yearly')}
           >
             Anual
             <span className="savings-badge">Ahorra 17%</span>
@@ -199,7 +332,7 @@ const Pricing = () => {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
           >
-            Plan actual: <strong>{subscription?.plan?.name || 'Gratis'}</strong>
+            Plan actual: <strong>{planName || 'Gratis'}</strong>
           </motion.div>
         )}
       </div>
@@ -209,8 +342,8 @@ const Pricing = () => {
         {plans.map((plan, index) => {
           const Icon = plan.icon;
           const isCurrentPlan = plan.slug === planSlug;
-          const displayPrice = billingCycle === 'yearly' ? plan.priceYearly : plan.price;
-          const monthlyEquivalent = billingCycle === 'yearly' ? plan.priceYearly / 12 : null;
+          const displayPrice = billingPeriod === 'yearly' ? plan.priceYearly : plan.price;
+          const monthlyEquivalent = billingPeriod === 'yearly' ? plan.priceYearly / 12 : null;
 
           return (
             <motion.div
@@ -245,7 +378,7 @@ const Pricing = () => {
               <div className="plan-price">
                 <span className="price-amount">{formatPrice(displayPrice)}</span>
                 <span className="price-period">
-                  {displayPrice === 0 ? 'para siempre' : `/ ${billingCycle === 'yearly' ? 'año' : 'mes'}`}
+                  {displayPrice === 0 ? 'para siempre' : `/ ${billingPeriod === 'yearly' ? 'año' : 'mes'}`}
                 </span>
               </div>
 
@@ -255,18 +388,23 @@ const Pricing = () => {
                 </div>
               )}
 
-              {billingCycle === 'yearly' && plan.savings && displayPrice > 0 && (
+              {billingPeriod === 'yearly' && plan.savings && displayPrice > 0 && (
                 <div className="savings-info">
                   🎉 {plan.savings}
                 </div>
               )}
 
               <button
-                className={`plan-cta ${isCurrentPlan ? 'current' : ''}`}
+                className={`plan-cta ${isCurrentPlan ? 'current' : ''} ${processingPlan === plan.slug ? 'processing' : ''}`}
                 onClick={() => handleSelectPlan(plan)}
-                disabled={isCurrentPlan}
+                disabled={isCurrentPlan || processingPlan !== null}
               >
-                {isCurrentPlan ? (
+                {processingPlan === plan.slug ? (
+                  <>
+                    <div className="spinner" />
+                    Procesando...
+                  </>
+                ) : isCurrentPlan ? (
                   <>
                     <Check size={18} />
                     Plan Actual
@@ -278,6 +416,22 @@ const Pricing = () => {
                   </>
                 )}
               </button>
+
+              {/* Botón de prueba (solo en desarrollo) */}
+              {!isCurrentPlan && plan.slug !== 'free' && process.env.NODE_ENV === 'development' && (
+                <button
+                  className="plan-cta-test"
+                  onClick={() => handleTestPayment(plan)}
+                  disabled={processingPlan !== null}
+                  style={{
+                    marginTop: '10px',
+                    background: '#10b981',
+                    fontSize: '0.9em',
+                  }}
+                >
+                  🧪 Simular Pago (Test)
+                </button>
+              )}
 
               <div className="plan-features">
                 {plan.features.map((feature, idx) => (

@@ -23,6 +23,7 @@ const Invitaciones = lazy(() => import('./pages/Invitaciones'));
 const InvitePublic = lazy(() => import('./pages/InvitePublic'));
 const Pricing = lazy(() => import('./pages/Pricing'));
 const VIPAdminPanel = lazy(() => import('./pages/VIPAdminPanel'));
+const SubscriptionCallback = lazy(() => import('./pages/SubscriptionCallback'));
 
 // Componente de carga
 const LoadingFallback = () => (
@@ -101,6 +102,18 @@ function App() {
                 <Route path="/pricing" element={
                   <ProtectedRoute>
                     <Pricing />
+                  </ProtectedRoute>
+                } />
+                {/* Ruta para callback de suscripción (resultado de pago Wompi) */}
+                <Route path="/subscription/callback" element={
+                  <ProtectedRoute>
+                    <SubscriptionCallback />
+                  </ProtectedRoute>
+                } />
+                {/* Ruta para éxito de suscripción (pagos de test) */}
+                <Route path="/subscription/success" element={
+                  <ProtectedRoute>
+                    <SubscriptionCallback />
                   </ProtectedRoute>
                 } />
                 {/* Ruta para panel de administración VIP */}
