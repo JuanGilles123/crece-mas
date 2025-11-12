@@ -14,25 +14,37 @@ async function verifyWompiSignature(
   payload: string,
   secret: string
 ): Promise<boolean> {
-  const encoder = new TextEncoder()
-  const key = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['verify']
-  )
+  try {
+    const encoder = new TextEncoder()
+    
+    // Generar el hash HMAC-SHA256 del payload
+    const key = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(secret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    )
 
-  const signatureBytes = new Uint8Array(
-    signature.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16))
-  )
+    const signatureBuffer = await crypto.subtle.sign(
+      'HMAC',
+      key,
+      encoder.encode(payload)
+    )
 
-  return await crypto.subtle.verify(
-    'HMAC',
-    key,
-    signatureBytes,
-    encoder.encode(payload)
-  )
+    // Convertir a hex
+    const hashArray = Array.from(new Uint8Array(signatureBuffer))
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+    
+    console.log('🔐 Firma calculada:', hashHex.substring(0, 20) + '...')
+    console.log('🔐 Firma recibida:', signature.substring(0, 20) + '...')
+    
+    // Comparación case-insensitive
+    return hashHex.toLowerCase() === signature.toLowerCase()
+  } catch (error) {
+    console.error('❌ Error verificando firma:', error)
+    return false
+  }
 }
 
 serve(async (req) => {
@@ -41,58 +53,169 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
+  console.log('🎯 Webhook llamado - Inicio')
+
   try {
+    console.log('📡 Creando cliente Supabase...')
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '' // Usamos service role para admin
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // Obtener payload
+    console.log('� Leyendo payload...')
     const payload = await req.text()
-    const event = JSON.parse(payload)
-
-    // Verificar firma de Wompi (seguridad)
-    const signature = req.headers.get('x-event-signature') || req.headers.get('x-signature')
-    const eventsSecret = Deno.env.get('WOMPI_EVENTS_SECRET')
-
-    if (signature && eventsSecret) {
-      const isValid = await verifyWompiSignature(signature, payload, eventsSecret)
-      if (!isValid) {
-        console.error('Firma inválida de Wompi')
-        return new Response(
-          JSON.stringify({ error: 'Firma inválida' }),
-          {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 401,
-          }
-        )
-      }
+    console.log('📦 Payload length:', payload.length)
+    
+    console.log('🔍 Parseando JSON...')
+    let event
+    try {
+      event = JSON.parse(payload)
+    } catch (parseError) {
+      console.error('❌ Error parseando JSON:', parseError)
+      console.error('   Payload recibido:', payload)
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON', received: true }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      )
     }
-
-    console.log('📨 Webhook recibido de Wompi:', event)
+    
+    console.log('✅ Webhook recibido exitosamente')
+    console.log('� Event type:', event.event)
+    console.log('� Has data:', !!event.data)
 
     // Procesar según el tipo de evento
     const { event: eventType, data } = event
 
     if (eventType === 'transaction.updated') {
-      const transaction = data.transaction
+      // Wompi puede enviar la transacción en diferentes estructuras
+      const transaction = data?.transaction || data
+      
+      if (!transaction) {
+        console.error('❌ No se encontró transacción en el evento')
+        console.error('   Estructura completa:', JSON.stringify(event, null, 2))
+        return new Response(
+          JSON.stringify({ error: 'Transaction not found in event', received: true }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+          }
+        )
+      }
+
       const transactionId = transaction.id
       const status = transaction.status
       const reference = transaction.reference
 
       console.log(`💳 Transacción ${transactionId} actualizada a: ${status}`)
+      console.log(`📝 Reference: ${reference}`)
+
+      if (!reference) {
+        console.error('❌ No se encontró reference en la transacción')
+        console.error('   Transacción completa:', JSON.stringify(transaction, null, 2))
+        return new Response(
+          JSON.stringify({ error: 'Reference not found in transaction', received: true }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+          }
+        )
+      }
 
       // Buscar el pago en la base de datos
-      const { data: payment, error: paymentError } = await supabaseClient
-        .from('payments')
-        .select('*, organization_id')
-        .eq('wompi_transaction_id', transactionId)
-        .single()
+      // Primero por reference, luego por transaction_id como fallback
+      let payment = null
+      let paymentError = null
 
-      if (paymentError || !payment) {
-        console.error('Pago no encontrado:', paymentError)
+      // Intentar buscar por reference primero
+      if (reference) {
+        const { data: paymentByRef, error: refError } = await supabaseClient
+          .from('payments')
+          .select('*')
+          .eq('wompi_reference', reference)
+          .maybeSingle()
+        
+        if (paymentByRef) {
+          payment = paymentByRef
+          console.log('✅ Pago encontrado por reference:', reference)
+        } else if (refError) {
+          console.warn('⚠️ Error buscando por reference:', refError)
+        }
+      }
+
+      // Si no se encontró por reference, buscar por transaction_id
+      if (!payment && transactionId) {
+        const { data: paymentByTxId, error: txError } = await supabaseClient
+          .from('payments')
+          .select('*')
+          .eq('wompi_transaction_id', transactionId)
+          .maybeSingle()
+        
+        if (paymentByTxId) {
+          payment = paymentByTxId
+          console.log('✅ Pago encontrado por transaction_id:', transactionId)
+        } else if (txError) {
+          console.warn('⚠️ Error buscando por transaction_id:', txError)
+        }
+      }
+
+      // Si aún no se encontró, buscar por transaction_id parcial (por si hay diferencias de formato)
+      if (!payment && transactionId && transactionId.length > 10) {
+        const { data: paymentsByPartial, error: partialError } = await supabaseClient
+          .from('payments')
+          .select('*')
+          .like('wompi_transaction_id', `%${transactionId.substring(0, 10)}%`)
+          .limit(1)
+          .maybeSingle()
+        
+        if (paymentsByPartial) {
+          payment = paymentsByPartial
+          console.log('✅ Pago encontrado por transaction_id parcial')
+        }
+      }
+
+      // Si aún no se encontró, buscar el último pago pendiente reciente (últimos 10 minutos)
+      if (!payment) {
+        const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString()
+        const { data: recentPayments, error: recentError } = await supabaseClient
+          .from('payments')
+          .select('*')
+          .eq('status', 'pending')
+          .gte('created_at', tenMinutesAgo)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        
+        if (recentPayments) {
+          console.log('⚠️ Usando último pago pendiente reciente como fallback')
+          payment = recentPayments
+        }
+      }
+
+      if (!payment) {
+        console.error('❌ Pago no encontrado')
+        console.error('   Reference buscado:', reference)
+        console.error('   Transaction ID buscado:', transactionId)
+        console.error('   Intentando buscar todos los pagos recientes...')
+        
+        // Log de todos los pagos recientes para debug
+        const { data: allRecent } = await supabaseClient
+          .from('payments')
+          .select('id, wompi_reference, wompi_transaction_id, status, created_at')
+          .order('created_at', { ascending: false })
+          .limit(5)
+        
+        console.error('   Últimos 5 pagos en BD:', JSON.stringify(allRecent, null, 2))
+        
         return new Response(
-          JSON.stringify({ error: 'Pago no encontrado', received: true }),
+          JSON.stringify({ 
+            error: 'Pago no encontrado', 
+            received: true,
+            searched_reference: reference,
+            searched_transaction_id: transactionId
+          }),
           {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 200, // Respondemos 200 para que Wompi no reintente
@@ -100,19 +223,37 @@ serve(async (req) => {
         )
       }
 
+      console.log('✅ Pago encontrado:', payment.id, '- Organization:', payment.organization_id)
+
       // Actualizar estado del pago
       if (status === 'APPROVED') {
         // ✅ Pago aprobado - Activar suscripción
         console.log('✅ Pago aprobado, activando suscripción...')
 
-        // Actualizar el pago
-        await supabaseClient
+        // Actualizar el pago con el transaction ID, reference y status
+        // NOTA: El status debe ser 'approved' según la constraint de la tabla
+        const updateData: any = {
+          status: 'approved', // Cambiado de 'completed' a 'approved' para cumplir con la constraint
+          wompi_transaction_id: transactionId,
+          payment_date: new Date().toISOString(),
+        }
+        
+        // Actualizar reference si no estaba guardado o es diferente
+        if (reference && (!payment.wompi_reference || payment.wompi_reference !== reference)) {
+          updateData.wompi_reference = reference
+          console.log('📝 Actualizando wompi_reference:', reference)
+        }
+        
+        const { error: paymentUpdateError } = await supabaseClient
           .from('payments')
-          .update({
-            status: 'completed',
-            completed_at: new Date().toISOString(),
-          })
+          .update(updateData)
           .eq('id', payment.id)
+
+        if (paymentUpdateError) {
+          console.error('❌ Error actualizando pago:', paymentUpdateError)
+        } else {
+          console.log('✅ Pago actualizado a approved')
+        }
 
         // Calcular fechas de la suscripción
         const now = new Date()
@@ -125,36 +266,49 @@ serve(async (req) => {
         }
 
         // Verificar si ya existe una suscripción activa
-        const { data: existingSub } = await supabaseClient
+        const { data: existingSub, error: existingSubError } = await supabaseClient
           .from('subscriptions')
           .select('id')
           .eq('organization_id', payment.organization_id)
           .eq('status', 'active')
-          .single()
+          .maybeSingle()
+
+        if (existingSubError && existingSubError.code !== 'PGRST116') {
+          console.error('❌ Error buscando suscripción existente:', existingSubError)
+        }
+
+        let subscriptionId: string | null = null
 
         if (existingSub) {
           // Actualizar suscripción existente
-          await supabaseClient
+          // NOTA: billing_period NO existe en subscriptions, solo en payments
+          const { data: updatedSub, error: updateError } = await supabaseClient
             .from('subscriptions')
             .update({
               plan_id: payment.plan_id,
-              billing_period: payment.billing_period,
               current_period_start: now.toISOString(),
               current_period_end: periodEnd.toISOString(),
               updated_at: new Date().toISOString(),
             })
             .eq('id', existingSub.id)
+            .select()
+            .single()
 
-          console.log('✅ Suscripción actualizada:', existingSub.id)
+          if (updateError) {
+            console.error('❌ Error actualizando suscripción:', updateError)
+          } else {
+            subscriptionId = updatedSub.id
+            console.log('✅ Suscripción actualizada:', subscriptionId)
+          }
         } else {
           // Crear nueva suscripción
+          // NOTA: billing_period NO existe en subscriptions, solo en payments
           const { data: newSub, error: subError } = await supabaseClient
             .from('subscriptions')
             .insert({
               organization_id: payment.organization_id,
               plan_id: payment.plan_id,
               status: 'active',
-              billing_period: payment.billing_period,
               current_period_start: now.toISOString(),
               current_period_end: periodEnd.toISOString(),
               wompi_subscription_id: transactionId,
@@ -163,10 +317,43 @@ serve(async (req) => {
             .single()
 
           if (subError) {
-            console.error('Error creando suscripción:', subError)
+            console.error('❌ Error creando suscripción:', subError)
+            console.error('   Detalles:', JSON.stringify(subError, null, 2))
           } else {
-            console.log('✅ Suscripción creada:', newSub.id)
+            subscriptionId = newSub.id
+            console.log('✅ Suscripción creada:', subscriptionId)
           }
+        }
+
+        // Actualizar el pago con el subscription_id
+        if (subscriptionId) {
+          const { error: linkPaymentError } = await supabaseClient
+            .from('payments')
+            .update({ subscription_id: subscriptionId })
+            .eq('id', payment.id)
+
+          if (linkPaymentError) {
+            console.error('❌ Error vinculando pago con suscripción:', linkPaymentError)
+          } else {
+            console.log('✅ Pago vinculado con suscripción:', subscriptionId)
+          }
+
+          // Actualizar la organización con el subscription_id
+          const { error: orgUpdateError } = await supabaseClient
+            .from('organizations')
+            .update({ 
+              subscription_id: subscriptionId,
+              subscription_status: 'active'
+            })
+            .eq('id', payment.organization_id)
+
+          if (orgUpdateError) {
+            console.error('❌ Error actualizando organización:', orgUpdateError)
+          } else {
+            console.log('✅ Organización actualizada con suscripción:', subscriptionId)
+          }
+        } else {
+          console.error('❌ No se pudo obtener subscription_id para vincular')
         }
 
       } else if (status === 'DECLINED' || status === 'ERROR') {

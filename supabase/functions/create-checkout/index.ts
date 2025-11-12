@@ -112,8 +112,8 @@ serve(async (req) => {
 
     // Preparar datos para Wompi
     const wompiPublicKey = Deno.env.get('WOMPI_PUBLIC_KEY')
-    const wompiIntegritySecret = Deno.env.get('WOMPI_EVENTS_SECRET')
-    const redirectUrl = Deno.env.get('WOMPI_REDIRECT_URL') || 'http://localhost:3000/subscription/success'
+    const wompiIntegritySecret = Deno.env.get('WOMPI_INTEGRITY_SECRET')
+    const redirectUrl = Deno.env.get('WOMPI_REDIRECT_URL') || 'http://localhost:3000/subscription/callback'
 
     const amountInCents = Math.round(amount * 100)
     

@@ -52,10 +52,10 @@ export const useSubscription = () => {
       // TODOS los miembros de esta org obtendrán la misma suscripción
       const { data: subscriptionData, error: subError } = await supabase
         .from('subscriptions')
-        .select('*')
+        .select('id,organization_id,plan_id,status,current_period_start,current_period_end')
         .eq('organization_id', organization.id)
         .eq('status', 'active')
-        .single();
+        .maybeSingle();
 
       if (subError || !subscriptionData) {
         // Si no tiene suscripción activa, usar plan gratis por defecto
@@ -68,9 +68,9 @@ export const useSubscription = () => {
         // Obtener el plan por separado
         const { data: planData, error: planError } = await supabase
           .from('subscription_plans')
-          .select('*')
+          .select('id,name,slug,price_monthly,price_yearly')
           .eq('id', subscriptionData.plan_id)
-          .single();
+          .maybeSingle();
 
         if (planError || !planData) {
           console.error('Error loading plan:', planError);

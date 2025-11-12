@@ -3,11 +3,15 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircle, XCircle, Loader, ArrowRight } from 'lucide-react';
 import { supabase } from '../supabaseClient';
+import { useAuth } from '../context/AuthContext';
+import { useSubscription } from '../hooks/useSubscription';
 import './SubscriptionCallback.css';
 
 const SubscriptionCallback = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { refreshProfile } = useAuth();
+  const { refreshSubscription } = useSubscription();
   const [status, setStatus] = useState('loading'); // loading | success | error
   const [message, setMessage] = useState('Verificando tu pago...');
 
@@ -37,40 +41,217 @@ const SubscriptionCallback = () => {
           return;
         }
 
-        // Esperar un momento para que el webhook procese
+        // Esperar un momento para que el webhook procese (el webhook puede tardar unos segundos)
         await new Promise(resolve => setTimeout(resolve, 3000));
 
-        // Verificar si el pago fue procesado
-        const { data: payment, error } = await supabase
-          .from('payments')
-          .select('status, plan_id, subscriptions(plan:subscription_plans(name))')
-          .eq('wompi_transaction_id', id)
-          .single();
+        // Verificar el estado del pago y suscripción
+        // Buscar por transaction_id primero, si no por reference
+        const reference = searchParams.get('reference') || searchParams.get('ref');
+        
+        let payment = null;
+        let attempts = 0;
+        const maxAttempts = 10; // Intentar por hasta 30 segundos (10 intentos x 3 segundos)
 
-        if (error || !payment) {
+        while (attempts < maxAttempts && !payment) {
+          // Buscar pago por transaction_id (puede estar en diferentes formatos)
+          if (id) {
+            // Intentar búsqueda exacta primero
+            let { data: paymentById } = await supabase
+              .from('payments')
+              .select('*, subscription_id, plan_id, organization_id')
+              .eq('wompi_transaction_id', id)
+              .maybeSingle();
+            
+            // Si no se encuentra, buscar por LIKE (por si el ID está parcialmente)
+            if (!paymentById && id.length > 10) {
+              const { data: paymentByPartial } = await supabase
+                .from('payments')
+                .select('*, subscription_id, plan_id, organization_id')
+                .like('wompi_transaction_id', `%${id}%`)
+                .maybeSingle();
+              
+              paymentById = paymentByPartial;
+            }
+            
+            if (paymentById) {
+              payment = paymentById;
+              break;
+            }
+          }
+
+          // Si no se encontró y hay reference, buscar por reference
+          if (reference && !payment) {
+            const { data: paymentByRef } = await supabase
+              .from('payments')
+              .select('*, subscription_id, plan_id, organization_id')
+              .eq('wompi_reference', reference)
+              .maybeSingle();
+            
+            if (paymentByRef) {
+              payment = paymentByRef;
+              break;
+            }
+          }
+          
+          // También buscar por ID en el reference (Wompi a veces pasa el ID como reference)
+          if (id && !payment) {
+            const { data: paymentByRefId } = await supabase
+              .from('payments')
+              .select('*, subscription_id, plan_id, organization_id')
+              .eq('wompi_reference', id)
+              .maybeSingle();
+            
+            if (paymentByRefId) {
+              payment = paymentByRefId;
+              break;
+            }
+          }
+
+          // Si no se encontró, esperar y reintentar
+          if (!payment) {
+            attempts++;
+            if (attempts < maxAttempts) {
+              setMessage(`Verificando pago... (${attempts}/${maxAttempts})`);
+              await new Promise(resolve => setTimeout(resolve, 3000));
+            }
+          }
+        }
+
+        if (!payment) {
+          console.warn('⚠️ Pago no encontrado en BD. Transaction ID:', id);
+          console.warn('   Esto puede significar:');
+          console.warn('   1. El webhook aún no ha procesado el pago');
+          console.warn('   2. El pago se guardó con un reference diferente');
+          console.warn('   3. Necesitas activar manualmente la suscripción');
+          
+          setStatus('loading');
+          setMessage('Tu pago está siendo procesado. Esto puede tardar unos momentos...');
+          
+          // Intentar buscar por organization_id del usuario actual como último recurso
+          try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+              const { data: profile } = await supabase
+                .from('user_profiles')
+                .select('organization_id')
+                .eq('user_id', user.id)
+                .maybeSingle();
+              
+              if (profile?.organization_id) {
+                // Buscar el último pago pendiente de esta organización
+                const { data: lastPayment } = await supabase
+                  .from('payments')
+                  .select('*, subscription_id, plan_id, organization_id')
+                  .eq('organization_id', profile.organization_id)
+                  .in('status', ['pending', 'completed'])
+                  .order('created_at', { ascending: false })
+                  .limit(1)
+                  .maybeSingle();
+                
+                if (lastPayment) {
+                  console.log('✅ Encontrado último pago de la organización:', lastPayment.id);
+                  payment = lastPayment;
+                }
+              }
+            }
+          } catch (err) {
+            console.error('Error buscando último pago:', err);
+          }
+          
+          // Si aún no hay pago, redirigir
+          if (!payment) {
+            setTimeout(() => {
+              window.location.href = '/dashboard';
+            }, 5000);
+            return;
+          }
+        }
+
+        // Verificar estado del pago
+        if (payment.status === 'failed' || payment.status === 'declined') {
           setStatus('error');
-          setMessage('No pudimos verificar tu pago. Por favor contacta a soporte.');
+          setMessage('El pago fue rechazado. Por favor intenta de nuevo.');
           return;
         }
 
-        if (payment.status === 'completed') {
+        // Verificar si la suscripción está activa
+        let subscription = null;
+        if (payment.subscription_id) {
+          const { data: sub } = await supabase
+            .from('subscriptions')
+            .select('*, plan_id, status')
+            .eq('id', payment.subscription_id)
+            .maybeSingle();
+          
+          subscription = sub;
+        } else {
+          // Si no hay subscription_id, buscar por organization_id
+          const { data: sub } = await supabase
+            .from('subscriptions')
+            .select('*, plan_id, status')
+            .eq('organization_id', payment.organization_id)
+            .eq('status', 'active')
+            .maybeSingle();
+          
+          subscription = sub;
+        }
+
+        // Obtener nombre del plan
+        let planName = 'tu nuevo plan';
+        if (payment.plan_id) {
+          const { data: plan } = await supabase
+            .from('subscription_plans')
+            .select('name')
+            .eq('id', payment.plan_id)
+            .maybeSingle();
+          
+          if (plan) {
+            planName = plan.name;
+          }
+        }
+
+        if (subscription && subscription.status === 'active') {
+          // ✅ Suscripción activa
           setStatus('success');
-          const planName = payment.subscriptions?.plan?.name || 'tu nuevo plan';
           setMessage(`¡Tu suscripción a ${planName} está activa!`);
+          
+          // Forzar actualización de suscripción y perfil
+          try {
+            await refreshSubscription();
+            await refreshProfile();
+          } catch (err) {
+            console.warn('Error refrescando datos:', err);
+          }
           
           // Redirigir al dashboard después de 3 segundos
           setTimeout(() => {
-            navigate('/dashboard');
+            window.location.href = '/dashboard';
           }, 3000);
-        } else if (payment.status === 'failed') {
-          setStatus('error');
-          setMessage('El pago fue rechazado. Por favor intenta de nuevo.');
-        } else {
+        } else if (payment.status === 'completed' || payment.status === 'approved') {
+          // Pago completado pero suscripción aún no activa (webhook en proceso)
           setStatus('loading');
-          setMessage('Tu pago está siendo procesado...');
+          setMessage(`¡Pago recibido! Activando tu suscripción a ${planName}...`);
           
-          // Reintentar después de 5 segundos
-          setTimeout(checkPaymentStatus, 5000);
+          // Esperar un poco más y recargar
+          setTimeout(() => {
+            window.location.href = '/dashboard';
+          }, 5000);
+        } else if (payment.status === 'pending') {
+          // Pago aún pendiente
+          setStatus('loading');
+          setMessage('Tu pago está siendo procesado. Esto puede tardar unos momentos...');
+          
+          setTimeout(() => {
+            window.location.href = '/dashboard';
+          }, 5000);
+        } else {
+          // Estado desconocido
+          setStatus('success');
+          setMessage('¡Tu pago ha sido recibido! Tu suscripción será activada en breve.');
+          
+          setTimeout(() => {
+            window.location.href = '/dashboard';
+          }, 3000);
         }
 
       } catch (error) {
