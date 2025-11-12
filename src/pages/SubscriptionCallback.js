@@ -262,7 +262,7 @@ const SubscriptionCallback = () => {
     };
 
     checkPaymentStatus();
-  }, [searchParams, navigate]);
+  }, [searchParams, navigate, refreshProfile, refreshSubscription]);
 
   return (
     <div className="subscription-callback">

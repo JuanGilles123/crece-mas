@@ -106,7 +106,7 @@ export const detectCorporateProxy = async () => {
   try {
     // Usar un endpoint real de Supabase en lugar de la raíz
     const testUrl = `${process.env.REACT_APP_SUPABASE_URL || 'https://ywilkhfkuwhsjvojocso.supabase.co'}/rest/v1/`;
-    const response = await fetch(testUrl, { 
+    await fetch(testUrl, { 
       method: 'HEAD',
       mode: 'no-cors' // Esto evita el error CORS pero no SSL
     });
