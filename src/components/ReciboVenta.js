@@ -39,7 +39,24 @@ export default function ReciboVenta({ venta, onNuevaVenta, onCerrar }) {
 
   if (!venta) return null;
 
-  const subtotal = venta.items.reduce((s, i) => s + i.qty * i.precio_venta, 0);
+  // Calcular subtotal incluyendo toppings si existen
+  const calcularSubtotalItem = (item) => {
+    let precioItem = item.precio_venta || 0;
+    // Si tiene precio_total (incluye toppings), usarlo; si no, calcular
+    if (item.precio_total) {
+      return item.precio_total * item.qty;
+    }
+    // Si tiene toppings, sumar sus precios
+    if (item.toppings && Array.isArray(item.toppings) && item.toppings.length > 0) {
+      const precioToppings = item.toppings.reduce((sum, topping) => {
+        return sum + (topping.precio || 0) * (topping.cantidad || 1);
+      }, 0);
+      precioItem = precioItem + precioToppings;
+    }
+    return precioItem * item.qty;
+  };
+
+  const subtotal = venta.items.reduce((s, i) => s + calcularSubtotalItem(i), 0);
   const total = venta.total || subtotal; // Usar el total que viene de la venta
   const cambio = venta.pagoCliente - total;
 
@@ -622,27 +639,92 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
                   </tr>
                 </thead>
                 <tbody>
-                  {venta.items.map((item, idx) => (
-                    <tr key={idx} className="recibo-table-row" style={{
-                      borderBottom: '1px solid #f3f4f6'
-                    }}>
-                      <td className="recibo-td-cant" style={{
-                        padding: '0.5rem 0.25rem',
-                        color: '#111827',
-                        fontWeight: '500'
-                      }}>{item.qty}</td>
-                      <td className="recibo-td-producto" style={{
-                        padding: '0.5rem 0.25rem',
-                        color: '#374151'
-                      }}>{item.nombre}</td>
-                      <td className="recibo-td-total" style={{
-                        padding: '0.5rem 0.25rem',
-                        color: '#111827',
-                        fontWeight: '600',
-                        textAlign: 'right'
-                      }}>{formatCOP(item.qty * item.precio_venta)}</td>
-                    </tr>
-                  ))}
+                  {venta.items.map((item, idx) => {
+                    const tieneToppings = item.toppings && Array.isArray(item.toppings) && item.toppings.length > 0;
+                    const precioItemBase = item.precio_venta || 0;
+                    const precioToppings = tieneToppings 
+                      ? item.toppings.reduce((sum, t) => sum + (t.precio || 0) * (t.cantidad || 1), 0)
+                      : 0;
+                    const precioTotalItem = item.precio_total || (precioItemBase + precioToppings);
+                    const totalItem = precioTotalItem * item.qty;
+
+                    return (
+                      <React.Fragment key={idx}>
+                        <tr className="recibo-table-row" style={{
+                          borderBottom: tieneToppings ? 'none' : '1px solid #f3f4f6'
+                        }}>
+                          <td className="recibo-td-cant" style={{
+                            padding: '0.5rem 0.25rem',
+                            color: '#111827',
+                            fontWeight: '500',
+                            verticalAlign: 'top',
+                            paddingTop: '0.75rem'
+                          }}>{item.qty}</td>
+                          <td className="recibo-td-producto" style={{
+                            padding: '0.5rem 0.25rem',
+                            color: '#374151',
+                            verticalAlign: 'top',
+                            paddingTop: '0.75rem'
+                          }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                              <span style={{ fontWeight: '500' }}>{item.nombre}</span>
+                              {tieneToppings && (
+                                <div style={{
+                                  marginTop: '0.25rem',
+                                  paddingLeft: '0.75rem',
+                                  fontSize: '0.8rem',
+                                  color: '#6b7280'
+                                }}>
+                                  <div style={{ 
+                                    marginBottom: '0.25rem',
+                                    fontWeight: '500',
+                                    color: '#4b5563'
+                                  }}>
+                                    Toppings:
+                                  </div>
+                                  {item.toppings.map((topping, tIdx) => (
+                                    <div key={tIdx} style={{
+                                      display: 'flex',
+                                      justifyContent: 'space-between',
+                                      marginBottom: '0.125rem'
+                                    }}>
+                                      <span>
+                                        • {topping.nombre}
+                                        {topping.cantidad > 1 && ` (x${topping.cantidad})`}
+                                      </span>
+                                      <span style={{ marginLeft: '0.5rem', fontWeight: '500' }}>
+                                        {formatCOP((topping.precio || 0) * (topping.cantidad || 1))}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="recibo-td-total" style={{
+                            padding: '0.5rem 0.25rem',
+                            color: '#111827',
+                            fontWeight: '600',
+                            textAlign: 'right',
+                            verticalAlign: 'top',
+                            paddingTop: '0.75rem'
+                          }}>{formatCOP(totalItem)}</td>
+                        </tr>
+                        {tieneToppings && (
+                          <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
+                            <td colSpan="3" style={{
+                              padding: '0.25rem 0.5rem',
+                              fontSize: '0.75rem',
+                              color: '#6b7280',
+                              fontStyle: 'italic'
+                            }}>
+                              Precio base: {formatCOP(precioItemBase)} {tieneToppings && `+ Toppings: ${formatCOP(precioToppings)}`} = {formatCOP(precioTotalItem)} c/u
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             )}

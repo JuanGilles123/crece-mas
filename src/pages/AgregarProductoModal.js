@@ -97,39 +97,39 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
   };
 
   const onSubmit = async (data) => {
-    if (!imagen) {
-      toast.error('La imagen es obligatoria');
-      return;
-    }
-
     setSubiendo(true);
-    setComprimiendo(true);
+    let imagenPath = null;
+
     try {
-      // Comprimir imagen antes de subir
-      const imagenComprimida = await compressProductImage(imagen);
-      setComprimiendo(false);
-      
-      // Subir imagen comprimida a Supabase Storage usando organization_id
-      const organizationId = userProfile?.organization_id;
-      if (!organizationId) {
-        throw new Error('No se encontró organization_id');
+      // Si hay imagen y tiene permiso, subirla
+      if (imagen && puedeSubirImagenes) {
+        setComprimiendo(true);
+        // Comprimir imagen antes de subir
+        const imagenComprimida = await compressProductImage(imagen);
+        setComprimiendo(false);
+        
+        // Subir imagen comprimida a Supabase Storage usando organization_id
+        const organizationId = userProfile?.organization_id;
+        if (!organizationId) {
+          throw new Error('No se encontró organization_id');
+        }
+        const nombreArchivo = `${organizationId}/${Date.now()}_${imagenComprimida.name}`;
+        const { error: errorUpload } = await supabase.storage.from('productos').upload(nombreArchivo, imagenComprimida);
+        if (errorUpload) throw errorUpload;
+        imagenPath = nombreArchivo;
       }
-      const nombreArchivo = `${organizationId}/${Date.now()}_${imagenComprimida.name}`;
-      const { error: errorUpload } = await supabase.storage.from('productos').upload(nombreArchivo, imagenComprimida);
-      if (errorUpload) throw errorUpload;
-      // Guardar la ruta del archivo en lugar de la URL
-      // Usaremos signed URLs cuando necesitemos mostrar la imagen
+
       // Usar React Query mutation
       const productoData = {
         user_id: user.id,
-        organization_id: organizationId,
+        organization_id: userProfile?.organization_id,
         codigo: data.codigo,
         nombre: data.nombre,
         precio_compra: Number(data.precioCompra.replace(/\D/g, '')),
         precio_venta: Number(data.precioVenta.replace(/\D/g, '')),
         stock: Number(data.stock),
         fecha_vencimiento: data.fecha_vencimiento || null,
-        imagen: nombreArchivo, // Guardamos la ruta del archivo con organization_id
+        imagen: imagenPath, // Puede ser null si no se subió imagen
       };
 
       agregarProductoMutation.mutate(productoData);
@@ -139,7 +139,7 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
       onClose();
     } catch (err) {
       console.error('Error:', err);
-      toast.error('Error al subir la imagen o guardar el producto.');
+      toast.error('Error al guardar el producto.');
     } finally {
       setSubiendo(false);
       setComprimiendo(false);
@@ -231,7 +231,7 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
             Solo para productos perecederos o con fecha de caducidad
           </span>
           
-          <label>Imagen {!puedeSubirImagenes && <span style={{ color: '#ef4444', fontWeight: 600 }}>🔒 Solo plan Profesional</span>}</label>
+          <label>Imagen <span style={{ color: '#6b7280', fontWeight: 400 }}>(Opcional)</span> {!puedeSubirImagenes && <span style={{ color: '#ef4444', fontWeight: 600 }}>🔒 Solo plan Profesional</span>}</label>
           <div className="input-upload-wrapper input-upload-centro">
             <button 
               type="button" 

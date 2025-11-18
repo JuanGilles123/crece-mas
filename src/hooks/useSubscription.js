@@ -242,13 +242,16 @@ export const useSubscription = () => {
     
     switch(action) {
       case 'createProduct': {
-        const productLimit = await checkLimit('maxProducts');
+        const productLimit = await checkLimit('maxProducts', 'products');
         return {
-          allowed: productLimit.allowed || productLimit.unlimited,
-          reason: !productLimit.allowed && !productLimit.unlimited
-            ? `Has alcanzado el límite de ${productLimit.limit} productos en el plan ${planSlug}`
+          allowed: productLimit.canPerform || productLimit.isVIP || productLimit.limit === null,
+          reason: !productLimit.canPerform && !productLimit.isVIP && productLimit.limit !== null
+            ? `Has alcanzado el límite de ${productLimit.limit} productos en el plan ${planSlug}. Te quedan ${productLimit.remaining || 0} productos disponibles.`
             : null,
-          ...productLimit
+          current: productLimit.current,
+          limit: productLimit.limit,
+          remaining: productLimit.remaining,
+          unlimited: productLimit.limit === null || productLimit.isVIP
         };
       }
 

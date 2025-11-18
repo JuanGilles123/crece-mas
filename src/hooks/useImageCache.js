@@ -57,18 +57,27 @@ export const useImageCache = (imagePath) => {
         if (imagePath.includes('/storage/v1/object/public/productos/')) {
           filePath = imagePath.split('/storage/v1/object/public/productos/')[1];
         }
+        
+        // Limpiar la ruta (remover espacios, caracteres especiales, etc.)
+        filePath = filePath.trim();
 
         const { data, error } = await supabase.storage
           .from('productos')
           .createSignedUrl(filePath, 3600);
 
         if (error) {
-          console.warn('⚠️ Imagen no encontrada en storage:', filePath);
+          console.warn('⚠️ Error generando signed URL para:', filePath);
+          console.warn('   Error:', error.message);
+          // Si es un error 400, probablemente el archivo no existe
+          if (error.statusCode === 400 || error.message?.includes('not found')) {
+            console.warn('   El archivo no existe en storage o la ruta es incorrecta');
+          }
           throw error;
         }
 
         return data.signedUrl;
       } catch (err) {
+        console.error('❌ Error en generateSignedUrl:', err);
         throw err;
       }
     };
@@ -92,6 +101,7 @@ export const useImageCache = (imagePath) => {
           setLoading(false);
         }
       } catch (err) {
+        console.warn('⚠️ No se pudo cargar la imagen:', imagePath);
         if (mountedRef.current) {
           setError(true);
           setLoading(false);

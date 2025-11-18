@@ -3,10 +3,12 @@ import { motion } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
-import { useSubscription } from '../hooks/useSubscription';
 import useCurrencyInput from '../hooks/useCurrencyInputOptimized';
 import OptimizedProductImage from '../components/OptimizedProductImage';
 import { ShoppingCart, Trash2, Plus, Minus, Search, CheckCircle, X, CreditCard, Banknote, Smartphone, Wallet } from 'lucide-react';
+import ToppingsSelector from '../components/ToppingsSelector';
+import { canUseToppings } from '../utils/toppingsUtils';
+import { useSubscription } from '../hooks/useSubscription';
 import toast from 'react-hot-toast';
 import './Caja.css';
 
@@ -31,12 +33,15 @@ function formatCOP(value) {
 
 // Total carrito
 function calcTotal(cart) {
-  return cart.reduce((sum, item) => sum + item.qty * item.price, 0);
+  return cart.reduce((sum, item) => {
+    const precioItem = item.precio_total || item.precio_venta || item.price || 0;
+    return sum + item.qty * precioItem;
+  }, 0);
 }
 
 export default function Caja() {
-  const { user, userProfile } = useAuth();
-  const { canPerformAction } = useSubscription();
+  const { user, userProfile, organization } = useAuth();
+  const { canPerformAction, hasFeature } = useSubscription();
   const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState([]);
@@ -56,6 +61,10 @@ export default function Caja() {
   const [incluirIva, setIncluirIva] = useState(false);
   const [porcentajeIva, setPorcentajeIva] = useState(19);
   const [productosVisibles, setProductosVisibles] = useState(20); // Renderizado procedural
+  
+  // Estados para toppings
+  const [mostrandoToppingsSelector, setMostrandoToppingsSelector] = useState(false);
+  const [productoParaToppings, setProductoParaToppings] = useState(null);
   
   // Estados para pago mixto
   const [mostrandoPagoMixto, setMostrandoPagoMixto] = useState(false);
@@ -150,7 +159,7 @@ export default function Caja() {
     }
   }, [filteredProducts.length]);
 
-  const subtotal = useMemo(() => calcTotal(cart.map((c) => ({ id: c.id, price: c.precio_venta, qty: c.qty }))), [cart]);
+  const subtotal = useMemo(() => calcTotal(cart), [cart]);
   const impuestos = useMemo(() => incluirIva ? subtotal * (porcentajeIva / 100) : 0, [subtotal, incluirIva, porcentajeIva]);
   const total = useMemo(() => subtotal + impuestos, [subtotal, impuestos]);
 
@@ -165,20 +174,51 @@ export default function Caja() {
       return;
     }
 
+    // Verificar si puede usar toppings (negocio de comida con premium)
+    const puedeUsarToppings = organization && canUseToppings(organization, null, hasFeature).canUse;
+
+    if (puedeUsarToppings) {
+      // Mostrar selector de toppings
+      setProductoParaToppings(producto);
+      setMostrandoToppingsSelector(true);
+    } else {
+      // Agregar directamente sin toppings
+      agregarAlCarrito(producto, [], producto.precio_venta);
+    }
+  }
+
+  const agregarAlCarrito = (producto, toppings = [], precioTotal) => {
     setCart((prev) => {
-      const idx = prev.findIndex((i) => i.id === producto.id);
+      const idx = prev.findIndex((i) => i.id === producto.id && 
+        JSON.stringify(i.toppings || []) === JSON.stringify(toppings));
+      
       if (idx >= 0) {
+        // Si existe el mismo producto con los mismos toppings, aumentar cantidad
         const next = [...prev];
-        next[idx] = { ...next[idx], qty: next[idx].qty + 1 };
+        next[idx] = { 
+          ...next[idx], 
+          qty: next[idx].qty + 1 
+        };
         return next;
       }
+      
+      // Agregar nuevo item con toppings
       return [...prev, { 
         id: producto.id, 
         nombre: producto.nombre, 
-        precio_venta: producto.precio_venta, 
-        qty: 1 
+        precio_venta: producto.precio_venta,
+        precio_total: precioTotal,
+        qty: 1,
+        toppings: toppings.length > 0 ? toppings : undefined
       }];
     });
+  }
+
+  const handleToppingsConfirm = (toppings, precioTotal) => {
+    if (productoParaToppings) {
+      agregarAlCarrito(productoParaToppings, toppings, precioTotal);
+      setProductoParaToppings(null);
+    }
   }
 
   const inc = (id) => {
@@ -861,6 +901,37 @@ export default function Caja() {
           // No retornamos aquí para que la venta se complete
         }
       }
+
+      // Actualizar stock de toppings si hay items con toppings
+      const puedeUsarToppings = organization && canUseToppings(organization, null, hasFeature).canUse;
+      if (puedeUsarToppings) {
+        for (const item of cart) {
+          if (item.toppings && item.toppings.length > 0) {
+            for (const topping of item.toppings) {
+              const cantidadVendida = (topping.cantidad || 1) * item.qty;
+              // Obtener topping actual para conocer stock
+              const { data: toppingActual } = await supabase
+                .from('toppings')
+                .select('stock')
+                .eq('id', topping.id)
+                .single();
+              
+              if (toppingActual) {
+                const nuevoStockTopping = toppingActual.stock - cantidadVendida;
+                const { error: toppingStockError } = await supabase
+                  .from('toppings')
+                  .update({ stock: Math.max(0, nuevoStockTopping) })
+                  .eq('id', topping.id);
+                
+                if (toppingStockError) {
+                  console.error('Error actualizando stock de topping:', toppingStockError);
+                  // No bloqueamos la venta por esto
+                }
+              }
+            }
+          }
+        }
+      }
       
       // Crear objeto de venta para el recibo
       const ventaRecibo = {
@@ -1043,11 +1114,18 @@ export default function Caja() {
             <p className="caja-empty-cart">Aún no has agregado productos.</p>
           ) : (
             <ul className="caja-cart-list">
-              {cart.map((item) => (
-                <li key={item.id} className="caja-cart-item">
+              {cart.map((item, index) => (
+                <li key={`${item.id}-${index}`} className="caja-cart-item">
                   <div className="caja-cart-item-info">
                     <p className="caja-cart-item-name">{item.nombre}</p>
-                    <p className="caja-cart-item-price">{formatCOP(item.precio_venta)} c/u</p>
+                    {item.toppings && item.toppings.length > 0 && (
+                      <p className="caja-cart-item-toppings">
+                        {item.toppings.map(t => `+ ${t.nombre}${t.cantidad > 1 ? ` x${t.cantidad}` : ''}`).join(', ')}
+                      </p>
+                    )}
+                    <p className="caja-cart-item-price">
+                      {formatCOP(item.precio_total || item.precio_venta)} c/u
+                    </p>
                   </div>
                   <div className="caja-cart-item-controls">
                     <button 
@@ -1065,7 +1143,7 @@ export default function Caja() {
                     </button>
                   </div>
                   <div className="caja-cart-item-total">
-                    {formatCOP(item.qty * item.precio_venta)}
+                    {formatCOP(item.qty * (item.precio_total || item.precio_venta))}
                   </div>
                   <button 
                     className="caja-remove-btn"
@@ -1156,11 +1234,16 @@ export default function Caja() {
               <p className="caja-mobile-empty-cart">Aún no has agregado productos.</p>
             ) : (
               <ul className="caja-mobile-cart-list">
-                {cart.map((item) => (
-                  <li key={item.id} className="caja-mobile-cart-item">
+                {cart.map((item, index) => (
+                  <li key={`${item.id}-${index}`} className="caja-mobile-cart-item">
                     <div className="caja-mobile-cart-item-info">
                       <p className="caja-mobile-cart-item-name">{item.nombre}</p>
-                      <p className="caja-mobile-cart-item-price">{formatCOP(item.precio_venta)} c/u</p>
+                      {item.toppings && item.toppings.length > 0 && (
+                        <p className="caja-mobile-cart-item-toppings" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                          {item.toppings.map(t => `+ ${t.nombre}${t.cantidad > 1 ? ` x${t.cantidad}` : ''}`).join(', ')}
+                        </p>
+                      )}
+                      <p className="caja-mobile-cart-item-price">{formatCOP(item.precio_total || item.precio_venta)} c/u</p>
                     </div>
                     <div className="caja-mobile-cart-item-controls">
                       <button 
@@ -1178,7 +1261,7 @@ export default function Caja() {
                       </button>
                     </div>
                     <div className="caja-mobile-cart-item-total">
-                      {formatCOP(item.qty * item.precio_venta)}
+                      {formatCOP(item.qty * (item.precio_total || item.precio_venta))}
                     </div>
                     <button 
                       className="caja-mobile-remove-btn"
@@ -1240,6 +1323,21 @@ export default function Caja() {
           ventaData={datosVentaConfirmada}
         />
       </Suspense>
+
+      {/* Selector de Toppings */}
+      {productoParaToppings && (
+        <ToppingsSelector
+          open={mostrandoToppingsSelector}
+          onClose={() => {
+            setMostrandoToppingsSelector(false);
+            setProductoParaToppings(null);
+          }}
+          producto={productoParaToppings}
+          precioBase={productoParaToppings.precio_venta}
+          onConfirm={handleToppingsConfirm}
+          organizationId={userProfile?.organization_id}
+        />
+      )}
     </div>
   );
 }

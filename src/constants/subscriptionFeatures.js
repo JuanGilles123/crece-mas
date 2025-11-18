@@ -55,6 +55,9 @@ export const PLAN_FEATURES = {
       // Soporte
       emailSupport: false,           // Soporte por email
       prioritySupport: false,        // Soporte prioritario
+      
+      // Toppings (solo para negocios de comida)
+      toppings: false,               // Sistema de toppings
     }
   },
   
@@ -103,6 +106,9 @@ export const PLAN_FEATURES = {
       
       emailSupport: true,
       prioritySupport: false,
+      
+      // Toppings (solo para negocios de comida)
+      toppings: true,                // Sistema de toppings
       
       // Features empresariales desactivadas
       multiOrg: false,
@@ -161,6 +167,9 @@ export const PLAN_FEATURES = {
       
       emailSupport: true,
       prioritySupport: true,
+      
+      // Toppings (solo para negocios de comida)
+      toppings: true,                // Sistema de toppings
       
       // Features empresariales
       multiOrg: true,
@@ -222,6 +231,9 @@ export const PLAN_FEATURES = {
       
       emailSupport: true,
       prioritySupport: true,
+      
+      // Toppings (solo para negocios de comida)
+      toppings: true,                // Sistema de toppings
       
       multiOrg: true,
       branchTransfers: true,

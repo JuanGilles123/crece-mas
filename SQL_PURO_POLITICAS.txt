@@ -1,0 +1,51 @@
+═══════════════════════════════════════════════════════════════
+SOLO COPIA EL SQL DE ABAJO - SIN NADA MÁS
+═══════════════════════════════════════════════════════════════
+
+POLÍTICA 1 - INSERT (WITH CHECK expression):
+────────────────────────────────────────────
+bucket_id = 'productos' AND
+(storage.foldername(name))[1] = 'toppings' AND
+(storage.foldername(name))[2] IN (
+  SELECT organization_id::text FROM user_profiles WHERE user_id = auth.uid()
+  UNION
+  SELECT organization_id::text FROM team_members WHERE user_id = auth.uid() AND status = 'active'
+)
+
+
+POLÍTICA 2 - SELECT (USING expression):
+───────────────────────────────────────
+bucket_id = 'productos' AND
+(storage.foldername(name))[1] = 'toppings' AND
+(storage.foldername(name))[2] IN (
+  SELECT organization_id::text FROM user_profiles WHERE user_id = auth.uid()
+  UNION
+  SELECT organization_id::text FROM team_members WHERE user_id = auth.uid() AND status = 'active'
+)
+
+
+POLÍTICA 3 - UPDATE (USING expression):
+─────────────────────────────────────────
+bucket_id = 'productos' AND
+(storage.foldername(name))[1] = 'toppings' AND
+(storage.foldername(name))[2] IN (
+  SELECT organization_id::text FROM user_profiles 
+  WHERE user_id = auth.uid() AND role IN ('owner', 'admin')
+  UNION
+  SELECT organization_id::text FROM team_members 
+  WHERE user_id = auth.uid() AND status = 'active' AND role IN ('owner', 'admin')
+)
+
+
+POLÍTICA 4 - DELETE (USING expression):
+─────────────────────────────────────────
+bucket_id = 'productos' AND
+(storage.foldername(name))[1] = 'toppings' AND
+(storage.foldername(name))[2] IN (
+  SELECT organization_id::text FROM user_profiles 
+  WHERE user_id = auth.uid() AND role IN ('owner', 'admin')
+  UNION
+  SELECT organization_id::text FROM team_members 
+  WHERE user_id = auth.uid() AND status = 'active' AND role IN ('owner', 'admin')
+)
+

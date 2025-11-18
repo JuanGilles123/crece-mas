@@ -15,6 +15,8 @@ import { Search, List, Grid3X3, Loader, Calendar, AlertTriangle, Crown, Zap, Spa
 import { useProductosPaginados, useEliminarProducto } from '../hooks/useProductos';
 import { useSubscription } from '../hooks/useSubscription';
 import UpgradePrompt from '../components/UpgradePrompt';
+import GestionToppings from '../components/GestionToppings';
+import { canUseToppings } from '../utils/toppingsUtils';
 import toast from 'react-hot-toast';
 
 // Función para calcular estado de vencimiento
@@ -62,7 +64,7 @@ const deleteImageFromStorage = async (imagePath) => {
 };
 
 const Inventario = () => {
-  const { user, userProfile } = useAuth();
+  const { user, userProfile, organization } = useAuth();
   const queryClient = useQueryClient();
   
   // Hook de suscripción
@@ -86,6 +88,7 @@ const Inventario = () => {
   const [filtroEstado, setFiltroEstado] = useState('todos'); // todos, stock-bajo, proximoVencer
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [upgradeReason, setUpgradeReason] = useState('');
+  const [mostrarToppings, setMostrarToppings] = useState(false);
   const moneda = user?.user_metadata?.moneda || 'COP';
   
   // Estados para estadísticas reales de la BD
@@ -479,11 +482,13 @@ const Inventario = () => {
                 onClick={async () => {
                   // Verificar límite antes de abrir modal
                   const canCreate = await canPerformAction('createProduct');
-                  if (!canCreate.allowed) {
-                    setUpgradeReason(canCreate.reason);
+                  // Solo mostrar error si realmente alcanzó el límite (no si es ilimitado o VIP)
+                  if (!canCreate.allowed && !canCreate.unlimited && canCreate.remaining !== undefined && canCreate.remaining <= 0) {
+                    setUpgradeReason(canCreate.reason || 'Has alcanzado el límite de productos');
                     setShowUpgradePrompt(true);
-                    toast.error(canCreate.reason);
+                    toast.error(canCreate.reason || 'Has alcanzado el límite de productos');
                   } else {
+                    // Permitir crear si tiene espacio o es ilimitado
                     setModalOpen(true);
                   }
                 }}
@@ -517,6 +522,45 @@ const Inventario = () => {
               <span>Filtrando: {filtroEstado === 'stock-bajo' ? 'Stock Bajo' : 'Próximos a Vencer'}</span>
               <button onClick={() => setFiltroEstado('todos')}>× Limpiar filtro</button>
             </div>
+          )}
+
+          {/* Sección de Toppings (solo para negocios de comida con premium) */}
+          {organization && canUseToppings(organization, null, hasFeature).canUse && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{ marginTop: '1.5rem', marginBottom: '1rem' }}
+            >
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(147, 51, 234, 0.1) 100%)',
+                border: '2px solid rgba(59, 130, 246, 0.2)',
+                borderRadius: '12px',
+                padding: '1rem',
+              }}>
+                <button
+                  className="inventario-btn inventario-btn-secondary"
+                  onClick={() => setMostrarToppings(!mostrarToppings)}
+                  style={{
+                    width: '100%',
+                    background: 'white',
+                    border: '1px solid rgba(59, 130, 246, 0.3)',
+                    fontWeight: 600,
+                  }}
+                >
+                  {mostrarToppings ? '▼ Ocultar' : '▶ Gestionar'} Toppings 🍔
+                </button>
+                {mostrarToppings && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    style={{ marginTop: '1rem', overflow: 'hidden' }}
+                  >
+                    <GestionToppings />
+                  </motion.div>
+                )}
+              </div>
+            </motion.div>
           )}
         </>
       )}

@@ -420,6 +420,20 @@ const Perfil = () => {
                     </motion.div>
                   )}
                   
+                  {/* Configuración de Facturación */}
+                  <motion.div 
+                    className="perfil-config-item clickable"
+                    onClick={() => navigate('/dashboard/configuracion-facturacion')}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <div className="config-icon-wrapper">
+                      <Building2 size={24} />
+                    </div>
+                    <h3>Configuración de Facturación</h3>
+                    <p>Configurar datos de facturación y tipo de negocio</p>
+                  </motion.div>
+                  
                   <motion.div 
                     className="perfil-config-item clickable"
                     onClick={() => setActiveConfigSection('preferencias')}
