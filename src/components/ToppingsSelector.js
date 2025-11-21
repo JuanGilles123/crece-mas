@@ -64,7 +64,7 @@ const ToppingItem = ({ topping, seleccionado, onToggle, onChangeCantidad }) => {
           <button
             className="topping-cantidad-btn"
             onClick={() => onChangeCantidad(1)}
-            disabled={seleccionado.cantidad >= topping.stock}
+            disabled={topping.stock !== null && seleccionado.cantidad >= topping.stock}
           >
             +
           </button>
@@ -74,19 +74,34 @@ const ToppingItem = ({ topping, seleccionado, onToggle, onChangeCantidad }) => {
   );
 };
 
-const ToppingsSelector = ({ 
-  open, 
-  onClose, 
-  producto, 
-  precioBase, 
+const ToppingsSelector = ({
+  open,
+  onClose,
+  producto,
+  precioBase,
   onConfirm,
-  organizationId 
+  organizationId,
+  tipo = 'comida' // 'comida' | 'servicio'
 }) => {
   const { data: toppings = [], isLoading } = useToppings(organizationId);
   const [toppingsSeleccionados, setToppingsSeleccionados] = useState([]);
 
-  // Filtrar solo toppings con stock disponible
-  const toppingsDisponibles = toppings.filter(t => t.stock > 0);
+  // Filtrar toppings por tipo y stock (si aplica)
+  // Para servicios, el stock puede ser null, así que permitimos null o > 0
+  const toppingsDisponibles = toppings.filter(t => {
+    // Filtrar por tipo (si el topping tiene tipo definido)
+    if (t.tipo && t.tipo !== tipo) return false;
+
+    // Si es servicio, siempre disponible (stock null o > 0)
+    if (tipo === 'servicio') return true;
+
+    // Si es comida, requiere stock > 0
+    return t.stock > 0;
+  });
+
+  const isService = tipo === 'servicio';
+  const title = isService ? '¿Desea agregar adicionales?' : '¿Lleva toppings?';
+  const itemLabel = isService ? 'adicionales' : 'toppings';
 
   useEffect(() => {
     if (!open) {
@@ -99,16 +114,16 @@ const ToppingsSelector = ({
       const existe = prev.find(t => t.id === topping.id);
       if (existe) {
         // Si ya está seleccionado, aumentar cantidad
-        return prev.map(t => 
-          t.id === topping.id 
-            ? { ...t, cantidad: Math.min(t.cantidad + 1, topping.stock) }
+        return prev.map(t =>
+          t.id === topping.id
+            ? { ...t, cantidad: Math.min(t.cantidad + 1, topping.stock !== null ? topping.stock : 999) }
             : t
         );
       } else {
         // Si no está seleccionado, agregarlo
-        return [...prev, { 
-          id: topping.id, 
-          nombre: topping.nombre, 
+        return [...prev, {
+          id: topping.id,
+          nombre: topping.nombre,
           precio: topping.precio,
           cantidad: 1,
           stock: topping.stock
@@ -118,14 +133,14 @@ const ToppingsSelector = ({
   };
 
   const cambiarCantidad = (toppingId, delta) => {
-    setToppingsSeleccionados(prev => 
+    setToppingsSeleccionados(prev =>
       prev.map(t => {
         if (t.id === toppingId) {
           const nuevaCantidad = t.cantidad + delta;
           if (nuevaCantidad <= 0) {
             return null; // Eliminar si cantidad es 0
           }
-          if (nuevaCantidad > t.stock) {
+          if (nuevaCantidad > t.stock && t.stock !== null) {
             return t; // No exceder stock
           }
           return { ...t, cantidad: nuevaCantidad };
@@ -164,7 +179,7 @@ const ToppingsSelector = ({
       >
         <div className="toppings-selector-header">
           <div>
-            <h3>¿Lleva toppings?</h3>
+            <h3>{title}</h3>
             <p className="producto-nombre">{producto?.nombre}</p>
           </div>
           <button className="toppings-selector-close" onClick={onClose}>
@@ -179,9 +194,9 @@ const ToppingsSelector = ({
         ) : toppingsDisponibles.length === 0 ? (
           <div className="toppings-selector-empty">
             <Package size={48} />
-            <p>No hay toppings disponibles</p>
+            <p>No hay {itemLabel} disponibles</p>
             <button className="topping-btn-primary" onClick={handleSinToppings}>
-              Agregar sin toppings
+              Agregar sin {itemLabel}
             </button>
           </div>
         ) : (
@@ -203,7 +218,7 @@ const ToppingsSelector = ({
 
             {toppingsSeleccionados.length > 0 && (
               <div className="toppings-seleccionados">
-                <h4>Toppings seleccionados:</h4>
+                <h4>{isService ? 'Adicionales seleccionados:' : 'Toppings seleccionados:'}</h4>
                 <div className="toppings-seleccionados-list">
                   {toppingsSeleccionados.map((topping) => (
                     <div key={topping.id} className="topping-seleccionado-item">
@@ -232,7 +247,7 @@ const ToppingsSelector = ({
               </div>
               {toppingsSeleccionados.length > 0 && (
                 <div className="toppings-precio-total">
-                  <span className="precio-label">Toppings:</span>
+                  <span className="precio-label">{isService ? 'Adicionales:' : 'Toppings:'}</span>
                   <span className="precio-value">
                     {formatCOP(precioTotal - precioBase)}
                   </span>
@@ -244,7 +259,7 @@ const ToppingsSelector = ({
               </div>
               <div className="toppings-selector-actions">
                 <button className="topping-btn-secondary" onClick={handleSinToppings}>
-                  Sin toppings
+                  Sin {itemLabel}
                 </button>
                 <button className="topping-btn-primary" onClick={handleConfirmar}>
                   Agregar al carrito

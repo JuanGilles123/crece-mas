@@ -21,10 +21,10 @@ const ConfirmacionVenta = lazy(() => import('../components/ConfirmacionVenta'));
 // Utilidad: formato COP
 function formatCOP(value) {
   try {
-    return new Intl.NumberFormat("es-CO", { 
-      style: "currency", 
-      currency: "COP", 
-      maximumFractionDigits: 0 
+    return new Intl.NumberFormat("es-CO", {
+      style: "currency",
+      currency: "COP",
+      maximumFractionDigits: 0
     }).format(value);
   } catch {
     return "$" + value.toLocaleString("es-CO");
@@ -61,11 +61,11 @@ export default function Caja() {
   const [incluirIva, setIncluirIva] = useState(false);
   const [porcentajeIva, setPorcentajeIva] = useState(19);
   const [productosVisibles, setProductosVisibles] = useState(20); // Renderizado procedural
-  
+
   // Estados para toppings
   const [mostrandoToppingsSelector, setMostrandoToppingsSelector] = useState(false);
   const [productoParaToppings, setProductoParaToppings] = useState(null);
-  
+
   // Estados para pago mixto
   const [mostrandoPagoMixto, setMostrandoPagoMixto] = useState(false);
   const [metodo1, setMetodo1] = useState('Efectivo');
@@ -78,13 +78,13 @@ export default function Caja() {
     const fetchProductos = async () => {
       if (!user || !userProfile?.organization_id) return;
       setCargando(true);
-      
+
       const { data, error } = await supabase
         .from('productos')
         .select('*')
         .eq('organization_id', userProfile.organization_id)
         .order('created_at', { ascending: false });
-        
+
       if (!error) {
         setProductos(data || []);
       }
@@ -96,41 +96,41 @@ export default function Caja() {
   const filteredProducts = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return productos;
-    
+
     // Filtrar productos
     const filtered = productos.filter((p) => {
       const nombre = p.nombre.toLowerCase();
       const codigoBarra = p.codigo_barra ? p.codigo_barra.toLowerCase() : '';
-      
+
       // Verificar coincidencia exacta
       const esCoincidenciaExacta = nombre === q || codigoBarra === q;
-      
+
       if (esCoincidenciaExacta) return true;
-      
+
       // Verificar si empieza con el término (más relevante)
       const coincideDesdeInicio = nombre.startsWith(q) || codigoBarra.startsWith(q);
-      
+
       if (coincideDesdeInicio) return true;
-      
+
       // Como último recurso, buscar en cualquier parte
       return nombre.includes(q) || codigoBarra.includes(q);
     });
-    
+
     // Ordenar resultados por relevancia
     return filtered.sort((a, b) => {
       const nombreA = a.nombre.toLowerCase();
       const nombreB = b.nombre.toLowerCase();
-      
+
       // Coincidencia exacta tiene máxima prioridad
       const exactoA = nombreA === q ? 0 : 1;
       const exactoB = nombreB === q ? 0 : 1;
       if (exactoA !== exactoB) return exactoA - exactoB;
-      
+
       // Luego, los que empiezan con el término
       const inicioA = nombreA.startsWith(q) ? 0 : 1;
       const inicioB = nombreB.startsWith(q) ? 0 : 1;
       if (inicioA !== inicioB) return inicioA - inicioB;
-      
+
       // Por último, orden alfabético
       return nombreA.localeCompare(nombreB);
     });
@@ -164,14 +164,17 @@ export default function Caja() {
   const total = useMemo(() => subtotal + impuestos, [subtotal, impuestos]);
 
   function addToCart(producto) {
-    // Verificar stock disponible
-    const stockDisponible = producto.stock;
-    const itemEnCarrito = cart.find(item => item.id === producto.id);
-    const cantidadEnCarrito = itemEnCarrito ? itemEnCarrito.qty : 0;
-    
-    if (cantidadEnCarrito >= stockDisponible) {
-      toast.error(`No hay suficiente stock. Disponible: ${stockDisponible}`);
-      return;
+    // Verificar stock disponible (solo si no es servicio)
+    const isService = producto.tipo === 'servicio';
+    if (!isService) {
+      const stockDisponible = producto.stock;
+      const itemEnCarrito = cart.find(item => item.id === producto.id);
+      const cantidadEnCarrito = itemEnCarrito ? itemEnCarrito.qty : 0;
+
+      if (cantidadEnCarrito >= stockDisponible) {
+        toast.error(`No hay suficiente stock. Disponible: ${stockDisponible}`);
+        return;
+      }
     }
 
     // Verificar si puede usar toppings (negocio de comida con premium)
@@ -189,23 +192,23 @@ export default function Caja() {
 
   const agregarAlCarrito = (producto, toppings = [], precioTotal) => {
     setCart((prev) => {
-      const idx = prev.findIndex((i) => i.id === producto.id && 
+      const idx = prev.findIndex((i) => i.id === producto.id &&
         JSON.stringify(i.toppings || []) === JSON.stringify(toppings));
-      
+
       if (idx >= 0) {
         // Si existe el mismo producto con los mismos toppings, aumentar cantidad
         const next = [...prev];
-        next[idx] = { 
-          ...next[idx], 
-          qty: next[idx].qty + 1 
+        next[idx] = {
+          ...next[idx],
+          qty: next[idx].qty + 1
         };
         return next;
       }
-      
+
       // Agregar nuevo item con toppings
-      return [...prev, { 
-        id: producto.id, 
-        nombre: producto.nombre, 
+      return [...prev, {
+        id: producto.id,
+        nombre: producto.nombre,
         precio_venta: producto.precio_venta,
         precio_total: precioTotal,
         qty: 1,
@@ -224,15 +227,16 @@ export default function Caja() {
   const inc = (id) => {
     const producto = productos.find(p => p.id === id);
     const itemEnCarrito = cart.find(item => item.id === id);
-    
-    if (itemEnCarrito && itemEnCarrito.qty >= producto.stock) {
+
+    // Verificar stock solo si no es servicio
+    if (producto.tipo !== 'servicio' && itemEnCarrito && itemEnCarrito.qty >= producto.stock) {
       toast.error(`No hay suficiente stock. Disponible: ${producto.stock}`);
       return;
     }
-    
+
     setCart((prev) => prev.map((i) => (i.id === id ? { ...i, qty: i.qty + 1 } : i)));
   };
-  
+
   const dec = (id) =>
     setCart((prev) => prev.map((i) => (i.id === id ? { ...i, qty: Math.max(1, i.qty - 1) } : i)).filter((i) => i.qty > 0));
   const removeItem = (id) => setCart((prev) => prev.filter((i) => i.id !== id));
@@ -253,7 +257,7 @@ export default function Caja() {
   const handleSeleccionarMetodoPago = (metodo) => {
     setMethod(metodo);
     setMostrandoMetodosPago(false);
-    
+
     if (metodo === 'Efectivo') {
       // Mostrar modal de pago en efectivo
       montoEntregadoInput.reset();
@@ -307,16 +311,16 @@ export default function Caja() {
   const handleConfirmarPagoMixto = () => {
     const monto1 = montoMetodo1Input.numericValue;
     const monto2 = total - monto1;
-    
+
     if (monto1 <= 0 || monto1 >= total) {
       toast.error('El monto debe ser mayor a 0 y menor al total.');
       return;
     }
-    
+
     // Guardar los datos del pago mixto
     montoEntregadoInput.setValue(total);
     setMostrandoPagoMixto(false);
-    
+
     // Confirmar venta con información de pago mixto
     confirmSale('Mixto', {
       metodo1,
@@ -336,13 +340,13 @@ export default function Caja() {
   const PagoMixto = () => {
     const monto1 = montoMetodo1Input.numericValue;
     const monto2Calculado = total - monto1;
-    
+
     // Sincronizar monto2 cuando cambia monto1
     const metodosDisponibles = ['Efectivo', 'Transferencia', 'Tarjeta'];
-    
+
     // Obtener icono según método
     const getIconoMetodo = (metodo) => {
-      switch(metodo) {
+      switch (metodo) {
         case 'Efectivo': return <Banknote size={20} />;
         case 'Transferencia': return <Smartphone size={20} />;
         case 'Tarjeta': return <CreditCard size={20} />;
@@ -353,7 +357,7 @@ export default function Caja() {
     const handleMonto1Change = (e) => {
       montoMetodo1Input.handleChange(e);
       const numValue = montoMetodo1Input.numericValue;
-      
+
       if (numValue <= total) {
         const resto = total - numValue;
         montoMetodo2Input.setValue(resto);
@@ -363,7 +367,7 @@ export default function Caja() {
     const handleMonto2Change = (e) => {
       montoMetodo2Input.handleChange(e);
       const numValue = montoMetodo2Input.numericValue;
-      
+
       if (numValue <= total) {
         const resto = total - numValue;
         montoMetodo1Input.setValue(resto);
@@ -378,7 +382,7 @@ export default function Caja() {
             <h3>Pago Mixto</h3>
             <p>Total a pagar: {formatCOP(total)}</p>
           </div>
-          
+
           <div className="pago-efectivo-content">
             {/* Selección de métodos */}
             <div className="pago-mixto-metodos">
@@ -387,7 +391,7 @@ export default function Caja() {
                   {getIconoMetodo(metodo1)}
                   <span style={{ marginLeft: '0.5rem' }}>Primer método</span>
                 </label>
-                <select 
+                <select
                   className="pago-mixto-select"
                   value={metodo1}
                   onChange={(e) => setMetodo1(e.target.value)}
@@ -397,13 +401,13 @@ export default function Caja() {
                   ))}
                 </select>
               </div>
-              
+
               <div className="pago-mixto-metodo-group">
                 <label className="pago-efectivo-label">
                   {getIconoMetodo(metodo2)}
                   <span style={{ marginLeft: '0.5rem' }}>Segundo método</span>
                 </label>
-                <select 
+                <select
                   className="pago-mixto-select"
                   value={metodo2}
                   onChange={(e) => setMetodo2(e.target.value)}
@@ -442,7 +446,7 @@ export default function Caja() {
                   placeholder="0"
                   autoFocus
                   inputMode="numeric"
-                  style={{ 
+                  style={{
                     textAlign: 'center',
                     fontSize: '1.5rem',
                     fontWeight: '700',
@@ -470,7 +474,7 @@ export default function Caja() {
                   className="pago-efectivo-input"
                   placeholder="0"
                   inputMode="numeric"
-                  style={{ 
+                  style={{
                     textAlign: 'center',
                     fontSize: '1.5rem',
                     fontWeight: '700',
@@ -482,7 +486,7 @@ export default function Caja() {
 
             {/* Resumen del pago */}
             {monto1 > 0 && monto1 < total && (
-              <div style={{ 
+              <div style={{
                 background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
                 border: '2px solid #0ea5e9',
                 borderRadius: '12px',
@@ -501,7 +505,7 @@ export default function Caja() {
                   <CheckCircle size={20} />
                   <span>Desglose del Pago</span>
                 </div>
-                
+
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -517,7 +521,7 @@ export default function Caja() {
                   </span>
                   <span style={{ fontWeight: '700', color: '#0284c7', fontSize: '1.1rem' }}>{formatCOP(monto1)}</span>
                 </div>
-                
+
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -533,7 +537,7 @@ export default function Caja() {
                   </span>
                   <span style={{ fontWeight: '700', color: '#0284c7', fontSize: '1.1rem' }}>{formatCOP(monto2Calculado)}</span>
                 </div>
-                
+
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -587,16 +591,16 @@ export default function Caja() {
               </div>
             )}
           </div>
-          
+
           <div className="pago-efectivo-actions">
-            <button 
+            <button
               className="pago-efectivo-btn pago-efectivo-cancelar"
               onClick={handleCancelarPagoMixto}
             >
               <X size={18} />
               Cancelar
             </button>
-            <button 
+            <button
               className="pago-efectivo-btn pago-efectivo-confirmar"
               onClick={handleConfirmarPagoMixto}
               disabled={monto1 <= 0 || monto1 >= total}
@@ -623,7 +627,7 @@ export default function Caja() {
             <h3>Pago en Efectivo</h3>
             <p>Total a pagar: {formatCOP(total)}</p>
           </div>
-          
+
           <div className="pago-efectivo-content">
             <div className="pago-efectivo-input-section">
               <label className="pago-efectivo-label">Monto entregado por el cliente</label>
@@ -642,7 +646,7 @@ export default function Caja() {
             <div className="pago-efectivo-valores-comunes">
               <div className="pago-efectivo-subtitle-container">
                 <p className="pago-efectivo-subtitle">Valores comunes:</p>
-                <button 
+                <button
                   className="pago-efectivo-limpiar-btn"
                   onClick={montoEntregadoInput.reset}
                   title="Limpiar monto"
@@ -682,15 +686,15 @@ export default function Caja() {
               </div>
             )}
           </div>
-          
+
           <div className="pago-efectivo-actions">
-            <button 
+            <button
               className="pago-efectivo-btn pago-efectivo-cancelar"
               onClick={handleCancelarPagoEfectivo}
             >
               Cancelar
             </button>
-            <button 
+            <button
               className="pago-efectivo-btn pago-efectivo-confirmar"
               onClick={handleConfirmarPagoEfectivo}
               disabled={monto < total}
@@ -711,9 +715,9 @@ export default function Caja() {
           <h3>Selecciona el método de pago</h3>
           <p>Total a pagar: {formatCOP(total)}</p>
         </div>
-        
+
         <div className="metodos-pago-grid">
-          <button 
+          <button
             className="metodo-pago-btn"
             onClick={() => handleSeleccionarMetodoPago('Efectivo')}
           >
@@ -721,8 +725,8 @@ export default function Caja() {
             <span className="metodo-pago-label">Efectivo</span>
             <span className="metodo-pago-desc">Pago en efectivo</span>
           </button>
-          
-          <button 
+
+          <button
             className="metodo-pago-btn"
             onClick={() => handleSeleccionarMetodoPago('Transferencia')}
           >
@@ -730,8 +734,8 @@ export default function Caja() {
             <span className="metodo-pago-label">Transferencia</span>
             <span className="metodo-pago-desc">Total: {formatCOP(total)}</span>
           </button>
-          
-          <button 
+
+          <button
             className="metodo-pago-btn"
             onClick={() => handleSeleccionarMetodoPago('Tarjeta')}
           >
@@ -739,8 +743,8 @@ export default function Caja() {
             <span className="metodo-pago-label">Tarjeta Débito/Crédito</span>
             <span className="metodo-pago-desc">Total: {formatCOP(total)}</span>
           </button>
-          
-          <button 
+
+          <button
             className="metodo-pago-btn"
             onClick={() => handleSeleccionarMetodoPago('Mixto')}
           >
@@ -749,8 +753,8 @@ export default function Caja() {
             <span className="metodo-pago-desc">Total: {formatCOP(total)}</span>
           </button>
         </div>
-        
-        <button 
+
+        <button
           className="metodos-pago-cancelar"
           onClick={() => setMostrandoMetodosPago(false)}
         >
@@ -766,12 +770,12 @@ export default function Caja() {
       toast.error('Error: Usuario no autenticado');
       return;
     }
-    
+
     if (cart.length === 0) {
       toast.error('El carrito está vacío');
       return;
     }
-    
+
     // Verificar límite de ventas ANTES de procesar
     const puedeCrearVenta = await canPerformAction('createSale');
     if (!puedeCrearVenta.allowed) {
@@ -785,79 +789,73 @@ export default function Caja() {
     setMostrandoConfirmacion(true);
     setConfirmacionCargando(true);
     setConfirmacionExito(false);
-    
-    setProcesandoVenta(true);
-    // Validar que no se exceda el stock
-    for (const item of cart) {
-      const producto = productos.find(p => p.id === item.id);
-      if (!producto) {
-        console.error('Producto no encontrado:', item.id);
-        toast.error(`Error: Producto ${item.nombre} no encontrado`);
-        setProcesandoVenta(false);
-        setMostrandoConfirmacion(false);
-        setConfirmacionCargando(false);
-        return;
-      }
-      
-      if (item.qty > producto.stock) {
-        toast.error(`No hay suficiente stock para ${item.nombre}. Disponible: ${producto.stock}`);
-        setProcesandoVenta(false);
-        setMostrandoConfirmacion(false);
-        setConfirmacionCargando(false);
-        return;
-      }
-      
-      if (producto.stock < item.qty) {
-        toast.error(`No hay suficiente stock para ${item.nombre}. Disponible: ${producto.stock}`);
-        setProcesandoVenta(false);
-        setMostrandoConfirmacion(false);
-        setConfirmacionCargando(false);
-        return;
-      }
-    }
-    
-    // Determinar el monto pagado por el cliente según el método de pago
-    let montoPagoCliente = total;
-    let detallesPagoMixto = null;
-    
-    if (metodoFinal === "Efectivo") {
-      const montoNumero = montoEntregadoInput.numericValue;
-      if (isNaN(montoNumero) || montoNumero < total) {
-        toast.error('El monto debe ser mayor o igual al total de la venta.');
-        setProcesandoVenta(false);
-        setMostrandoConfirmacion(false);
-        setConfirmacionCargando(false);
-        return;
-      }
-      montoPagoCliente = montoNumero;
-    } else if (metodoFinal === "Mixto" && datosPagoMixto) {
-      // Para pago mixto, guardar los detalles
-      montoPagoCliente = total;
-      detallesPagoMixto = {
-        metodo1: datosPagoMixto.metodo1,
-        metodo2: datosPagoMixto.metodo2,
-        monto1: datosPagoMixto.monto1,
-        monto2: datosPagoMixto.monto2
-      };
-    } else {
-      // Para otros métodos de pago, el monto es exactamente el total
-      montoPagoCliente = total;
-    }
-    
+
+    setConfirmacionExito(false);
+
     try {
+      setProcesandoVenta(true);
+      // Validar que no se exceda el stock (solo para productos físicos)
+      for (const item of cart) {
+        const producto = productos.find(p => p.id === item.id);
+        if (!producto) {
+          console.error('Producto no encontrado:', item.id);
+          toast.error(`Error: Producto ${item.nombre} no encontrado`);
+          setProcesandoVenta(false);
+          setMostrandoConfirmacion(false);
+          setConfirmacionCargando(false);
+          return;
+        }
+
+        if (producto.tipo !== 'servicio' && item.qty > producto.stock) {
+          toast.error(`Stock insuficiente para ${producto.nombre}. Disponible: ${producto.stock}`);
+          setProcesandoVenta(false);
+          setMostrandoConfirmacion(false);
+          setConfirmacionCargando(false);
+          return;
+        }
+      }
+
+      // Determinar el monto pagado por el cliente según el método de pago
+      let montoPagoCliente = total;
+      let detallesPagoMixto = null;
+
+      if (metodoFinal === "Efectivo") {
+        const montoNumero = montoEntregadoInput.numericValue;
+        if (isNaN(montoNumero) || montoNumero < total) {
+          toast.error('El monto debe ser mayor o igual al total de la venta.');
+          setProcesandoVenta(false);
+          setMostrandoConfirmacion(false);
+          setConfirmacionCargando(false);
+          return;
+        }
+        montoPagoCliente = montoNumero;
+      } else if (metodoFinal === "Mixto" && datosPagoMixto) {
+        // Para pago mixto, guardar los detalles
+        montoPagoCliente = total;
+        detallesPagoMixto = {
+          metodo1: datosPagoMixto.metodo1,
+          metodo2: datosPagoMixto.metodo2,
+          monto1: datosPagoMixto.monto1,
+          monto2: datosPagoMixto.monto2
+        };
+      } else {
+        // Para otros métodos de pago, el monto es exactamente el total
+        montoPagoCliente = total;
+      }
+
       // Guardar la venta en la base de datos con organization_id
       const ventaData = {
         user_id: user.id,
         organization_id: userProfile.organization_id,
         total: total,
-        metodo_pago: metodoFinal === 'Mixto' && detallesPagoMixto 
+        metodo_pago: metodoFinal === 'Mixto' && detallesPagoMixto
           ? `Mixto (${detallesPagoMixto.metodo1}: ${formatCOP(detallesPagoMixto.monto1)} + ${detallesPagoMixto.metodo2}: ${formatCOP(detallesPagoMixto.monto2)})`
           : metodoFinal,
         items: cart,
         fecha: new Date().toISOString(),
         pago_cliente: montoPagoCliente
       };
-      
+
       // Intentar agregar detalles del pago mixto en columna separada si existe
       // Si la columna no existe, el error será silencioso y solo usará el string en metodo_pago
       if (detallesPagoMixto) {
@@ -872,14 +870,14 @@ export default function Caja() {
         .from('ventas')
         .insert([ventaData])
         .select();
-      
+
       if (ventaError) {
         console.error('Error guardando venta:', ventaError);
         toast.error(`Error al guardar la venta: ${ventaError.message}`);
         setProcesandoVenta(false);
         return;
       }
-      
+
       if (!ventaResult || ventaResult.length === 0) {
         console.error('No se retornó data de la venta');
         toast.error('Error: No se pudo obtener el ID de la venta');
@@ -894,7 +892,7 @@ export default function Caja() {
           .from('productos')
           .update({ stock: nuevoStock })
           .eq('id', item.id);
-        
+
         if (stockError) {
           console.error('Error actualizando stock:', stockError);
           toast.error(`Error al actualizar el stock de ${item.nombre}. La venta se guardó pero el stock no se actualizó.`);
@@ -909,20 +907,21 @@ export default function Caja() {
           if (item.toppings && item.toppings.length > 0) {
             for (const topping of item.toppings) {
               const cantidadVendida = (topping.cantidad || 1) * item.qty;
-              // Obtener topping actual para conocer stock
+              // Obtener topping actual para conocer stock y tipo
               const { data: toppingActual } = await supabase
                 .from('toppings')
-                .select('stock')
+                .select('stock, tipo')
                 .eq('id', topping.id)
                 .single();
-              
-              if (toppingActual) {
+
+              // Solo actualizar stock si el topping no es de tipo 'servicio' y tiene stock (no es null)
+              if (toppingActual && toppingActual.tipo !== 'servicio' && toppingActual.stock !== null) {
                 const nuevoStockTopping = toppingActual.stock - cantidadVendida;
                 const { error: toppingStockError } = await supabase
                   .from('toppings')
                   .update({ stock: Math.max(0, nuevoStockTopping) })
                   .eq('id', topping.id);
-                
+
                 if (toppingStockError) {
                   console.error('Error actualizando stock de topping:', toppingStockError);
                   // No bloqueamos la venta por esto
@@ -932,7 +931,7 @@ export default function Caja() {
           }
         }
       }
-      
+
       // Crear objeto de venta para el recibo
       const ventaRecibo = {
         id: ventaResult[0].id,
@@ -952,13 +951,13 @@ export default function Caja() {
       setDatosVentaConfirmada(ventaRecibo);
       setConfirmacionCargando(false);
       setConfirmacionExito(true);
-      
+
       // Simular tiempo de procesamiento para la animación
       setTimeout(() => {
-        
+
         // Toast de éxito
         toast.success(`¡Venta completada! Total: ${formatCOP(total)}`);
-        
+
         // Después de mostrar éxito, limpiar carrito
         setTimeout(() => {
           setVentaCompletada(ventaRecibo);
@@ -966,7 +965,7 @@ export default function Caja() {
           setShowCartMobile(false);
         }, 2000);
       }, 1500);
-      
+
       // Invalidar cache de react-query para actualizar automáticamente
       queryClient.invalidateQueries(['productos', userProfile.organization_id]);
       queryClient.invalidateQueries(['productos-paginados', userProfile.organization_id]);
@@ -991,10 +990,10 @@ export default function Caja() {
             {[...Array(6)].map((_, i) => (
               <div key={i} className="caja-skeleton-product"></div>
             ))}
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
-);
+    );
   }
 
   return (
@@ -1015,17 +1014,17 @@ export default function Caja() {
         <div className="caja-products-list caja-product-grid">
           {/* Renderizado procedural: Solo renderizar productos visibles */}
           {filteredProducts.slice(0, productosVisibles).map((producto, index) => (
-            <motion.div 
-              key={producto.id} 
+            <motion.div
+              key={producto.id}
               className="caja-product-card"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ 
-                duration: 0.3, 
+              transition={{
+                duration: 0.3,
                 delay: Math.min(index * 0.05, 1), // Límite de delay
                 ease: "easeOut"
               }}
-              whileHover={{ 
+              whileHover={{
                 scale: 1.02,
                 transition: { duration: 0.2 }
               }}
@@ -1033,9 +1032,9 @@ export default function Caja() {
               onClick={() => addToCart(producto)}
             >
               <div className="caja-product-content">
-                <OptimizedProductImage 
-                  imagePath={producto.imagen} 
-                  alt={producto.nombre} 
+                <OptimizedProductImage
+                  imagePath={producto.imagen}
+                  alt={producto.nombre}
                   className="caja-product-image"
                   loading="lazy"
                 />
@@ -1068,7 +1067,7 @@ export default function Caja() {
             <ShoppingCart className="caja-cart-icon" /> Carrito de Venta
           </h2>
           {cart.length > 0 && (
-            <button 
+            <button
               className="caja-clear-btn"
               onClick={() => setCart([])}
             >
@@ -1128,14 +1127,14 @@ export default function Caja() {
                     </p>
                   </div>
                   <div className="caja-cart-item-controls">
-                    <button 
+                    <button
                       className="caja-qty-btn"
                       onClick={() => dec(item.id)}
                     >
                       <Minus size={16} />
                     </button>
                     <span className="caja-qty-display">{item.qty}</span>
-                    <button 
+                    <button
                       className="caja-qty-btn"
                       onClick={() => inc(item.id)}
                     >
@@ -1145,7 +1144,7 @@ export default function Caja() {
                   <div className="caja-cart-item-total">
                     {formatCOP(item.qty * (item.precio_total || item.precio_venta))}
                   </div>
-                  <button 
+                  <button
                     className="caja-remove-btn"
                     onClick={() => removeItem(item.id)}
                   >
@@ -1174,21 +1173,21 @@ export default function Caja() {
               <span className="caja-total-amount">{formatCOP(total)}</span>
             </div>
           </div>
-          
-          
-            <motion.button 
-              className="caja-confirm-btn"
-              onClick={handleContinuar} 
-              disabled={cart.length === 0 || procesandoVenta}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <CheckCircle className="caja-confirm-icon" /> 
-              {procesandoVenta ? 'Procesando...' : 'Continuar'}
-            </motion.button>
+
+
+          <motion.button
+            className="caja-confirm-btn"
+            onClick={handleContinuar}
+            disabled={cart.length === 0 || procesandoVenta}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <CheckCircle className="caja-confirm-icon" />
+            {procesandoVenta ? 'Procesando...' : 'Continuar'}
+          </motion.button>
         </div>
       </div>
 
@@ -1198,16 +1197,16 @@ export default function Caja() {
           <p className="caja-mobile-total-label">Total</p>
           <p className="caja-mobile-total-amount">{formatCOP(total)}</p>
         </div>
-        <button 
+        <button
           className="caja-mobile-cart-btn"
           onClick={() => setShowCartMobile(true)}
         >
-          <ShoppingCart className="caja-mobile-cart-icon" /> 
+          <ShoppingCart className="caja-mobile-cart-icon" />
           Ver carrito ({cart.reduce((n, i) => n + i.qty, 0)})
         </button>
-        <button 
+        <button
           className="caja-mobile-pay-btn"
-          onClick={handleContinuar} 
+          onClick={handleContinuar}
           disabled={cart.length === 0}
         >
           Cobrar
@@ -1221,7 +1220,7 @@ export default function Caja() {
             <h3 className="caja-mobile-cart-title">
               <ShoppingCart className="caja-mobile-cart-icon" /> Carrito
             </h3>
-            <button 
+            <button
               className="caja-mobile-close-btn"
               onClick={() => setShowCartMobile(false)}
             >
@@ -1246,14 +1245,14 @@ export default function Caja() {
                       <p className="caja-mobile-cart-item-price">{formatCOP(item.precio_total || item.precio_venta)} c/u</p>
                     </div>
                     <div className="caja-mobile-cart-item-controls">
-                      <button 
+                      <button
                         className="caja-mobile-qty-btn"
                         onClick={() => dec(item.id)}
                       >
                         <Minus size={14} />
                       </button>
                       <span className="caja-mobile-qty-display">{item.qty}</span>
-                      <button 
+                      <button
                         className="caja-mobile-qty-btn"
                         onClick={() => inc(item.id)}
                       >
@@ -1263,7 +1262,7 @@ export default function Caja() {
                     <div className="caja-mobile-cart-item-total">
                       {formatCOP(item.qty * (item.precio_total || item.precio_venta))}
                     </div>
-                    <button 
+                    <button
                       className="caja-mobile-remove-btn"
                       onClick={() => removeItem(item.id)}
                     >
@@ -1280,14 +1279,14 @@ export default function Caja() {
               <span className="caja-mobile-total-label">Total</span>
               <span className="caja-mobile-total-amount">{formatCOP(total)}</span>
             </div>
-            
-            
-            <button 
+
+
+            <button
               className="caja-mobile-confirm-btn"
-              onClick={handleContinuar} 
+              onClick={handleContinuar}
               disabled={cart.length === 0 || procesandoVenta}
             >
-              <CheckCircle className="caja-mobile-confirm-icon" /> 
+              <CheckCircle className="caja-mobile-confirm-icon" />
               {procesandoVenta ? 'Procesando...' : 'Continuar'}
             </button>
           </div>
@@ -1306,8 +1305,8 @@ export default function Caja() {
       {/* Recibo de venta con lazy loading */}
       {ventaCompletada && (
         <Suspense fallback={<div className="loading-fallback">Cargando recibo...</div>}>
-          <ReciboVenta 
-            venta={ventaCompletada} 
+          <ReciboVenta
+            venta={ventaCompletada}
             onNuevaVenta={handleNuevaVenta}
           />
         </Suspense>
@@ -1324,8 +1323,7 @@ export default function Caja() {
         />
       </Suspense>
 
-      {/* Selector de Toppings */}
-      {productoParaToppings && (
+      {mostrandoToppingsSelector && productoParaToppings && (
         <ToppingsSelector
           open={mostrandoToppingsSelector}
           onClose={() => {
@@ -1336,6 +1334,7 @@ export default function Caja() {
           precioBase={productoParaToppings.precio_venta}
           onConfirm={handleToppingsConfirm}
           organizationId={userProfile?.organization_id}
+          tipo={productoParaToppings.tipo === 'servicio' ? 'servicio' : 'comida'}
         />
       )}
     </div>

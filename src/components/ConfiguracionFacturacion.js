@@ -3,7 +3,7 @@ import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import UpgradePrompt from './UpgradePrompt';
-import { Save, Building2, MapPin, Phone, Hash, Mail, AlertCircle, FileText, CreditCard, ShieldAlert, Store } from 'lucide-react';
+import { Save, Building2, MapPin, Phone, Hash, Mail, AlertCircle, FileText, CreditCard, ShieldAlert, Store, UtensilsCrossed, Scissors, Shirt, ShoppingBag, Package, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import './ConfiguracionFacturacion.css';
 
@@ -24,13 +24,13 @@ export default function ConfiguracionFacturacion() {
   });
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
-  
+
   // Verificar si tiene acceso a configuración de facturas
   const tieneAccesoConfiguracion = hasFeature('invoiceCustomization');
 
   const cargarDatosEmpresa = useCallback(async () => {
     if (!organization) return;
-    
+
     setCargando(true);
     try {
       setDatosEmpresa({
@@ -114,12 +114,12 @@ export default function ConfiguracionFacturacion() {
       </div>
     );
   }
-  
+
   // Si no tiene acceso, mostrar prompt de upgrade
   if (!subscriptionLoading && !tieneAccesoConfiguracion) {
     return (
       <div className="config-facturacion">
-        <UpgradePrompt 
+        <UpgradePrompt
           feature="Configuración de Facturación"
           reason="La personalización de facturas está disponible en el plan Profesional. Actualiza para configurar tu información tributaria, logotipo y mensajes personalizados."
           currentPlan={planSlug}
@@ -143,9 +143,9 @@ export default function ConfiguracionFacturacion() {
           </div>
         </div>
         {hasRoleOwner && (
-          <button 
-            className="btn-guardar-principal" 
-            onClick={guardarDatos} 
+          <button
+            className="btn-guardar-principal"
+            onClick={guardarDatos}
             disabled={guardando}
           >
             <Save size={20} />
@@ -287,28 +287,36 @@ export default function ConfiguracionFacturacion() {
               </label>
               <div className="business-type-selector">
                 {[
-                  { value: 'food', icon: '🍔', label: 'Comida', desc: 'Restaurantes, cafeterías, comida rápida' },
-                  { value: 'clothing', icon: '👔', label: 'Ropa', desc: 'Tiendas de ropa y accesorios' },
-                  { value: 'retail', icon: '🏪', label: 'Retail', desc: 'Tiendas generales, supermercados' },
-                  { value: 'other', icon: '📦', label: 'Otro', desc: 'Otros tipos de negocio' }
-                ].map((type) => (
-                  <button
-                    key={type.value}
-                    type="button"
-                    className={`business-type-option ${datosEmpresa.business_type === type.value ? 'selected' : ''}`}
-                    onClick={() => hasRoleOwner && handleInputChange({ target: { name: 'business_type', value: type.value } })}
-                    disabled={!hasRoleOwner}
-                  >
-                    <span className="business-type-icon">{type.icon}</span>
-                    <div className="business-type-info">
-                      <span className="business-type-label">{type.label}</span>
-                      <span className="business-type-desc">{type.desc}</span>
-                    </div>
-                    {datosEmpresa.business_type === type.value && (
-                      <div className="business-type-check">✓</div>
-                    )}
-                  </button>
-                ))}
+                  { value: 'food', Icon: UtensilsCrossed, label: 'Comida', desc: 'Restaurantes, cafeterías, comida rápida' },
+                  { value: 'service', Icon: Scissors, label: 'Servicios', desc: 'Barbería, Spa, Consultoría' },
+                  { value: 'clothing', Icon: Shirt, label: 'Ropa', desc: 'Tiendas de ropa y accesorios' },
+                  { value: 'retail', Icon: ShoppingBag, label: 'Retail', desc: 'Tiendas generales, supermercados' },
+                  { value: 'other', Icon: Package, label: 'Otro', desc: 'Otros tipos de negocio' }
+                ].map((type) => {
+                  const IconComponent = type.Icon;
+                  return (
+                    <button
+                      key={type.value}
+                      type="button"
+                      className={`business-type-option ${datosEmpresa.business_type === type.value ? 'selected' : ''}`}
+                      onClick={() => hasRoleOwner && handleInputChange({ target: { name: 'business_type', value: type.value } })}
+                      disabled={!hasRoleOwner}
+                    >
+                      <span className="business-type-icon">
+                        <IconComponent size={24} />
+                      </span>
+                      <div className="business-type-info">
+                        <span className="business-type-label">{type.label}</span>
+                        <span className="business-type-desc">{type.desc}</span>
+                      </div>
+                      {datosEmpresa.business_type === type.value && (
+                        <div className="business-type-check">
+                          <Check size={20} />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
               <input
                 type="hidden"
@@ -385,9 +393,9 @@ export default function ConfiguracionFacturacion() {
 
       {hasRoleOwner && (
         <div className="config-footer">
-          <button 
-            className="btn-guardar" 
-            onClick={guardarDatos} 
+          <button
+            className="btn-guardar"
+            onClick={guardarDatos}
             disabled={guardando}
           >
             <Save size={20} />

@@ -83,7 +83,7 @@ export const useAgregarProducto = () => {
 
       if (error) {
         console.error('Error adding producto:', error);
-        throw new Error('Error al agregar producto');
+        throw new Error(error.message || 'Error al agregar producto');
       }
 
       return data[0];

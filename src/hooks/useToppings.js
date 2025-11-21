@@ -11,10 +11,10 @@ export const useToppings = (organizationId) => {
     queryKey: ['toppings', organizationId],
     queryFn: async () => {
       if (!organizationId) return [];
-      
+
       const { data, error } = await supabase
         .from('toppings')
-        .select('id, nombre, precio, stock, imagen_url, activo, created_at, updated_at, organization_id')
+        .select('id, nombre, precio, stock, imagen_url, activo, created_at, updated_at, organization_id, tipo')
         .eq('organization_id', organizationId)
         .eq('activo', true)
         .order('nombre', { ascending: true });
@@ -38,16 +38,17 @@ export const useCrearTopping = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ organizationId, nombre, precio, stock, imagen_url }) => {
+    mutationFn: async ({ organizationId, nombre, precio, stock, imagen_url, tipo }) => {
       const { data, error } = await supabase
         .from('toppings')
         .insert([{
           organization_id: organizationId,
           nombre,
           precio: parseFloat(precio) || 0,
-          stock: parseInt(stock) || 0,
+          stock: stock !== null && stock !== '' ? parseInt(stock) : null,
           activo: true,
-          imagen_url: imagen_url || null
+          imagen_url: imagen_url || null,
+          tipo: tipo || 'comida'
         }])
         .select();
 
@@ -76,13 +77,14 @@ export const useActualizarTopping = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, organizationId, nombre, precio, stock, activo, imagen_url }) => {
+    mutationFn: async ({ id, organizationId, nombre, precio, stock, activo, imagen_url, tipo }) => {
       const updateData = {};
       if (nombre !== undefined) updateData.nombre = nombre;
       if (precio !== undefined) updateData.precio = parseFloat(precio) || 0;
-      if (stock !== undefined) updateData.stock = parseInt(stock) || 0;
+      if (stock !== undefined) updateData.stock = stock !== null && stock !== '' ? parseInt(stock) : null;
       if (activo !== undefined) updateData.activo = activo;
       if (imagen_url !== undefined) updateData.imagen_url = imagen_url;
+      if (tipo !== undefined) updateData.tipo = tipo;
 
       const { data, error } = await supabase
         .from('toppings')

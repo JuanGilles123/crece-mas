@@ -37,7 +37,7 @@ const getNumericValue = (value) => {
 };
 
 // Modal para crear/editar topping
-const ToppingModal = ({ open, onClose, topping, onSave, organizationId }) => {
+const ToppingModal = ({ open, onClose, topping, onSave, organizationId, isServiceBusiness }) => {
   const { hasFeature } = useSubscription();
   const [nombre, setNombre] = useState('');
   const [precio, setPrecio] = useState('');
@@ -55,8 +55,8 @@ const ToppingModal = ({ open, onClose, topping, onSave, organizationId }) => {
       setNombre(topping.nombre || '');
       setPrecio(topping.precio?.toString() || '');
       setPrecioDisplay(formatNumber(topping.precio?.toString() || ''));
-      setStock(topping.stock?.toString() || '');
-      setStockDisplay(formatNumber(topping.stock?.toString() || ''));
+      setStock(topping.stock !== null ? topping.stock.toString() : '');
+      setStockDisplay(topping.stock !== null ? formatNumber(topping.stock.toString()) : '');
       setImagenPreview(topping.imagen_url || null);
       setImagen(null);
     } else {
@@ -102,16 +102,16 @@ const ToppingModal = ({ open, onClose, topping, onSave, organizationId }) => {
       toast.error('El nombre es requerido');
       return;
     }
-    
+
     const precioNum = getNumericValue(precio);
-    const stockNum = getNumericValue(stock);
-    
+    const stockNum = stock ? getNumericValue(stock) : null;
+
     if (precioNum < 0) {
       toast.error('El precio no puede ser negativo');
       return;
     }
-    if (stockNum < 0) {
-      toast.error('El stock no puede ser negativo');
+    if (!isServiceBusiness && (stockNum === null || stockNum < 0)) {
+      toast.error('El stock es requerido y no puede ser negativo');
       return;
     }
 
@@ -124,32 +124,32 @@ const ToppingModal = ({ open, onClose, topping, onSave, organizationId }) => {
         // Aplicar la misma compresión que se usa en productos
         const imagenComprimida = await compressProductImage(imagen);
         setComprimiendo(false);
-        
+
         // Limpiar el nombre del archivo (remover caracteres especiales)
         const nombreLimpio = imagenComprimida.name.replace(/[^a-zA-Z0-9.-]/g, '_');
         const nombreArchivo = `toppings/${organizationId}/${Date.now()}_${nombreLimpio}`;
-        
+
         const { error: errorUpload } = await supabase.storage
           .from('productos')
           .upload(nombreArchivo, imagenComprimida, {
             cacheControl: '3600',
             upsert: false
           });
-        
+
         if (errorUpload) {
           console.error('Error subiendo imagen de topping:', errorUpload);
           toast.error(`Error al subir la imagen: ${errorUpload.message || 'Error desconocido'}`);
           setComprimiendo(false);
           return;
         }
-        
+
         console.log('✅ Imagen de topping subida exitosamente:', nombreArchivo);
-        
+
         // Eliminar imagen anterior si existe
         if (topping?.imagen_url) {
           await supabase.storage.from('productos').remove([topping.imagen_url]);
         }
-        
+
         imagenPath = nombreArchivo;
       } catch (error) {
         console.error('Error subiendo imagen:', error);
@@ -162,8 +162,9 @@ const ToppingModal = ({ open, onClose, topping, onSave, organizationId }) => {
     onSave({
       nombre: nombre.trim(),
       precio: precioNum,
-      stock: stockNum,
-      imagen_url: imagenPath
+      stock: isServiceBusiness ? null : stockNum,
+      imagen_url: imagenPath,
+      tipo: isServiceBusiness ? 'servicio' : 'comida'
     });
   };
 
@@ -179,7 +180,7 @@ const ToppingModal = ({ open, onClose, topping, onSave, organizationId }) => {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="topping-modal-header">
-          <h2>{topping ? 'Editar Topping' : 'Nuevo Topping'}</h2>
+          <h2>{topping ? (isServiceBusiness ? 'Editar Servicio Adicional' : 'Editar Topping') : (isServiceBusiness ? 'Nuevo Servicio Adicional' : 'Nuevo Topping')}</h2>
           <button className="topping-modal-close" onClick={onClose}>
             <X size={20} />
           </button>
@@ -187,12 +188,12 @@ const ToppingModal = ({ open, onClose, topping, onSave, organizationId }) => {
 
         <form onSubmit={handleSubmit} className="topping-modal-form">
           <div className="topping-form-group">
-            <label>Nombre del Topping *</label>
+            <label>Nombre del {isServiceBusiness ? 'Adicional' : 'Topping'} *</label>
             <input
               type="text"
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
-              placeholder="Ej: Queso, Tocino, Lechuga..."
+              placeholder={isServiceBusiness ? "Ej: Barba, Cejas, Mascarilla..." : "Ej: Queso, Tocino, Lechuga..."}
               required
             />
           </div>
@@ -209,17 +210,19 @@ const ToppingModal = ({ open, onClose, topping, onSave, organizationId }) => {
             />
           </div>
 
-          <div className="topping-form-group">
-            <label>Stock Inicial *</label>
-            <input
-              type="text"
-              value={stockDisplay}
-              onChange={handleStockChange}
-              placeholder="0"
-              inputMode="numeric"
-              required
-            />
-          </div>
+          {!isServiceBusiness && (
+            <div className="topping-form-group">
+              <label>Stock Inicial *</label>
+              <input
+                type="text"
+                value={stockDisplay}
+                onChange={handleStockChange}
+                placeholder="0"
+                inputMode="numeric"
+                required
+              />
+            </div>
+          )}
 
           {puedeSubirImagenes && (
             <div className="topping-form-group">
@@ -279,6 +282,10 @@ const GestionToppings = () => {
   const { organization } = useAuth();
   const { hasFeature } = useSubscription();
   const { data: toppings = [], isLoading } = useToppings(organization?.id);
+
+  const isServiceBusiness = organization?.business_type === 'service';
+  const itemLabel = isServiceBusiness ? 'Adicional' : 'Topping';
+  const itemLabelPlural = isServiceBusiness ? 'Adicionales' : 'Toppings';
   const crearTopping = useCrearTopping();
   const actualizarTopping = useActualizarTopping();
   const eliminarTopping = useEliminarTopping();
@@ -295,7 +302,7 @@ const GestionToppings = () => {
       <div className="gestion-toppings">
         <div className="toppings-disabled">
           <Package size={48} />
-          <h3>Toppings no disponibles</h3>
+          <h3>{itemLabelPlural} no disponibles</h3>
           <p>{acceso.reason}</p>
         </div>
       </div>
@@ -351,11 +358,11 @@ const GestionToppings = () => {
       <div className="toppings-header">
         <div className="toppings-header-content">
           <Package size={24} />
-          <h2>Gestión de Toppings</h2>
+          <h2>Gestión de {itemLabelPlural}</h2>
         </div>
         <button className="topping-btn-primary" onClick={handleCrear}>
           <Plus size={18} />
-          Nuevo Topping
+          Nuevo {itemLabel}
         </button>
       </div>
 
@@ -366,11 +373,11 @@ const GestionToppings = () => {
       ) : toppings.length === 0 ? (
         <div className="toppings-empty">
           <Package size={48} />
-          <h3>No hay toppings creados</h3>
-          <p>Crea tu primer topping para empezar a usarlo en las ventas</p>
+          <h3>No hay {itemLabelPlural.toLowerCase()} creados</h3>
+          <p>Crea tu primer {itemLabel.toLowerCase()} para empezar a usarlo en las ventas</p>
           <button className="topping-btn-primary" onClick={handleCrear}>
             <Plus size={18} />
-            Crear Primer Topping
+            Crear Primer {itemLabel}
           </button>
         </div>
       ) : (
@@ -418,9 +425,13 @@ const GestionToppings = () => {
                   </div>
                   <div className="topping-info">
                     <span className="topping-label">Stock:</span>
-                    <span className={`topping-value ${topping.stock <= 5 ? 'stock-bajo' : ''}`}>
-                      {topping.stock} unidades
-                    </span>
+                    {topping.tipo === 'servicio' || topping.stock === null ? (
+                      <span className="topping-value" style={{ fontStyle: 'italic', color: 'var(--text-secondary)' }}>N/A</span>
+                    ) : (
+                      <span className={`topping-value ${topping.stock <= 5 ? 'stock-bajo' : ''}`}>
+                        {topping.stock} unidades
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -438,6 +449,7 @@ const GestionToppings = () => {
         topping={toppingEditando}
         onSave={handleGuardar}
         organizationId={organization?.id}
+        isServiceBusiness={isServiceBusiness}
       />
 
       {/* Modal de confirmación de eliminación */}
@@ -457,7 +469,7 @@ const GestionToppings = () => {
               exit={{ opacity: 0, scale: 0.9 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <h3>¿Eliminar topping?</h3>
+              <h3>¿Eliminar {itemLabel.toLowerCase()}?</h3>
               <p>Estás a punto de eliminar "{toppingEliminando.nombre}". Esta acción no se puede deshacer.</p>
               <div className="topping-modal-actions">
                 <button

@@ -16,11 +16,11 @@ export const canUseToppings = (organization, subscription, hasFeature) => {
     };
   }
 
-  // Verificar que el tipo de negocio sea "food"
-  if (organization.business_type !== 'food') {
+  // Verificar que el tipo de negocio sea "food" o "service"
+  if (organization.business_type !== 'food' && organization.business_type !== 'service') {
     return {
       canUse: false,
-      reason: 'Los toppings solo están disponibles para negocios de comida'
+      reason: 'Los toppings/adicionales solo están disponibles para negocios de comida o servicios'
     };
   }
 

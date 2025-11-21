@@ -576,6 +576,10 @@
   color: white;
 }
 
+.business-type-option.selected .business-type-icon svg {
+  color: white;
+}
+
 .business-type-info {
   display: flex;
   flex-direction: column;

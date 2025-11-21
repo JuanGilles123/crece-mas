@@ -11,7 +11,7 @@ import OptimizedProductImage from '../components/OptimizedProductImage';
 import LottieLoader from '../components/LottieLoader';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
-import { Search, List, Grid3X3, Loader, Calendar, AlertTriangle, Crown, Zap, Sparkles } from 'lucide-react';
+import { Search, List, Grid3X3, Loader, Calendar, AlertTriangle, Crown, Zap, Sparkles, Scissors } from 'lucide-react';
 import { useProductosPaginados, useEliminarProducto } from '../hooks/useProductos';
 import { useSubscription } from '../hooks/useSubscription';
 import UpgradePrompt from '../components/UpgradePrompt';
@@ -22,16 +22,16 @@ import toast from 'react-hot-toast';
 // Función para calcular estado de vencimiento
 const getEstadoVencimiento = (fechaVencimiento) => {
   if (!fechaVencimiento) return null;
-  
+
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
-  
+
   const fechaVenc = new Date(fechaVencimiento);
   fechaVenc.setHours(0, 0, 0, 0);
-  
+
   const diffTime = fechaVenc - hoy;
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
+
   if (diffDays < 0) {
     return { estado: 'vencido', dias: Math.abs(diffDays), texto: `Vencido hace ${Math.abs(diffDays)} día${Math.abs(diffDays) !== 1 ? 's' : ''}` };
   } else if (diffDays === 0) {
@@ -66,10 +66,10 @@ const deleteImageFromStorage = async (imagePath) => {
 const Inventario = () => {
   const { user, userProfile, organization } = useAuth();
   const queryClient = useQueryClient();
-  
+
   // Hook de suscripción
-  const { 
-    subscription, 
+  const {
+    subscription,
     loading: subscriptionLoading,
     planSlug,
     planName,
@@ -78,7 +78,7 @@ const Inventario = () => {
     canPerformAction,
     isFreePlan
   } = useSubscription();
-  
+
   const [modalOpen, setModalOpen] = useState(false);
   const [editarModalOpen, setEditarModalOpen] = useState(false);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
@@ -90,7 +90,7 @@ const Inventario = () => {
   const [upgradeReason, setUpgradeReason] = useState('');
   const [mostrarToppings, setMostrarToppings] = useState(false);
   const moneda = user?.user_metadata?.moneda || 'COP';
-  
+
   // Estados para estadísticas reales de la BD
   const [estadisticas, setEstadisticas] = useState({
     total: 0,
@@ -98,7 +98,7 @@ const Inventario = () => {
     proximosVencer: 0,
     cargando: true
   });
-  
+
   // Referencias para scroll infinito
   const observerRef = useRef(null);
   const loadMoreRef = useRef(null);
@@ -107,7 +107,7 @@ const Inventario = () => {
   // Invalidar cache cuando cambie la organización (optimizado)
   useEffect(() => {
     const currentOrgId = userProfile?.organization_id;
-    
+
     // Solo invalidar si la organización realmente cambió
     if (currentOrgId && currentOrgId !== prevOrgIdRef.current) {
       prevOrgIdRef.current = currentOrgId;
@@ -120,38 +120,38 @@ const Inventario = () => {
   useEffect(() => {
     const cargarEstadisticas = async () => {
       if (!userProfile?.organization_id) return;
-      
+
       setEstadisticas(prev => ({ ...prev, cargando: true }));
-      
+
       try {
         // 1. Contar TODOS los productos
         const { count: totalProductos, error: errorTotal } = await supabase
           .from('productos')
           .select('*', { count: 'exact', head: true })
           .eq('organization_id', userProfile.organization_id);
-        
+
         if (errorTotal) throw errorTotal;
-        
+
         // 2. Contar productos con stock bajo (<=10)
         const { count: totalStockBajo, error: errorStock } = await supabase
           .from('productos')
           .select('*', { count: 'exact', head: true })
           .eq('organization_id', userProfile.organization_id)
           .lte('stock', 10);
-        
+
         if (errorStock) throw errorStock;
-        
+
         // 3. Contar productos próximos a vencer (próximos 7 días)
         const proximaSemana = new Date();
         proximaSemana.setDate(proximaSemana.getDate() + 7);
-        
+
         const { count: totalProximosVencer, error: errorVencer } = await supabase
           .from('productos')
           .select('*', { count: 'exact', head: true })
           .eq('organization_id', userProfile.organization_id)
           .not('fecha_vencimiento', 'is', null)
           .lte('fecha_vencimiento', proximaSemana.toISOString().split('T')[0]);
-        
+
         if (errorVencer) throw errorVencer;
         setEstadisticas({
           total: totalProductos || 0,
@@ -169,7 +169,7 @@ const Inventario = () => {
         });
       }
     };
-    
+
     cargarEstadisticas();
   }, [userProfile?.organization_id]);
 
@@ -181,22 +181,22 @@ const Inventario = () => {
   }, [userProfile]);
 
   // React Query hooks con paginación - 20 productos por página
-  const { 
-    data, 
-    isLoading: cargando, 
+  const {
+    data,
+    isLoading: cargando,
     error,
     fetchNextPage,
     hasNextPage,
-    isFetchingNextPage 
+    isFetchingNextPage
   } = useProductosPaginados(userProfile?.organization_id, 20);
-  
+
   const eliminarProductoMutation = useEliminarProducto();
 
   // Combinar todas las páginas en un solo array
   const productos = useMemo(() => {
     return data?.pages?.flatMap(page => page.data) || [];
   }, [data?.pages]);
-  
+
   // Implementar IntersectionObserver para scroll infinito
   useEffect(() => {
     if (cargando || !hasNextPage) return;
@@ -229,64 +229,66 @@ const Inventario = () => {
   }
 
   // Filtrar productos basado en la búsqueda y filtros
-  const filteredProducts = productos.filter((producto) => {
-    // Filtro de búsqueda
-    const searchTerm = query.toLowerCase().trim();
-    let matchesSearch = true;
-    
-    if (searchTerm) {
-      const nombre = producto.nombre.toLowerCase();
-      const codigoBarra = producto.codigo_barra ? producto.codigo_barra.toLowerCase() : '';
-      const categoria = producto.categoria ? producto.categoria.toLowerCase() : '';
-      
-      // Buscar coincidencias (exacta, desde inicio, o en cualquier parte)
-      matchesSearch = 
-        nombre === searchTerm || 
-        codigoBarra === searchTerm ||
-        categoria === searchTerm ||
-        nombre.startsWith(searchTerm) ||
-        codigoBarra.startsWith(searchTerm) ||
-        categoria.startsWith(searchTerm) ||
-        nombre.includes(searchTerm) ||
-        codigoBarra.includes(searchTerm) ||
-        categoria.includes(searchTerm);
-    }
-    
-    // Filtro de estado
-    let matchesEstado = true;
-    
-    if (filtroEstado === 'stock-bajo') {
-      matchesEstado = producto.stock <= 10;
-    } else if (filtroEstado === 'proximoVencer') {
-      if (!producto.fecha_vencimiento) {
-        matchesEstado = false;
-      } else {
-        const estadoVenc = getEstadoVencimiento(producto.fecha_vencimiento);
-        matchesEstado = estadoVenc && ['critico', 'proximo', 'hoy', 'vencido'].includes(estadoVenc.estado);
+  const filteredProducts = useMemo(() => {
+    return productos.filter((producto) => {
+      // Filtro de búsqueda
+      const searchTerm = query.toLowerCase().trim();
+      let matchesSearch = true;
+
+      if (searchTerm) {
+        const nombre = producto.nombre.toLowerCase();
+        const codigoBarra = producto.codigo_barra ? producto.codigo_barra.toLowerCase() : '';
+        const categoria = producto.categoria ? producto.categoria.toLowerCase() : '';
+
+        // Buscar coincidencias (exacta, desde inicio, o en cualquier parte)
+        matchesSearch =
+          nombre === searchTerm ||
+          codigoBarra === searchTerm ||
+          categoria === searchTerm ||
+          nombre.startsWith(searchTerm) ||
+          codigoBarra.startsWith(searchTerm) ||
+          categoria.startsWith(searchTerm) ||
+          nombre.includes(searchTerm) ||
+          codigoBarra.includes(searchTerm) ||
+          categoria.includes(searchTerm);
       }
-    }
-    
-    return matchesSearch && matchesEstado;
-  });
-  
+      // Filtro de estado
+      let matchesEstado = true;
+
+      if (filtroEstado === 'stock-bajo') {
+        // Solo aplicar filtro de stock bajo a productos físicos
+        matchesEstado = producto.tipo !== 'servicio' && producto.stock <= 10;
+      } else if (filtroEstado === 'proximoVencer') {
+        if (!producto.fecha_vencimiento) {
+          matchesEstado = false;
+        } else {
+          const estadoVenc = getEstadoVencimiento(producto.fecha_vencimiento);
+          matchesEstado = estadoVenc && ['critico', 'proximo', 'hoy', 'vencido'].includes(estadoVenc.estado);
+        }
+      }
+
+      return matchesSearch && matchesEstado;
+    });
+  }, [query, productos, filtroEstado]);
+
   // Ordenar resultados: coincidencias exactas primero, luego por relevancia
   const sortedFilteredProducts = [...filteredProducts].sort((a, b) => {
     if (!query.trim()) return 0; // No ordenar si no hay búsqueda
-    
+
     const searchTerm = query.toLowerCase().trim();
     const nombreA = a.nombre.toLowerCase();
     const nombreB = b.nombre.toLowerCase();
-    
+
     // Coincidencia exacta tiene máxima prioridad
     const exactoA = nombreA === searchTerm ? 0 : 1;
     const exactoB = nombreB === searchTerm ? 0 : 1;
     if (exactoA !== exactoB) return exactoA - exactoB;
-    
+
     // Luego, los que empiezan con el término
     const inicioA = nombreA.startsWith(searchTerm) ? 0 : 1;
     const inicioB = nombreB.startsWith(searchTerm) ? 0 : 1;
     if (inicioA !== inicioB) return inicioA - inicioB;
-    
+
     // Por último, orden alfabético
     return nombreA.localeCompare(nombreB);
   });
@@ -302,29 +304,29 @@ const Inventario = () => {
   // Función para recargar estadísticas
   const cargarEstadisticasActualizadas = async () => {
     if (!userProfile?.organization_id) return;
-    
+
     try {
       const { count: totalProductos } = await supabase
         .from('productos')
         .select('*', { count: 'exact', head: true })
         .eq('organization_id', userProfile.organization_id);
-      
+
       const { count: totalStockBajo } = await supabase
         .from('productos')
         .select('*', { count: 'exact', head: true })
         .eq('organization_id', userProfile.organization_id)
         .lte('stock', 10);
-      
+
       const proximaSemana = new Date();
       proximaSemana.setDate(proximaSemana.getDate() + 7);
-      
+
       const { count: totalProximosVencer } = await supabase
         .from('productos')
         .select('*', { count: 'exact', head: true })
         .eq('organization_id', userProfile.organization_id)
         .not('fecha_vencimiento', 'is', null)
         .lte('fecha_vencimiento', proximaSemana.toISOString().split('T')[0]);
-      
+
       setEstadisticas({
         total: totalProductos || 0,
         stockBajo: totalStockBajo || 0,
@@ -354,7 +356,7 @@ const Inventario = () => {
   // Eliminar producto
   const handleEliminarProducto = async (producto) => {
     if (!user || !userProfile) return;
-    
+
     const confirmar = window.confirm(`¿Estás seguro de que quieres eliminar "${producto.nombre}"?`);
     if (!confirmar) return;
 
@@ -368,11 +370,11 @@ const Inventario = () => {
       }
 
       // Usar React Query mutation para eliminar con organization_id
-      eliminarProductoMutation.mutate({ 
-        id: producto.id, 
-        organizationId: userProfile.organization_id 
+      eliminarProductoMutation.mutate({
+        id: producto.id,
+        organizationId: userProfile.organization_id
       });
-      
+
       // Recargar estadísticas después de eliminar
       await cargarEstadisticasActualizadas();
     } catch (error) {
@@ -397,7 +399,7 @@ const Inventario = () => {
       ) : (
         <>
           {!estadisticas.cargando && (
-            <motion.div 
+            <motion.div
               className="stats-badge"
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -439,7 +441,7 @@ const Inventario = () => {
               )}
             </motion.div>
           )}
-          
+
           <div className="inventario-stats">
             <div className={`stat-card primary ${filtroEstado === 'todos' ? 'active' : ''}`} onClick={() => setFiltroEstado('todos')}>
               <span className="stat-label">Total Productos</span>
@@ -459,14 +461,14 @@ const Inventario = () => {
             <div className="inventario-search-container">
               <div className="search-input-wrapper">
                 <Search className="inventario-search-icon" size={20} />
-                <input 
-                  className="inventario-search" 
-                  placeholder="Buscar por nombre, código de barras o categoría..." 
+                <input
+                  className="inventario-search"
+                  placeholder="Buscar por nombre, código de barras o categoría..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                 />
                 {query && (
-                  <button 
+                  <button
                     className="clear-search"
                     onClick={() => setQuery('')}
                     title="Limpiar búsqueda"
@@ -477,8 +479,8 @@ const Inventario = () => {
               </div>
             </div>
             <div className="inventario-actions">
-              <button 
-                className="inventario-btn inventario-btn-primary" 
+              <button
+                className="inventario-btn inventario-btn-primary"
                 onClick={async () => {
                   // Verificar límite antes de abrir modal
                   const canCreate = await canPerformAction('createProduct');
@@ -496,8 +498,8 @@ const Inventario = () => {
               >
                 Nuevo producto
               </button>
-              <button 
-                className="inventario-btn inventario-btn-secondary" 
+              <button
+                className="inventario-btn inventario-btn-secondary"
                 onClick={() => {
                   if (!hasFeature('importCSV')) {
                     toast.error('Esta función no está disponible en tu plan actual');
@@ -516,7 +518,7 @@ const Inventario = () => {
               </button>
             </div>
           </div>
-          
+
           {filtroEstado !== 'todos' && (
             <div className="filtro-activo">
               <span>Filtrando: {filtroEstado === 'stock-bajo' ? 'Stock Bajo' : 'Próximos a Vencer'}</span>
@@ -572,41 +574,52 @@ const Inventario = () => {
                 <LottieLoader size="medium" message="Cargando productos..." />
               </div>
             ) : sortedFilteredProducts.length === 0 ? (
-              <div style={{textAlign:'center',width:'100%',padding:'2rem'}}>
+              <div style={{ textAlign: 'center', width: '100%', padding: '2rem' }}>
                 {query ? `No se encontraron productos para "${query}"` : 'No hay productos aún.'}
               </div>
             ) : sortedFilteredProducts.map((prod, index) => (
-              <motion.div 
-                className="inventario-lista-item" 
+              <motion.div
+                className="inventario-lista-item"
                 key={prod.id}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ 
-                  duration: 0.3, 
+                transition={{
+                  duration: 0.3,
                   delay: index * 0.05,
                   ease: "easeOut"
                 }}
-                whileHover={{ 
+                whileHover={{
                   scale: 1.02,
                   transition: { duration: 0.2 }
                 }}
                 layout
               >
-                <OptimizedProductImage 
-                  imagePath={prod.imagen} 
-                  alt={prod.nombre} 
+                <OptimizedProductImage
+                  imagePath={prod.imagen}
+                  alt={prod.nombre}
                   className="inventario-img-lista"
                   onError={(e) => {
                   }}
                 />
                 <div className="inventario-lista-info">
-                  <div className="inventario-nombre">{prod.nombre}</div>
-                  <div className="inventario-lista-precios">
-                    <span style={{color:'var(--accent-primary)',fontWeight:700}}>Compra: {prod.precio_compra?.toLocaleString('es-CO')}</span>
-                    <span style={{color:'var(--accent-success)',fontWeight:700}}>Venta: {prod.precio_venta?.toLocaleString('es-CO')}</span>
+                  <div className="inventario-nombre" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    {prod.tipo === 'servicio' && <Scissors size={16} color="var(--accent-primary)" />}
+                    {prod.nombre}
                   </div>
-                  <div className="inventario-stock">Stock: {prod.stock}</div>
-                  
+                  <div className="inventario-lista-precios">
+                    {prod.tipo !== 'servicio' && (
+                      <span style={{ color: 'var(--accent-primary)', fontWeight: 700 }}>Compra: {prod.precio_compra?.toLocaleString('es-CO')}</span>
+                    )}
+                    <span style={{ color: 'var(--accent-success)', fontWeight: 700 }}>Venta: {prod.precio_venta?.toLocaleString('es-CO')}</span>
+                  </div>
+                  <div className="inventario-stock">
+                    {prod.tipo === 'servicio' ? (
+                      <span style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>Servicio</span>
+                    ) : (
+                      `Stock: ${prod.stock}`
+                    )}
+                  </div>
+
                   {/* Badge de Vencimiento en Lista */}
                   {prod.fecha_vencimiento && (() => {
                     const estadoVenc = getEstadoVencimiento(prod.fecha_vencimiento);
@@ -623,13 +636,13 @@ const Inventario = () => {
                   })()}
                 </div>
                 <div className="inventario-lista-actions">
-                  <button 
+                  <button
                     className="inventario-btn inventario-btn-outline"
                     onClick={() => handleEditarProducto(prod)}
                   >
                     Editar
                   </button>
-                  <button 
+                  <button
                     className="inventario-btn inventario-btn-outline eliminar"
                     onClick={() => handleEliminarProducto(prod)}
                   >
@@ -646,41 +659,52 @@ const Inventario = () => {
                 <LottieLoader size="medium" message="Cargando productos..." />
               </div>
             ) : sortedFilteredProducts.length === 0 ? (
-              <div style={{textAlign:'center',width:'100%',padding:'2rem'}}>
+              <div style={{ textAlign: 'center', width: '100%', padding: '2rem' }}>
                 {query ? `No se encontraron productos para "${query}"` : 'No hay productos aún.'}
               </div>
             ) : sortedFilteredProducts.map((prod, index) => (
-              <motion.div 
-                className="inventario-card" 
+              <motion.div
+                className="inventario-card"
                 key={prod.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ 
-                  duration: 0.3, 
+                transition={{
+                  duration: 0.3,
                   delay: index * 0.05,
                   ease: "easeOut"
                 }}
-                whileHover={{ 
+                whileHover={{
                   scale: 1.02,
                   transition: { duration: 0.2 }
                 }}
                 layout
               >
-                <OptimizedProductImage 
-                  imagePath={prod.imagen} 
-                  alt={prod.nombre} 
+                <OptimizedProductImage
+                  imagePath={prod.imagen}
+                  alt={prod.nombre}
                   className="inventario-img"
                   onError={(e) => {
                   }}
                 />
                 <div className="inventario-info">
-                  <div className="inventario-nombre">{prod.nombre}</div>
-                  <div style={{display:'flex',gap:'1.2rem',justifyContent:'center',marginBottom:4}}>
-                    <span style={{color:'var(--accent-primary)',fontWeight:700}}>Compra: {prod.precio_compra?.toLocaleString('es-CO')}</span>
-                    <span style={{color:'var(--accent-success)',fontWeight:700}}>Venta: {prod.precio_venta?.toLocaleString('es-CO')}</span>
+                  <div className="inventario-nombre" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                    {prod.tipo === 'servicio' && <Scissors size={16} color="var(--accent-primary)" />}
+                    {prod.nombre}
                   </div>
-                  <div className="inventario-stock">Stock: {prod.stock}</div>
-                  
+                  <div style={{ display: 'flex', gap: '1.2rem', justifyContent: 'center', marginBottom: 4 }}>
+                    {prod.tipo !== 'servicio' && (
+                      <span style={{ color: 'var(--accent-primary)', fontWeight: 700 }}>Compra: {prod.precio_compra?.toLocaleString('es-CO')}</span>
+                    )}
+                    <span style={{ color: 'var(--accent-success)', fontWeight: 700 }}>Venta: {prod.precio_venta?.toLocaleString('es-CO')}</span>
+                  </div>
+                  <div className="inventario-stock">
+                    {prod.tipo === 'servicio' ? (
+                      <span style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>Servicio</span>
+                    ) : (
+                      `Stock: ${prod.stock}`
+                    )}
+                  </div>
+
                   {/* Badge de Vencimiento */}
                   {prod.fecha_vencimiento && (() => {
                     const estadoVenc = getEstadoVencimiento(prod.fecha_vencimiento);
@@ -697,13 +721,13 @@ const Inventario = () => {
                   })()}
                 </div>
                 <div className="inventario-card-actions">
-                  <button 
+                  <button
                     className="inventario-btn inventario-btn-outline"
                     onClick={() => handleEditarProducto(prod)}
                   >
                     Editar
                   </button>
-                  <button 
+                  <button
                     className="inventario-btn inventario-btn-outline eliminar"
                     onClick={() => handleEliminarProducto(prod)}
                   >
@@ -714,13 +738,13 @@ const Inventario = () => {
             ))}
           </div>
         )}
-        
+
         {/* Infinite Scroll Trigger */}
         {!query && hasNextPage && (
-          <div 
-            ref={loadMoreRef} 
-            style={{ 
-              padding: '2rem', 
+          <div
+            ref={loadMoreRef}
+            style={{
+              padding: '2rem',
               textAlign: 'center',
               display: 'flex',
               flexDirection: 'column',
@@ -734,7 +758,7 @@ const Inventario = () => {
                 <p style={{ color: 'var(--text-secondary)' }}>Cargando más productos...</p>
               </>
             ) : (
-              <button 
+              <button
                 onClick={() => fetchNextPage()}
                 className="inventario-btn inventario-btn-primary"
                 style={{ maxWidth: '300px' }}
@@ -744,34 +768,34 @@ const Inventario = () => {
             )}
           </div>
         )}
-        
+
         {!cargando && !hasNextPage && productos.length > 0 && (
           <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
             ✅ Todos los productos cargados ({productos.length})
           </div>
         )}
-        
+
         {/* Panel lateral eliminado por solicitud */}
       </div>
       <AgregarProductoModal open={modalOpen} onClose={() => setModalOpen(false)} onProductoAgregado={handleAgregarProducto} moneda={moneda} />
-      <EditarProductoModal 
-        open={editarModalOpen} 
+      <EditarProductoModal
+        open={editarModalOpen}
         onClose={() => {
           setEditarModalOpen(false);
           setProductoSeleccionado(null);
-        }} 
+        }}
         producto={productoSeleccionado}
         onProductoEditado={handleProductoEditado}
       />
-      <ImportarProductosCSV 
-        open={csvModalOpen} 
+      <ImportarProductosCSV
+        open={csvModalOpen}
         onClose={() => setCsvModalOpen(false)}
         onProductosImportados={handleProductosImportados}
       />
-      
+
       {/* Modal de Upgrade */}
       {showUpgradePrompt && (
-        <UpgradePrompt 
+        <UpgradePrompt
           feature="Límite de productos alcanzado"
           reason={upgradeReason}
           currentPlan={planSlug}
