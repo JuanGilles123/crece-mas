@@ -3,6 +3,10 @@ import { motion } from 'framer-motion';
 import './ResumenVentas.css';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
+import { useVentas } from '../hooks/useVentas';
+import { useCierresCaja } from '../hooks/useCierresCaja';
+import DetalleVenta from '../components/DetalleVenta';
+import DetalleCierreCaja from '../components/DetalleCierreCaja';
 import { 
   BarChart3, 
   Calendar, 
@@ -16,7 +20,9 @@ import {
   DollarSign,
   ShoppingCart,
   Target,
-  Award
+  Award,
+  Calculator,
+  Receipt
 } from 'lucide-react';
 import {
   Chart as ChartJS,
@@ -43,7 +49,7 @@ ChartJS.register(
 );
 
 const ResumenVentas = () => {
-  const { user, userProfile } = useAuth();
+  const { user, userProfile, organization } = useAuth();
   const [cargando, setCargando] = useState(true);
   const [ventas, setVentas] = useState([]);
   const [vistaActual, setVistaActual] = useState('general');
@@ -54,6 +60,12 @@ const ResumenVentas = () => {
     vendedor: 'todos'
   });
   const [busquedaHistorial, setBusquedaHistorial] = useState('');
+  const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
+  const [cierreSeleccionado, setCierreSeleccionado] = useState(null);
+
+  // Hooks para obtener datos
+  const { data: ventasLista = [], isLoading: cargandoVentas } = useVentas(userProfile?.organization_id, 50);
+  const { data: cierresLista = [], isLoading: cargandoCierres } = useCierresCaja(userProfile?.organization_id, 50);
 
   // Cargar datos de ventas
   const cargarVentas = useCallback(async () => {
@@ -79,6 +91,15 @@ const ResumenVentas = () => {
   useEffect(() => {
     cargarVentas();
   }, [cargarVentas]);
+
+  // Formatear moneda
+  const formatCOP = (amount) => {
+    return new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      minimumFractionDigits: 0
+    }).format(amount);
+  };
 
   // Calcular métricas
   const calcularMetricas = () => {
@@ -266,15 +287,6 @@ const ResumenVentas = () => {
       }
     });
     return historialDetallado.slice(0, 20);
-  };
-
-  // Formatear moneda
-  const formatCOP = (amount) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0
-    }).format(amount);
   };
 
   // Exportar tabla a CSV
@@ -842,6 +854,142 @@ const ResumenVentas = () => {
           </div>
         </div>
       </div>
+
+      {/* Historiales de Cierres y Ventas */}
+      <motion.div 
+        className="resumen-ventas-historiales"
+        variants={itemVariants}
+      >
+        <div className="resumen-ventas-historiales-grid">
+          {/* Historial de Cierres de Caja */}
+          <motion.div 
+            className="resumen-ventas-historial-card"
+            whileHover={{ scale: 1.01 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="resumen-ventas-historial-header">
+              <Calculator size={20} />
+              <h3 className="resumen-ventas-historial-title">Historial de Cierres de Caja</h3>
+            </div>
+            <div className="resumen-ventas-historial-content">
+              {cargandoCierres ? (
+                <div className="resumen-ventas-loading-small">
+                  <p>Cargando...</p>
+                </div>
+              ) : cierresLista.length === 0 ? (
+                <div className="resumen-ventas-sin-datos">
+                  <p>No hay cierres de caja registrados</p>
+                </div>
+              ) : (
+                <div className="resumen-ventas-historial-list">
+                  {cierresLista.slice(0, 10).map((cierre) => {
+                    const fechaCierre = cierre.fecha 
+                      ? format(parseISO(cierre.fecha), 'dd/MM/yyyy', { locale: es })
+                      : format(parseISO(cierre.created_at), 'dd/MM/yyyy', { locale: es });
+                    const diferencia = cierre.diferencia || 0;
+                    const tieneDiferencia = Math.abs(diferencia) > 0.01;
+
+                    return (
+                      <motion.div
+                        key={cierre.id}
+                        className="resumen-ventas-historial-item"
+                        onClick={() => setCierreSeleccionado(cierre)}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <div className="resumen-ventas-historial-item-header">
+                          <span className="resumen-ventas-historial-item-fecha">{fechaCierre}</span>
+                          <span className={`resumen-ventas-historial-item-diferencia ${tieneDiferencia ? (diferencia > 0 ? 'positiva' : 'negativa') : 'cero'}`}>
+                            {tieneDiferencia ? (diferencia > 0 ? '+' : '') : ''}{formatCOP(diferencia)}
+                          </span>
+                        </div>
+                        <div className="resumen-ventas-historial-item-details">
+                          <span>Sistema: {formatCOP(cierre.total_sistema || 0)}</span>
+                          <span>Real: {formatCOP(cierre.total_real || 0)}</span>
+                          <span>{cierre.cantidad_ventas || 0} ventas</span>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </motion.div>
+
+          {/* Historial de Ventas */}
+          <motion.div 
+            className="resumen-ventas-historial-card"
+            whileHover={{ scale: 1.01 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="resumen-ventas-historial-header">
+              <Receipt size={20} />
+              <h3 className="resumen-ventas-historial-title">Historial de Ventas</h3>
+            </div>
+            <div className="resumen-ventas-historial-content">
+              {cargandoVentas ? (
+                <div className="resumen-ventas-loading-small">
+                  <p>Cargando...</p>
+                </div>
+              ) : !ventasLista || ventasLista.length === 0 ? (
+                <div className="resumen-ventas-sin-datos">
+                  <p>No hay ventas registradas</p>
+                  {userProfile?.organization_id && (
+                    <small>Organization ID: {userProfile.organization_id}</small>
+                  )}
+                </div>
+              ) : (
+                <div className="resumen-ventas-historial-list">
+                  {ventasLista.slice(0, 10).map((venta) => {
+                    if (!venta || !venta.created_at) return null;
+                    
+                    const fechaVenta = format(parseISO(venta.created_at), 'dd/MM/yyyy HH:mm', { locale: es });
+                    const itemsCount = venta.items 
+                      ? (Array.isArray(venta.items) ? venta.items.length : 0)
+                      : 0;
+
+                    return (
+                      <motion.div
+                        key={venta.id || Math.random()}
+                        className="resumen-ventas-historial-item"
+                        onClick={() => setVentaSeleccionada(venta)}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <div className="resumen-ventas-historial-item-header">
+                          <span className="resumen-ventas-historial-item-fecha">{fechaVenta}</span>
+                          <span className="resumen-ventas-historial-item-total">{formatCOP(venta.total || 0)}</span>
+                        </div>
+                        <div className="resumen-ventas-historial-item-details">
+                          <span>{venta.metodo_pago || 'N/A'}</span>
+                          {venta.usuario_nombre && <span>{venta.usuario_nombre}</span>}
+                          {itemsCount > 0 && <span>{itemsCount} items</span>}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      </motion.div>
+
+      {/* Modales */}
+      {ventaSeleccionada && (
+        <DetalleVenta
+          venta={ventaSeleccionada}
+          onCerrar={() => setVentaSeleccionada(null)}
+          organization={organization}
+        />
+      )}
+
+      {cierreSeleccionado && (
+        <DetalleCierreCaja
+          cierre={cierreSeleccionado}
+          onCerrar={() => setCierreSeleccionado(null)}
+        />
+      )}
     </motion.div>
   );
 };

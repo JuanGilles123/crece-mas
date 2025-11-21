@@ -3,7 +3,7 @@ import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import UpgradePrompt from './UpgradePrompt';
-import { Save, Building2, MapPin, Phone, Hash, Mail, AlertCircle, FileText, CreditCard, ShieldAlert, Store, UtensilsCrossed, Scissors, Shirt, ShoppingBag, Package, Check } from 'lucide-react';
+import { Save, Building2, MapPin, Phone, Hash, Mail, AlertCircle, FileText, CreditCard, ShieldAlert, Store, UtensilsCrossed, Scissors, Shirt, ShoppingBag, Package, Check, Circle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import './ConfiguracionFacturacion.css';
 
@@ -20,7 +20,9 @@ export default function ConfiguracionFacturacion() {
     regimen_tributario: 'simplificado',
     responsable_iva: false,
     mensaje_factura: 'Gracias por su compra',
-    business_type: 'other'
+    business_type: 'other',
+    mesas_habilitadas: false,
+    pedidos_habilitados: false
   });
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
@@ -43,7 +45,9 @@ export default function ConfiguracionFacturacion() {
         regimen_tributario: organization.regimen_tributario || 'simplificado',
         responsable_iva: organization.responsable_iva || false,
         mensaje_factura: organization.mensaje_factura || 'Gracias por su compra',
-        business_type: organization.business_type || 'other'
+        business_type: organization.business_type || 'other',
+        mesas_habilitadas: organization.mesas_habilitadas || false,
+        pedidos_habilitados: organization.pedidos_habilitados || false
       });
     } catch (error) {
       console.error('Error:', error);
@@ -327,6 +331,48 @@ export default function ConfiguracionFacturacion() {
                 El tipo de negocio determina las funcionalidades disponibles (ej: toppings para comida)
               </small>
             </div>
+
+            {/* Sistema de Mesas y Pedidos (solo para negocios de comida con premium) */}
+            {datosEmpresa.business_type === 'food' && hasFeature('mesas') && hasFeature('pedidos') && (
+              <div className="form-group">
+                <label>
+                  <Circle size={16} /> Sistema de Mesas y Pedidos
+                </label>
+                <div className="checkbox-group" style={{ marginTop: '0.5rem' }}>
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      name="mesas_habilitadas"
+                      checked={datosEmpresa.mesas_habilitadas}
+                      onChange={handleInputChange}
+                      disabled={!hasRoleOwner}
+                    />
+                    <span className="checkbox-text">
+                      <strong>Habilitar Sistema de Mesas</strong>
+                      <small>Gestiona las mesas de tu restaurante</small>
+                    </span>
+                  </label>
+                </div>
+                <div className="checkbox-group" style={{ marginTop: '0.5rem' }}>
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      name="pedidos_habilitados"
+                      checked={datosEmpresa.pedidos_habilitados}
+                      onChange={handleInputChange}
+                      disabled={!hasRoleOwner}
+                    />
+                    <span className="checkbox-text">
+                      <strong>Habilitar Sistema de Pedidos</strong>
+                      <small>Permite tomar pedidos por mesa y enviarlos a cocina</small>
+                    </span>
+                  </label>
+                </div>
+                <small className="field-hint">
+                  Estas funciones están disponibles solo para negocios de comida con suscripción premium
+                </small>
+              </div>
+            )}
 
             <div className="form-group">
               <label htmlFor="telefono">

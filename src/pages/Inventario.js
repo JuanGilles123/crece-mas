@@ -17,6 +17,8 @@ import { useSubscription } from '../hooks/useSubscription';
 import UpgradePrompt from '../components/UpgradePrompt';
 import GestionToppings from '../components/GestionToppings';
 import { canUseToppings } from '../utils/toppingsUtils';
+import GestionMesas from '../components/GestionMesas';
+import { canUseMesas } from '../utils/mesasUtils';
 import toast from 'react-hot-toast';
 
 // Función para calcular estado de vencimiento
@@ -89,6 +91,7 @@ const Inventario = () => {
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [upgradeReason, setUpgradeReason] = useState('');
   const [mostrarToppings, setMostrarToppings] = useState(false);
+  const [mostrarMesas, setMostrarMesas] = useState(false);
   const moneda = user?.user_metadata?.moneda || 'COP';
 
   // Estados para estadísticas reales de la BD
@@ -526,6 +529,45 @@ const Inventario = () => {
             </div>
           )}
 
+          {/* Sección de Mesas (solo para negocios de comida con premium) */}
+          {organization && canUseMesas(organization, hasFeature).canUse && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{ marginTop: '1.5rem', marginBottom: '1rem' }}
+            >
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%)',
+                border: '2px solid rgba(16, 185, 129, 0.2)',
+                borderRadius: '12px',
+                padding: '1rem',
+              }}>
+                <button
+                  className="inventario-btn inventario-btn-secondary"
+                  onClick={() => setMostrarMesas(!mostrarMesas)}
+                  style={{
+                    width: '100%',
+                    background: 'white',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    fontWeight: 600,
+                  }}
+                >
+                  {mostrarMesas ? '▼ Ocultar' : '▶ Gestionar'} Mesas
+                </button>
+                {mostrarMesas && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    style={{ marginTop: '1rem', overflow: 'hidden' }}
+                  >
+                    <GestionMesas />
+                  </motion.div>
+                )}
+              </div>
+            </motion.div>
+          )}
+
           {/* Sección de Toppings (solo para negocios de comida con premium) */}
           {organization && canUseToppings(organization, null, hasFeature).canUse && (
             <motion.div
@@ -549,7 +591,7 @@ const Inventario = () => {
                     fontWeight: 600,
                   }}
                 >
-                  {mostrarToppings ? '▼ Ocultar' : '▶ Gestionar'} Toppings 🍔
+                  {mostrarToppings ? '▼ Ocultar' : '▶ Gestionar'} Toppings
                 </button>
                 {mostrarToppings && (
                   <motion.div

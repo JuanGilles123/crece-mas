@@ -9,26 +9,32 @@ export const useVentas = (organizationId, limit = 100) => {
     queryFn: async () => {
       if (!organizationId) return [];
       
-      // Select solo campos necesarios
-      const { data, error } = await supabase
-        .from('ventas')
-        .select('id, total, metodo_pago, created_at, items, usuario_nombre, organization_id')
-        .eq('organization_id', organizationId)
-        .order('created_at', { ascending: false })
-        .limit(limit);
+      try {
+        // Select todos los campos necesarios (usuario_nombre puede no existir)
+        const { data, error } = await supabase
+          .from('ventas')
+          .select('*')
+          .eq('organization_id', organizationId)
+          .order('created_at', { ascending: false })
+          .limit(limit);
 
-      if (error) {
-        console.error('Error fetching ventas:', error);
-        throw new Error('Error al cargar ventas');
+        if (error) {
+          console.error('Error fetching ventas:', error);
+          throw new Error('Error al cargar ventas');
+        }
+        
+        return data || [];
+      } catch (error) {
+        console.error('Error en useVentas:', error);
+        return [];
       }
-      return data || [];
     },
     enabled: !!organizationId,
-    staleTime: 10 * 60 * 1000, // Aumentado a 10 minutos
-    cacheTime: 60 * 60 * 1000, // Aumentado a 60 minutos
-    refetchOnMount: false,
+    staleTime: 5 * 60 * 1000, // 5 minutos
+    cacheTime: 30 * 60 * 1000, // 30 minutos
+    refetchOnMount: true,
     refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
+    refetchOnReconnect: true,
   });
 };
 

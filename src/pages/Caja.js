@@ -5,9 +5,11 @@ import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import useCurrencyInput from '../hooks/useCurrencyInputOptimized';
 import OptimizedProductImage from '../components/OptimizedProductImage';
-import { ShoppingCart, Trash2, Plus, Minus, Search, CheckCircle, X, CreditCard, Banknote, Smartphone, Wallet } from 'lucide-react';
+import { ShoppingCart, Trash2, Plus, Minus, Search, CheckCircle, X, CreditCard, Banknote, Smartphone, Wallet, Circle, Users } from 'lucide-react';
 import ToppingsSelector from '../components/ToppingsSelector';
 import { canUseToppings } from '../utils/toppingsUtils';
+import { canUsePedidos } from '../utils/mesasUtils';
+import { usePedidos, useActualizarPedido } from '../hooks/usePedidos';
 import { useSubscription } from '../hooks/useSubscription';
 import toast from 'react-hot-toast';
 import './Caja.css';
@@ -72,6 +74,15 @@ export default function Caja() {
   const [metodo2, setMetodo2] = useState('Transferencia');
   const montoMetodo1Input = useCurrencyInput();
   const montoMetodo2Input = useCurrencyInput();
+
+  // Estados para pedidos
+  const [mostrandoPedidos, setMostrandoPedidos] = useState(false);
+  const [pedidoSeleccionado, setPedidoSeleccionado] = useState(null);
+  const { data: pedidosListos = [] } = usePedidos(organization?.id, {
+    estado: 'listo'
+  });
+  const actualizarPedido = useActualizarPedido();
+  const puedeUsarPedidos = organization && canUsePedidos(organization, hasFeature).canUse;
 
   // Cargar productos del usuario con renderizado procedural
   useEffect(() => {
@@ -970,6 +981,32 @@ export default function Caja() {
       queryClient.invalidateQueries(['productos', userProfile.organization_id]);
       queryClient.invalidateQueries(['productos-paginados', userProfile.organization_id]);
       queryClient.invalidateQueries(['ventas', userProfile.organization_id]);
+
+      // Si hay un pedido seleccionado, marcarlo como completado
+      if (pedidoSeleccionado && organization?.id) {
+        try {
+          await actualizarPedido.mutateAsync({
+            id: pedidoSeleccionado.id,
+            organizationId: organization.id,
+            estado: 'completado'
+          });
+
+          // Liberar mesa
+          if (pedidoSeleccionado.mesa_id) {
+            await supabase
+              .from('mesas')
+              .update({ estado: 'disponible' })
+              .eq('id', pedidoSeleccionado.mesa_id);
+          }
+
+          setPedidoSeleccionado(null);
+          queryClient.invalidateQueries(['pedidos', organization.id]);
+          queryClient.invalidateQueries(['mesas', organization.id]);
+        } catch (error) {
+          console.error('Error actualizando pedido:', error);
+          toast.error('Error al actualizar el pedido');
+        }
+      }
     } catch (error) {
       console.error('Error confirmando venta:', error);
       toast.error(`Error al procesar la venta: ${error.message}`);
@@ -996,8 +1033,102 @@ export default function Caja() {
     );
   }
 
+  // Cargar pedido al carrito
+  const handleCargarPedido = (pedido) => {
+    if (!pedido.items || pedido.items.length === 0) {
+      toast.error('El pedido no tiene items');
+      return;
+    }
+
+    const itemsCarrito = pedido.items.map(item => {
+      const producto = productos.find(p => p.id === item.producto_id);
+      if (!producto) return null;
+
+      return {
+        id: producto.id,
+        nombre: producto.nombre,
+        precio_venta: producto.precio_venta,
+        precio_total: item.precio_total / item.cantidad, // Precio unitario con toppings
+        qty: item.cantidad,
+        toppings: item.toppings || []
+      };
+    }).filter(Boolean);
+
+    if (itemsCarrito.length === 0) {
+      toast.error('No se pudieron cargar los items del pedido');
+      return;
+    }
+
+    setCart(itemsCarrito);
+    setPedidoSeleccionado(pedido);
+    setMostrandoPedidos(false);
+    toast.success('Pedido cargado al carrito');
+  };
+
+
   return (
     <div className="caja-container">
+      {/* Sección de Pedidos Listos (solo si está habilitado) */}
+      {puedeUsarPedidos && pedidosListos.length > 0 && (
+        <motion.div
+          className="caja-pedidos-section"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <div className="caja-pedidos-header">
+            <div className="caja-pedidos-title">
+              <Circle size={20} fill="#10B981" />
+              <h3>Pedidos Listos para Cobrar ({pedidosListos.length})</h3>
+            </div>
+            <button
+              className="caja-pedidos-toggle"
+              onClick={() => setMostrandoPedidos(!mostrandoPedidos)}
+            >
+              {mostrandoPedidos ? 'Ocultar' : 'Ver Pedidos'}
+            </button>
+          </div>
+          {mostrandoPedidos && (
+            <motion.div
+              className="caja-pedidos-list"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+            >
+              {pedidosListos.map((pedido) => (
+                <motion.div
+                  key={pedido.id}
+                  className="caja-pedido-card"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  whileHover={{ scale: 1.02, y: -2 }}
+                >
+                  <div className="caja-pedido-info">
+                    <div className="caja-pedido-header-info">
+                      <h4>{pedido.numero_pedido}</h4>
+                      {pedido.mesa && (
+                        <span className="caja-pedido-mesa">
+                          <Users size={14} /> {pedido.mesa.numero}
+                        </span>
+                      )}
+                    </div>
+                    <p className="caja-pedido-items-count">
+                      {pedido.items?.length || 0} {pedido.items?.length === 1 ? 'item' : 'items'}
+                    </p>
+                    <p className="caja-pedido-total">{formatCOP(pedido.total)}</p>
+                  </div>
+                  <button
+                    className="caja-pedido-cargar-btn"
+                    onClick={() => handleCargarPedido(pedido)}
+                  >
+                    Cargar al Carrito
+                  </button>
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+        </motion.div>
+      )}
+
       {/* Panel de productos */}
       <div className="caja-products-panel">
         <div className="caja-search-container">

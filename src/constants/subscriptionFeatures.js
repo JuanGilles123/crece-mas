@@ -58,6 +58,10 @@ export const PLAN_FEATURES = {
       
       // Toppings (solo para negocios de comida)
       toppings: false,               // Sistema de toppings
+      
+      // Mesas y Pedidos (solo para negocios de comida)
+      mesas: false,                  // Sistema de mesas
+      pedidos: false,                // Sistema de pedidos
     }
   },
   
@@ -109,6 +113,10 @@ export const PLAN_FEATURES = {
       
       // Toppings (solo para negocios de comida)
       toppings: true,                // Sistema de toppings
+      
+      // Mesas y Pedidos (solo para negocios de comida)
+      mesas: true,                   // Sistema de mesas
+      pedidos: true,                 // Sistema de pedidos
       
       // Features empresariales desactivadas
       multiOrg: false,
@@ -170,6 +178,10 @@ export const PLAN_FEATURES = {
       
       // Toppings (solo para negocios de comida)
       toppings: true,                // Sistema de toppings
+      
+      // Mesas y Pedidos (solo para negocios de comida)
+      mesas: true,                   // Sistema de mesas
+      pedidos: true,                 // Sistema de pedidos
       
       // Features empresariales
       multiOrg: true,
@@ -234,6 +246,10 @@ export const PLAN_FEATURES = {
       
       // Toppings (solo para negocios de comida)
       toppings: true,                // Sistema de toppings
+      
+      // Mesas y Pedidos (solo para negocios de comida)
+      mesas: true,                   // Sistema de mesas
+      pedidos: true,                 // Sistema de pedidos
       
       multiOrg: true,
       branchTransfers: true,

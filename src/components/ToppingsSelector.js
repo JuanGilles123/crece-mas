@@ -81,7 +81,8 @@ const ToppingsSelector = ({
   precioBase,
   onConfirm,
   organizationId,
-  tipo = 'comida' // 'comida' | 'servicio'
+  tipo = 'comida', // 'comida' | 'servicio'
+  titulo = null // Título personalizado opcional
 }) => {
   const { data: toppings = [], isLoading } = useToppings(organizationId);
   const [toppingsSeleccionados, setToppingsSeleccionados] = useState([]);
@@ -100,7 +101,7 @@ const ToppingsSelector = ({
   });
 
   const isService = tipo === 'servicio';
-  const title = isService ? '¿Desea agregar adicionales?' : '¿Lleva toppings?';
+  const title = titulo || (isService ? '¿Desea agregar adicionales?' : '¿Lleva toppings?');
   const itemLabel = isService ? 'adicionales' : 'toppings';
 
   useEffect(() => {

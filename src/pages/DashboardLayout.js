@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { motion } from 'framer-motion';
 import { Outlet, NavLink } from 'react-router-dom';
 import { DashboardSkeleton } from '../components/SkeletonLoader';
-import { BarChart3, CreditCard, Package, User, TrendingUp, Menu, X, Users, Zap, Crown, Shield, Package2, Wallet, Eye, Calculator, Activity, CreditCard as SubscriptionIcon, FileText } from 'lucide-react';
+import { BarChart3, CreditCard, Package, User, TrendingUp, Menu, X, Users, Zap, Crown, Shield, Package2, Wallet, Eye, Calculator, Activity, CreditCard as SubscriptionIcon, FileText, Circle, ChefHat } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import OrganizationSwitcher from '../components/OrganizationSwitcher';
@@ -44,6 +44,7 @@ const DashboardLayout = () => {
 
   // Memoizar menuItems para evitar recalcular en cada render (ANTES de cualquier return)
   const menuItems = useMemo(() => {
+    if (!organization) return [];
     const isSuperAdmin = user?.email === 'juanjosegilarbelaez@gmail.com';
     
     return [
@@ -82,6 +83,20 @@ const DashboardLayout = () => {
         label: "Inventario", 
         title: "Gestión de Inventario",
         visible: hasPermission('inventory') || true
+      },
+      { 
+        to: "/dashboard/tomar-pedido", 
+        icon: Circle, 
+        label: "Tomar Pedido", 
+        title: "Tomar Pedido por Mesa",
+        visible: organization?.business_type === 'food' && organization?.pedidos_habilitados && hasFeature('pedidos')
+      },
+      { 
+        to: "/dashboard/panel-cocina", 
+        icon: ChefHat, 
+        label: "Panel Cocina", 
+        title: "Panel de Cocina para Chefs",
+        visible: organization?.business_type === 'food' && organization?.pedidos_habilitados && hasFeature('pedidos')
       },
       { 
         to: "/dashboard/resumen-ventas", 
@@ -126,7 +141,7 @@ const DashboardLayout = () => {
         visible: true
       }
     ].filter(item => item.visible);
-  }, [user?.email, hasPermission, hasRole, hasFeature]);
+  }, [user?.email, hasPermission, hasRole, hasFeature, organization]);
 
   // Memoizar variantes de animación (solo se crean una vez) - ANTES de cualquier return
   const sidebarVariants = useMemo(() => ({
