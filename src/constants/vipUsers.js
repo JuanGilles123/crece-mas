@@ -8,6 +8,8 @@
 export const VIP_USERS = [
   // Desarrolladores
   'juanjosegilarbelaez@gmail.com',
+  'jonathan-9411@hotmail.com',
+  
   
   // Testers
   // 'tester1@ejemplo.com',
