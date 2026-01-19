@@ -633,7 +633,7 @@
   .resumen-ventas-metodo-efectivo { background: var(--bg-success); color: var(--accent-success); }
   .resumen-ventas-metodo-tarjeta { background: var(--bg-info); color: var(--accent-primary); }
   .resumen-ventas-metodo-transferencia { background: var(--bg-warning); color: var(--accent-warning); }
-  .resumen-ventas-metodo-nequi { background: var(--bg-error); color: var(--accent-error); }
+  .resumen-ventas-metodo-tarjeta { background: var(--bg-error); color: var(--accent-error); }
   .resumen-ventas-metodo-daviplata { background: var(--bg-info); color: var(--accent-secondary); }
   
   /* Estados mejorados */
@@ -915,6 +915,151 @@
     }
     .resumen-ventas-grafico-content { 
       height: 220px; 
+    }
+  }
+
+  /* Historiales de Cierres y Ventas */
+  .resumen-ventas-historiales {
+    margin-top: 2rem;
+  }
+
+  .resumen-ventas-historiales-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+
+  .resumen-ventas-historial-card {
+    background: var(--bg-card);
+    border-radius: 1rem;
+    border: 1px solid var(--border-primary);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .resumen-ventas-historial-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border-primary);
+    background: var(--bg-secondary);
+  }
+
+  .resumen-ventas-historial-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+  }
+
+  .resumen-ventas-historial-content {
+    padding: 1.5rem;
+    max-height: 500px;
+    overflow-y: auto;
+  }
+
+  .resumen-ventas-loading-small {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+  }
+
+  .resumen-ventas-historial-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .resumen-ventas-historial-item {
+    padding: 1rem;
+    background: var(--bg-secondary);
+    border-radius: 0.5rem;
+    border: 1px solid var(--border-primary);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .resumen-ventas-historial-item:hover {
+    background: var(--bg-hover);
+    border-color: var(--accent-primary);
+  }
+
+  .resumen-ventas-historial-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+
+  .resumen-ventas-historial-item-fecha {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .resumen-ventas-historial-item-total {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--accent-primary);
+  }
+
+  .resumen-ventas-historial-item-diferencia {
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  .resumen-ventas-historial-item-diferencia.positiva {
+    color: #10b981;
+  }
+
+  .resumen-ventas-historial-item-diferencia.negativa {
+    color: #ef4444;
+  }
+
+  .resumen-ventas-historial-item-diferencia.cero {
+    color: var(--text-secondary);
+  }
+
+  .resumen-ventas-historial-item-details {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+  }
+
+  .resumen-ventas-historial-item-details span {
+    padding: 0.25rem 0.5rem;
+    background: var(--bg-card);
+    border-radius: 0.25rem;
+    border: 1px solid var(--border-primary);
+  }
+
+  @media (max-width: 1024px) {
+    .resumen-ventas-historiales-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .resumen-ventas-historiales {
+      margin-top: 1.5rem;
+    }
+
+    .resumen-ventas-historial-header {
+      padding: 1rem 1.25rem;
+    }
+
+    .resumen-ventas-historial-content {
+      padding: 1rem;
+      max-height: 400px;
+    }
+
+    .resumen-ventas-historial-item {
+      padding: 0.75rem;
     }
   }
   

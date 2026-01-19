@@ -12,7 +12,6 @@ const ProductImage = ({ imagePath, alt, className, onError }) => {
   useEffect(() => {
     const getSignedUrl = async () => {
       if (!imagePath) {
-        console.log('No hay imagePath proporcionado');
         setLoading(false);
         return;
       }
@@ -28,7 +27,6 @@ const ProductImage = ({ imagePath, alt, className, onError }) => {
         const cachedData = signedUrlCache.get(filePath);
         // Verificar si la URL cacheada aún es válida (menos de 50 minutos)
         if (Date.now() - cachedData.timestamp < 3000000) {
-          console.log('Usando URL cacheada para:', filePath);
           setImageUrl(cachedData.url);
           setLoading(false);
           return;
@@ -37,9 +35,6 @@ const ProductImage = ({ imagePath, alt, className, onError }) => {
           signedUrlCache.delete(filePath);
         }
       }
-
-      console.log('Generando nueva signed URL para:', filePath);
-
       try {
         const { data, error } = await supabase.storage
           .from('productos')
@@ -55,7 +50,6 @@ const ProductImage = ({ imagePath, alt, className, onError }) => {
             url: data.signedUrl,
             timestamp: Date.now()
           });
-          console.log('Signed URL generada y cacheada:', data.signedUrl);
           setImageUrl(data.signedUrl);
         }
       } catch (err) {
@@ -120,10 +114,8 @@ const ProductImage = ({ imagePath, alt, className, onError }) => {
       loading="lazy" // Carga perezosa
       decoding="async" // Decodificación asíncrona
       onLoad={() => {
-        console.log('Imagen cargada exitosamente:', imageUrl);
       }}
       onError={(e) => {
-        console.log('Error cargando imagen:', imageUrl);
         setError(true);
         if (onError) onError(e);
       }}

@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import './ResumenVentas.css';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
+import { useVentas } from '../hooks/useVentas';
+import { useCierresCaja } from '../hooks/useCierresCaja';
+import DetalleVenta from '../components/DetalleVenta';
+import DetalleCierreCaja from '../components/DetalleCierreCaja';
 import { 
   BarChart3, 
   Calendar, 
@@ -16,7 +20,9 @@ import {
   DollarSign,
   ShoppingCart,
   Target,
-  Award
+  Award,
+  Calculator,
+  Receipt
 } from 'lucide-react';
 import {
   Chart as ChartJS,
@@ -29,7 +35,7 @@ import {
   ArcElement,
 } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
-import { format, subDays, startOfDay, endOfDay, isToday, isYesterday, parseISO } from 'date-fns';
+import { format, subDays, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 ChartJS.register(
@@ -43,10 +49,9 @@ ChartJS.register(
 );
 
 const ResumenVentas = () => {
-  const { user } = useAuth();
+  const { user, userProfile, organization } = useAuth();
   const [cargando, setCargando] = useState(true);
   const [ventas, setVentas] = useState([]);
-  const [productos, setProductos] = useState([]);
   const [vistaActual, setVistaActual] = useState('general');
   const [filtros, setFiltros] = useState({
     fechaInicio: '',
@@ -55,17 +60,22 @@ const ResumenVentas = () => {
     vendedor: 'todos'
   });
   const [busquedaHistorial, setBusquedaHistorial] = useState('');
+  const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
+  const [cierreSeleccionado, setCierreSeleccionado] = useState(null);
+
+  // Hooks para obtener datos
+  const { data: ventasLista = [], isLoading: cargandoVentas } = useVentas(userProfile?.organization_id, 50);
+  const { data: cierresLista = [], isLoading: cargandoCierres } = useCierresCaja(userProfile?.organization_id, 50);
 
   // Cargar datos de ventas
   const cargarVentas = useCallback(async () => {
-    if (!user) return;
+    if (!user || !userProfile?.organization_id) return;
     setCargando(true);
-    
     try {
       const { data, error } = await supabase
         .from('ventas')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('organization_id', userProfile.organization_id)
         .order('created_at', { ascending: false })
         .limit(1000);
 
@@ -76,31 +86,20 @@ const ResumenVentas = () => {
       console.error('Error cargando ventas:', error);
     }
     setCargando(false);
-  }, [user]);
-
-  // Cargar productos para análisis
-  const cargarProductos = useCallback(async () => {
-    if (!user) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('productos')
-        .select('*')
-        .eq('user_id', user.id)
-        .limit(1000);
-
-      if (!error) {
-        setProductos(data || []);
-      }
-    } catch (error) {
-      console.error('Error cargando productos:', error);
-    }
-  }, [user]);
+  }, [user, userProfile?.organization_id]);
 
   useEffect(() => {
     cargarVentas();
-    cargarProductos();
-  }, [cargarVentas, cargarProductos]);
+  }, [cargarVentas]);
+
+  // Formatear moneda
+  const formatCOP = (amount) => {
+    return new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      minimumFractionDigits: 0
+    }).format(amount);
+  };
 
   // Calcular métricas
   const calcularMetricas = () => {
@@ -205,12 +204,8 @@ const ResumenVentas = () => {
   const obtenerHistorialVentas = () => {
     const ventasFiltradas = filtrarVentas();
     const historialDetallado = [];
-    
-    console.log('Ventas filtradas para historial:', ventasFiltradas);
-    
     // Si no hay ventas reales, crear datos de prueba
     if (ventasFiltradas.length === 0) {
-      console.log('No hay ventas reales, creando datos de prueba');
       return [
         {
           id: 'test-1',
@@ -239,20 +234,16 @@ const ResumenVentas = () => {
           vendedor: 'Usuario Actual',
           cantidad: 1,
           total: 120000,
-          metodoPago: 'Nequi',
+          metodoPago: 'Tarjeta',
           fechaFormateada: format(new Date(), 'dd/MM/yyyy', { locale: es })
         }
       ];
     }
     
     ventasFiltradas.slice(0, 50).forEach(venta => {
-      console.log('Procesando venta:', venta);
-      console.log('Items de la venta:', venta.items);
       // Verificar si hay items en la venta
       if (venta.items && Array.isArray(venta.items) && venta.items.length > 0) {
         venta.items.forEach((item, index) => {
-          console.log(`Item ${index}:`, item);
-          
           // Extraer datos del item con múltiples fallbacks
           const nombreProducto = item.nombre || 
                                 item.producto_nombre || 
@@ -270,9 +261,6 @@ const ResumenVentas = () => {
                                 0;
           
           const totalItem = precioUnitario * cantidad;
-          
-          console.log(`Procesando item: ${nombreProducto}, cantidad: ${cantidad}, precio: ${precioUnitario}, total: ${totalItem}`);
-          
           historialDetallado.push({
             id: `${venta.id}-${item.id || index}`,
             fecha: venta.created_at,
@@ -286,7 +274,6 @@ const ResumenVentas = () => {
         });
       } else {
         // Si no hay items detallados, crear una entrada general
-        console.log('Venta sin items detallados, creando entrada general');
         historialDetallado.push({
           id: venta.id,
           fecha: venta.created_at,
@@ -299,18 +286,7 @@ const ResumenVentas = () => {
         });
       }
     });
-    
-    console.log('Historial detallado final:', historialDetallado);
     return historialDetallado.slice(0, 20);
-  };
-
-  // Formatear moneda
-  const formatCOP = (amount) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0
-    }).format(amount);
   };
 
   // Exportar tabla a CSV
@@ -878,6 +854,142 @@ const ResumenVentas = () => {
           </div>
         </div>
       </div>
+
+      {/* Historiales de Cierres y Ventas */}
+      <motion.div 
+        className="resumen-ventas-historiales"
+        variants={itemVariants}
+      >
+        <div className="resumen-ventas-historiales-grid">
+          {/* Historial de Cierres de Caja */}
+          <motion.div 
+            className="resumen-ventas-historial-card"
+            whileHover={{ scale: 1.01 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="resumen-ventas-historial-header">
+              <Calculator size={20} />
+              <h3 className="resumen-ventas-historial-title">Historial de Cierres de Caja</h3>
+            </div>
+            <div className="resumen-ventas-historial-content">
+              {cargandoCierres ? (
+                <div className="resumen-ventas-loading-small">
+                  <p>Cargando...</p>
+                </div>
+              ) : cierresLista.length === 0 ? (
+                <div className="resumen-ventas-sin-datos">
+                  <p>No hay cierres de caja registrados</p>
+                </div>
+              ) : (
+                <div className="resumen-ventas-historial-list">
+                  {cierresLista.slice(0, 10).map((cierre) => {
+                    const fechaCierre = cierre.fecha 
+                      ? format(parseISO(cierre.fecha), 'dd/MM/yyyy', { locale: es })
+                      : format(parseISO(cierre.created_at), 'dd/MM/yyyy', { locale: es });
+                    const diferencia = cierre.diferencia || 0;
+                    const tieneDiferencia = Math.abs(diferencia) > 0.01;
+
+                    return (
+                      <motion.div
+                        key={cierre.id}
+                        className="resumen-ventas-historial-item"
+                        onClick={() => setCierreSeleccionado(cierre)}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <div className="resumen-ventas-historial-item-header">
+                          <span className="resumen-ventas-historial-item-fecha">{fechaCierre}</span>
+                          <span className={`resumen-ventas-historial-item-diferencia ${tieneDiferencia ? (diferencia > 0 ? 'positiva' : 'negativa') : 'cero'}`}>
+                            {tieneDiferencia ? (diferencia > 0 ? '+' : '') : ''}{formatCOP(diferencia)}
+                          </span>
+                        </div>
+                        <div className="resumen-ventas-historial-item-details">
+                          <span>Sistema: {formatCOP(cierre.total_sistema || 0)}</span>
+                          <span>Real: {formatCOP(cierre.total_real || 0)}</span>
+                          <span>{cierre.cantidad_ventas || 0} ventas</span>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </motion.div>
+
+          {/* Historial de Ventas */}
+          <motion.div 
+            className="resumen-ventas-historial-card"
+            whileHover={{ scale: 1.01 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="resumen-ventas-historial-header">
+              <Receipt size={20} />
+              <h3 className="resumen-ventas-historial-title">Historial de Ventas</h3>
+            </div>
+            <div className="resumen-ventas-historial-content">
+              {cargandoVentas ? (
+                <div className="resumen-ventas-loading-small">
+                  <p>Cargando...</p>
+                </div>
+              ) : !ventasLista || ventasLista.length === 0 ? (
+                <div className="resumen-ventas-sin-datos">
+                  <p>No hay ventas registradas</p>
+                  {userProfile?.organization_id && (
+                    <small>Organization ID: {userProfile.organization_id}</small>
+                  )}
+                </div>
+              ) : (
+                <div className="resumen-ventas-historial-list">
+                  {ventasLista.slice(0, 10).map((venta) => {
+                    if (!venta || !venta.created_at) return null;
+                    
+                    const fechaVenta = format(parseISO(venta.created_at), 'dd/MM/yyyy HH:mm', { locale: es });
+                    const itemsCount = venta.items 
+                      ? (Array.isArray(venta.items) ? venta.items.length : 0)
+                      : 0;
+
+                    return (
+                      <motion.div
+                        key={venta.id || Math.random()}
+                        className="resumen-ventas-historial-item"
+                        onClick={() => setVentaSeleccionada(venta)}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <div className="resumen-ventas-historial-item-header">
+                          <span className="resumen-ventas-historial-item-fecha">{fechaVenta}</span>
+                          <span className="resumen-ventas-historial-item-total">{formatCOP(venta.total || 0)}</span>
+                        </div>
+                        <div className="resumen-ventas-historial-item-details">
+                          <span>{venta.metodo_pago || 'N/A'}</span>
+                          {venta.usuario_nombre && <span>{venta.usuario_nombre}</span>}
+                          {itemsCount > 0 && <span>{itemsCount} items</span>}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      </motion.div>
+
+      {/* Modales */}
+      {ventaSeleccionada && (
+        <DetalleVenta
+          venta={ventaSeleccionada}
+          onCerrar={() => setVentaSeleccionada(null)}
+          organization={organization}
+        />
+      )}
+
+      {cierreSeleccionado && (
+        <DetalleCierreCaja
+          cierre={cierreSeleccionado}
+          onCerrar={() => setCierreSeleccionado(null)}
+        />
+      )}
     </motion.div>
   );
 };

@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
-import { CheckCircle, Printer, Share2, Download } from "lucide-react";
+import React, { useState, useRef } from "react";
+import { CheckCircle, Printer, Share2, Download, Banknote, CreditCard, Smartphone } from "lucide-react";
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import jsPDF from 'jspdf';
@@ -22,54 +22,87 @@ function formatCOP(value) {
 }
 
 export default function ReciboVenta({ venta, onNuevaVenta, onCerrar }) {
-  const { user } = useAuth();
+  const { user, organization } = useAuth();
   const [generandoPDF, setGenerandoPDF] = useState(false);
-  const [datosEmpresa, setDatosEmpresa] = useState(null);
-  const [cargandoDatos, setCargandoDatos] = useState(true);
   const reciboRef = useRef(null);
 
-  const cargarDatosEmpresa = useCallback(async () => {
-    if (!user) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('datos_empresa')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error cargando datos empresa:', error);
-      } else if (data) {
-        setDatosEmpresa(data);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setCargandoDatos(false);
-    }
-  }, [user]);
-
-  // Cargar datos de la empresa
-  useEffect(() => {
-    cargarDatosEmpresa();
-  }, [cargarDatosEmpresa]);
+  // Usar datos de la organización directamente desde AuthContext
+  const datosEmpresa = organization ? {
+    razon_social: organization.razon_social || organization.name || 'Mi Negocio',
+    nit: organization.nit || '',
+    direccion: organization.direccion || '',
+    telefono: organization.telefono || '',
+    email: organization.email || '',
+    ciudad: organization.ciudad || '',
+    mensaje_factura: organization.mensaje_factura || 'Gracias por su compra'
+  } : null;
 
   if (!venta) return null;
 
-  const subtotal = venta.items.reduce((s, i) => s + i.qty * i.precio_venta, 0);
+  // Calcular subtotal incluyendo toppings si existen
+  const calcularSubtotalItem = (item) => {
+    let precioItem = item.precio_venta || 0;
+    // Si tiene precio_total (incluye toppings), usarlo; si no, calcular
+    if (item.precio_total) {
+      return item.precio_total * item.qty;
+    }
+    // Si tiene toppings, sumar sus precios
+    if (item.toppings && Array.isArray(item.toppings) && item.toppings.length > 0) {
+      const precioToppings = item.toppings.reduce((sum, topping) => {
+        return sum + (topping.precio || 0) * (topping.cantidad || 1);
+      }, 0);
+      precioItem = precioItem + precioToppings;
+    }
+    return precioItem * item.qty;
+  };
+
+  const subtotal = venta.items.reduce((s, i) => s + calcularSubtotalItem(i), 0);
   const total = venta.total || subtotal; // Usar el total que viene de la venta
   const cambio = venta.pagoCliente - total;
 
-  // Validar que los datos de empresa estén configurados
+  // Detectar si es pago mixto y extraer detalles del string si no vienen en el objeto
+  const esPagoMixto = venta.metodo_pago === 'Mixto' || venta.metodo_pago?.startsWith('Mixto (');
+  let detallesPagoMixto = venta.detalles_pago_mixto;
+  
+  // Si no hay detalles pero el método de pago es un string con formato "Mixto (...)"
+  if (esPagoMixto && !detallesPagoMixto && typeof venta.metodo_pago === 'string') {
+    // Intentar extraer los detalles del string
+    const match = venta.metodo_pago.match(/Mixto \((.+?): (.+?) \+ (.+?): (.+?)\)/);
+    if (match) {
+      detallesPagoMixto = {
+        metodo1: match[1],
+        monto1: parseFloat(match[2].replace(/[^\d]/g, '')),
+        metodo2: match[3],
+        monto2: parseFloat(match[4].replace(/[^\d]/g, ''))
+      };
+    }
+  }
+
+  // Función para obtener icono según método de pago
+  const getIconoMetodoPago = (metodo) => {
+    const iconStyle = { width: '14px', height: '14px', display: 'inline-block', verticalAlign: 'middle', marginRight: '4px' };
+    switch(metodo?.toLowerCase()) {
+      case 'efectivo':
+        return <Banknote style={iconStyle} />;
+      case 'transferencia':
+        return <Smartphone style={iconStyle} />;
+      case 'tarjeta':
+        return <CreditCard style={iconStyle} />;
+      default:
+        return null;
+    }
+  };
+
+  // Validar que los datos de organización estén configurados
   const datosCompletos = datosEmpresa && 
-    datosEmpresa.nombre_empresa && 
-    datosEmpresa.direccion && 
-    datosEmpresa.telefono && 
-    datosEmpresa.nit;
+    datosEmpresa.razon_social; // Solo requerimos razon_social como mínimo
 
   const generarPDF = async () => {
-    if (!reciboRef.current) return;
+    if (!reciboRef.current) {
+      console.error('❌ Error: reciboRef no está disponible');
+      alert('❌ Error al generar el PDF. Intenta de nuevo.');
+      return;
+    }
 
     // Validar datos de empresa
     if (!datosCompletos) {
@@ -78,37 +111,44 @@ export default function ReciboVenta({ venta, onNuevaVenta, onCerrar }) {
     }
     
     setGenerandoPDF(true);
+    console.log('📄 Iniciando generación de PDF...');
+    
     try {
-      // Crear canvas del recibo con configuración optimizada para menor tamaño
+      // Crear canvas del recibo con configuración optimizada
+      console.log('📸 Capturando recibo como imagen...');
       const canvas = await html2canvas(reciboRef.current, {
-        scale: 2, // Reducido de 3 a 2 para menor tamaño
+        scale: 2,
         useCORS: true,
-        backgroundColor: 'var(--bg-card)',
+        backgroundColor: '#ffffff',
         width: reciboRef.current.scrollWidth,
         height: reciboRef.current.scrollHeight,
-        logging: false,
-        allowTaint: true,
-        removeContainer: true, // Optimización adicional
-        imageTimeout: 0 // Evitar timeouts
+        logging: true, // Activar logging para debugging
+        allowTaint: false,
+        foreignObjectRendering: false,
+        imageTimeout: 15000
       });
 
+      console.log('✅ Imagen capturada:', canvas.width, 'x', canvas.height);
+
       // Crear PDF con tamaño personalizado basado en el contenido
-      const imgData = canvas.toDataURL('image/jpeg', 0.8); // JPEG con 80% calidad en lugar de PNG
+      const imgData = canvas.toDataURL('image/jpeg', 0.85);
       
-      // Calcular dimensiones del PDF basadas en el contenido
+      // Calcular dimensiones del PDF
       const imgWidth = 210; // A4 width in mm
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
       
-      // Crear PDF con altura dinámica
+      console.log('📋 Creando PDF con dimensiones:', imgWidth, 'x', imgHeight, 'mm');
+      
+      // Crear PDF
       const pdf = new jsPDF({
-        orientation: imgHeight > 297 ? 'portrait' : 'portrait',
+        orientation: 'portrait',
         unit: 'mm',
-        format: [210, Math.max(297, imgHeight + 20)] // Altura mínima A4, o más si es necesario
+        format: [210, Math.max(297, imgHeight + 20)]
       });
       
-      // Agregar imagen al PDF centrada
+      // Agregar imagen al PDF
       const x = 0;
-      const y = 10; // Margen superior
+      const y = 10;
       pdf.addImage(imgData, 'JPEG', x, y, imgWidth, imgHeight);
 
       // Generar nombre del archivo único
@@ -116,31 +156,45 @@ export default function ReciboVenta({ venta, onNuevaVenta, onCerrar }) {
       const hora = new Date().toTimeString().split(' ')[0].replace(/:/g, '-');
       const fileName = `recibo_${venta.id}_${fecha}_${hora}.pdf`;
       
-      // Guardar en Supabase Storage
-      const pdfBlob = pdf.output('blob');
-      const { data, error } = await supabase.storage
-        .from('recibos')
-        .upload(`${user.id}/${fileName}`, pdfBlob, {
-          contentType: 'application/pdf',
-          upsert: true
-        });
+      console.log('💾 Descargando PDF:', fileName);
+      
+      // Descargar el PDF directamente
+      pdf.save(fileName);
+      
+      // Intentar guardar en Supabase Storage (opcional, no bloqueante)
+      try {
+        const pdfBlob = pdf.output('blob');
+        console.log('☁️ Intentando guardar en Supabase Storage...');
+        
+        const { data, error: storageError } = await supabase.storage
+          .from('recibos')
+          .upload(`${organization?.id || user.id}/${fileName}`, pdfBlob, {
+            contentType: 'application/pdf',
+            upsert: true
+          });
 
-      if (error) {
-        console.error('Error guardando PDF:', error);
-        alert('Error al guardar el PDF. Se descargará localmente.');
-        pdf.save(fileName);
-      } else {
-        console.log('PDF guardado en storage:', data);
-        alert(`✅ PDF generado exitosamente: ${fileName}`);
-        // También descargar localmente
-        pdf.save(fileName);
+        if (storageError) {
+          console.warn('⚠️ No se pudo guardar en Storage:', storageError.message);
+        } else {
+          console.log('✅ PDF guardado en Storage:', data);
+        }
+      } catch (storageError) {
+        console.warn('⚠️ Error opcional de Storage:', storageError);
       }
+      
+      alert(`✅ PDF descargado exitosamente: ${fileName}`);
 
     } catch (error) {
-      console.error('Error generando PDF:', error);
-      alert('❌ Error al generar el PDF. Verifica que todos los datos estén configurados.');
+      console.error('❌ Error generando PDF:', error);
+      console.error('Detalles del error:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+      alert(`❌ Error al generar el PDF: ${error.message || 'Error desconocido'}\n\nRevisa la consola del navegador para más detalles.`);
     } finally {
       setGenerandoPDF(false);
+      console.log('✅ Proceso de generación PDF finalizado');
     }
   };
 
@@ -151,7 +205,7 @@ export default function ReciboVenta({ venta, onNuevaVenta, onCerrar }) {
     }
 
     const textoRecibo = `
-🏪 ${datosEmpresa.nombre_empresa}
+🏪 ${datosEmpresa.razon_social}
 📍 ${datosEmpresa.direccion}
 📞 ${datosEmpresa.telefono}
 🆔 NIT: ${datosEmpresa.nit}
@@ -385,14 +439,14 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
     }
   };
 
-  // Mostrar mensaje si no hay datos de empresa
-  if (cargandoDatos) {
+  // Mostrar mensaje si no hay organización cargada
+  if (!organization) {
     return (
       <div className="recibo-overlay">
         <div className="recibo-container">
           <div className="recibo-loading">
             <div className="recibo-loading-spinner"></div>
-            <p>Cargando datos de la empresa...</p>
+            <p>Cargando información de la organización...</p>
           </div>
         </div>
       </div>
@@ -423,101 +477,407 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
       <div className="recibo-container">
 
         {/* Contenido del recibo */}
-        <div className="recibo-content" ref={reciboRef}>
+        <div className="recibo-content" ref={reciboRef} style={{
+          backgroundColor: '#ffffff',
+          padding: '1.5rem',
+          fontFamily: 'Arial, sans-serif',
+          color: '#111827',
+          maxWidth: '600px',
+          margin: '0 auto'
+        }}>
           {/* Logo y datos del establecimiento */}
-          <div className="recibo-header">
+          <div className="recibo-header" style={{
+            textAlign: 'center',
+            borderBottom: '2px solid #e5e7eb',
+            paddingBottom: '1rem',
+            marginBottom: '1rem'
+          }}>
             {datosEmpresa.logo_url && (
               <img
                 src={datosEmpresa.logo_url}
                 alt="Logo establecimiento"
                 className="recibo-logo"
+                style={{
+                  width: '4rem',
+                  height: '4rem',
+                  objectFit: 'contain',
+                  margin: '0 auto 0.5rem',
+                  borderRadius: '0.5rem'
+                }}
                 onError={(e) => (e.currentTarget.style.display = "none")}
               />
             )}
-            <h1 className="recibo-empresa-nombre">{datosEmpresa.nombre_empresa}</h1>
-            <p className="recibo-empresa-direccion">{datosEmpresa.direccion}</p>
-            {datosEmpresa.ciudad && datosEmpresa.departamento && (
-              <p className="recibo-empresa-ciudad">{datosEmpresa.ciudad}, {datosEmpresa.departamento}</p>
+            <h1 className="recibo-empresa-nombre" style={{
+              fontSize: '1.5rem',
+              fontWeight: '700',
+              color: '#111827',
+              margin: '0 0 0.5rem 0'
+            }}>{datosEmpresa.razon_social}</h1>
+            <p className="recibo-empresa-direccion" style={{
+              fontSize: '0.875rem',
+              color: '#6b7280',
+              margin: '0 0 0.25rem 0'
+            }}>{datosEmpresa.direccion}</p>
+            {datosEmpresa.ciudad && (
+              <p className="recibo-empresa-ciudad" style={{
+                fontSize: '0.875rem',
+                color: '#6b7280',
+                margin: '0 0 0.25rem 0'
+              }}>{datosEmpresa.ciudad}</p>
             )}
-            <p className="recibo-empresa-telefono">Tel: {datosEmpresa.telefono}</p>
+            <p className="recibo-empresa-telefono" style={{
+              fontSize: '0.875rem',
+              color: '#6b7280',
+              margin: '0 0 0.25rem 0'
+            }}>Tel: {datosEmpresa.telefono}</p>
             {datosEmpresa.email && (
-              <p className="recibo-empresa-email">Email: {datosEmpresa.email}</p>
+              <p className="recibo-empresa-email" style={{
+                fontSize: '0.875rem',
+                color: '#6b7280',
+                margin: '0 0 0.25rem 0'
+              }}>Email: {datosEmpresa.email}</p>
             )}
-            <p className="recibo-empresa-nit">NIT: {datosEmpresa.nit}</p>
+            <p className="recibo-empresa-nit" style={{
+              fontSize: '0.875rem',
+              color: '#6b7280',
+              margin: '0',
+              fontWeight: '500'
+            }}>NIT: {datosEmpresa.nit}</p>
           </div>
 
           {/* Info del recibo */}
-          <div className="recibo-info-section">
-            <CheckCircle className="recibo-success-icon" />
-            <h2 className="recibo-title">Venta registrada</h2>
-            <p className="recibo-id">Recibo #{venta.id}</p>
-            <p className="recibo-datetime">
+          <div className="recibo-info-section" style={{
+            textAlign: 'center',
+            borderBottom: '1px solid #e5e7eb',
+            paddingBottom: '1rem',
+            marginBottom: '1rem'
+          }}>
+            <CheckCircle className="recibo-success-icon" style={{
+              width: '3rem',
+              height: '3rem',
+              color: '#10b981',
+              margin: '0 auto 0.5rem',
+              display: 'block'
+            }} />
+            <h2 className="recibo-title" style={{
+              fontSize: '1.25rem',
+              fontWeight: '700',
+              color: '#111827',
+              margin: '0 0 0.5rem 0'
+            }}>Venta registrada</h2>
+            <p className="recibo-id" style={{
+              fontSize: '0.875rem',
+              color: '#6b7280',
+              margin: '0 0 0.25rem 0',
+              fontWeight: '600'
+            }}>Recibo #{venta.id}</p>
+            <p className="recibo-datetime" style={{
+              fontSize: '0.75rem',
+              color: '#9ca3af',
+              margin: '0 0 0.25rem 0'
+            }}>
               {venta.date} — {venta.time}
             </p>
-            <p className="recibo-info">{venta.register} · Cajero: {venta.cashier}</p>
+            <p className="recibo-info" style={{
+              fontSize: '0.75rem',
+              color: '#6b7280',
+              margin: '0'
+            }}>{venta.register} · Cajero: {venta.cashier}</p>
           </div>
 
           {/* Tabla de productos */}
-          <div className="recibo-products">
-            <h3 className="recibo-section-title">Detalle de la venta</h3>
+          <div className="recibo-products" style={{
+            borderBottom: '1px solid #e5e7eb',
+            paddingBottom: '1rem',
+            marginBottom: '1rem'
+          }}>
+            <h3 className="recibo-section-title" style={{
+              fontWeight: '600',
+              color: '#111827',
+              margin: '0 0 0.75rem 0',
+              fontSize: '1rem'
+            }}>Detalle de la venta</h3>
             {venta.items.length === 0 ? (
-              <p className="recibo-no-products">No hay productos en esta venta.</p>
+              <p className="recibo-no-products" style={{
+                fontSize: '0.875rem',
+                color: '#6b7280',
+                textAlign: 'center',
+                padding: '1rem'
+              }}>No hay productos en esta venta.</p>
             ) : (
-              <table className="recibo-table">
+              <table className="recibo-table" style={{
+                width: '100%',
+                borderCollapse: 'collapse',
+                fontSize: '0.875rem'
+              }}>
                 <thead>
-                  <tr className="recibo-table-header">
-                    <th className="recibo-th-cant">Cant.</th>
-                    <th className="recibo-th-producto">Producto</th>
-                    <th className="recibo-th-total">Total</th>
+                  <tr className="recibo-table-header" style={{
+                    background: '#f9fafb',
+                    borderBottom: '1px solid #e5e7eb'
+                  }}>
+                    <th className="recibo-th-cant" style={{
+                      textAlign: 'left',
+                      padding: '0.5rem 0.25rem',
+                      fontWeight: '600',
+                      color: '#111827',
+                      width: '15%'
+                    }}>Cant.</th>
+                    <th className="recibo-th-producto" style={{
+                      textAlign: 'left',
+                      padding: '0.5rem 0.25rem',
+                      fontWeight: '600',
+                      color: '#111827',
+                      width: '60%'
+                    }}>Producto</th>
+                    <th className="recibo-th-total" style={{
+                      textAlign: 'right',
+                      padding: '0.5rem 0.25rem',
+                      fontWeight: '600',
+                      color: '#111827',
+                      width: '25%'
+                    }}>Total</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {venta.items.map((item, idx) => (
-                    <tr key={idx} className="recibo-table-row">
-                      <td className="recibo-td-cant">{item.qty}</td>
-                      <td className="recibo-td-producto">{item.nombre}</td>
-                      <td className="recibo-td-total">{formatCOP(item.qty * item.precio_venta)}</td>
-                    </tr>
-                  ))}
+                  {venta.items.map((item, idx) => {
+                    const tieneToppings = item.toppings && Array.isArray(item.toppings) && item.toppings.length > 0;
+                    const precioItemBase = item.precio_venta || 0;
+                    const precioToppings = tieneToppings 
+                      ? item.toppings.reduce((sum, t) => sum + (t.precio || 0) * (t.cantidad || 1), 0)
+                      : 0;
+                    const precioTotalItem = item.precio_total || (precioItemBase + precioToppings);
+                    const totalItem = precioTotalItem * item.qty;
+
+                    return (
+                      <React.Fragment key={idx}>
+                        <tr className="recibo-table-row" style={{
+                          borderBottom: tieneToppings ? 'none' : '1px solid #f3f4f6'
+                        }}>
+                          <td className="recibo-td-cant" style={{
+                            padding: '0.5rem 0.25rem',
+                            color: '#111827',
+                            fontWeight: '500',
+                            verticalAlign: 'top',
+                            paddingTop: '0.75rem'
+                          }}>{item.qty}</td>
+                          <td className="recibo-td-producto" style={{
+                            padding: '0.5rem 0.25rem',
+                            color: '#374151',
+                            verticalAlign: 'top',
+                            paddingTop: '0.75rem'
+                          }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                              <span style={{ fontWeight: '500' }}>{item.nombre}</span>
+                              {tieneToppings && (
+                                <div style={{
+                                  marginTop: '0.25rem',
+                                  paddingLeft: '0.75rem',
+                                  fontSize: '0.8rem',
+                                  color: '#6b7280'
+                                }}>
+                                  <div style={{ 
+                                    marginBottom: '0.25rem',
+                                    fontWeight: '500',
+                                    color: '#4b5563'
+                                  }}>
+                                    Toppings:
+                                  </div>
+                                  {item.toppings.map((topping, tIdx) => (
+                                    <div key={tIdx} style={{
+                                      display: 'flex',
+                                      justifyContent: 'space-between',
+                                      marginBottom: '0.125rem'
+                                    }}>
+                                      <span>
+                                        • {topping.nombre}
+                                        {topping.cantidad > 1 && ` (x${topping.cantidad})`}
+                                      </span>
+                                      <span style={{ marginLeft: '0.5rem', fontWeight: '500' }}>
+                                        {formatCOP((topping.precio || 0) * (topping.cantidad || 1))}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="recibo-td-total" style={{
+                            padding: '0.5rem 0.25rem',
+                            color: '#111827',
+                            fontWeight: '600',
+                            textAlign: 'right',
+                            verticalAlign: 'top',
+                            paddingTop: '0.75rem'
+                          }}>{formatCOP(totalItem)}</td>
+                        </tr>
+                        {tieneToppings && (
+                          <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
+                            <td colSpan="3" style={{
+                              padding: '0.25rem 0.5rem',
+                              fontSize: '0.75rem',
+                              color: '#6b7280',
+                              fontStyle: 'italic'
+                            }}>
+                              Precio base: {formatCOP(precioItemBase)} {tieneToppings && `+ Toppings: ${formatCOP(precioToppings)}`} = {formatCOP(precioTotalItem)} c/u
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             )}
           </div>
 
           {/* Totales */}
-          <div className="recibo-totals">
-            <div className="recibo-total-row">
+          <div className="recibo-totals" style={{
+            borderBottom: '1px solid #e5e7eb',
+            paddingBottom: '1rem',
+            marginBottom: '1rem'
+          }}>
+            <div className="recibo-total-row" style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: '0.875rem',
+              padding: '0.25rem 0',
+              color: '#374151'
+            }}>
               <span>Subtotal</span>
-              <span>{formatCOP(subtotal)}</span>
+              <span style={{ fontWeight: '500' }}>{formatCOP(subtotal)}</span>
             </div>
-            <div className="recibo-total-row recibo-total-final">
-              <span>Total</span>
+            <div className="recibo-total-row recibo-total-final" style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontWeight: '700',
+              fontSize: '1.25rem',
+              color: '#111827',
+              marginTop: '0.5rem',
+              paddingTop: '0.5rem',
+              borderTop: '2px solid #e5e7eb'
+            }}>
+              <span>TOTAL</span>
               <span>{formatCOP(total)}</span>
             </div>
-            <div className="recibo-payment-method">
+            <div className="recibo-payment-method" style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: '0.75rem',
+              color: '#6b7280',
+              marginTop: '0.5rem',
+              paddingTop: '0.5rem',
+              borderTop: '1px solid #f3f4f6'
+            }}>
               <span>Método de pago</span>
-              <span>{venta.metodo_pago}</span>
+              <span style={{ fontWeight: '600', textTransform: 'capitalize' }}>
+                {esPagoMixto ? 'Mixto' : venta.metodo_pago}
+              </span>
             </div>
+            
+            {/* Detalles de pago mixto */}
+            {esPagoMixto && detallesPagoMixto && (
+              <div style={{
+                background: '#f0f9ff',
+                border: '1px solid #0ea5e9',
+                borderRadius: '0.5rem',
+                padding: '0.75rem',
+                marginTop: '0.75rem'
+              }}>
+                <div style={{
+                  fontSize: '0.75rem',
+                  fontWeight: '600',
+                  color: '#0c4a6e',
+                  marginBottom: '0.5rem',
+                  textAlign: 'center'
+                }}>Desglose de Pago Mixto</div>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  fontSize: '0.75rem',
+                  color: '#374151',
+                  marginBottom: '0.25rem'
+                }}>
+                  <span style={{ display: 'flex', alignItems: 'center' }}>
+                    {getIconoMetodoPago(detallesPagoMixto.metodo1)}
+                    {detallesPagoMixto.metodo1}
+                  </span>
+                  <span style={{ fontWeight: '600', color: '#0284c7' }}>
+                    {formatCOP(detallesPagoMixto.monto1)}
+                  </span>
+                </div>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  fontSize: '0.75rem',
+                  color: '#374151'
+                }}>
+                  <span style={{ display: 'flex', alignItems: 'center' }}>
+                    {getIconoMetodoPago(detallesPagoMixto.metodo2)}
+                    {detallesPagoMixto.metodo2}
+                  </span>
+                  <span style={{ fontWeight: '600', color: '#0284c7' }}>
+                    {formatCOP(detallesPagoMixto.monto2)}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Pago y cambio */}
-          <div className="recibo-payment">
-            <div className="recibo-payment-row">
+          <div className="recibo-payment" style={{
+            borderBottom: '1px solid #e5e7eb',
+            paddingBottom: '1rem',
+            marginBottom: '1rem'
+          }}>
+            <div className="recibo-payment-row" style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: '0.875rem',
+              padding: '0.25rem 0',
+              color: '#374151'
+            }}>
               <span>Pago del cliente</span>
-              <span>{formatCOP(venta.pagoCliente)}</span>
+              <span style={{ fontWeight: '600', color: '#111827' }}>{formatCOP(venta.pagoCliente)}</span>
             </div>
-            <div className="recibo-payment-row recibo-change">
-              <span>Cambio</span>
-              <span className={cambio < 0 ? "recibo-change-negative" : "recibo-change-positive"}>
+            <div className="recibo-payment-row recibo-change" style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              paddingTop: '0.5rem',
+              borderTop: '1px solid #f3f4f6',
+              marginTop: '0.25rem'
+            }}>
+              <span style={{ color: '#374151' }}>Cambio</span>
+              <span style={{
+                color: cambio < 0 ? '#ef4444' : '#10b981',
+                fontWeight: '700',
+                fontSize: '1rem'
+              }}>
                 {cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambio)}
               </span>
             </div>
           </div>
 
           {/* Pie del recibo */}
-          <div className="recibo-footer">
-            <p className="recibo-thanks">¡Gracias por su compra!</p>
-            <p className="recibo-footer-text">Conserve este recibo como comprobante de pago</p>
+          <div className="recibo-footer" style={{
+            textAlign: 'center',
+            borderTop: '2px solid #e5e7eb',
+            paddingTop: '1rem'
+          }}>
+            <p className="recibo-thanks" style={{
+              fontSize: '1.125rem',
+              fontWeight: '600',
+              color: '#10b981',
+              margin: '0 0 0.5rem 0'
+            }}>¡Gracias por su compra!</p>
+            <p className="recibo-footer-text" style={{
+              fontSize: '0.75rem',
+              color: '#6b7280',
+              margin: '0'
+            }}>Conserve este recibo como comprobante de pago</p>
           </div>
         </div>
 

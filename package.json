@@ -65,7 +65,9 @@
     "lint:fix": "eslint src/ --fix",
     "format": "prettier --write src/",
     "analyze": "npm run build && npx bundle-analyzer build/static/js/*.js",
-    "serve": "serve -s build -l 3000"
+    "serve": "serve -s build -l 3000",
+    "setup-toppings": "bash setup-toppings.sh",
+    "setup-storage-policies": "node ejecutar-politicas-storage.js"
   },
   "eslintConfig": {
     "extends": [

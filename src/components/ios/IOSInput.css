@@ -1,0 +1,259 @@
+/* 🍎 iOS Input Styles */
+
+.ios-input-container {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+}
+
+.ios-input-full-width {
+  max-width: 100%;
+}
+
+/* === LABEL === */
+.ios-input-label {
+  display: block;
+  margin-bottom: 8px;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #3C3C43;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ios-input-label-float {
+  color: #007AFF;
+  transform: translateY(-2px);
+}
+
+/* === WRAPPER === */
+.ios-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* === INPUT === */
+.ios-input {
+  width: 100%;
+  padding: 14px 16px;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  color: #000;
+  background: #F2F2F7;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  outline: none;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: border-color, background-color, transform;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.ios-input::placeholder {
+  color: #8E8E93;
+  opacity: 1;
+}
+
+.ios-input:focus {
+  background: white;
+  border-color: #007AFF;
+  transform: scale(1.01);
+  box-shadow: 
+    0 0 0 4px rgba(0, 122, 255, 0.1),
+    0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.ios-input-with-icon-left {
+  padding-left: 48px;
+}
+
+.ios-input-with-clear {
+  padding-right: 48px;
+}
+
+/* === FOCUS RING === */
+.ios-input-focus-ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 12px;
+  pointer-events: none;
+  border: 2px solid #007AFF;
+  opacity: 0;
+  transform: scale(0.95);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ios-input:focus + .ios-input-focus-ring {
+  opacity: 0.2;
+  transform: scale(1.02);
+}
+
+/* === ICONS === */
+.ios-input-icon {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8E8E93;
+  transition: color 0.2s ease;
+  pointer-events: none;
+}
+
+.ios-input-icon-left {
+  left: 16px;
+}
+
+.ios-input-icon-right {
+  right: 16px;
+}
+
+.ios-input:focus ~ .ios-input-icon {
+  color: #007AFF;
+}
+
+/* === CLEAR BUTTON === */
+.ios-input-clear {
+  position: absolute;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.1);
+  border: none;
+  border-radius: 50%;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ios-input-clear:hover {
+  background: rgba(0, 0, 0, 0.15);
+  transform: scale(1.1);
+}
+
+.ios-input-clear:active {
+  transform: scale(0.95);
+}
+
+.ios-input-clear svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* === ERROR STATE === */
+.ios-input-error {
+  border-color: #FF3B30;
+  background: rgba(255, 59, 48, 0.05);
+}
+
+.ios-input-error:focus {
+  border-color: #FF3B30;
+  box-shadow: 
+    0 0 0 4px rgba(255, 59, 48, 0.1),
+    0 4px 12px rgba(255, 59, 48, 0.15);
+}
+
+/* === DISABLED STATE === */
+.ios-input-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* === HELPER TEXT === */
+.ios-input-helper {
+  margin-top: 6px;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+  font-size: 13px;
+  color: #8E8E93;
+  padding-left: 4px;
+  transition: color 0.2s ease;
+}
+
+.ios-input-helper-error {
+  color: #FF3B30;
+  animation: slideInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* === DARK MODE === */
+@media (prefers-color-scheme: dark) {
+  .ios-input-label {
+    color: #E5E5EA;
+  }
+  
+  .ios-input-label-float {
+    color: #0A84FF;
+  }
+  
+  .ios-input {
+    color: white;
+    background: #1C1C1E;
+  }
+  
+  .ios-input:focus {
+    background: #2C2C2E;
+    border-color: #0A84FF;
+    box-shadow: 
+      0 0 0 4px rgba(10, 132, 255, 0.15),
+      0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+  
+  .ios-input::placeholder {
+    color: #636366;
+  }
+  
+  .ios-input-icon {
+    color: #636366;
+  }
+  
+  .ios-input:focus ~ .ios-input-icon {
+    color: #0A84FF;
+  }
+  
+  .ios-input-clear {
+    background: rgba(255, 255, 255, 0.2);
+  }
+  
+  .ios-input-clear:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+  
+  .ios-input-helper {
+    color: #8E8E93;
+  }
+}
+
+/* === ACCESSIBILITY === */
+.ios-input:focus-visible {
+  outline: 3px solid rgba(0, 122, 255, 0.5);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ios-input,
+  .ios-input-focus-ring,
+  .ios-input-label,
+  .ios-input-helper {
+    transition: none;
+  }
+}

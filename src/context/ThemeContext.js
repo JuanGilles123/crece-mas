@@ -39,13 +39,17 @@ export const ThemeProvider = ({ children }) => {
   useEffect(() => {
     localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
     
-    // Aplicar clase al body para transiciones CSS
+    // Aplicar clases al body para transiciones CSS (ambas versiones para compatibilidad)
     if (isDarkMode) {
-      document.body.classList.add('dark-theme');
-      document.body.classList.remove('light-theme');
+      document.body.classList.add('dark-theme', 'dark');
+      document.body.classList.remove('light-theme', 'light');
+      document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('light');
     } else {
-      document.body.classList.add('light-theme');
-      document.body.classList.remove('dark-theme');
+      document.body.classList.add('light-theme', 'light');
+      document.body.classList.remove('dark-theme', 'dark');
+      document.documentElement.classList.add('light');
+      document.documentElement.classList.remove('dark');
     }
   }, [isDarkMode]);
 

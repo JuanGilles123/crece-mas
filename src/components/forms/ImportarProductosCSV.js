@@ -3,10 +3,11 @@ import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import * as XLSX from 'xlsx';
 import { compressProductImage } from '../utils/imageCompression';
+import { ClipboardList } from 'lucide-react';
 import './ImportarProductosCSV.css';
 
 const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const [archivo, setArchivo] = useState(null);
   const [procesando, setProcesando] = useState(false);
   const [resultado, setResultado] = useState(null);
@@ -20,8 +21,6 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
     }
 
     try {
-      console.log('Procesando imagen para producto:', nombreProducto);
-      
       // Si es una URL o ruta, la convertimos a archivo
       let archivoImagen;
       
@@ -46,13 +45,10 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
       }
 
       // Comprimir la imagen
-      console.log('Comprimiendo imagen...');
       const imagenComprimida = await compressProductImage(archivoImagen);
       
       // Subir a Supabase Storage
       const nombreArchivo = `${user.id}/${Date.now()}_${imagenComprimida.name}`;
-      console.log('Subiendo imagen a Storage:', nombreArchivo);
-      
       const { error: errorUpload } = await supabase.storage
         .from('productos')
         .upload(nombreArchivo, imagenComprimida);
@@ -61,8 +57,6 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
         console.error('Error subiendo imagen:', errorUpload);
         return null;
       }
-      
-      console.log('Imagen subida exitosamente:', nombreArchivo);
       return nombreArchivo;
       
     } catch (error) {
@@ -150,8 +144,6 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
             const row = jsonData[i];
             if (Array.isArray(row)) {
               const headers = row.map(h => String(h || '').toLowerCase().trim());
-              console.log(`Fila Excel ${i}:`, headers);
-              
               // Verificar si esta fila contiene al menos 2 de los 4 headers requeridos
               const foundHeaders = requiredHeaders.filter(required => 
                 headers.some(header => 
@@ -162,28 +154,20 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
                   (header.includes('price') && required.includes('precio'))
                 )
               );
-              
-              console.log(`Fila Excel ${i} - Headers encontrados:`, foundHeaders, 'de', requiredHeaders);
-              
               // Aceptar si encuentra al menos 2 de los 4 headers requeridos
               if (foundHeaders.length >= 2) {
                 headerRowIndex = i;
-                console.log('Header Excel encontrado en fila:', i, 'con', foundHeaders.length, 'headers');
                 break;
               }
             }
           }
 
           if (headerRowIndex === -1) {
-            console.log('No se encontró fila de headers válida en Excel');
             // Intentar usar la primera fila como headers si no se encuentra nada
-            console.log('Intentando usar la primera fila como headers...');
             headerRowIndex = 0;
           }
 
           const headers = jsonData[headerRowIndex];
-          console.log('Headers Excel finales encontrados:', headers);
-          
           // Verificar headers requeridos (validación muy flexible)
           const missingHeaders = requiredHeaders.filter(required => 
             !headers.some(header => 
@@ -192,24 +176,16 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
               String(header || '').toLowerCase().includes(required.replace('_', ''))
             )
           );
-          
-          console.log('Headers Excel faltantes:', missingHeaders);
-          
           // Solo mostrar advertencia si faltan más de 2 headers críticos
           if (missingHeaders.length > 2) {
-            console.warn(`Advertencia Excel: Faltan headers: ${missingHeaders.join(', ')}`);
+            console.warn('Advertencia Excel: Faltan headers:', missingHeaders.join(', '));
           }
 
           const productos = [];
-          console.log('Procesando productos Excel desde fila:', headerRowIndex + 1);
-          
           // Procesar solo las filas después de los headers
           for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
             const row = jsonData[i];
-            console.log(`Procesando fila Excel ${i}:`, row);
-            
             if (!Array.isArray(row) || row.length === 0) {
-              console.log(`Saltando fila Excel ${i} (no es array o está vacía)`);
               continue;
             }
             
@@ -217,9 +193,6 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
             headers.forEach((header, index) => {
               producto[header] = row[index] || '';
             });
-            
-            console.log(`Producto Excel fila ${i}:`, producto);
-
             // Buscar campos requeridos de forma flexible (incluyendo nombres exactos del Excel)
             const nombre = producto.nombre || producto.name || producto.Nombre || producto.Name || producto.NOMBRE || '';
             const precioCompra = producto.precio_compra || producto.precio_compra || producto.Precio_Compra || producto.price_compra || 
@@ -228,12 +201,9 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
                                producto['PRECIO DE VENTA'] || '';
             const stock = producto.stock || producto.Stock || producto.cantidad || producto.Cantidad || producto.STOCK || '';
             const imagen = producto.imagen || producto.Imagen || producto.IMAGEN || producto['IMAGEN(OPCIONAL)'] || '';
-
-            console.log(`Campos Excel extraídos - Nombre: "${nombre}", PrecioCompra: "${precioCompra}", PrecioVenta: "${precioVenta}", Stock: "${stock}", Imagen: "${imagen}"`);
-
+            
             // Validar que tenga los campos requeridos
             if (!nombre || !precioCompra || !precioVenta || !stock) {
-              console.log(`Saltando fila Excel ${i} (campos requeridos faltantes)`);
               continue;
             }
 
@@ -241,46 +211,36 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
             const precioCompraNum = parseFloat(precioCompra) || 0;
             const precioVentaNum = parseFloat(precioVenta) || 0;
             const stockNum = parseInt(stock) || 0;
-
-            console.log(`Números Excel convertidos - PrecioCompra: ${precioCompraNum}, PrecioVenta: ${precioVentaNum}, Stock: ${stockNum}`);
-
+            
             // Validaciones
             if (precioCompraNum < 0 || precioVentaNum < 0) {
-              console.log(`Saltando fila Excel ${i} (precios negativos)`);
               continue;
             }
             if (stockNum < 0) {
-              console.log(`Saltando fila Excel ${i} (stock negativo)`);
               continue;
             }
 
-        // Crear producto final (solo con columnas que existen en la tabla)
-        const productoFinal = {
-          nombre: nombre,
-          precio_compra: precioCompraNum,
-          precio_venta: precioVentaNum,
-          stock: stockNum,
-          user_id: user.id,
-          codigo: producto['CODIGO PRODUCTO'] || producto.codigo || producto.Codigo || `PROD-${Date.now()}-${i}`,
-          imagen: imagen || null // Guardamos la imagen original para procesar después
-        };
-
-            console.log(`Producto Excel válido fila ${i}:`, productoFinal);
+            // Crear producto final (solo con columnas que existen en la tabla)
+            const productoFinal = {
+              nombre: nombre,
+              precio_compra: precioCompraNum,
+              precio_venta: precioVentaNum,
+              stock: stockNum,
+              organization_id: userProfile?.organization_id,
+              codigo: producto['CODIGO PRODUCTO'] || producto.codigo || producto.Codigo || 'PROD-' + Date.now() + '-' + i,
+              imagen: imagen || null // Guardamos la imagen original para procesar después
+            };
             productos.push(productoFinal);
           }
-
-          console.log(`Total de productos Excel encontrados: ${productos.length}`);
           
           if (productos.length === 0) {
             throw new Error('No se encontraron productos válidos en el archivo.');
           }
 
           // Procesar imágenes de todos los productos
-          console.log('Procesando imágenes de productos...');
           const productosConImagenes = await Promise.all(
             productos.map(async (producto) => {
               if (producto.imagen && producto.imagen !== '') {
-                console.log('Procesando imagen para producto:', producto.nombre);
                 try {
                   const imagenProcesada = await procesarImagenExcel(producto.imagen, producto.nombre);
                   return {
@@ -316,8 +276,6 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
 
   const parseCSV = async (text) => {
     const lines = text.split('\n').filter(line => line.trim());
-    console.log('Líneas del CSV:', lines);
-    
     if (lines.length < 2) {
       throw new Error('El archivo CSV debe tener al menos una fila de datos.');
     }
@@ -329,8 +287,6 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].toLowerCase();
       const headers = line.split(',').map(h => h.trim().replace(/"/g, '').toLowerCase());
-      console.log(`Línea ${i}:`, line, 'Headers:', headers);
-      
       // Verificar si esta línea contiene al menos 2 de los 4 headers requeridos
       const foundHeaders = requiredHeaders.filter(required => 
         headers.some(header => 
@@ -341,27 +297,19 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
           (header.includes('price') && required.includes('precio'))
         )
       );
-      
-      console.log(`Línea ${i} - Headers encontrados:`, foundHeaders, 'de', requiredHeaders);
-      
       // Aceptar si encuentra al menos 2 de los 4 headers requeridos
       if (foundHeaders.length >= 2) {
         headerLineIndex = i;
-        console.log('Header encontrado en línea:', i, 'con', foundHeaders.length, 'headers');
         break;
       }
     }
 
     if (headerLineIndex === -1) {
-      console.log('No se encontró línea de headers válida');
       // Intentar usar la primera línea como headers si no se encuentra nada
-      console.log('Intentando usar la primera línea como headers...');
       headerLineIndex = 0;
     }
 
     const headers = lines[headerLineIndex].split(',').map(h => h.trim().replace(/"/g, ''));
-    console.log('Headers finales encontrados:', headers);
-    
     // Verificar headers requeridos (validación muy flexible)
     const missingHeaders = requiredHeaders.filter(required => 
       !headers.some(header => 
@@ -370,33 +318,22 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
         header.toLowerCase().includes(required.replace('_', ''))
       )
     );
-    
-    console.log('Headers faltantes:', missingHeaders);
-    
     // Solo mostrar advertencia si faltan más de 2 headers críticos
     if (missingHeaders.length > 2) {
-      console.warn(`Advertencia: Faltan headers: ${missingHeaders.join(', ')}`);
+      console.warn('Advertencia: Faltan headers:', missingHeaders.join(', '));
     }
 
     const productos = [];
-    console.log('Procesando productos desde línea:', headerLineIndex + 1);
-    
     // Procesar solo las líneas después de los headers
     for (let i = headerLineIndex + 1; i < lines.length; i++) {
       const line = lines[i].trim();
-      console.log(`Procesando línea ${i}:`, line);
-      
       // Saltar líneas de comentarios o vacías
       if (line.startsWith('#') || line === '') {
-        console.log(`Saltando línea ${i} (comentario o vacía)`);
         continue;
       }
       
       const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
-      console.log(`Valores línea ${i}:`, values, 'Headers:', headers);
-      
       if (values.length !== headers.length) {
-        console.log(`Saltando línea ${i} (longitud incorrecta: ${values.length} vs ${headers.length})`);
         continue;
       }
 
@@ -404,9 +341,6 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
       headers.forEach((header, index) => {
         producto[header] = values[index];
       });
-      
-      console.log(`Producto línea ${i}:`, producto);
-
       // Buscar campos requeridos de forma flexible (incluyendo nombres exactos del Excel)
       const nombre = producto.nombre || producto.name || producto.Nombre || producto.Name || producto.NOMBRE || '';
       const precioCompra = producto.precio_compra || producto.precio_compra || producto.Precio_Compra || producto.price_compra || 
@@ -415,12 +349,9 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
                          producto['PRECIO DE VENTA'] || '';
       const stock = producto.stock || producto.Stock || producto.cantidad || producto.Cantidad || producto.STOCK || '';
       const imagen = producto.imagen || producto.Imagen || producto.IMAGEN || producto['IMAGEN(OPCIONAL)'] || '';
-
-      console.log(`Campos extraídos - Nombre: "${nombre}", PrecioCompra: "${precioCompra}", PrecioVenta: "${precioVenta}", Stock: "${stock}", Imagen: "${imagen}"`);
-
+      
       // Validar datos requeridos
       if (!nombre || !precioCompra || !precioVenta || !stock) {
-        console.log(`Saltando línea ${i} (campos requeridos faltantes)`);
         continue;
       }
 
@@ -428,18 +359,14 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
       const precioCompraNum = parseFloat(precioCompra);
       const precioVentaNum = parseFloat(precioVenta);
       const stockNum = parseInt(stock);
-
-      console.log(`Números convertidos - PrecioCompra: ${precioCompraNum}, PrecioVenta: ${precioVentaNum}, Stock: ${stockNum}`);
-
+      
       // Validar que sean números válidos
       if (isNaN(precioCompraNum) || isNaN(precioVentaNum) || isNaN(stockNum)) {
-        console.log(`Saltando línea ${i} (números inválidos)`);
         continue;
       }
 
       // Validar que no sean negativos
       if (precioCompraNum < 0 || precioVentaNum < 0 || stockNum < 0) {
-        console.log(`Saltando línea ${i} (números negativos)`);
         continue;
       }
 
@@ -449,23 +376,17 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
         precio_compra: precioCompraNum,
         precio_venta: precioVentaNum,
         stock: stockNum,
-        user_id: user.id,
-        codigo: producto.codigo || producto.Codigo || producto.CODIGO || `PROD-${Date.now()}-${i}`,
+        organization_id: userProfile?.organization_id,
+        codigo: producto.codigo || producto.Codigo || producto.CODIGO || 'PROD-' + Date.now() + '-' + i,
         imagen: imagen || null // Guardamos la imagen original para procesar después
       };
-
-      console.log(`Producto válido línea ${i}:`, productoFinal);
       productos.push(productoFinal);
     }
-
-    console.log(`Total de productos encontrados: ${productos.length}`);
     
     // Procesar imágenes de todos los productos
-    console.log('Procesando imágenes de productos CSV...');
     const productosConImagenes = await Promise.all(
       productos.map(async (producto) => {
         if (producto.imagen && producto.imagen !== '') {
-          console.log('Procesando imagen para producto:', producto.nombre);
           try {
             const imagenProcesada = await procesarImagenExcel(producto.imagen, producto.nombre);
             return {
@@ -498,6 +419,11 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
       return;
     }
 
+    // Validar que tengamos organization_id
+    if (!userProfile || !userProfile.organization_id) {
+      setError('Error: No se pudo obtener la organización. Por favor recarga la página e intenta de nuevo.');
+      return;
+    }
     setProcesando(true);
     setError('');
 
@@ -591,7 +517,7 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
 
         <div className="importar-csv-body">
           <div className="importar-csv-section">
-            <h3>📋 Plantillas de Importación</h3>
+            <h3><ClipboardList size={20} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.5rem' }} /> Plantillas de Importación</h3>
             <p>Descarga la plantilla oficial para importar tus productos:</p>
             <div className="importar-csv-plantilla-container">
               <button 

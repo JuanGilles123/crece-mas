@@ -1,0 +1,109 @@
+/* 🍎 iOS Card Styles */
+
+.ios-card {
+  background: white;
+  border-radius: 16px;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, box-shadow;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* === VARIANTS === */
+.ios-card-elevated {
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.04),
+    0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.ios-card-flat {
+  box-shadow: none;
+  background: #F2F2F7;
+}
+
+.ios-card-outlined {
+  box-shadow: none;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.ios-card-glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    inset 0 1px 1px rgba(255, 255, 255, 0.9);
+}
+
+/* === PADDING === */
+.ios-card-padding-none {
+  padding: 0;
+}
+
+.ios-card-padding-small {
+  padding: 12px;
+}
+
+.ios-card-padding-medium {
+  padding: 16px;
+}
+
+.ios-card-padding-large {
+  padding: 24px;
+}
+
+/* === INTERACTIONS === */
+.ios-card-hoverable:hover {
+  transform: translateY(-4px);
+  box-shadow: 
+    0 4px 16px rgba(0, 0, 0, 0.08),
+    0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+.ios-card-clickable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.ios-card-clickable:active {
+  transform: translateY(-2px) scale(0.98);
+  transition-duration: 0.1s;
+}
+
+/* === DARK MODE === */
+@media (prefers-color-scheme: dark) {
+  .ios-card {
+    background: #1C1C1E;
+  }
+  
+  .ios-card-elevated {
+    box-shadow: 
+      0 2px 8px rgba(0, 0, 0, 0.3),
+      0 4px 16px rgba(0, 0, 0, 0.4);
+  }
+  
+  .ios-card-flat {
+    background: #2C2C2E;
+  }
+  
+  .ios-card-outlined {
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+  
+  .ios-card-glass {
+    background: rgba(28, 28, 30, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* === ACCESSIBILITY === */
+.ios-card-clickable:focus-visible {
+  outline: 3px solid rgba(0, 122, 255, 0.5);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ios-card {
+    transition: none;
+  }
+}

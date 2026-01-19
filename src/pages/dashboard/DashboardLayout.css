@@ -1,301 +1,390 @@
+/* 🍎 iOS Native Dashboard Layout */
+
 /* Layout principal */
 .dashboard-layout {
   display: flex;
   height: 100vh;
-  background: var(--bg-primary);
+  height: 100dvh; /* Dynamic viewport height para móviles */
+  background: #F2F2F7;
   overflow: hidden;
+  margin: 0;
+  padding: 0;
+  position: relative;
 }
 
-/* Sidebar */
+/* Sidebar iOS Style - Colapsado por defecto */
 .dashboard-sidebar {
-  width: 250px;
-  min-width: 220px;
-  max-width: 280px;
-  background: var(--bg-card);
-  border-right: 1px solid var(--border-primary);
+  width: 70px;
+  min-width: 70px;
+  background: #F2F2F7;
+  border-right: none;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  padding: 1.5rem 1rem 1rem 1.5rem;
-  gap: 2rem;
+  padding: 0;
   position: relative;
   flex-shrink: 0;
-  transition: all 0.3s ease;
+  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+              min-width 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              background 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              border-radius 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              margin 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   z-index: 100;
-}
-
-.dashboard-sidebar.collapsed {
-  width: 0;
-  min-width: 0;
-  max-width: 0;
-  padding: 0;
   overflow: hidden;
-  border-right: none;
+  box-shadow: none;
+  border-radius: 0;
+  margin: 0;
 }
 
-/* Botón de toggle del sidebar */
+/* Sidebar expandido al hover - Liquid Glass Effect */
+.dashboard-sidebar:hover {
+  width: 280px;
+  min-width: 280px;
+  background: rgba(242, 242, 247, 0.6);
+  backdrop-filter: blur(60px) saturate(200%);
+  -webkit-backdrop-filter: blur(60px) saturate(200%);
+  border-right: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04),
+              0 0 0 1px rgba(255, 255, 255, 0.6) inset,
+              0 0 80px rgba(255, 255, 255, 0.1) inset;
+  border-radius: 0 24px 24px 0;
+  margin: 12px 0;
+  padding: 4px 0;
+}
+
+/* Bloquear hover del sidebar cuando un modal está abierto */
+body[data-modal-open="true"] .dashboard-sidebar {
+  pointer-events: none !important;
+}
+
+body[data-modal-open="true"] .dashboard-sidebar:hover {
+  width: 70px !important;
+  min-width: 70px !important;
+  background: #F2F2F7 !important;
+  backdrop-filter: none !important;
+  border-right: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Sidebar collapsed en móvil */
+.dashboard-sidebar.collapsed {
+  transform: translateX(-100%);
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+/* Botón de toggle iOS style */
 .sidebar-toggle {
   position: fixed;
-  top: var(--pwa-space-4);
-  left: var(--pwa-space-4);
-  z-index: var(--pwa-z-fixed);
-  background: var(--bg-card);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--pwa-radius-lg);
-  padding: var(--pwa-space-3);
+  top: 16px;
+  left: 16px;
+  z-index: 150;
+  background: white;
+  border: none;
+  border-radius: 12px;
+  padding: 12px;
   cursor: pointer;
-  box-shadow: var(--pwa-shadow-lg);
-  color: var(--text-primary);
-  transition: var(--pwa-transition-normal);
-  display: none; /* Oculto por defecto */
-  min-height: var(--pwa-btn-height-md);
-  min-width: var(--pwa-btn-height-md);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  color: #007AFF;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: none;
+  width: 44px;
+  height: 44px;
   align-items: center;
   justify-content: center;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.sidebar-toggle:hover {
-  background: var(--bg-tertiary);
-  box-shadow: var(--shadow-lg);
+.sidebar-toggle:active {
+  transform: scale(0.95);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
-.dashboard-sidebar.collapsed + .sidebar-toggle {
-  left: 1rem;
-}
-
-.dashboard-sidebar::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: linear-gradient(to bottom, transparent 0%, var(--border-primary) 20%, var(--border-secondary) 50%, var(--border-primary) 80%, transparent 100%);
-}
+/* Logo iOS Style */
 .dashboard-logo {
-  margin-bottom: 2rem;
+  padding: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: transparent;
+  border-bottom: none;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  min-height: 70px;
+  overflow: hidden;
+}
+
+.dashboard-sidebar:hover .dashboard-logo {
+  border-bottom: none;
+}
+
+.dark .dashboard-logo {
+  border-bottom: none;
+}
+
+.dark .dashboard-sidebar:hover .dashboard-logo {
+  border-bottom: none;
 }
 
 .dashboard-logo-img {
-  max-width: 120px;
-  max-height: 60px;
+  width: 36px;
+  height: 36px;
   object-fit: contain;
+  display: block;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 8px;
 }
+
+/* Logo expandido al hover */
+.dashboard-sidebar:hover .dashboard-logo {
+  justify-content: flex-start;
+  padding: 16px 20px;
+}
+
+.dashboard-sidebar:hover .dashboard-logo-img {
+  width: 120px;
+  height: auto;
+}
+
+/* Organization Switcher iOS Style */
+.org-switcher-container {
+  padding: 8px;
+  border-bottom: none;
+  overflow: hidden;
+  background: transparent;
+  position: relative;
+  z-index: 100;
+}
+
+.dashboard-sidebar:hover .org-switcher-container {
+  padding: 12px 16px;
+  border-bottom: none;
+  overflow: visible;
+}
+
+.dark .org-switcher-container {
+  border-bottom: none;
+}
+
+.dark .dashboard-sidebar:hover .org-switcher-container {
+  border-bottom: none;
+}
+
+/* Navigation iOS Style */
 .dashboard-nav {
   display: flex;
   flex-direction: column;
-  gap: 1.2rem;
+  gap: 6px;
+  padding: 16px 8px;
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.dashboard-sidebar:hover .dashboard-nav {
+  padding: 16px 12px;
+}
+
+.nav-item-wrapper {
+  position: relative;
   width: 100%;
 }
+
 .dashboard-nav a {
   text-decoration: none;
-  color: var(--text-secondary);
-  font-size: var(--pwa-font-size-lg);
+  color: #000;
+  font-size: 16px;
   font-weight: 500;
-  padding: var(--pwa-space-4) var(--pwa-space-5);
-  border-radius: var(--pwa-radius-lg);
+  padding: 12px 16px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
-  gap: var(--pwa-space-4);
-  transition: var(--pwa-transition-normal);
+  gap: 12px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
   white-space: nowrap;
-  min-height: var(--pwa-btn-height-md);
+  justify-content: flex-start;
+}
+
+/* Ocultar texto cuando sidebar está colapsado */
+.dashboard-nav a span {
+  opacity: 0;
+  max-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
+  transition: opacity 0.2s ease, max-width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Mostrar texto cuando sidebar está expandido */
+.dashboard-sidebar:hover .dashboard-nav a span {
+  opacity: 1;
+  max-width: 200px;
+}
+
+/* Centrar iconos cuando está colapsado */
+.dashboard-sidebar:not(:hover) .dashboard-nav a {
+  justify-content: center;
+  padding: 12px;
+}
+
+/* Iconos siempre visibles */
+.dashboard-nav a svg {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+}
+
+.dashboard-nav a:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.dashboard-nav a:active {
+  transform: scale(0.98);
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.dashboard-nav a.active {
+  background: #007AFF;
+  color: white;
+  font-weight: 600;
+}
+
+.dashboard-nav a .nav-label {
   flex: 1;
-}
-
-.dashboard-nav a:hover::after {
-  content: attr(title);
-  position: absolute;
-  left: 100%;
-  top: 50%;
-  transform: translateY(-50%);
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
   white-space: nowrap;
-  z-index: 1000;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  margin-left: 0.5rem;
-  pointer-events: none;
-}
-.dashboard-nav a.active, .dashboard-nav a:hover {
-  background: var(--gradient-primary);
-  color: var(--text-inverse);
-  transform: translateX(2px);
-  box-shadow: var(--shadow-lg);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
 }
 
-/* Main content */
+/* Estados active y hover */
+/* Main content iOS Style */
 .dashboard-main {
   flex: 1;
   display: flex;
   flex-direction: column;
   min-width: 0;
-  background: var(--bg-primary);
+  background: #F2F2F7;
+  overflow: hidden;
+  margin-left: 0;
+  transition: margin-left 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.dashboard-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem 2rem 1rem 1rem;
-  background: transparent;
-  border-bottom: none;
+
+/* Agregar espacio cuando sidebar está expandido */
+.dashboard-sidebar:hover ~ .dashboard-main {
+  margin-left: 20px;
 }
+
 .dashboard-content {
   flex: 1;
-  padding: 1rem;
-  background: var(--bg-card);
-  height: 100vh;
+  padding: 24px;
+  margin: 0;
+  background: #F2F2F7;
   overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
 }
-.search {
-  width: 260px;
-  padding: 0.6rem 1rem;
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
-  background: #f6f8fa;
-  font-size: 1rem;
+
+/* iOS Scrollbar */
+.dashboard-content::-webkit-scrollbar {
+  width: 8px;
 }
-.user-menu {
-  position: relative;
-  display: flex;
-  align-items: center;
-  cursor: pointer;
+
+.dashboard-content::-webkit-scrollbar-track {
+  background: transparent;
 }
-.user-icon {
-  font-size: 1.5rem;
-  color: var(--accent-primary);
+
+.dashboard-content::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
 }
+
+.dashboard-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* User dropdown iOS style */
 .user-dropdown {
   display: none;
   position: absolute;
   right: 0;
   top: 2.2rem;
-  background: var(--bg-card);
-  border-radius: 10px;
-  box-shadow: 0 4px 16px #0001;
-  padding: 0.7rem 1.2rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  padding: 8px;
   min-width: 150px;
   z-index: 10;
-  gap: 0.7rem;
+  gap: 4px;
   flex-direction: column;
 }
-.user-menu:hover .user-dropdown {
+
+.user-menu:hover .user-dropdown,
+.user-menu:focus-within .user-dropdown {
   display: flex;
 }
-/* Tablet y pantallas medianas */
+
+/* === RESPONSIVE iOS STYLE === */
+
+/* Tablet */
 @media (max-width: 1024px) {
   .dashboard-sidebar {
-    width: 230px;
-    min-width: 200px;
-    padding: 1.5rem 1rem 1rem 1rem;
-  }
-  .dashboard-content {
-    padding: 2rem 1.5rem;
-  }
-  .dashboard-header {
-    padding: 1rem 1.5rem;
+    width: 260px;
+    min-width: 260px;
   }
 }
 
-@media (max-width: 900px) {
-  .dashboard-sidebar {
-    width: 60px;
-    padding: 1rem 0.2rem 1rem 0.2rem;
-    align-items: center;
-  }
-  .dashboard-nav a {
-    font-size: 0.95rem;
-    padding: 0.7rem 0.5rem;
-    justify-content: center;
-  }
-  .dashboard-logo {
-    margin-bottom: 1rem;
-  }
-  
-  .dashboard-logo-img {
-    max-width: 80px;
-    max-height: 40px;
-  }
-  .dashboard-content {
-    padding: 1.5rem 1rem;
-  }
-  .dashboard-header {
-    padding: 1rem 1rem;
-  }
-}
-
-/* Móviles */
+/* Mobile - iOS Style */
 @media (max-width: 768px) {
   .dashboard-layout {
-    flex-direction: row;
+    position: relative;
   }
   
+  .sidebar-toggle {
+    display: flex;
+  }
+  
+  /* Sidebar as overlay en móvil */
   .dashboard-sidebar {
-    width: 250px;
-    height: 100vh;
-    flex-direction: column;
-    padding: 1.5rem 1rem 1rem 1.5rem;
-    border-right: 1px solid var(--border-primary);
-    border-bottom: none;
-    justify-content: flex-start;
-    align-items: flex-start;
-    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.08);
     position: fixed;
     left: 0;
     top: 0;
+    height: 100vh;
+    height: 100dvh;
     z-index: 1000;
-    transform: translateX(-100%);
-    transition: transform 0.3s ease;
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
   }
   
-  .dashboard-sidebar:not(.collapsed) {
-    transform: translateX(0);
+  /* Backdrop cuando sidebar está abierto */
+  .dashboard-sidebar:not(.collapsed)::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 280px;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: -1;
+    animation: fadeIn 0.3s ease;
   }
   
-  .dashboard-sidebar.collapsed {
-    transform: translateX(-100%);
-  }
-  
-  .dashboard-logo {
-    margin-bottom: 2rem;
-  }
-  
-  .dashboard-logo-img {
-    max-width: 120px;
-    max-height: 60px;
-  }
-  
-  .dashboard-nav {
-    flex-direction: column;
-    gap: 1.2rem;
-    width: 100%;
-  }
-  
-  .dashboard-nav a {
-    font-size: var(--pwa-font-size-xl);
-    padding: var(--pwa-space-5) var(--pwa-space-6);
-    white-space: nowrap;
-    justify-content: flex-start;
-    min-height: var(--pwa-btn-height-lg);
-    border-radius: var(--pwa-radius-xl);
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
   
   .dashboard-main {
     width: 100%;
     margin-left: 0;
-    transition: margin-left 0.3s ease;
+  }
+  
+  .dashboard-nav a {
+    padding: 14px 16px;
+    font-size: 17px;
   }
   
   .dashboard-content {
@@ -326,6 +415,7 @@
   }
 }
 
+
 /* Móviles pequeños */
 @media (max-width: 480px) {
   .dashboard-sidebar {
@@ -344,9 +434,9 @@
   }
   
   .dashboard-nav a {
-    font-size: var(--pwa-font-size-lg);
-    padding: var(--pwa-space-4) var(--pwa-space-5);
-    min-height: var(--pwa-btn-height-md);
+    font-size: 14px;
+    padding: 10px 12px;
+    min-height: 44px;
   }
   
   .dashboard-content {
@@ -361,12 +451,237 @@
 /* Móviles muy pequeños */
 @media (max-width: 360px) {
   .dashboard-nav a {
-    font-size: 0.75rem;
-    padding: 0.4rem 0.5rem;
+    font-size: 13px;
+    padding: 8px 10px;
   }
   
   .dashboard-logo-img {
     max-width: 70px;
     max-height: 35px;
   }
+}
+
+/* ============================================
+   ESTILOS PARA ROLES Y ORGANIZACIÓN (iOS Native)
+   ============================================ */
+
+.organization-name {
+  font-size: 13px;
+  color: #8E8E93;
+  text-align: center;
+  margin-top: 8px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+  opacity: 0;
+  max-height: 0;
+  transition: opacity 0.2s ease, max-height 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Mostrar nombre de organización al hover */
+.dashboard-sidebar:hover .organization-name {
+  opacity: 1;
+  max-height: 50px;
+}
+
+.user-role-badge {
+  margin-top: auto;
+  padding: 8px;
+  background: transparent;
+  border-radius: 12px;
+  width: 100%;
+  text-align: center;
+  transition: padding 0.3s cubic-bezier(0.16, 1, 0.3, 1), 
+              transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dashboard-sidebar:hover .user-role-badge {
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.dark .dashboard-sidebar:hover .user-role-badge {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.user-role-badge:active {
+  transform: scale(0.98);
+}
+
+.role-indicator {
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  transition: padding 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dashboard-sidebar:hover .role-indicator {
+  padding: 10px 16px;
+}
+
+/* Ocultar texto del rol cuando está colapsado */
+.role-indicator span {
+  opacity: 0;
+  max-width: 0;
+  overflow: hidden;
+  transition: opacity 0.2s ease, max-width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dashboard-sidebar:hover .role-indicator span {
+  opacity: 1;
+  max-width: 200px;
+}
+
+/* Iconos del rol siempre visibles */
+.role-indicator svg {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+}
+
+.role-indicator:active {
+  transform: scale(0.96);
+}
+
+.role-indicator.role-owner {
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  color: #000;
+  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
+}
+
+.role-indicator.role-admin {
+  background: linear-gradient(135deg, #007AFF, #0051D5);
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+}
+
+.role-indicator.role-inventory_manager {
+  background: linear-gradient(135deg, #34C759, #248A3D);
+  color: white;
+  box-shadow: 0 2px 8px rgba(52, 199, 89, 0.3);
+}
+
+.role-indicator.role-cashier {
+  background: linear-gradient(135deg, #AF52DE, #8E3CCB);
+  color: white;
+  box-shadow: 0 2px 8px rgba(175, 82, 222, 0.3);
+}
+
+.role-indicator.role-viewer {
+  background: linear-gradient(135deg, #8E8E93, #636366);
+  color: white;
+  box-shadow: 0 2px 8px rgba(142, 142, 147, 0.3);
+}
+
+/* ============================================
+   MODO OSCURO iOS NATIVO
+   ============================================ */
+
+.dark .dashboard-layout {
+  background: #000000;
+}
+
+.dark .dashboard-sidebar {
+  background: #000000;
+  border-right: none;
+  box-shadow: none;
+}
+
+.dark .dashboard-sidebar:hover {
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(60px) saturate(200%);
+  -webkit-backdrop-filter: blur(60px) saturate(200%);
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.9),
+              0 0 0 1px rgba(255, 255, 255, 0.15) inset,
+              0 0 80px rgba(255, 255, 255, 0.03) inset;
+  border-radius: 0 24px 24px 0;
+  margin: 12px 0;
+  padding: 4px 0;
+}
+
+.dark .sidebar-toggle {
+  background: #1C1C1E;
+  color: #0A84FF;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.dark .dashboard-logo {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark .org-switcher-container {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark .dashboard-nav a {
+  color: #FFFFFF;
+  background: transparent;
+}
+
+.dark .dashboard-nav a:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dark .dashboard-nav a.active {
+  background: #0A84FF;
+  color: #FFFFFF;
+  box-shadow: 0 2px 8px rgba(10, 132, 255, 0.3);
+}
+
+.dark .dashboard-main {
+  background: #000000;
+}
+
+.dark .dashboard-header {
+  background: #1C1C1E;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.dark .dashboard-content {
+  background: #000000;
+}
+
+.dark .dashboard-content::-webkit-scrollbar-track {
+  background: #1C1C1E;
+}
+
+.dark .dashboard-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.dark .dashboard-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.dark .user-dropdown {
+  background: #1C1C1E;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark .organization-name {
+  color: #8E8E93;
+}
+
+.dark .user-role-badge {
+  background: #2C2C2E;
+}
+
+.dark .sidebar-overlay {
+  background: rgba(0, 0, 0, 0.75);
 }

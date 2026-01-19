@@ -1,0 +1,9 @@
+ALTER TABLE productos 
+ADD COLUMN IF NOT EXISTS tipo text DEFAULT 'fisico' CHECK (tipo IN ('fisico', 'servicio'));
+
+ALTER TABLE productos 
+ALTER COLUMN stock DROP NOT NULL;
+
+COMMENT ON COLUMN productos.tipo IS 'Tipo de item: fisico (con stock) o servicio (intangible)';
+COMMENT ON COLUMN productos.stock IS 'Cantidad disponible en stock (NULL para servicios)';
+

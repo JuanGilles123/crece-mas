@@ -1,0 +1,9 @@
+ALTER TABLE toppings 
+ADD COLUMN IF NOT EXISTS tipo text DEFAULT 'comida' CHECK (tipo IN ('comida', 'servicio'));
+
+ALTER TABLE toppings 
+ALTER COLUMN stock DROP NOT NULL;
+
+COMMENT ON COLUMN toppings.tipo IS 'Tipo de adicional: comida (ingrediente con stock) o servicio (extra sin stock)';
+COMMENT ON COLUMN toppings.stock IS 'Cantidad disponible en stock (NULL para servicios)';
+

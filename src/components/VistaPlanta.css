@@ -1,0 +1,303 @@
+/* 🍽️ Estilos para Vista de Planta de Mesas */
+
+.vista-planta-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  height: calc(100vh - 200px);
+  min-height: 600px;
+}
+
+/* Leyenda */
+.vista-planta-leyenda {
+  background: white;
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.vista-planta-leyenda h3 {
+  margin: 0 0 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.leyenda-items {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.leyenda-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.leyenda-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Área de Planta */
+.vista-planta-area {
+  flex: 1;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+  border-radius: 20px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.05);
+  border: 2px solid rgba(0, 0, 0, 0.06);
+}
+
+.vista-planta-content {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 800px;
+  min-height: 600px;
+}
+
+/* Mesa en Planta */
+.mesa-planta {
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  cursor: move;
+  user-select: none;
+  border: 3px solid;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease;
+}
+
+.mesa-planta.redonda {
+  border-radius: 50%;
+}
+
+.mesa-planta.cuadrada {
+  border-radius: 12px;
+}
+
+.mesa-planta:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  transform: scale(1.05);
+}
+
+.mesa-planta.dragging {
+  z-index: 1000;
+  cursor: grabbing;
+}
+
+.mesa-planta-indicator {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.mesa-planta-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  z-index: 1;
+}
+
+.mesa-planta-numero {
+  font-weight: 700;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+}
+
+.mesa-planta-capacidad {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+}
+
+.mesa-planta-menu {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+}
+
+.mesa-planta-menu-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  opacity: 0;
+}
+
+.mesa-planta:hover .mesa-planta-menu-btn {
+  opacity: 1;
+}
+
+.mesa-planta-menu-btn:hover {
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.mesa-planta-menu-dropdown {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 0.5rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  min-width: 160px;
+  z-index: 1000;
+}
+
+.mesa-planta-menu-dropdown button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mesa-planta-menu-dropdown button:hover {
+  background: var(--bg-secondary);
+}
+
+.mesa-planta-menu-dropdown button.danger {
+  color: #EF4444;
+}
+
+.mesa-planta-menu-dropdown button.danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* Controles de Zoom */
+.vista-planta-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  background: white;
+  border-radius: 12px;
+  padding: 0.75rem 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.zoom-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: var(--text-primary);
+  font-size: 1.25rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.zoom-btn:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.zoom-value {
+  min-width: 50px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+}
+
+/* Dark mode */
+.dark .vista-planta-leyenda,
+.dark .vista-planta-controls {
+  background: #1C1C1E;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .vista-planta-area {
+  background: linear-gradient(135deg, #1C1C1E 0%, #2C2C2E 100%);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .mesa-planta-menu-dropdown {
+  background: #1C1C1E;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .mesa-planta-menu-dropdown button:hover {
+  background: #2C2C2E;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .vista-planta-container {
+    height: auto;
+    min-height: 500px;
+  }
+
+  .vista-planta-content {
+    min-width: 600px;
+    min-height: 400px;
+  }
+
+  .mesa-planta {
+    width: 60px;
+    height: 60px;
+  }
+
+  .mesa-planta-numero {
+    font-size: 0.75rem;
+  }
+
+  .mesa-planta-capacidad {
+    font-size: 0.625rem;
+  }
+}
+

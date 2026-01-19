@@ -17,13 +17,8 @@ export const compressImage = async (file, options = {}) => {
       initialQuality: 0.8, // Calidad inicial del 80%
       ...options
     };
-
-    console.log('Comprimiendo imagen:', file.name, 'Tamaño original:', (file.size / 1024 / 1024).toFixed(2), 'MB');
     
     const compressedFile = await imageCompression(file, defaultOptions);
-    
-    console.log('Imagen comprimida:', compressedFile.name, 'Tamaño final:', (compressedFile.size / 1024 / 1024).toFixed(2), 'MB');
-    console.log('Reducción:', ((1 - compressedFile.size / file.size) * 100).toFixed(1) + '%');
     
     return compressedFile;
   } catch (error) {

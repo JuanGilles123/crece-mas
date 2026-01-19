@@ -1,0 +1,348 @@
+.toppings-selector-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+  padding: 1rem;
+}
+
+.toppings-selector-modal {
+  background: var(--bg-card);
+  border-radius: 16px;
+  padding: 1.5rem;
+  max-width: 500px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.toppings-selector-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.toppings-selector-header h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 0.25rem 0;
+}
+
+.producto-nombre {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.toppings-selector-close {
+  padding: 0.5rem;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.toppings-selector-close:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.toppings-selector-loading,
+.toppings-selector-empty {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--text-secondary);
+}
+
+.toppings-selector-empty p {
+  margin: 1rem 0;
+}
+
+.toppings-selector-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.topping-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: var(--bg-primary);
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.topping-item:hover {
+  border-color: var(--accent-primary);
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.topping-item.selected {
+  border-color: var(--accent-primary);
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.topping-item-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+}
+
+.topping-item-image {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid var(--border-color);
+}
+
+.topping-item-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.topping-image-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  background: var(--bg-secondary);
+}
+
+.topping-item-check {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--border-color);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+  transition: all 0.2s;
+}
+
+.topping-item.selected .topping-item-check {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: white;
+}
+
+.topping-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.topping-item-nombre {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.topping-item-precio {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.topping-item-cantidad {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--bg-secondary);
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+}
+
+.topping-cantidad-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: var(--accent-primary);
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.topping-cantidad-btn:hover:not(:disabled) {
+  background: #1e40af;
+}
+
+.topping-cantidad-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.topping-item-cantidad span {
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 24px;
+  text-align: center;
+}
+
+.toppings-seleccionados {
+  margin-bottom: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.toppings-seleccionados h4 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.75rem;
+}
+
+.toppings-seleccionados-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.topping-seleccionado-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+}
+
+.topping-seleccionado-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.topping-seleccionado-precio {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.topping-remove-btn {
+  padding: 0.25rem;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.topping-remove-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--accent-error);
+}
+
+.toppings-selector-footer {
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.toppings-precio-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.toppings-precio-total.total {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 2px solid var(--border-color);
+}
+
+.precio-label {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+}
+
+.precio-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.toppings-precio-total.total .precio-value {
+  font-size: 1.25rem;
+  color: var(--accent-primary);
+}
+
+.toppings-selector-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.topping-btn-primary,
+.topping-btn-secondary {
+  flex: 1;
+  padding: 0.75rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.topping-btn-primary {
+  background: var(--accent-primary);
+  color: white;
+}
+
+.topping-btn-primary:hover {
+  background: #1e40af;
+  transform: translateY(-1px);
+}
+
+.topping-btn-secondary {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.topping-btn-secondary:hover {
+  background: var(--bg-tertiary);
+}
+
+@media (max-width: 768px) {
+  .toppings-selector-modal {
+    padding: 1rem;
+  }
+
+  .toppings-selector-actions {
+    flex-direction: column;
+  }
+}
+

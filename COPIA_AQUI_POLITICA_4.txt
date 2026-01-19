@@ -1,0 +1,10 @@
+bucket_id = 'productos' AND
+(storage.foldername(name))[1] = 'toppings' AND
+(storage.foldername(name))[2] IN (
+  SELECT organization_id::text FROM user_profiles 
+  WHERE user_id = auth.uid() AND role IN ('owner', 'admin')
+  UNION
+  SELECT organization_id::text FROM team_members 
+  WHERE user_id = auth.uid() AND status = 'active' AND role IN ('owner', 'admin')
+)
+

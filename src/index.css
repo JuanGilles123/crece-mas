@@ -1,6 +1,11 @@
 /* Importar variables PWA */
 @import './styles/pwa-variables.css';
 
+/* 🍎 Importar estilos iOS */
+@import './styles/ios-animations.css';
+@import './styles/ios-responsive.css';
+@import './styles/ios-dashboard-global.css';
+
 * {
   box-sizing: border-box;
 }
@@ -8,13 +13,16 @@
 body {
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.6;
   overflow-x: hidden;
+  /* Smooth scrolling nativo iOS */
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
 }
 
 /* Mejoras responsivas globales */

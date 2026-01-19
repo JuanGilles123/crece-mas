@@ -1,0 +1,101 @@
+═══════════════════════════════════════════════════════════════
+EXPRESIONES SQL PARA POLÍTICAS DE STORAGE - TOPPINGS
+═══════════════════════════════════════════════════════════════
+
+⚠️ IMPORTANTE: Copia SOLO el contenido, SIN los ```sql ni ```
+
+
+───────────────────────────────────────────────────────────────
+POLÍTICA 1: INSERT (Subir imágenes)
+───────────────────────────────────────────────────────────────
+Policy name: Users can upload topping images
+Allowed operation: INSERT
+Target roles: authenticated
+USING expression: (dejar vacío)
+WITH CHECK expression: (copiar lo de abajo)
+
+bucket_id = 'productos' AND
+(storage.foldername(name))[1] = 'toppings' AND
+(storage.foldername(name))[2] IN (
+  SELECT organization_id::text FROM user_profiles WHERE user_id = auth.uid()
+  UNION
+  SELECT organization_id::text FROM team_members WHERE user_id = auth.uid() AND status = 'active'
+)
+
+
+───────────────────────────────────────────────────────────────
+POLÍTICA 2: SELECT (Leer imágenes)
+───────────────────────────────────────────────────────────────
+Policy name: Users can read topping images
+Allowed operation: SELECT
+Target roles: authenticated
+USING expression: (copiar lo de abajo)
+WITH CHECK expression: (dejar vacío)
+
+bucket_id = 'productos' AND
+(storage.foldername(name))[1] = 'toppings' AND
+(storage.foldername(name))[2] IN (
+  SELECT organization_id::text FROM user_profiles WHERE user_id = auth.uid()
+  UNION
+  SELECT organization_id::text FROM team_members WHERE user_id = auth.uid() AND status = 'active'
+)
+
+
+───────────────────────────────────────────────────────────────
+POLÍTICA 3: UPDATE (Actualizar imágenes - Solo Owners/Admins)
+───────────────────────────────────────────────────────────────
+Policy name: Owners and admins can update topping images
+Allowed operation: UPDATE
+Target roles: authenticated
+USING expression: (copiar lo de abajo)
+WITH CHECK expression: (dejar vacío)
+
+bucket_id = 'productos' AND
+(storage.foldername(name))[1] = 'toppings' AND
+(storage.foldername(name))[2] IN (
+  SELECT organization_id::text FROM user_profiles 
+  WHERE user_id = auth.uid() AND role IN ('owner', 'admin')
+  UNION
+  SELECT organization_id::text FROM team_members 
+  WHERE user_id = auth.uid() AND status = 'active' AND role IN ('owner', 'admin')
+)
+
+
+───────────────────────────────────────────────────────────────
+POLÍTICA 4: DELETE (Eliminar imágenes - Solo Owners/Admins)
+───────────────────────────────────────────────────────────────
+Policy name: Owners and admins can delete topping images
+Allowed operation: DELETE
+Target roles: authenticated
+USING expression: (copiar lo de abajo)
+WITH CHECK expression: (dejar vacío)
+
+bucket_id = 'productos' AND
+(storage.foldername(name))[1] = 'toppings' AND
+(storage.foldername(name))[2] IN (
+  SELECT organization_id::text FROM user_profiles 
+  WHERE user_id = auth.uid() AND role IN ('owner', 'admin')
+  UNION
+  SELECT organization_id::text FROM team_members 
+  WHERE user_id = auth.uid() AND status = 'active' AND role IN ('owner', 'admin')
+)
+
+
+═══════════════════════════════════════════════════════════════
+INSTRUCCIONES:
+═══════════════════════════════════════════════════════════════
+
+1. Ve a: https://supabase.com/dashboard/project/ywilkhfkuwhsjvojocso/storage/buckets/productos/policies
+
+2. Para cada política:
+   - Click en "New Policy"
+   - Selecciona "For full customization"
+   - Completa los campos según la política
+   - Copia SOLO el SQL (sin ```sql ni ```)
+   - Pega en USING o WITH CHECK según corresponda
+   - Click en "Review" → "Save policy"
+
+3. Verifica que las 4 políticas aparezcan en la lista
+
+═══════════════════════════════════════════════════════════════
+

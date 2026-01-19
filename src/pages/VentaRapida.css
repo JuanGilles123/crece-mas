@@ -1,0 +1,570 @@
+/* 🍎 Venta Rápida - iOS Native Style */
+
+.venta-rapida {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0;
+  background: transparent;
+  min-height: auto;
+}
+
+/* Header iOS Style - Limpio sin card */
+.venta-rapida-header {
+  background: none !important;
+  border-radius: 0 !important;
+  padding: 0 0 20px 0 !important;
+  margin-bottom: 20px !important;
+  box-shadow: none !important;
+  border: none !important;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.venta-rapida-header .header-icon {
+  background: linear-gradient(135deg, #007AFF, #5856D6);
+  color: white;
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+}
+
+.venta-rapida-header .header-text h1 {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+  letter-spacing: -0.5px;
+}
+
+.venta-rapida-header .header-text p,
+.venta-rapida-header .header-text .subtitle {
+  margin: 4px 0 0 0;
+  color: var(--text-secondary);
+  font-size: 17px;
+  font-weight: 400;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+}
+
+/* Container principal - iOS Card */
+.venta-rapida-container {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Sección de Monto - iOS Style */
+.monto-section {
+  margin-bottom: 24px;
+}
+
+.monto-section label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: #000;
+  margin-bottom: 12px;
+  font-size: 17px;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+}
+
+.monto-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.monto-simbolo {
+  position: absolute;
+  left: 20px;
+  font-size: 40px;
+  font-weight: 600;
+  color: #C7C7CC;
+  pointer-events: none;
+  z-index: 1;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+}
+
+.monto-input {
+  width: 100%;
+  padding: 20px 20px 20px 60px;
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  font-size: 40px;
+  font-weight: 600;
+  text-align: left;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  background: #F2F2F7;
+  color: #000;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+}
+
+.monto-input:focus {
+  outline: none;
+  border-color: #007AFF;
+  background: white;
+  box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1);
+}
+
+.monto-input::placeholder {
+  color: #C7C7CC;
+}
+
+.monto-preview {
+  margin-top: 12px;
+  padding: 16px;
+  background: linear-gradient(135deg, #007AFF, #5856D6);
+  color: white;
+  font-size: 24px;
+  font-weight: 600;
+  text-align: center;
+  border-radius: 12px;
+  animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Montos Rápidos - iOS Style */
+.montos-rapidos {
+  margin-bottom: 24px;
+  padding: 20px;
+  background: #F2F2F7;
+  border-radius: 12px;
+  border: none;
+}
+
+.montos-label {
+  margin: 0 0 12px 0;
+  font-weight: 600;
+  color: #000;
+  font-size: 15px;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+}
+
+.opcional {
+  color: #8E8E93;
+  font-weight: 400;
+  font-size: 13px;
+  margin-left: 6px;
+}
+
+.montos-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.monto-btn {
+  padding: 14px;
+  border: 1.5px solid rgba(0, 0, 0, 0.1);
+  background: white;
+  border-radius: 10px;
+  font-size: 17px;
+  font-weight: 600;
+  color: #000;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: center;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+}
+
+.monto-btn:hover {
+  border-color: #007AFF;
+  background: rgba(0, 122, 255, 0.05);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.15);
+}
+
+.monto-btn.active {
+  border-color: #007AFF;
+  background: #007AFF;
+  color: white;
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+}
+
+/* Secciones del Formulario - iOS Style */
+.form-section {
+  margin-bottom: 24px;
+}
+
+.form-section label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: #000;
+  margin-bottom: 12px;
+  font-size: 17px;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+}
+
+.form-section textarea {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1.5px solid rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+  font-size: 16px;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  resize: vertical;
+  background: #F2F2F7;
+  color: #000;
+}
+
+.form-section textarea:focus {
+  outline: none;
+  border-color: #007AFF;
+  background: white;
+  box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1);
+}
+
+.char-count {
+  display: block;
+  margin-top: 8px;
+  text-align: right;
+  color: #8E8E93;
+  font-size: 13px;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+}
+
+/* Métodos de Pago - iOS Style */
+.metodos-pago {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.metodo-btn {
+  padding: 16px;
+  border: 1.5px solid rgba(0, 0, 0, 0.1);
+  background: white;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #000;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+}
+
+.metodo-btn:hover {
+  border-color: #007AFF;
+  background: rgba(0, 122, 255, 0.05);
+  transform: translateY(-2px);
+}
+
+.metodo-btn.active {
+  border-color: #007AFF;
+  background: #007AFF;
+  color: white;
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+}
+
+/* Botones de Acción - iOS Style */
+.acciones {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 12px;
+  margin-bottom: 0;
+}
+
+.btn-cancelar,
+.btn-registrar {
+  padding: 16px 24px;
+  border: none;
+  border-radius: 12px;
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+}
+
+.btn-cancelar {
+  background: #F2F2F7;
+  color: #000;
+}
+
+.btn-cancelar:hover:not(:disabled) {
+  background: #E5E5EA;
+  transform: scale(0.98);
+}
+
+.btn-cancelar:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.btn-registrar {
+  background: #007AFF;
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+}
+
+.btn-registrar:hover:not(:disabled) {
+  background: #0051D5;
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.4);
+  transform: scale(0.98);
+}
+
+.btn-registrar:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.btn-registrar:disabled,
+.btn-cancelar:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Info Box - iOS Style */
+.info-box {
+  padding: 16px;
+  background: rgba(0, 122, 255, 0.08);
+  border-left: 3px solid #007AFF;
+  border-radius: 10px;
+  color: #000;
+}
+
+.info-box p {
+  margin: 0;
+  line-height: 1.5;
+  font-size: 15px;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+}
+
+.info-box strong {
+  color: #007AFF;
+  font-weight: 600;
+}
+
+/* Dark Mode */
+.dark .venta-rapida-header {
+  background: none;
+}
+
+.dark .venta-rapida-header .header-text h1 {
+  color: #fff;
+}
+
+.dark .venta-rapida-header .header-text p,
+.dark .venta-rapida-header .header-text .subtitle {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.dark .venta-rapida-container {
+  background: #1C1C1E;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .monto-section label {
+  color: #fff;
+}
+
+.dark .monto-input {
+  background: #2C2C2E;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.dark .monto-simbolo {
+  color: #636366;
+}
+
+.dark .monto-input:focus {
+  border-color: #0A84FF;
+  box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.2);
+}
+
+.dark .monto-preview {
+  background: linear-gradient(135deg, #0A84FF, #5E5CE6);
+  color: #fff;
+}
+
+.dark .montos-section {
+  background: #2C2C2E;
+}
+
+.dark .optional-text {
+  color: #8E8E93;
+}
+
+.dark .monto-btn {
+  background: #2C2C2E;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.dark .monto-btn:hover {
+  border-color: #0A84FF;
+  background: rgba(10, 132, 255, 0.1);
+}
+
+.dark .monto-btn.active {
+  background: #0A84FF;
+  border-color: #0A84FF;
+  color: #fff;
+}
+
+.dark .form-section label {
+  color: #fff;
+}
+
+.dark .form-section input,
+.dark .form-section select,
+.dark .form-section textarea {
+  background: #2C2C2E;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.dark .form-section input:focus,
+.dark .form-section select:focus,
+.dark .form-section textarea:focus {
+  border-color: #0A84FF;
+  box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.2);
+}
+
+.dark .char-count {
+  color: #8E8E93;
+}
+
+.dark .metodo-btn {
+  background: #2C2C2E;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.dark .metodo-btn:hover {
+  border-color: #0A84FF;
+  background: rgba(10, 132, 255, 0.1);
+}
+
+.dark .metodo-btn.active {
+  background: #0A84FF;
+  border-color: #0A84FF;
+  color: #fff;
+}
+
+.dark .btn-cancelar {
+  background: #2C2C2E;
+  color: #fff;
+}
+
+.dark .btn-cancelar:hover:not(:disabled) {
+  background: #3A3A3C;
+}
+
+.dark .btn-registrar {
+  background: #0A84FF;
+}
+
+.dark .btn-registrar:hover:not(:disabled) {
+  background: #0077ED;
+}
+
+.dark .info-box {
+  background: rgba(10, 132, 255, 0.15);
+  border-left-color: #0A84FF;
+  color: #fff;
+}
+
+.dark .info-box strong {
+  color: #0A84FF;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .venta-rapida {
+    padding: 16px;
+  }
+
+  .venta-rapida-header {
+    flex-direction: column;
+    text-align: center;
+    gap: 16px;
+  }
+
+  .header-icon {
+    width: 64px;
+    height: 64px;
+  }
+
+  .header-text h1 {
+    font-size: 28px;
+  }
+
+  .header-text p {
+    font-size: 15px;
+  }
+
+  .venta-rapida-container {
+    padding: 20px;
+  }
+
+  .monto-input {
+    font-size: 32px;
+    padding: 14px 14px 14px 52px;
+  }
+
+  .monto-simbolo {
+    font-size: 32px;
+    left: 14px;
+  }
+
+  .montos-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .metodos-pago {
+    grid-template-columns: 1fr;
+  }
+
+  .acciones {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .monto-input {
+    font-size: 28px;
+  }
+
+  .monto-simbolo {
+    font-size: 2rem;
+  }
+
+  .montos-grid {
+    grid-template-columns: 1fr;
+  }
+}

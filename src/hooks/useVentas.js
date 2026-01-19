@@ -3,29 +3,38 @@ import { supabase } from '../services/api/supabaseClient';
 import toast from 'react-hot-toast';
 
 // Hook para obtener ventas
-export const useVentas = (userId) => {
+export const useVentas = (organizationId, limit = 100) => {
   return useQuery({
-    queryKey: ['ventas', userId],
+    queryKey: ['ventas', organizationId, limit],
     queryFn: async () => {
-      if (!userId) return [];
+      if (!organizationId) return [];
       
-      const { data, error } = await supabase
-        .from('ventas')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(1000);
+      try {
+        // Select todos los campos necesarios (usuario_nombre puede no existir)
+        const { data, error } = await supabase
+          .from('ventas')
+          .select('*')
+          .eq('organization_id', organizationId)
+          .order('created_at', { ascending: false })
+          .limit(limit);
 
-      if (error) {
-        console.error('Error fetching ventas:', error);
-        throw new Error('Error al cargar ventas');
+        if (error) {
+          console.error('Error fetching ventas:', error);
+          throw new Error('Error al cargar ventas');
+        }
+        
+        return data || [];
+      } catch (error) {
+        console.error('Error en useVentas:', error);
+        return [];
       }
-
-      return data || [];
     },
-    enabled: !!userId,
-    staleTime: 2 * 60 * 1000, // 2 minutos (más frecuente que productos)
-    cacheTime: 5 * 60 * 1000, // 5 minutos
+    enabled: !!organizationId,
+    staleTime: 5 * 60 * 1000, // 5 minutos
+    cacheTime: 30 * 60 * 1000, // 30 minutos
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
   });
 };
 
@@ -48,10 +57,10 @@ export const useCrearVenta = () => {
       return data[0];
     },
     onSuccess: (newVenta) => {
-      // Invalidar y refetch ventas
-      queryClient.invalidateQueries(['ventas', newVenta.user_id]);
+      // Invalidar y refetch ventas usando organization_id
+      queryClient.invalidateQueries(['ventas', newVenta.organization_id]);
       // También invalidar productos para actualizar stock
-      queryClient.invalidateQueries(['productos', newVenta.user_id]);
+      queryClient.invalidateQueries(['productos', newVenta.organization_id]);
     },
     onError: (error) => {
       console.error('Error creating venta:', error);
@@ -80,8 +89,8 @@ export const useActualizarStock = () => {
       return data[0];
     },
     onSuccess: (updatedProducto) => {
-      // Invalidar y refetch productos
-      queryClient.invalidateQueries(['productos', updatedProducto.user_id]);
+      // Invalidar y refetch productos usando organization_id
+      queryClient.invalidateQueries(['productos', updatedProducto.organization_id]);
     },
     onError: (error) => {
       console.error('Error updating stock:', error);

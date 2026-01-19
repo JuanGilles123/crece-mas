@@ -1,0 +1,108 @@
+#!/bin/bash
+# Script para cambiar Wompi de prueba a producción
+
+echo "🚀 Cambiando Wompi de Prueba a Producción"
+echo "=========================================="
+echo ""
+
+# Verificar que Supabase CLI esté instalado
+if ! command -v supabase &> /dev/null; then
+    echo "❌ Supabase CLI no está instalado"
+    echo "   Instala con: npm install -g supabase"
+    exit 1
+fi
+
+# Verificar si está logueado
+if ! supabase projects list &> /dev/null; then
+    echo "⚠️  No estás logueado en Supabase"
+    echo "   Ejecuta: supabase login"
+    exit 1
+fi
+
+echo "✅ Autenticado en Supabase"
+echo ""
+
+# Credenciales de producción
+WOMPI_PUBLIC_KEY="pub_prod_ZiFNjvA83CFk8VouM9s7OAyso4JZ8D8f"
+WOMPI_INTEGRITY_SECRET="prod_integrity_BMOlK0oKdX5RVqYUuAp9UCzSJKL5KJaN"
+WOMPI_EVENTS_SECRET="prod_events_cuMZ65u4M7x3fm2zMKzNTYUKjebf95Ee"
+
+# Pedir URL de redirección
+echo "📝 Configuración de URL de Redirección"
+echo ""
+read -p "¿Cuál es tu dominio de producción? (ej: https://tudominio.com): " PROD_URL
+
+if [ -z "$PROD_URL" ]; then
+    echo "⚠️  No se ingresó dominio, usando localhost para desarrollo"
+    WOMPI_REDIRECT_URL="http://localhost:3000/subscription/callback"
+else
+    # Asegurar que tenga https://
+    if [[ ! "$PROD_URL" =~ ^https?:// ]]; then
+        PROD_URL="https://$PROD_URL"
+    fi
+    WOMPI_REDIRECT_URL="${PROD_URL}/subscription/callback"
+fi
+
+echo ""
+echo "🔐 Configurando variables de entorno de producción..."
+echo ""
+
+# Configurar secrets
+echo "1️⃣  Configurando WOMPI_PUBLIC_KEY..."
+if supabase secrets set WOMPI_PUBLIC_KEY="$WOMPI_PUBLIC_KEY" 2>&1; then
+    echo "   ✅ WOMPI_PUBLIC_KEY configurado"
+else
+    echo "   ❌ Error configurando WOMPI_PUBLIC_KEY"
+    exit 1
+fi
+
+echo ""
+echo "2️⃣  Configurando WOMPI_INTEGRITY_SECRET..."
+if supabase secrets set WOMPI_INTEGRITY_SECRET="$WOMPI_INTEGRITY_SECRET" 2>&1; then
+    echo "   ✅ WOMPI_INTEGRITY_SECRET configurado"
+else
+    echo "   ❌ Error configurando WOMPI_INTEGRITY_SECRET"
+    exit 1
+fi
+
+echo ""
+echo "3️⃣  Configurando WOMPI_EVENTS_SECRET..."
+if supabase secrets set WOMPI_EVENTS_SECRET="$WOMPI_EVENTS_SECRET" 2>&1; then
+    echo "   ✅ WOMPI_EVENTS_SECRET configurado"
+else
+    echo "   ❌ Error configurando WOMPI_EVENTS_SECRET"
+    exit 1
+fi
+
+echo ""
+echo "4️⃣  Configurando WOMPI_REDIRECT_URL..."
+if supabase secrets set WOMPI_REDIRECT_URL="$WOMPI_REDIRECT_URL" 2>&1; then
+    echo "   ✅ WOMPI_REDIRECT_URL configurado: $WOMPI_REDIRECT_URL"
+else
+    echo "   ❌ Error configurando WOMPI_REDIRECT_URL"
+    exit 1
+fi
+
+echo ""
+echo "=========================================="
+echo "✅ Variables de entorno configuradas"
+echo ""
+echo "📋 Próximos pasos manuales:"
+echo ""
+echo "1. Ve al Dashboard de Wompi Producción:"
+echo "   https://comercios.wompi.co"
+echo ""
+echo "2. Configura el Webhook:"
+echo "   URL: https://ywilkhfkuwhsjvojocso.supabase.co/functions/v1/wompi-webhook"
+echo "   Evento: transaction.updated"
+echo ""
+echo "3. Configura URLs de Redirección Permitidas:"
+echo "   - $WOMPI_REDIRECT_URL"
+echo "   - ${WOMPI_REDIRECT_URL/callback/success}"
+echo ""
+echo "4. Verifica que los Tokens de Aceptación estén activos"
+echo ""
+echo "5. Prueba el flujo completo con un pago real"
+echo ""
+echo "📖 Para más detalles, ver: docs/CAMBIAR_A_PRODUCCION.md"
+

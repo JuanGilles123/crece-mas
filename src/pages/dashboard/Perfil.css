@@ -1,40 +1,34 @@
-/* Página de Perfil - Estilos */
+/* Página de Perfil - iOS Native Style */
 
 .perfil-container {
   width: 100%;
   margin: 0;
   padding: 0;
-  background: var(--bg-primary);
-  min-height: 100vh;
+  background: transparent;
+  min-height: auto;
   overflow-x: hidden;
   box-sizing: border-box;
 }
 
-/* Header del perfil */
+/* Header del perfil - iOS Card */
 .perfil-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--bg-card);
-  padding: 1rem 1.5rem;
-  border-radius: 0;
-  box-shadow: none;
-  margin-bottom: 0;
-  border-bottom: 1px solid var(--border-primary);
-  border-bottom: none;
+  background: white;
+  padding: 24px;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  margin-bottom: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
   position: relative;
   width: 100%;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .perfil-header::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.08) 20%, rgba(0, 0, 0, 0.12) 50%, rgba(0, 0, 0, 0.08) 80%, transparent 100%);
+  content: none;
 }
 
 .perfil-user-info {
@@ -110,12 +104,12 @@
   height: 1rem;
 }
 
-/* Contenido principal */
+/* Contenido principal - iOS Style */
 .perfil-content {
   display: grid;
   grid-template-columns: 280px 1fr;
-  gap: 0;
-  background: var(--bg-input);
+  gap: 16px;
+  background: transparent;
   border-radius: 0;
   box-shadow: none;
   overflow: visible;
@@ -124,24 +118,16 @@
   box-sizing: border-box;
 }
 
-/* Sidebar de navegación */
+/* Sidebar de navegación - iOS Card */
 .perfil-sidebar {
-  background: var(--bg-card);
-  border-right: none;
-  padding: 1rem 0;
+  background: white;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  padding: 12px;
   position: relative;
   min-height: auto;
   width: 100%;
-}
-
-.perfil-sidebar::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.08) 20%, rgba(0, 0, 0, 0.12) 50%, rgba(0, 0, 0, 0.08) 80%, transparent 100%);
 }
 
 .perfil-nav {
@@ -153,29 +139,31 @@
 .perfil-nav-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
+  gap: 12px;
+  padding: 12px 16px;
   background: none;
   border: none;
-  color: var(--text-secondary);
-  font-size: 0.8rem;
+  border-radius: 10px;
+  color: #000;
+  font-size: 15px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   text-align: left;
   width: 100%;
   word-break: break-word;
   overflow-wrap: break-word;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
 }
 
 .perfil-nav-item:hover {
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
+  background: rgba(0, 0, 0, 0.05);
+  color: #000;
 }
 
 .perfil-nav-item.active {
-  background: #10b981;
-  color: var(--text-inverse);
+  background: #007AFF;
+  color: white;
   font-weight: 600;
 }
 
@@ -184,11 +172,11 @@
   height: 1.25rem;
 }
 
-/* Contenido principal */
+/* Contenido principal - iOS Card */
 .perfil-main {
-  padding: 2rem;
+  padding: 0;
   overflow: visible;
-  background: var(--bg-card);
+  background: transparent;
   width: 100%;
   box-sizing: border-box;
   min-height: auto;
@@ -218,11 +206,11 @@
   box-sizing: border-box;
 }
 
-/* Datos personales */
+/* Datos personales - iOS Card */
 .perfil-datos-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1.5rem;
+  gap: 16px;
   width: 100%;
   box-sizing: border-box;
   max-width: none;
@@ -230,15 +218,22 @@
 }
 
 .perfil-dato-item {
-  background: var(--bg-card);
-  padding: 1.5rem;
-  border-radius: 0.75rem;
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  background: white;
+  padding: 24px;
+  border-radius: 16px;
+  border: 1.5px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   width: 100%;
   box-sizing: border-box;
-  overflow: visible;
+  overflow: hidden;
   min-width: 0;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.perfil-dato-item:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+  border-color: rgba(0, 0, 0, 0.15);
 }
 
 .perfil-dato-label {
@@ -246,7 +241,7 @@
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 0.5rem;
+  margin-bottom: 8px;
 }
 
 .perfil-dato-value {
@@ -259,6 +254,7 @@
   width: 100%;
   box-sizing: border-box;
   min-width: 0;
+  line-height: 1.5;
 }
 
 /* Funcionalidad de edición */
@@ -374,6 +370,32 @@
   border: 1px solid rgba(0, 0, 0, 0.05);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   text-align: center;
+  position: relative;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.perfil-config-item.clickable {
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.perfil-config-item.clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-color: #007AFF;
+}
+
+.config-icon-wrapper {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
+  background: linear-gradient(135deg, #007AFF 0%, #0051D5 100%);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
 }
 
 .perfil-config-item h3 {
@@ -410,6 +432,34 @@
   background: #9ca3af;
   cursor: not-allowed;
   transform: none;
+}
+
+/* Botón de volver */
+.perfil-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: transparent;
+  border: 2px solid #007AFF;
+  color: #007AFF;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  margin-bottom: 24px;
+}
+
+.perfil-back-btn:hover {
+  background: #007AFF;
+  color: white;
+  transform: translateX(-4px);
+}
+
+.perfil-back-btn:active {
+  transform: scale(0.96);
 }
 
 /* Responsive */
@@ -789,4 +839,440 @@
 .perfil-logout-btn,
 .perfil-config-btn {
   transition: all 0.2s ease-in-out;
+}
+
+/* ============================================
+   MODO OSCURO iOS NATIVO
+   ============================================ */
+
+.dark .perfil-container {
+  background: transparent;
+}
+
+.dark .perfil-header {
+  background: #1C1C1E;
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.dark .perfil-header::after {
+  content: none;
+  background: transparent;
+}
+
+.dark .perfil-user-details h1 {
+  color: #FFFFFF;
+}
+
+.dark .perfil-user-email {
+  color: #8E8E93;
+}
+
+.dark .perfil-user-role {
+  color: #34C759;
+}
+
+.dark .perfil-content {
+  background: transparent;
+}
+
+.dark .perfil-sidebar {
+  background: #1C1C1E;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .perfil-sidebar::after {
+  background: transparent;
+}
+
+.dark .perfil-nav-item {
+  color: #8E8E93;
+}
+
+.dark .perfil-nav-item:hover {
+  background: #2C2C2E;
+  color: #FFFFFF;
+}
+
+.dark .perfil-nav-item.active {
+  background: #007AFF;
+  color: #FFFFFF;
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+}
+
+.dark .perfil-main {
+  background: #1C1C1E;
+}
+
+.dark .perfil-section-title {
+  color: #FFFFFF;
+}
+
+.dark .perfil-section-description {
+  color: #8E8E93;
+}
+
+.dark .perfil-dato-item,
+.dark .perfil-config-item {
+  background: #1C1C1E;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.dark .perfil-dato-item:hover,
+.dark .perfil-config-item:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.dark .perfil-dato-label,
+.dark .perfil-config-item h3 {
+  color: #8E8E93;
+}
+
+.dark .perfil-dato-value,
+.dark .perfil-config-item p {
+  color: #FFFFFF;
+}
+
+.dark .perfil-edit-input {
+  background: #1C1C1E;
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #FFFFFF;
+}
+
+.dark .perfil-edit-input:focus {
+  border-color: #34C759;
+  box-shadow: 0 0 0 3px rgba(52, 199, 89, 0.3);
+}
+
+.dark .perfil-edit-input:disabled {
+  background: #2C2C2E;
+  color: #8E8E93;
+}
+
+.dark .perfil-edit-start {
+  background: #2C2C2E;
+  color: #8E8E93;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .perfil-edit-start:hover {
+  background: #3A3A3C;
+  color: #FFFFFF;
+}
+
+.dark .perfil-config-item.clickable:hover {
+  border-color: #0A84FF;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.dark .config-icon-wrapper {
+  background: linear-gradient(135deg, #0A84FF 0%, #0077ED 100%);
+  box-shadow: 0 4px 12px rgba(10, 132, 255, 0.4);
+}
+
+.dark .perfil-back-btn {
+  border-color: #0A84FF;
+  color: #0A84FF;
+}
+
+.dark .perfil-back-btn:hover {
+  background: #0A84FF;
+  color: white;
+}
+
+/* ===================================
+   NUEVAS TARJETAS: SUSCRIPCIÓN Y ANALYTICS
+   =================================== */
+
+/* Banner de Suscripción de la Organización */
+.org-subscription-banner {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  border-radius: 16px;
+  margin-bottom: 2rem;
+  border: 2px solid;
+  transition: all 0.3s ease;
+}
+
+.org-subscription-banner.gratis {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(124, 58, 237, 0.1) 100%);
+  border-color: #8B5CF6;
+}
+
+.org-subscription-banner.profesional,
+.org-subscription-banner.empresarial {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%);
+  border-color: #10B981;
+}
+
+.org-subscription-banner.vip {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 165, 0, 0.15) 100%);
+  border-color: #FFD700;
+  box-shadow: 0 4px 16px rgba(255, 215, 0, 0.2);
+}
+
+.banner-icon {
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
+  background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+.org-subscription-banner.profesional .banner-icon,
+.org-subscription-banner.empresarial .banner-icon {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.banner-icon.vip-icon {
+  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
+  animation: vipPulse 2s ease-in-out infinite;
+}
+
+@keyframes vipPulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4); }
+  50% { transform: scale(1.05); box-shadow: 0 6px 20px rgba(255, 215, 0, 0.6); }
+}
+
+.banner-content {
+  flex: 1;
+}
+
+.banner-content h4 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+  color: var(--text-primary);
+}
+
+.banner-content p {
+  font-size: 0.875rem;
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.banner-btn {
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.banner-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+/* Dark Mode para Banner */
+.dark .org-subscription-banner.gratis {
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.15) 0%, rgba(124, 58, 237, 0.15) 100%);
+  border-color: #9333EA;
+}
+
+.dark .org-subscription-banner.profesional,
+.dark .org-subscription-banner.empresarial {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.15) 100%);
+  border-color: #10B981;
+}
+
+.dark .org-subscription-banner.vip {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 165, 0, 0.2) 100%);
+  border-color: #FFD700;
+  box-shadow: 0 4px 16px rgba(255, 215, 0, 0.3);
+}
+
+/* Responsive Banner */
+@media (max-width: 768px) {
+  .org-subscription-banner {
+    flex-direction: column;
+    text-align: center;
+    padding: 1.25rem;
+  }
+
+  .banner-icon {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+  }
+
+  .banner-btn {
+    width: 100%;
+  }
+}
+
+/* Mi Suscripción */
+.perfil-config-item.suscripcion-item {
+  position: relative;
+  overflow: visible;
+}
+
+.perfil-config-item.suscripcion-item .config-icon-wrapper {
+  background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+  position: relative;
+}
+
+.perfil-config-item.suscripcion-item:hover {
+  border-color: #8B5CF6;
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.2);
+}
+
+.vip-sparkle {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  color: #FFD700;
+  animation: sparkleRotate 3s linear infinite;
+}
+
+@keyframes sparkleRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.vip-crown {
+  display: inline-block;
+  margin-left: 8px;
+  color: #FFD700;
+  animation: crownPulse 2s ease-in-out infinite;
+}
+
+@keyframes crownPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+/* Platform Analytics */
+.perfil-config-item.analytics-item {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%);
+  border: 2px solid #10B981;
+}
+
+.perfil-config-item.analytics-item:hover {
+  border-color: #059669;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+}
+
+.perfil-config-item.analytics-item .config-icon-wrapper {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.admin-crown {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  color: #FFD700;
+  animation: crownFloat 3s ease-in-out infinite;
+}
+
+@keyframes crownFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+/* Panel VIP Admin */
+.perfil-config-item.vip-admin-item {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.1) 100%);
+  border: 2px solid #F59E0B;
+  position: relative;
+  overflow: visible;
+}
+
+.perfil-config-item.vip-admin-item:hover {
+  border-color: #D97706;
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.3);
+}
+
+.perfil-config-item.vip-admin-item .config-icon-wrapper {
+  background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+  position: relative;
+}
+
+.vip-sparkle-admin {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  color: #FFF;
+  animation: sparkleRotate 3s linear infinite;
+}
+
+.vip-crown-admin {
+  display: inline-block;
+  margin-left: 8px;
+  color: #FFD700;
+  animation: crownFloat 2s ease-in-out infinite;
+}
+
+.config-icon-wrapper.analytics-icon {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+  position: relative;
+}
+
+.admin-crown {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  color: #FFD700;
+  animation: crownFloat 2s ease-in-out infinite;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+@keyframes crownFloat {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-4px); }
+}
+
+.perfil-config-item.analytics-item h3 {
+  color: #059669;
+  font-weight: 700;
+}
+
+/* Dark Mode para nuevas tarjetas */
+.dark .perfil-config-item.suscripcion-item .config-icon-wrapper {
+  background: linear-gradient(135deg, #9333EA 0%, #7C3AED 100%);
+  box-shadow: 0 4px 12px rgba(147, 51, 234, 0.4);
+}
+
+.dark .perfil-config-item.suscripcion-item:hover {
+  border-color: #9333EA;
+  box-shadow: 0 6px 20px rgba(147, 51, 234, 0.3);
+}
+
+.dark .perfil-config-item.analytics-item {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.15) 100%);
+  border-color: #10B981;
+}
+
+.dark .perfil-config-item.analytics-item:hover {
+  border-color: #10B981;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
+.dark .config-icon-wrapper.analytics-icon {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.5);
+}
+
+.dark .perfil-config-item.analytics-item h3 {
+  color: #10B981;
 }
