@@ -3,25 +3,16 @@ import React, { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-<<<<<<< Updated upstream
-import { supabase } from '../supabaseClient';
-import LottieLoader from '../components/LottieLoader';
-import './Inventario.css';
-import { useAuth } from '../context/AuthContext';
-import { useSubscription } from '../hooks/useSubscription';
-import { compressProductImage } from '../utils/imageCompression';
-import { useAgregarProducto } from '../hooks/useProductos';
-import { useCurrencyInput } from '../hooks/useCurrencyInput';
-import { Package, Scissors } from 'lucide-react';
-=======
 import { supabase } from '../../services/api/supabaseClient';
-import { FormSkeleton } from '../ui/SkeletonLoader';
-import LottieLoader from '../ui/LottieLoader';
+import { FormSkeleton } from '../../components/ui/SkeletonLoader';
+import LottieLoader from '../../components/ui/LottieLoader';
 import '../../pages/dashboard/Inventario.css';
 import { useAuth } from '../../context/AuthContext';
+import { useSubscription } from '../../hooks/useSubscription';
 import { compressProductImage } from '../../services/storage/imageCompression';
 import { useAgregarProducto } from '../../hooks/useProductos';
->>>>>>> Stashed changes
+import { useCurrencyInput } from '../../hooks/useCurrencyInput';
+import { Package, Scissors } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 // Esquema de validación con Zod

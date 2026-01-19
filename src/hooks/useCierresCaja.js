@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../services/api/supabaseClient';
 
 // Hook para obtener cierres de caja
 export const useCierresCaja = (organizationId, limit = 100) => {

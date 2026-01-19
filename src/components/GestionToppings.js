@@ -6,7 +6,7 @@ import { useToppings, useCrearTopping, useActualizarTopping, useEliminarTopping 
 import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import { canUseToppings } from '../utils/toppingsUtils';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../services/api/supabaseClient';
 import { compressProductImage } from '../utils/imageCompression';
 import OptimizedProductImage from './OptimizedProductImage';
 import toast from 'react-hot-toast';

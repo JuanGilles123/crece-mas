@@ -1,11 +1,6 @@
 import { useState } from 'react';
-<<<<<<< Updated upstream
-import { supabase } from '../supabaseClient';
-import { Link } from 'react-router-dom';
-=======
 import { supabase } from '../../services/api/supabaseClient';
 import { useNavigate, Link } from 'react-router-dom';
->>>>>>> Stashed changes
 import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, ArrowLeft, TrendingUp, Users, BarChart3, Phone, Globe } from 'lucide-react';
 import PhoneInput from 'react-phone-input-2';

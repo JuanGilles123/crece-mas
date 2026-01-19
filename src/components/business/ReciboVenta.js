@@ -1,14 +1,7 @@
-<<<<<<< Updated upstream
 import React, { useState, useRef } from "react";
 import { CheckCircle, Printer, Share2, Download, Banknote, CreditCard, Smartphone } from "lucide-react";
-import { supabase } from '../supabaseClient';
-import { useAuth } from '../context/AuthContext';
-=======
-import React, { useState, useRef, useEffect, useCallback } from "react";
-import { CheckCircle, Printer, Share2, Download } from "lucide-react";
 import { supabase } from '../../services/api/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
->>>>>>> Stashed changes
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import './ReciboVenta.css';

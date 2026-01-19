@@ -26,7 +26,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../services/api/supabaseClient';
 import toast from 'react-hot-toast';
 import LottieLoader from '../components/LottieLoader';
 import './VIPAdminPanel.css';

@@ -1,16 +1,9 @@
 import React, { useState, useRef } from 'react';
-<<<<<<< Updated upstream
-import { supabase } from '../supabaseClient';
-import './Inventario.css';
-import { useAuth } from '../context/AuthContext';
-import { compressProductImage } from '../utils/imageCompression';
-import { useCurrencyInput } from '../hooks/useCurrencyInput';
-=======
 import { supabase } from '../../services/api/supabaseClient';
 import '../../pages/dashboard/Inventario.css';
 import { useAuth } from '../../context/AuthContext';
 import { compressProductImage } from '../../services/storage/imageCompression';
->>>>>>> Stashed changes
+import { useCurrencyInput } from '../../hooks/useCurrencyInput';
 // Función para eliminar imagen del storage
 const deleteImageFromStorage = async (imagePath) => {
   if (!imagePath) return;
