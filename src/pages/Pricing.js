@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { useSubscription } from '../hooks/useSubscription';
 import LottieLoader from '../components/LottieLoader';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../services/api/supabaseClient';
 import toast from 'react-hot-toast';
 import './Pricing.css';
 

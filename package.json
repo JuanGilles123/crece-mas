@@ -1,7 +1,27 @@
 {
   "name": "crece-mas",
-  "version": "0.1.0",
+  "version": "1.0.0",
+  "description": "Sistema completo de gestión de ventas, inventario y facturación",
   "private": true,
+  "keywords": [
+    "react",
+    "supabase",
+    "ventas",
+    "inventario",
+    "facturacion",
+    "pos",
+    "crm"
+  ],
+  "author": "Equipo Crece Más",
+  "license": "MIT",
+  "homepage": "https://crece-mas.vercel.app",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tu-usuario/crece-mas.git"
+  },
+  "bugs": {
+    "url": "https://github.com/tu-usuario/crece-mas/issues"
+  },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
     "@supabase/supabase-js": "^2.57.4",
@@ -37,6 +57,15 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
+    "db:setup": "echo 'Ejecutar database/setup/setup_completo.sql en Supabase'",
+    "db:migrate": "echo 'Ejecutar archivos en database/migrations/'",
+    "db:seed": "echo 'Ejecutar archivos en database/seeds/'",
+    "db:diagnose": "echo 'Ejecutar archivos en database/diagnostics/'",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "format": "prettier --write src/",
+    "analyze": "npm run build && npx bundle-analyzer build/static/js/*.js",
+    "serve": "serve -s build -l 3000",
     "setup-toppings": "bash setup-toppings.sh",
     "setup-storage-policies": "node ejecutar-politicas-storage.js"
   },
@@ -57,5 +86,13 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
   }
 }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Building2, Check, ChevronDown } from 'lucide-react';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../services/api/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import './OrganizationSwitcher.css';
 

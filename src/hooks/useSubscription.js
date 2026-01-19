@@ -2,7 +2,7 @@
 import { useAuth } from '../context/AuthContext';
 import { PLAN_FEATURES } from '../constants/subscriptionFeatures';
 import { hasBypassAccess } from '../constants/vipUsers';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../services/api/supabaseClient';
 import { useState, useEffect, useCallback } from 'react';
 
 export const useSubscription = () => {

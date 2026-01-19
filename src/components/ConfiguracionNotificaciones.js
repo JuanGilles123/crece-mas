@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Bell, Package, DollarSign, AlertTriangle, TrendingUp, Save } from 'lucide-react';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../services/api/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import './ConfiguracionNotificaciones.css';

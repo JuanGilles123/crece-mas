@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../services/api/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { useCurrencyInput } from '../hooks/useCurrencyInput';
 import { Calculator, TrendingUp, DollarSign, ShoppingCart, AlertCircle, CheckCircle, XCircle, Save, Banknote, CreditCard, Smartphone, Share2, Download } from 'lucide-react';

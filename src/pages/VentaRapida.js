@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../services/api/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { Zap, DollarSign, FileText, CreditCard, Check, X, Banknote, Building2, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';

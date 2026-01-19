@@ -1,70 +1,226 @@
-# Getting Started with Create React App
+# 🚀 Crece Más - Sistema de Gestión de Ventas
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Un sistema completo de gestión de ventas, inventario y facturación desarrollado con React y Supabase.
 
-## Available Scripts
+## 📋 Características Principales
 
-In the project directory, you can run:
+### 🛒 **Gestión de Ventas**
+- Sistema de caja completo
+- Cálculo automático de cambio
+- Generación de recibos en PDF
+- Historial de ventas con filtros
+- Resumen de ventas por período
 
-### `npm start`
+### 📦 **Gestión de Inventario**
+- CRUD completo de productos
+- Importación masiva desde CSV/Excel
+- Gestión de imágenes de productos
+- Control de stock
+- Categorización de productos
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+### 🏢 **Gestión de Empresa**
+- Configuración de datos de empresa
+- Subida y gestión de logos
+- Personalización de recibos
+- Datos de facturación completos
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+### 👤 **Sistema de Usuarios**
+- Autenticación segura con Supabase
+- Perfiles de usuario personalizables
+- Recuperación de contraseña
+- Confirmación por email
 
-### `npm test`
+## 🛠️ Tecnologías Utilizadas
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### **Frontend**
+- **React 19.1.1** - Framework principal
+- **React Router DOM** - Navegación
+- **React Query (TanStack)** - Gestión de estado del servidor
+- **React Hook Form + Zod** - Formularios y validación
+- **Framer Motion** - Animaciones
+- **Chart.js** - Gráficos y reportes
+- **jsPDF + html2canvas** - Generación de PDFs
 
-### `npm run build`
+### **Backend**
+- **Supabase** - Base de datos PostgreSQL
+- **Supabase Auth** - Autenticación
+- **Supabase Storage** - Almacenamiento de archivos
+- **Row Level Security (RLS)** - Seguridad de datos
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### **UI/UX**
+- **CSS Modules** - Estilos modulares
+- **Lucide React** - Iconografía
+- **React Hot Toast** - Notificaciones
+- **Lottie React** - Animaciones de carga
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## 📁 Estructura del Proyecto
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+```
+crece-mas/
+├── 📁 src/                          # Código fuente principal
+│   ├── 📁 components/               # Componentes reutilizables
+│   │   ├── 📁 ui/                   # Componentes base (botones, inputs, etc.)
+│   │   ├── 📁 forms/                # Componentes de formularios
+│   │   ├── 📁 modals/               # Modales específicos
+│   │   ├── 📁 layout/               # Componentes de layout
+│   │   └── 📁 business/             # Componentes de negocio
+│   ├── 📁 pages/                    # Páginas principales
+│   │   ├── 📁 auth/                 # Páginas de autenticación
+│   │   ├── 📁 dashboard/            # Páginas del dashboard
+│   │   └── 📁 public/               # Páginas públicas
+│   ├── 📁 hooks/                    # Custom hooks
+│   ├── 📁 context/                  # Context providers
+│   ├── 📁 services/                 # Servicios y API calls
+│   │   ├── 📁 api/                  # Cliente de Supabase
+│   │   └── 📁 storage/              # Gestión de archivos
+│   ├── 📁 utils/                    # Utilidades
+│   ├── 📁 constants/                # Constantes
+│   └── 📁 styles/                   # Estilos globales
+├── 📁 database/                     # Scripts de base de datos
+│   ├── 📁 setup/                    # Scripts de configuración inicial
+│   ├── 📁 migrations/               # Migraciones
+│   ├── 📁 seeds/                    # Datos de prueba
+│   ├── 📁 fixes/                    # Scripts de corrección
+│   └── 📁 diagnostics/              # Scripts de diagnóstico
+├── 📁 docs/                         # Documentación
+│   ├── 📁 setup/                    # Guías de configuración
+│   ├── 📁 api/                      # Documentación de API
+│   └── 📁 deployment/               # Guías de despliegue
+├── 📁 public/                       # Archivos públicos
+│   ├── 📁 templates/                # Plantillas
+│   └── 📁 assets/                   # Assets estáticos
+├── 📁 scripts/                      # Scripts de automatización
+└── 📁 config/                       # Archivos de configuración
+```
 
-### `npm run eject`
+## 🚀 Instalación y Configuración
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+### **Prerrequisitos**
+- Node.js 18+ 
+- npm o yarn
+- Cuenta de Supabase
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### **1. Clonar el Repositorio**
+```bash
+git clone <repository-url>
+cd crece-mas
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### **2. Instalar Dependencias**
+```bash
+npm install
+```
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+### **3. Configurar Supabase**
+1. Crear un proyecto en [Supabase](https://supabase.com)
+2. Copiar las variables de entorno:
+```bash
+cp .env.example .env.local
+```
 
-## Learn More
+3. Configurar las variables en `.env.local`:
+```env
+REACT_APP_SUPABASE_URL=tu_supabase_url
+REACT_APP_SUPABASE_ANON_KEY=tu_supabase_anon_key
+```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+### **4. Configurar Base de Datos**
+1. Abrir Supabase Dashboard
+2. Ir a SQL Editor
+3. Ejecutar el script: `database/setup/setup_completo.sql`
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+### **5. Ejecutar el Proyecto**
+```bash
+npm start
+```
 
-### Code Splitting
+El proyecto estará disponible en `http://localhost:3000`
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## 📚 Documentación Adicional
 
-### Analyzing the Bundle Size
+### **Configuración de Base de Datos**
+- [Setup de Base de Datos](docs/setup/SETUP_BASE_DATOS.md)
+- [Configuración de Recibos](docs/setup/CONFIGURACION_RECIBOS.md)
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+### **Importación de Datos**
+- [Importación CSV](docs/setup/IMPORTACION_CSV.md)
+- [Importación de Imágenes](docs/setup/IMPORTACION_IMAGENES.md)
 
-### Making a Progressive Web App
+### **Gestión de Usuarios**
+- [Perfil de Usuario](docs/setup/PERFIL_USUARIO.md)
+- [Recibos Mejorados](docs/setup/RECIBOS_MEJORADOS.md)
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+## 🔧 Scripts Disponibles
 
-### Advanced Configuration
+```bash
+# Desarrollo
+npm start                 # Iniciar servidor de desarrollo
+npm test                  # Ejecutar tests
+npm run build             # Construir para producción
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+# Base de datos
+npm run db:setup          # Configurar base de datos
+npm run db:migrate        # Ejecutar migraciones
+npm run db:seed           # Poblar con datos de prueba
+```
 
-### Deployment
+## 🏗️ Arquitectura del Sistema
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+### **Frontend Architecture**
+- **Componentes**: Organizados por funcionalidad (UI, Forms, Business, Layout)
+- **Páginas**: Separadas por contexto (Auth, Dashboard, Public)
+- **Hooks**: Lógica reutilizable para estado y efectos
+- **Context**: Gestión global de autenticación y temas
+- **Services**: Comunicación con APIs y servicios externos
 
-### `npm run build` fails to minify
+### **Backend Architecture**
+- **Supabase**: Base de datos PostgreSQL con RLS
+- **Storage**: Almacenamiento de archivos (imágenes, PDFs)
+- **Auth**: Autenticación y autorización
+- **Real-time**: Actualizaciones en tiempo real
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+### **Seguridad**
+- **Row Level Security (RLS)**: Cada usuario solo accede a sus datos
+- **Políticas de Storage**: Archivos privados por usuario
+- **Validación**: Zod para validación de formularios
+- **Sanitización**: Prevención de inyección SQL
+
+## 🚀 Despliegue
+
+### **Vercel (Recomendado)**
+1. Conectar repositorio a Vercel
+2. Configurar variables de entorno
+3. Desplegar automáticamente
+
+### **Netlify**
+1. Conectar repositorio a Netlify
+2. Configurar build command: `npm run build`
+3. Configurar publish directory: `build`
+
+### **Supabase Hosting**
+1. Configurar proyecto en Supabase
+2. Habilitar hosting estático
+3. Conectar con el repositorio
+
+## 🤝 Contribución
+
+1. Fork el proyecto
+2. Crear una rama para tu feature (`git checkout -b feature/AmazingFeature`)
+3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
+4. Push a la rama (`git push origin feature/AmazingFeature`)
+5. Abrir un Pull Request
+
+## 📄 Licencia
+
+Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.
+
+## 📞 Soporte
+
+Para soporte técnico o preguntas:
+- Crear un issue en GitHub
+- Contactar al equipo de desarrollo
+- Revisar la documentación en `/docs`
+
+---
+
+**Desarrollado con ❤️ para optimizar la gestión de ventas y inventario**
