@@ -1,10 +1,10 @@
 import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from 'framer-motion';
-import { supabase } from '../supabaseClient';
-import { useAuth } from '../context/AuthContext';
-import OptimizedProductImage from '../components/OptimizedProductImage';
-import ReciboVenta from '../components/ReciboVenta';
-import ConfirmacionVenta from '../components/ConfirmacionVenta';
+import { supabase } from '../../services/api/supabaseClient';
+import { useAuth } from '../../context/AuthContext';
+import OptimizedProductImage from '../../components/business/OptimizedProductImage';
+import ReciboVenta from '../../components/business/ReciboVenta';
+import ConfirmacionVenta from '../../components/business/ConfirmacionVenta';
 import { ShoppingCart, Trash2, Plus, Minus, Search, CheckCircle, X, CreditCard, Banknote, Smartphone, Wallet } from 'lucide-react';
 import toast from 'react-hot-toast';
 import './Caja.css';

@@ -3,16 +3,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './Inventario.css';
-import AgregarProductoModal from './AgregarProductoModal';
-import EditarProductoModal from './EditarProductoModal';
-import ImportarProductosCSV from '../components/ImportarProductosCSV';
-import OptimizedProductImage from '../components/OptimizedProductImage';
-import { ProductCardSkeleton, ProductListSkeleton, InventoryHeaderSkeleton } from '../components/SkeletonLoader';
-import LottieLoader from '../components/LottieLoader';
-import { useAuth } from '../context/AuthContext';
-import { supabase } from '../supabaseClient';
+import AgregarProductoModal from '../../components/modals/AgregarProductoModal';
+import EditarProductoModal from '../../components/modals/EditarProductoModal';
+import ImportarProductosCSV from '../../components/forms/ImportarProductosCSV';
+import OptimizedProductImage from '../../components/business/OptimizedProductImage';
+import { ProductCardSkeleton, ProductListSkeleton, InventoryHeaderSkeleton } from '../../components/ui/SkeletonLoader';
+import LottieLoader from '../../components/ui/LottieLoader';
+import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../services/api/supabaseClient';
 import { Search, List, Grid3X3 } from 'lucide-react';
-import { useProductos, useEliminarProducto } from '../hooks/useProductos';
+import { useProductos, useEliminarProducto } from '../../hooks/useProductos';
 import toast from 'react-hot-toast';
 
 // Función para eliminar imagen del storage

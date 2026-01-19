@@ -3,17 +3,17 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 
-import Home from './pages/Home';
-import Login from './pages/Login';
-import Registro from './pages/Registro';
-import Recuperar from './pages/Recuperar';
-import Dashboard from './pages/Dashboard';
-import RestablecerContrasena from './pages/ResetPassword';
-import Confirmacion from './pages/Confirmacion';
+import Home from './pages/public/Home';
+import Login from './pages/auth/Login';
+import Registro from './pages/auth/Registro';
+import Recuperar from './pages/auth/Recuperar';
+import Dashboard from './pages/dashboard/Dashboard';
+import RestablecerContrasena from './pages/auth/ResetPassword';
+import Confirmacion from './pages/auth/Confirmacion';
 import ConfirmacionExitosa from './components/ConfirmacionExitosa';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
-import ProtectedRoute from './components/ProtectedRoute';
+import ProtectedRoute from './components/layout/ProtectedRoute';
 import './styles/themes.css';
 
 // Configuración de React Query
