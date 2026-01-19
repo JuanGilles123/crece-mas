@@ -1,5 +1,10 @@
+<<<<<<< Updated upstream
 import React, { memo, useState, useCallback } from 'react';
 import { useImageCache } from '../hooks/useImageCache';
+=======
+import React from 'react';
+import { useImageCache } from '../../hooks/useImageCache';
+>>>>>>> Stashed changes
 
 const OptimizedProductImage = memo(({ imagePath, alt, className, onError }) => {
   const { imageUrl, loading, error } = useImageCache(imagePath);

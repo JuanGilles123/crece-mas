@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../../services/api/supabaseClient';
 import styles from './Auth.module.css';
-import { MailIcon } from './Icons';
+import { MailIcon } from '../../constants/Icons';
+import { Mail } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Recuperar = () => {
@@ -37,7 +38,7 @@ const Recuperar = () => {
           <h2>Recuperar contraseña</h2>
           <form onSubmit={handleSubmit}>
             <div className={styles['auth-input']}>
-              <MailIcon />
+              <Mail size={20} />
               <input
                 type="email"
                 placeholder="Correo"

@@ -1,10 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
+<<<<<<< Updated upstream
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import UpgradePrompt from './UpgradePrompt';
 import { Save, Building2, MapPin, Phone, Hash, Mail, AlertCircle, FileText, CreditCard, ShieldAlert, Store, UtensilsCrossed, Scissors, Shirt, ShoppingBag, Package, Check, Circle } from 'lucide-react';
 import toast from 'react-hot-toast';
+=======
+import { supabase } from '../../services/api/supabaseClient';
+import { useAuth } from '../../context/AuthContext';
+import { Save, Upload, Building2, MapPin, Phone, Hash, Mail, MapPin as City } from 'lucide-react';
+>>>>>>> Stashed changes
 import './ConfiguracionFacturacion.css';
 
 export default function ConfiguracionFacturacion() {

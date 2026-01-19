@@ -1,12 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import './ResumenVentas.css';
+<<<<<<< Updated upstream
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import { useVentas } from '../hooks/useVentas';
 import { useCierresCaja } from '../hooks/useCierresCaja';
 import DetalleVenta from '../components/DetalleVenta';
 import DetalleCierreCaja from '../components/DetalleCierreCaja';
+=======
+import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../services/api/supabaseClient';
+>>>>>>> Stashed changes
 import { 
   BarChart3, 
   Calendar, 

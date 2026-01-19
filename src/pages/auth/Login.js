@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../../services/api/supabaseClient';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, ArrowLeft, TrendingUp, Users, BarChart3 } from 'lucide-react';
@@ -54,13 +54,9 @@ const Login = () => {
     
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      if (error.message.toLowerCase().includes('invalid login credentials')) {
-        setError('Correo o contraseña incorrectos.');
-      } else if (error.message.toLowerCase().includes('email')) {
-        setError('El correo no es válido o no está registrado.');
-      } else {
-        setError('Error: ' + error.message);
-      }
+      // Usar sistema de manejo de errores seguro
+      const { getErrorMessage } = await import('../../utils/errorHandler');
+      setError(getErrorMessage(error));
     } else {
       navigate('/dashboard');
     }

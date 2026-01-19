@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../../services/api/supabaseClient';
 
 const ProductImage = ({ imagePath, alt, className, onError }) => {
   const [imageUrl, setImageUrl] = useState(null);

@@ -1,15 +1,12 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { User, Settings, Building2, LogOut, Edit3, Save, X, Lock, Sliders, Bell, CreditCard, BarChart3, Crown, Sparkles, Shield } from 'lucide-react';
-import { useSubscription } from '../hooks/useSubscription';
-// import ConfiguracionFacturacion from '../components/ConfiguracionFacturacion';
-import ThemeToggle from '../components/ThemeToggle';
-// import CambiarContrasena from '../components/CambiarContrasena';
-// import PreferenciasAplicacion from '../components/PreferenciasAplicacion';
-// import ConfiguracionNotificaciones from '../components/ConfiguracionNotificaciones';
-import { supabase } from '../supabaseClient';
+import { useSubscription } from '../../hooks/useSubscription';
+import ConfiguracionFacturacion from '../../components/forms/ConfiguracionFacturacion';
+import ThemeToggle from '../../components/ui/ThemeToggle';
+import { supabase } from '../../services/api/supabaseClient';
 import './Perfil.css';
 
 const Perfil = () => {

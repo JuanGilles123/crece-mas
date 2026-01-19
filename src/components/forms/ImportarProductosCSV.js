@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
-import { supabase } from '../supabaseClient';
-import { useAuth } from '../context/AuthContext';
+import { supabase } from '../../services/api/supabaseClient';
+import { useAuth } from '../../context/AuthContext';
 import * as XLSX from 'xlsx';
+<<<<<<< Updated upstream
 import { compressProductImage } from '../utils/imageCompression';
 import { ClipboardList } from 'lucide-react';
+=======
+import { compressProductImage } from '../../services/storage/imageCompression';
+>>>>>>> Stashed changes
 import './ImportarProductosCSV.css';
 
 const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {

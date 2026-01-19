@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../supabaseClient';
-import { useAuth } from '../context/AuthContext';
+import { supabase } from '../../services/api/supabaseClient';
+import { useAuth } from '../../context/AuthContext';
 import { ShoppingCart, Package, TrendingUp, AlertTriangle, Zap, Users, User, Calculator, Calendar } from 'lucide-react';
 import './DashboardHome.css';
+import obrero from '../../assets/obrero.png';
 
 const DashboardHome = () => {
   const { userProfile, user } = useAuth();

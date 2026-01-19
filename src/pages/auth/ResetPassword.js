@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../../services/api/supabaseClient';
 import styles from './Auth.module.css';
 import { useNavigate } from 'react-router-dom';
-import { EyeIcon } from './EyeIcon';
+import { EyeIcon } from '../../components/ui/EyeIcon';
 
 const ResetPassword = () => {
   const [password, setPassword] = useState('');

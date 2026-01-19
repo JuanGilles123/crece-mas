@@ -1,12 +1,17 @@
 import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { motion } from 'framer-motion';
 import { Outlet, NavLink } from 'react-router-dom';
+<<<<<<< Updated upstream
 import { DashboardSkeleton } from '../components/SkeletonLoader';
 import { BarChart3, CreditCard, Package, User, TrendingUp, Menu, X, Users, Zap, Crown, Shield, Package2, Wallet, Eye, Calculator, Activity, CreditCard as SubscriptionIcon, FileText, Circle, ChefHat } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import OrganizationSwitcher from '../components/OrganizationSwitcher';
 import UsageBanner from '../components/UsageBanner';
+=======
+import { DashboardSkeleton } from '../../components/ui/SkeletonLoader';
+import { BarChart3, CreditCard, Package, User, TrendingUp, Menu, X } from 'lucide-react';
+>>>>>>> Stashed changes
 import './DashboardLayout.css';
 
 // Memoizar el componente del sidebar
