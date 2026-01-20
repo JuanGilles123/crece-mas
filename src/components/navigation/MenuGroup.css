@@ -1,0 +1,217 @@
+/* Estilos para grupos de menú colapsables */
+
+.menu-group {
+  margin-bottom: 4px;
+  width: 100%;
+}
+
+.menu-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  color: #000;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.menu-group-header:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.menu-group-header.active {
+  background: rgba(0, 122, 255, 0.1);
+  color: #007AFF;
+}
+
+.menu-group-header-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.menu-group-icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+}
+
+.menu-group-label {
+  white-space: nowrap;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+}
+
+.menu-group-items {
+  margin-top: 4px;
+  margin-left: 32px;
+  overflow: hidden;
+}
+
+.menu-group-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  text-decoration: none;
+  color: #666;
+  font-size: 15px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  -webkit-tap-highlight-color: transparent;
+  margin-bottom: 2px;
+}
+
+.menu-group-item:hover {
+  background: rgba(0, 0, 0, 0.03);
+  color: #000;
+}
+
+.menu-group-item.active {
+  background: #007AFF;
+  color: white;
+  font-weight: 500;
+}
+
+.menu-group-item-icon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+}
+
+.menu-group-item-label {
+  white-space: nowrap;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+}
+
+/* Versión colapsada (solo icono) */
+.menu-group-collapsed {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.menu-group-header-collapsed {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  color: #000;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.menu-group-header-collapsed:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.menu-group-header-collapsed.active {
+  background: #007AFF;
+  color: white;
+}
+
+/* Ocultar texto y submenús cuando sidebar está colapsado */
+.dashboard-sidebar:not(:hover) .menu-group-label,
+.dashboard-sidebar:not(:hover) .menu-group-items {
+  opacity: 0;
+  max-width: 0;
+  max-height: 0;
+  overflow: hidden;
+  pointer-events: none;
+  margin: 0;
+  padding: 0;
+}
+
+.dashboard-sidebar:not(:hover) .menu-group-header {
+  justify-content: center;
+  padding: 12px;
+}
+
+.dashboard-sidebar:not(:hover) .menu-group-header-content {
+  gap: 0;
+}
+
+/* Asegurar que los grupos colapsados no ocupen espacio vertical */
+.dashboard-sidebar:not(:hover) .menu-group {
+  margin-bottom: 4px;
+}
+
+.dashboard-sidebar:not(:hover) .menu-group-items {
+  display: none !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Mostrar texto cuando sidebar está expandido */
+.dashboard-sidebar:hover .menu-group-label,
+.dashboard-sidebar:hover .menu-group-items {
+  opacity: 1;
+  max-width: 200px;
+  pointer-events: auto;
+}
+
+.dashboard-sidebar:hover .menu-group-header {
+  justify-content: space-between;
+  padding: 12px 16px;
+}
+
+.dashboard-sidebar:hover .menu-group-header-content {
+  gap: 12px;
+}
+
+/* Dark mode */
+.dark .menu-group-header {
+  color: #fff;
+}
+
+.dark .menu-group-header:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dark .menu-group-header.active {
+  background: rgba(0, 122, 255, 0.2);
+  color: #007AFF;
+}
+
+.dark .menu-group-item {
+  color: #aaa;
+}
+
+.dark .menu-group-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}
+
+.dark .menu-group-item.active {
+  background: #007AFF;
+  color: white;
+}
+
+.dark .menu-group-header-collapsed {
+  color: #fff;
+}
+
+.dark .menu-group-header-collapsed:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .menu-group-items {
+    margin-left: 24px;
+  }
+  
+  .menu-group-item {
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+}

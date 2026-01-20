@@ -12,6 +12,8 @@ const Perfil = lazy(() => import('./Perfil'));
 const GestionEquipo = lazy(() => import('../GestionEquipo'));
 const VentaRapida = lazy(() => import('../VentaRapida'));
 const CierreCaja = lazy(() => import('../CierreCaja'));
+const HistorialVentas = lazy(() => import('./HistorialVentas'));
+const HistorialCierresCaja = lazy(() => import('./HistorialCierresCaja'));
 const MiSuscripcion = lazy(() => import('../MiSuscripcion'));
 const ConfiguracionFacturacion = lazy(() => import('../../components/forms/ConfiguracionFacturacion'));
 const PlatformAnalytics = lazy(() => import('../PlatformAnalytics'));
@@ -64,6 +66,16 @@ const Dashboard = () => (
         <Route path="cierre-caja" element={
           <Suspense fallback={<DashboardLoader />}>
             <CierreCaja />
+          </Suspense>
+        } />
+        <Route path="historial-ventas" element={
+          <Suspense fallback={<DashboardLoader />}>
+            <HistorialVentas />
+          </Suspense>
+        } />
+        <Route path="historial-cierres" element={
+          <Suspense fallback={<DashboardLoader />}>
+            <HistorialCierresCaja />
           </Suspense>
         } />
         <Route path="inventario" element={

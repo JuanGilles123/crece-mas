@@ -79,8 +79,9 @@ const CierreCaja = () => {
       const desglose = data?.reduce((acc, venta) => {
         const metodo = (venta.metodo_pago || '').toLowerCase();
         const montoTotal = venta.total || 0;
+        let procesado = false;
         
-        // OPCIÓN 1: Si existe la columna detalles_pago_mixto con JSONB
+        // OPCIÓN 1: Si existe la columna detalles_pago_mixto con JSONB (prioridad)
         if (venta.detalles_pago_mixto && typeof venta.detalles_pago_mixto === 'object') {
           const detalles = venta.detalles_pago_mixto;
           const metodo1 = (detalles.metodo1 || '').toLowerCase();
@@ -92,47 +93,95 @@ const CierreCaja = () => {
           if (metodo1 === 'efectivo') acc.efectivo += monto1;
           else if (metodo1 === 'transferencia') acc.transferencias += monto1;
           else if (metodo1 === 'tarjeta') acc.tarjeta += monto1;
+          else if (metodo1 === 'nequi') acc.transferencias += monto1; // Nequi se cuenta como transferencia
           
           if (metodo2 === 'efectivo') acc.efectivo += monto2;
           else if (metodo2 === 'transferencia') acc.transferencias += monto2;
           else if (metodo2 === 'tarjeta') acc.tarjeta += monto2;
+          else if (metodo2 === 'nequi') acc.transferencias += monto2; // Nequi se cuenta como transferencia
+          
+          procesado = true;
         }
         // OPCIÓN 2: Si es pago mixto pero en formato string (compatibilidad con ventas antiguas)
-        else if (metodo.startsWith('mixto (') || metodo.startsWith('mixto(')) {
-          // Extraer los detalles del pago mixto del string
-          // Formato esperado: "Mixto (Efectivo: $ 1.200 + Transferencia: $ 1.200)"
-          const match = venta.metodo_pago.match(/Mixto\s*\((.+?):\s*\$\s*([\d,.]+)\s*\+\s*(.+?):\s*\$\s*([\d,.]+)\)/i);
+        else if (metodo === 'mixto' || metodo.startsWith('mixto (') || metodo.startsWith('mixto(')) {
+          // Intentar múltiples formatos de regex para mayor compatibilidad
+          // Formato esperado: "Mixto (Efectivo: $ 20.000 + Transferencia: $ 20.000)"
+          // El formatCOP genera: "$ 20.000" (con espacio después del $)
+          let match = venta.metodo_pago.match(/Mixto\s*\((.+?):\s*\$?\s*([\d,.]+)\s*\+\s*(.+?):\s*\$?\s*([\d,.]+)\)/i);
+          
+          if (!match) {
+            // Intentar formato alternativo sin paréntesis
+            match = venta.metodo_pago.match(/Mixto\s+(.+?):\s*\$?\s*([\d,.]+)\s*\+\s*(.+?):\s*\$?\s*([\d,.]+)/i);
+          }
           
           if (match) {
             const metodo1 = match[1].toLowerCase().trim();
+            // Remover puntos (separadores de miles) y convertir coma a punto si existe
             const monto1String = match[2].replace(/\./g, '').replace(',', '.');
-            const monto1 = parseFloat(monto1String);
+            const monto1 = parseFloat(monto1String) || 0;
             const metodo2 = match[3].toLowerCase().trim();
             const monto2String = match[4].replace(/\./g, '').replace(',', '.');
-            const monto2 = parseFloat(monto2String);
+            const monto2 = parseFloat(monto2String) || 0;
             
             // Distribuir los montos según el método
             if (metodo1 === 'efectivo') acc.efectivo += monto1;
             else if (metodo1 === 'transferencia') acc.transferencias += monto1;
             else if (metodo1 === 'tarjeta') acc.tarjeta += monto1;
+            else if (metodo1 === 'nequi') acc.transferencias += monto1; // Nequi se cuenta como transferencia
             
             if (metodo2 === 'efectivo') acc.efectivo += monto2;
             else if (metodo2 === 'transferencia') acc.transferencias += monto2;
             else if (metodo2 === 'tarjeta') acc.tarjeta += monto2;
+            else if (metodo2 === 'nequi') acc.transferencias += monto2; // Nequi se cuenta como transferencia
+            
+            procesado = true;
+          } else {
+            // Si no se puede parsear, intentar usar el total y distribuir proporcionalmente
+            // o registrar en consola para debugging
+            console.warn('No se pudo parsear pago mixto, intentando fallback:', venta.metodo_pago, venta.id);
+            // Como último recurso, si tiene detalles_pago_mixto pero no se procesó antes, intentar de nuevo
+            if (venta.detalles_pago_mixto && typeof venta.detalles_pago_mixto === 'string') {
+              try {
+                const detalles = JSON.parse(venta.detalles_pago_mixto);
+                const metodo1 = (detalles.metodo1 || '').toLowerCase();
+                const metodo2 = (detalles.metodo2 || '').toLowerCase();
+                const monto1 = parseFloat(detalles.monto1) || 0;
+                const monto2 = parseFloat(detalles.monto2) || 0;
+                
+                if (metodo1 === 'efectivo') acc.efectivo += monto1;
+                else if (metodo1 === 'transferencia') acc.transferencias += monto1;
+                else if (metodo1 === 'tarjeta') acc.tarjeta += monto1;
+                else if (metodo1 === 'nequi') acc.transferencias += monto1;
+                
+                if (metodo2 === 'efectivo') acc.efectivo += monto2;
+                else if (metodo2 === 'transferencia') acc.transferencias += monto2;
+                else if (metodo2 === 'tarjeta') acc.tarjeta += monto2;
+                else if (metodo2 === 'nequi') acc.transferencias += monto2;
+                
+                procesado = true;
+              } catch (e) {
+                console.error('Error parseando detalles_pago_mixto como string:', e);
+              }
+            }
           }
-        } else if (metodo === 'efectivo') {
-          acc.efectivo += montoTotal;
-        } else if (metodo === 'transferencia') {
-          acc.transferencias += montoTotal;
-        } else if (metodo === 'tarjeta') {
-          acc.tarjeta += montoTotal;
-        } else if (metodo === 'mixto') {
-          // Pago mixto sin detalles (ventas viejas) - agregarlo a mixto para que se pueda contar
-          acc.mixto += montoTotal;
-        } else {
-          // Otros métodos desconocidos
-          acc.mixto += montoTotal;
         }
+        
+        // Si no se procesó como pago mixto, procesar como método único
+        if (!procesado) {
+          if (metodo === 'efectivo') {
+            acc.efectivo += montoTotal;
+          } else if (metodo === 'transferencia') {
+            acc.transferencias += montoTotal;
+          } else if (metodo === 'tarjeta') {
+            acc.tarjeta += montoTotal;
+          } else if (metodo === 'nequi') {
+            acc.transferencias += montoTotal; // Nequi se cuenta como transferencia
+          } else {
+            // Métodos desconocidos o sin clasificar
+            acc.mixto += montoTotal;
+          }
+        }
+        
         return acc;
       }, { efectivo: 0, transferencias: 0, tarjeta: 0, mixto: 0 });
       
@@ -150,9 +199,10 @@ const CierreCaja = () => {
   }, [cargarVentasHoy]);
 
   useEffect(() => {
-    const efectivo = efectivoRealInput.numericValue;
-    const transferencias = transferenciasRealInput.numericValue;
-    const tarjeta = tarjetaRealInput.numericValue;
+    // Calcular valores numéricos desde displayValue para asegurar que se actualicen correctamente
+    const efectivo = efectivoRealInput.displayValue ? parseFloat(efectivoRealInput.displayValue.replace(/\./g, '')) || 0 : 0;
+    const transferencias = transferenciasRealInput.displayValue ? parseFloat(transferenciasRealInput.displayValue.replace(/\./g, '')) || 0 : 0;
+    const tarjeta = tarjetaRealInput.displayValue ? parseFloat(tarjetaRealInput.displayValue.replace(/\./g, '')) || 0 : 0;
     const total = efectivo + transferencias + tarjeta;
     setTotalReal(total);
     
@@ -161,7 +211,7 @@ const CierreCaja = () => {
     } else {
       setDiferencia(null);
     }
-  }, [efectivoRealInput.numericValue, transferenciasRealInput.numericValue, tarjetaRealInput.numericValue, efectivoRealInput.displayValue, transferenciasRealInput.displayValue, tarjetaRealInput.displayValue, totalSistema]);
+  }, [efectivoRealInput.displayValue, transferenciasRealInput.displayValue, tarjetaRealInput.displayValue, totalSistema]);
 
   const generarTextoCierre = () => {
     const fecha = new Date().toLocaleDateString('es-CO', { 

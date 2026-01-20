@@ -56,6 +56,31 @@ Desktop.ini
 *~
 backup-before-optimization/
 
+# Development-only files (no necesarios en producción)
+start-dev-network.ps1
+start-dev-network.sh
+start-dev.sh
+diagnostico-red.ps1
+permitir-firewall.ps1
+ACCESO_DESDE_CELULAR.md
+SOLUCION_TABLET_NO_CARGA.md
+CHECKLIST_PRUEBAS_LOCAL.md
+LOCAL_TESTING_QUICKSTART.md
+
+# Temporary files
+COPIA_AQUI_POLITICA_*.txt
+ConfiguracionFacturacion.css.backup
+
+# One-time migration scripts (ya ejecutados)
+migrate-storage-images.js
+remove-console-logs.js
+
+# SQL files (solo para referencia, no necesarios en producción)
+UPDATE_SCHEMA_SERVICES_V2.sql
+INSPECT_SCHEMA.sql
+SQL_PURO_POLITICAS.txt
+EXPRESIONES_SQL_POLITICAS.txt
+
 # Secrets and sensitive data
 secrets/
 *.pem

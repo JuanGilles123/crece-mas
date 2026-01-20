@@ -79,7 +79,7 @@ const OptimizedProductImage = memo(({ imagePath, alt, className, onError }) => {
         className={className}
         loading="lazy"
         decoding="async"
-        fetchpriority="low"
+        fetchPriority="low"
         onLoad={handleLoad}
         onError={handleError}
         style={{

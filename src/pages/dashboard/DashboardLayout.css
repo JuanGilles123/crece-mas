@@ -1,8 +1,9 @@
 /* 🍎 iOS Native Dashboard Layout */
 
-/* Layout principal */
+/* Layout principal - Sin sidebar lateral */
 .dashboard-layout {
   display: flex;
+  flex-direction: column;
   height: 100vh;
   height: 100dvh; /* Dynamic viewport height para móviles */
   background: #F2F2F7;
@@ -12,28 +13,9 @@
   position: relative;
 }
 
-/* Sidebar iOS Style - Colapsado por defecto */
+/* Sidebar iOS Style - OCULTO (reemplazado por TopNav) */
 .dashboard-sidebar {
-  width: 70px;
-  min-width: 70px;
-  background: #F2F2F7;
-  border-right: none;
-  display: flex;
-  flex-direction: column;
-  padding: 0;
-  position: relative;
-  flex-shrink: 0;
-  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
-              min-width 0.4s cubic-bezier(0.16, 1, 0.3, 1),
-              background 0.4s cubic-bezier(0.16, 1, 0.3, 1),
-              box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1),
-              border-radius 0.4s cubic-bezier(0.16, 1, 0.3, 1),
-              margin 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  z-index: 100;
-  overflow: hidden;
-  box-shadow: none;
-  border-radius: 0;
-  margin: 0;
+  display: none !important;
 }
 
 /* Sidebar expandido al hover - Liquid Glass Effect */
@@ -77,26 +59,9 @@ body[data-modal-open="true"] .dashboard-sidebar:hover {
   visibility: hidden;
 }
 
-/* Botón de toggle iOS style */
+/* Botón de toggle iOS style - OCULTO */
 .sidebar-toggle {
-  position: fixed;
-  top: 16px;
-  left: 16px;
-  z-index: 150;
-  background: white;
-  border: none;
-  border-radius: 12px;
-  padding: 12px;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  color: #007AFF;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  display: none;
-  width: 44px;
-  height: 44px;
-  align-items: center;
-  justify-content: center;
-  -webkit-tap-highlight-color: transparent;
+  display: none !important;
 }
 
 .sidebar-toggle:active {
@@ -115,6 +80,8 @@ body[data-modal-open="true"] .dashboard-sidebar:hover {
   transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   min-height: 70px;
   overflow: hidden;
+  flex-shrink: 0;
+  order: -1; /* Primero en el orden */
 }
 
 .dashboard-sidebar:hover .dashboard-logo {
@@ -157,6 +124,8 @@ body[data-modal-open="true"] .dashboard-sidebar:hover {
   background: transparent;
   position: relative;
   z-index: 100;
+  flex-shrink: 0;
+  order: 0; /* Mantener después del logo */
 }
 
 .dashboard-sidebar:hover .org-switcher-container {
@@ -173,15 +142,17 @@ body[data-modal-open="true"] .dashboard-sidebar:hover {
   border-bottom: none;
 }
 
-/* Navigation iOS Style */
+/* Navigation iOS Style - Movido hacia arriba */
 .dashboard-nav {
   display: flex;
   flex-direction: column;
   gap: 6px;
   padding: 16px 8px;
-  flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  flex: 0 1 auto; /* Permitir crecimiento pero no ocupar todo el espacio */
+  min-height: 0; /* Permitir scroll si es necesario */
+  order: 1; /* Mover después del logo y org switcher */
 }
 
 .dashboard-sidebar:hover .dashboard-nav {
@@ -260,7 +231,7 @@ body[data-modal-open="true"] .dashboard-sidebar:hover {
 }
 
 /* Estados active y hover */
-/* Main content iOS Style */
+/* Main content iOS Style - Sin sidebar */
 .dashboard-main {
   flex: 1;
   display: flex;
@@ -268,13 +239,28 @@ body[data-modal-open="true"] .dashboard-sidebar:hover {
   min-width: 0;
   background: #F2F2F7;
   overflow: hidden;
-  margin-left: 0;
-  transition: margin-left 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  margin: 0;
+  padding-top: 0;
 }
 
-/* Agregar espacio cuando sidebar está expandido */
-.dashboard-sidebar:hover ~ .dashboard-main {
-  margin-left: 20px;
+/* Selector de organizaciones en la parte superior */
+.org-switcher-top {
+  padding: 12px 24px;
+  background: rgba(255, 255, 255, 0.5);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.dark .org-switcher-top {
+  background: rgba(28, 28, 30, 0.5);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 768px) {
+  .org-switcher-top {
+    padding: 8px 16px;
+  }
 }
 
 .dashboard-content {
@@ -287,6 +273,14 @@ body[data-modal-open="true"] .dashboard-sidebar:hover {
   -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
+  padding-top: 24px;
+}
+
+@media (max-width: 768px) {
+  .dashboard-content {
+    padding: 16px;
+    padding-top: 16px;
+  }
 }
 
 /* iOS Scrollbar */
@@ -342,10 +336,16 @@ body[data-modal-open="true"] .dashboard-sidebar:hover {
 @media (max-width: 768px) {
   .dashboard-layout {
     position: relative;
+    padding-bottom: 60px; /* Espacio para bottom nav */
   }
   
   .sidebar-toggle {
-    display: flex;
+    display: none !important;
+  }
+  
+  /* Ajustar contenido para bottom nav */
+  .dashboard-content {
+    padding-bottom: 80px;
   }
   
   /* Sidebar as overlay en móvil */
@@ -396,11 +396,7 @@ body[data-modal-open="true"] .dashboard-sidebar:hover {
   }
   
   .sidebar-toggle {
-    display: block;
-    position: fixed;
-    top: 1rem;
-    left: 1rem;
-    z-index: 1001;
+    display: none !important;
   }
   
   .sidebar-overlay {
@@ -497,11 +493,24 @@ body[data-modal-open="true"] .dashboard-sidebar:hover {
   transition: padding 0.3s cubic-bezier(0.16, 1, 0.3, 1), 
               transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   -webkit-tap-highlight-color: transparent;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+  order: 2; /* Al final, después de los menús */
+}
+
+/* Cuando sidebar está colapsado, centrar el badge y hacerlo más pequeño */
+.dashboard-sidebar:not(:hover) .user-role-badge {
+  padding: 4px;
+  justify-content: center;
+  width: 100%;
 }
 
 .dashboard-sidebar:hover .user-role-badge {
   padding: 12px;
   background: rgba(0, 0, 0, 0.02);
+  justify-content: center;
 }
 
 .dark .dashboard-sidebar:hover .user-role-badge {
@@ -515,7 +524,7 @@ body[data-modal-open="true"] .dashboard-sidebar:hover {
 .role-indicator {
   font-size: 14px;
   font-weight: 600;
-  padding: 10px;
+  padding: 10px 16px;
   border-radius: 10px;
   display: inline-flex;
   align-items: center;
@@ -523,13 +532,41 @@ body[data-modal-open="true"] .dashboard-sidebar:hover {
   gap: 8px;
   width: 100%;
   transition: padding 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+              transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              width 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              min-width 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              max-width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
   -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+}
+
+/* Cuando sidebar está colapsado, hacer el badge más pequeño - solo icono */
+.dashboard-sidebar:not(:hover) .role-indicator {
+  padding: 4px;
+  width: 36px !important;
+  min-width: 36px !important;
+  max-width: 36px !important;
+  height: 36px;
+  justify-content: center;
+  margin: 0 auto;
+  gap: 0;
+  border-radius: 8px;
+}
+
+/* Icono más pequeño cuando está colapsado */
+.dashboard-sidebar:not(:hover) .role-indicator svg {
+  width: 16px !important;
+  height: 16px !important;
 }
 
 .dashboard-sidebar:hover .role-indicator {
   padding: 10px 16px;
+  width: 100%;
+  min-width: auto;
+  max-width: 100%;
+  height: auto;
+  gap: 8px;
 }
 
 /* Ocultar texto del rol cuando está colapsado */

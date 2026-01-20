@@ -48,10 +48,25 @@ if (!supabaseUrl.match(/^https?:\/\/.+/)) {
 // Verificar si son valores de ejemplo
 if (supabaseUrl.includes('your_supabase') || supabaseAnonKey.includes('your_supabase') || 
     supabaseUrl === 'your_supabase_project_url' || supabaseAnonKey === 'your_supabase_anon_key') {
-  console.error(`
+  const errorMessage = `
     ❌ ERROR: Variables de entorno no configuradas
-    Por favor configura .env.local con tus credenciales reales de Supabase
-  `);
+    
+    El archivo .env.local contiene valores de ejemplo.
+    Por favor configura .env.local con tus credenciales reales de Supabase:
+    
+    REACT_APP_SUPABASE_URL=https://tu-proyecto.supabase.co
+    REACT_APP_SUPABASE_ANON_KEY=tu_clave_anonima_real
+    
+    Puedes obtener estas credenciales en:
+    https://supabase.com/dashboard → Tu Proyecto → Settings → API
+  `;
+  
+  if (process.env.NODE_ENV === 'development') {
+    console.error(errorMessage);
+    throw new Error('Variables de entorno no configuradas. Por favor configura .env.local con tus credenciales reales de Supabase.');
+  } else {
+    throw new Error('Error de configuración del sistema. Por favor contacte al soporte.');
+  }
 }
 
 // Crear cliente de Supabase con validaciones

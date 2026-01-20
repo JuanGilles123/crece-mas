@@ -1,0 +1,465 @@
+/* Estilos para el selector de tipo de producto */
+.type-selector-modal {
+  max-width: 800px;
+}
+
+.type-selector-description {
+  text-align: center;
+  color: #6b7280;
+  margin-bottom: 2rem;
+  font-size: 0.95rem;
+}
+
+.type-selector-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.type-selector-card {
+  position: relative;
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 180px;
+}
+
+.type-selector-card:hover {
+  border-color: #007AFF;
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+.type-selector-icon {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+
+.type-emoji {
+  font-size: 2.5rem;
+  position: absolute;
+  z-index: 1;
+}
+
+.type-icon {
+  position: absolute;
+  opacity: 0.1;
+  z-index: 0;
+}
+
+.type-selector-card h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.type-selector-card p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #6b7280;
+  flex: 1;
+}
+
+.type-arrow {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  color: #9ca3af;
+  transition: all 0.3s ease;
+}
+
+.type-selector-card:hover .type-arrow {
+  color: #007AFF;
+  transform: translateX(4px);
+}
+
+/* Modal header con botón de volver */
+.modal-header-with-back {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.back-button {
+  background: transparent;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  color: #6b7280;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.back-button:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+  color: #374151;
+}
+
+.modal-header-with-back h2 {
+  margin: 0;
+  flex: 1;
+}
+
+/* Campos adicionales */
+.additional-field-wrapper {
+  background: #f9fafb;
+  border: 1px dashed #d1d5db;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.additional-field-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.additional-field-header label {
+  margin: 0;
+  font-weight: 600;
+  color: #374151;
+}
+
+.remove-field-btn {
+  background: transparent;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.remove-field-btn:hover {
+  background: #fee2e2;
+}
+
+/* Sección para agregar campos */
+.add-fields-section {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.add-fields-section label {
+  display: block;
+  margin-bottom: 1rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.add-fields-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.75rem;
+}
+
+.add-field-btn {
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: #6b7280;
+  transition: all 0.2s ease;
+  justify-content: center;
+}
+
+.add-field-btn:hover {
+  background: #f3f4f6;
+  border-color: #007AFF;
+  color: #007AFF;
+}
+
+.add-field-btn svg {
+  flex-shrink: 0;
+}
+
+/* Indicador de pasos */
+.form-steps-indicator {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding: 0 1rem;
+  position: relative;
+}
+
+.form-steps-indicator::before {
+  content: '';
+  position: absolute;
+  top: 20px;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background: #e5e7eb;
+  z-index: 0;
+}
+
+.step-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.step-indicator:hover {
+  transform: translateY(-2px);
+}
+
+.step-number {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.step-number:hover {
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.2);
+}
+
+.step-indicator.active .step-number {
+  background: #007AFF;
+  border-color: #007AFF;
+  color: white;
+  transform: scale(1.1);
+}
+
+.step-indicator.completed .step-number {
+  background: #10b981;
+  border-color: #10b981;
+  color: white;
+}
+
+.step-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+  text-align: center;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.step-indicator:hover .step-label {
+  color: #007AFF;
+}
+
+.step-indicator.active .step-label {
+  color: #007AFF;
+  font-weight: 600;
+}
+
+.step-indicator.completed .step-label {
+  color: #10b981;
+}
+
+/* Contenido de cada paso */
+.form-step-content {
+  min-height: 300px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.step-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 0.5rem;
+}
+
+.step-description {
+  color: #6b7280;
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Vista previa de imagen */
+.image-preview {
+  position: relative;
+  display: inline-block;
+  margin-top: 1rem;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid #e5e7eb;
+}
+
+.image-preview img {
+  max-width: 200px;
+  max-height: 200px;
+  display: block;
+}
+
+.remove-image-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(239, 68, 68, 0.9);
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: white;
+  transition: all 0.2s ease;
+}
+
+.remove-image-btn:hover {
+  background: #ef4444;
+  transform: scale(1.1);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .form-steps-indicator {
+    padding: 0 0.5rem;
+  }
+
+  .step-number {
+    width: 32px;
+    height: 32px;
+    font-size: 0.8rem;
+  }
+
+  .step-label {
+    font-size: 0.65rem;
+  }
+
+  .form-steps-indicator::before {
+    left: 5%;
+    right: 5%;
+  }
+  .type-selector-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .add-fields-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-header-with-back {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .back-button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Dark mode */
+.dark .type-selector-card {
+  background: #1f2937;
+  border-color: #374151;
+  color: #f9fafb;
+}
+
+.dark .type-selector-card:hover {
+  border-color: #0A84FF;
+  box-shadow: 0 4px 12px rgba(10, 132, 255, 0.2);
+}
+
+.dark .type-selector-card h3 {
+  color: #f9fafb;
+}
+
+.dark .type-selector-card p {
+  color: #9ca3af;
+}
+
+.dark .back-button {
+  border-color: #4b5563;
+  color: #9ca3af;
+}
+
+.dark .back-button:hover {
+  background: #374151;
+  border-color: #6b7280;
+  color: #f9fafb;
+}
+
+.dark .additional-field-wrapper {
+  background: #374151;
+  border-color: #4b5563;
+}
+
+.dark .additional-field-header label {
+  color: #f9fafb;
+}
+
+.dark .add-field-btn {
+  background: #1f2937;
+  border-color: #4b5563;
+  color: #9ca3af;
+}
+
+.dark .add-field-btn:hover {
+  background: #374151;
+  border-color: #0A84FF;
+  color: #0A84FF;
+}
+
+.dark .add-fields-section {
+  border-top-color: #4b5563;
+}
+
+.dark .add-fields-section label {
+  color: #f9fafb;
+}

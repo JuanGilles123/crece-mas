@@ -1,0 +1,732 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { supabase } from '../../services/api/supabaseClient';
+import LottieLoader from '../../components/ui/LottieLoader';
+import '../../pages/dashboard/Inventario.css';
+import { useAuth } from '../../context/AuthContext';
+import { useSubscription } from '../../hooks/useSubscription';
+import { compressProductImage } from '../../services/storage/imageCompression';
+import { useAgregarProducto } from '../../hooks/useProductos';
+import { useCurrencyInput } from '../../hooks/useCurrencyInput';
+import { Package, Scissors, UtensilsCrossed, Scale, ChevronRight, Plus, X } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { PRODUCT_TYPES, ADDITIONAL_FIELDS, getProductTypeFields } from '../../utils/productTypes';
+import './AgregarProductoModalV2.css';
+
+// Función para crear esquema de validación dinámico
+const createProductSchema = (productType) => {
+  const baseSchema = {
+    codigo: z.string().min(1, 'El código es requerido').max(50, 'El código es muy largo'),
+    nombre: z.string().min(1, 'El nombre es requerido').max(100, 'El nombre es muy largo'),
+    precioVenta: z.string().min(1, 'El precio de venta es requerido'),
+    tipo: z.enum(['fisico', 'servicio', 'comida', 'accesorio']),
+    imagen: z.any().optional(),
+  };
+
+  const typeFields = getProductTypeFields(productType);
+  
+  // Agregar campos requeridos
+  if (typeFields.required.includes('precio_compra')) {
+    baseSchema.precioCompra = z.string().min(1, 'El precio de compra es requerido');
+  } else {
+    baseSchema.precioCompra = z.string().optional();
+  }
+
+  if (typeFields.required.includes('stock')) {
+    baseSchema.stock = z.string().min(1, 'El stock es requerido');
+  } else {
+    baseSchema.stock = z.string().optional();
+  }
+
+  // Campos opcionales siempre opcionales
+  baseSchema.fecha_vencimiento = z.union([z.string(), z.undefined()]).optional();
+  baseSchema.peso = z.string().optional();
+  baseSchema.unidad_peso = z.string().optional();
+  baseSchema.dimensiones = z.string().optional();
+  baseSchema.marca = z.string().optional();
+  baseSchema.modelo = z.string().optional();
+  baseSchema.color = z.string().optional();
+  baseSchema.talla = z.string().optional();
+  baseSchema.material = z.string().optional();
+  baseSchema.categoria = z.string().optional();
+  baseSchema.duracion = z.string().optional();
+  baseSchema.descripcion = z.string().optional();
+  baseSchema.ingredientes = z.string().optional();
+  baseSchema.alergenos = z.string().optional();
+  baseSchema.calorias = z.string().optional();
+  baseSchema.porcion = z.string().optional();
+  baseSchema.variaciones = z.string().optional();
+
+  return z.object(baseSchema).superRefine((data, ctx) => {
+    const precioCompra = data.precioCompra ? parseFloat(data.precioCompra.replace(/[^\d]/g, '')) : 0;
+    const precioVenta = parseFloat(data.precioVenta.replace(/[^\d]/g, ''));
+
+    // Validar precio de compra si es requerido
+    if (typeFields.required.includes('precio_compra') && (!data.precioCompra || data.precioCompra.trim() === '')) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "El precio de compra es requerido",
+        path: ["precioCompra"]
+      });
+    }
+
+    // Validar stock si es requerido
+    if (typeFields.required.includes('stock') && (!data.stock || data.stock.trim() === '')) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "El stock es requerido",
+        path: ["stock"]
+      });
+    }
+
+    // Validar precio de venta >= compra (solo si hay precio compra)
+    if (data.precioCompra && !isNaN(precioCompra) && !isNaN(precioVenta) && precioVenta < precioCompra) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "El precio de venta debe ser mayor o igual al precio de compra",
+        path: ["precioVenta"]
+      });
+    }
+  });
+};
+
+const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) => {
+  const { user, userProfile } = useAuth();
+  const { hasFeature } = useSubscription();
+  const [step, setStep] = useState('selectType'); // 'selectType' | 'basic' | 'optional' | 'additional' | 'image'
+  const [formStep, setFormStep] = useState(1); // 1: básico, 2: opcionales del tipo, 3: adicionales, 4: imagen
+  const [selectedType, setSelectedType] = useState(null);
+  const [imagen, setImagen] = useState(null);
+  const [subiendo, setSubiendo] = useState(false);
+  const [comprimiendo, setComprimiendo] = useState(false);
+  const [additionalFields, setAdditionalFields] = useState([]);
+  const fileInputRef = useRef();
+
+  const puedeSubirImagenes = hasFeature('productImages');
+
+  // Currency inputs
+  const precioCompraInput = useCurrencyInput();
+  const precioVentaInput = useCurrencyInput();
+  const stockInput = useCurrencyInput();
+
+  // React Query mutation
+  const agregarProductoMutation = useAgregarProducto();
+
+  // Crear esquema dinámico
+  const productSchema = selectedType ? createProductSchema(selectedType) : z.object({});
+
+  // React Hook Form
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    reset,
+    setValue,
+    watch
+  } = useForm({
+    resolver: selectedType ? zodResolver(productSchema) : undefined,
+    defaultValues: {
+      codigo: '',
+      nombre: '',
+      precioCompra: '',
+      precioVenta: '',
+      stock: '',
+      tipo: selectedType || 'fisico',
+      fecha_vencimiento: '',
+      peso: '',
+      unidad_peso: 'kg',
+      dimensiones: '',
+      marca: '',
+      modelo: '',
+      color: '',
+      talla: '',
+      material: '',
+      categoria: '',
+      duracion: '',
+      descripcion: '',
+      ingredientes: '',
+      alergenos: '',
+      calorias: '',
+      porcion: '',
+      variaciones: ''
+    }
+  });
+
+  // Resetear cuando cambia el tipo
+  useEffect(() => {
+    if (selectedType) {
+      setValue('tipo', selectedType);
+      const typeFields = getProductTypeFields(selectedType);
+      
+      // Limpiar campos que no aplican
+      if (!typeFields.required.includes('precio_compra') && !typeFields.optional.includes('precio_compra')) {
+        setValue('precioCompra', '');
+        precioCompraInput.reset();
+      }
+      if (!typeFields.required.includes('stock') && !typeFields.optional.includes('stock')) {
+        setValue('stock', '');
+        stockInput.reset();
+      }
+    }
+  }, [selectedType, setValue, precioCompraInput, stockInput]);
+
+  if (!open) return null;
+
+  const handleTypeSelect = (typeId) => {
+    setSelectedType(typeId);
+    setStep('basic');
+    setFormStep(1);
+    setValue('tipo', typeId);
+  };
+
+  const handleBack = () => {
+    if (formStep === 1) {
+      setStep('selectType');
+      setSelectedType(null);
+      reset();
+      setImagen(null);
+      setAdditionalFields([]);
+    } else {
+      setFormStep(formStep - 1);
+    }
+  };
+
+  const handleNext = () => {
+    const typeFields = selectedType ? getProductTypeFields(selectedType) : { required: [], optional: [] };
+    
+    // Validar paso actual antes de avanzar
+    if (formStep === 1) {
+      // Validar campos básicos
+      const codigo = watch('codigo');
+      const nombre = watch('nombre');
+      const precioVenta = watch('precioVenta');
+      
+      if (!codigo || !nombre || !precioVenta) {
+        toast.error('Por favor completa todos los campos requeridos');
+        return;
+      }
+      
+      // Si tiene campos opcionales del tipo, ir a paso 2, sino saltar a paso 3
+      if (typeFields.optional.length > 0) {
+        setFormStep(2);
+      } else if (Object.keys(ADDITIONAL_FIELDS).length > 0) {
+        setFormStep(3);
+      } else {
+        setFormStep(4); // Ir directo a imagen
+      }
+    } else if (formStep === 2) {
+      // De opcionales del tipo a adicionales o imagen
+      if (Object.keys(ADDITIONAL_FIELDS).length > 0) {
+        setFormStep(3);
+      } else {
+        setFormStep(4);
+      }
+    } else if (formStep === 3) {
+      // De adicionales a imagen
+      setFormStep(4);
+    }
+  };
+
+  const handleStepClick = (stepNumber) => {
+    // Permitir navegar a cualquier paso
+    setFormStep(stepNumber);
+  };
+
+  const handleAddAdditionalField = (fieldId) => {
+    if (!additionalFields.includes(fieldId)) {
+      setAdditionalFields([...additionalFields, fieldId]);
+    }
+  };
+
+  const handleRemoveAdditionalField = (fieldId) => {
+    setAdditionalFields(additionalFields.filter(id => id !== fieldId));
+    setValue(fieldId, '');
+  };
+
+  const handlePrecioCompraChange = (e) => {
+    const formatted = precioCompraInput.handleChange(e);
+    setValue('precioCompra', formatted || '', { shouldValidate: true });
+  };
+
+  const handlePrecioVentaChange = (e) => {
+    const formatted = precioVentaInput.handleChange(e);
+    setValue('precioVenta', formatted || '', { shouldValidate: true });
+  };
+
+  const handleStockChange = (e) => {
+    const formatted = stockInput.handleChange(e);
+    setValue('stock', formatted || '', { shouldValidate: true });
+  };
+
+  const handleImagenChange = e => {
+    if (e.target.files && e.target.files[0]) {
+      setImagen(e.target.files[0]);
+    }
+  };
+
+  const handleClickUpload = () => {
+    fileInputRef.current.click();
+  };
+
+  const getTypeIcon = (typeId) => {
+    const icons = {
+      fisico: Package,
+      servicio: Scissors,
+      comida: UtensilsCrossed,
+      accesorio: Scale
+    };
+    return icons[typeId] || Package;
+  };
+
+  const onSubmit = async (data) => {
+    setSubiendo(true);
+    let imagenPath = null;
+
+    try {
+      if (imagen && puedeSubirImagenes) {
+        setComprimiendo(true);
+        const imagenComprimida = await compressProductImage(imagen);
+        setComprimiendo(false);
+
+        const organizationId = userProfile?.organization_id;
+        if (!organizationId) {
+          throw new Error('No se encontró organization_id');
+        }
+        const nombreArchivo = `${organizationId}/${Date.now()}_${imagenComprimida.name}`;
+        const { error: errorUpload } = await supabase.storage.from('productos').upload(nombreArchivo, imagenComprimida);
+        if (errorUpload) throw errorUpload;
+        imagenPath = nombreArchivo;
+      }
+
+      const typeFields = getProductTypeFields(selectedType);
+      
+      // Campos que existen en la tabla productos
+      const productoData = {
+        user_id: user.id,
+        organization_id: userProfile?.organization_id,
+        codigo: data.codigo,
+        nombre: data.nombre,
+        precio_venta: Number(data.precioVenta.replace(/\D/g, '')),
+        precio_compra: typeFields.required.includes('precio_compra') || data.precioCompra
+          ? (Number(data.precioCompra?.replace(/\D/g, '') || '0') || 0)
+          : 0,
+        stock: typeFields.required.includes('stock') || data.stock
+          ? (Number(data.stock?.replace(/\D/g, '') || '0') || null)
+          : null,
+        fecha_vencimiento: data.fecha_vencimiento || null,
+        imagen: imagenPath,
+        tipo: selectedType
+      };
+
+      // Campos adicionales que se guardarán en metadata (JSON)
+      const metadata = {};
+      if (data.peso) metadata.peso = data.peso;
+      if (data.unidad_peso) metadata.unidad_peso = data.unidad_peso;
+      if (data.dimensiones) metadata.dimensiones = data.dimensiones;
+      if (data.marca) metadata.marca = data.marca;
+      if (data.modelo) metadata.modelo = data.modelo;
+      if (data.color) metadata.color = data.color;
+      if (data.talla) metadata.talla = data.talla;
+      if (data.material) metadata.material = data.material;
+      if (data.categoria) metadata.categoria = data.categoria;
+      if (data.duracion) metadata.duracion = data.duracion;
+      if (data.descripcion) metadata.descripcion = data.descripcion;
+      if (data.ingredientes) metadata.ingredientes = data.ingredientes;
+      if (data.alergenos) metadata.alergenos = data.alergenos;
+      if (data.calorias) metadata.calorias = data.calorias;
+      if (data.porcion) metadata.porcion = data.porcion;
+      if (data.variaciones) metadata.variaciones = data.variaciones;
+
+      // Agregar metadata solo si tiene datos
+      if (Object.keys(metadata).length > 0) {
+        productoData.metadata = metadata;
+      }
+
+      agregarProductoMutation.mutate(productoData, {
+        onSuccess: () => {
+          reset();
+          setImagen(null);
+          setSelectedType(null);
+          setStep('selectType');
+          setAdditionalFields([]);
+          precioCompraInput.reset();
+          precioVentaInput.reset();
+          stockInput.reset();
+          onClose();
+          if (onProductoAgregado) onProductoAgregado();
+        },
+        onError: (error) => {
+          console.error('Error agregando producto:', error);
+          toast.error(error?.message || 'Error al guardar el producto.');
+        }
+      });
+    } catch (err) {
+      console.error('Error:', err);
+      toast.error(err?.message || 'Error al guardar el producto.');
+    } finally {
+      setSubiendo(false);
+      setComprimiendo(false);
+    }
+  };
+
+  // Renderizar selector de tipo
+  if (step === 'selectType') {
+    return (
+      <div className="modal-bg">
+        <div className="modal-card type-selector-modal">
+          <h2>¿Qué tipo de producto quieres crear?</h2>
+          <p className="type-selector-description">
+            Selecciona el tipo de producto para mostrar los campos adecuados
+          </p>
+          <div className="type-selector-grid">
+            {Object.values(PRODUCT_TYPES).map((type) => {
+              const Icon = getTypeIcon(type.id);
+              return (
+                <button
+                  key={type.id}
+                  type="button"
+                  className="type-selector-card"
+                  onClick={() => handleTypeSelect(type.id)}
+                >
+                  <div className="type-selector-icon">
+                    <span className="type-emoji">{type.icon}</span>
+                    <Icon size={24} className="type-icon" />
+                  </div>
+                  <h3>{type.label}</h3>
+                  <p>{type.description}</p>
+                  <ChevronRight size={20} className="type-arrow" />
+                </button>
+              );
+            })}
+          </div>
+          <div className="form-actions form-actions-centro">
+            <button type="button" className="inventario-btn inventario-btn-secondary" onClick={onClose}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Renderizar formulario
+  const typeFields = selectedType ? getProductTypeFields(selectedType) : { required: [], optional: [] };
+  const productType = PRODUCT_TYPES[selectedType];
+  
+  // Calcular labels de pasos
+  const stepLabels = ['Básico'];
+  if (typeFields.optional.length > 0) stepLabels.push('Opcionales');
+  if (Object.keys(ADDITIONAL_FIELDS).length > 0) stepLabels.push('Adicionales');
+  stepLabels.push('Imagen');
+
+  return (
+    <div className="modal-bg">
+      <div className="modal-card">
+        <div className="modal-header-with-back">
+          <button type="button" className="back-button" onClick={handleBack}>
+            ← {formStep === 1 ? 'Volver' : 'Atrás'}
+          </button>
+          <h2>Agregar {productType?.label.toLowerCase()}</h2>
+        </div>
+        
+        {/* Indicador de pasos */}
+        <div className="form-steps-indicator">
+          {stepLabels.map((label, index) => {
+            const stepNum = index + 1;
+            const isActive = formStep === stepNum;
+            const isCompleted = formStep > stepNum;
+            return (
+              <div key={stepNum} className={`step-indicator ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}`}>
+                <div 
+                  className="step-number" 
+                  onClick={() => handleStepClick(stepNum)}
+                  style={{ cursor: 'pointer' }}
+                  title={`Ir a: ${label}`}
+                >
+                  {isCompleted ? '✓' : stepNum}
+                </div>
+                <span 
+                  className="step-label"
+                  onClick={() => handleStepClick(stepNum)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  {label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        
+        {subiendo ? (
+          <div style={{ textAlign: 'center', padding: '2rem' }}>
+            {comprimiendo ? (
+              <div>
+                <div style={{ fontSize: '1.1rem', marginBottom: '1rem', color: 'var(--accent-primary)' }}>
+                  🗜️ Comprimiendo imagen...
+                </div>
+                <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                  Optimizando para carga rápida
+                </div>
+              </div>
+            ) : (
+              <LottieLoader size="medium" message="Subiendo producto..." />
+            )}
+          </div>
+        ) : (
+          <form className="form-producto form-producto-centro" onSubmit={handleSubmit(onSubmit)}>
+            {/* Paso 1: Campos básicos */}
+            {formStep === 1 && (
+              <div className="form-step-content">
+                <h3 className="step-title">Información Básica</h3>
+                <label>Código <span style={{ color: '#ef4444' }}>*</span></label>
+            <input
+              {...register('codigo')}
+              className={`input-form ${errors.codigo ? 'error' : ''}`}
+              placeholder="Ej: SKU123"
+            />
+            {errors.codigo && <span className="error-message">{errors.codigo.message}</span>}
+
+            <label>Nombre</label>
+            <input
+              {...register('nombre')}
+              className={`input-form ${errors.nombre ? 'error' : ''}`}
+              placeholder="Nombre del producto"
+            />
+            {errors.nombre && <span className="error-message">{errors.nombre.message}</span>}
+
+            {/* Precios */}
+            <label>Precios</label>
+            <div className="input-precio-row" style={{ gap: '2.5rem', justifyContent: 'space-between' }}>
+              {(typeFields.required.includes('precio_compra') || typeFields.optional.includes('precio_compra')) && (
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontWeight: 600, fontSize: '0.98rem', marginBottom: 4, textAlign: 'center' }}>
+                    Precio de Compra {typeFields.required.includes('precio_compra') && <span style={{ color: '#ef4444' }}>*</span>}
+                  </span>
+                  <input
+                    {...register('precioCompra')}
+                    value={precioCompraInput.displayValue}
+                    onChange={handlePrecioCompraChange}
+                    inputMode="numeric"
+                    placeholder="Ej: 30.000"
+                    className={`input-form ${errors.precioCompra ? 'error' : ''}`}
+                  />
+                  {errors.precioCompra && <span className="error-message">{errors.precioCompra.message}</span>}
+                </div>
+              )}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontWeight: 600, fontSize: '0.98rem', marginBottom: 4, textAlign: 'center' }}>
+                  Precio de Venta <span style={{ color: '#ef4444' }}>*</span>
+                </span>
+                <input
+                  {...register('precioVenta')}
+                  value={precioVentaInput.displayValue}
+                  onChange={handlePrecioVentaChange}
+                  inputMode="numeric"
+                  placeholder="Ej: 50.000"
+                  className={`input-form ${errors.precioVenta ? 'error' : ''}`}
+                />
+                {errors.precioVenta && <span className="error-message">{errors.precioVenta.message}</span>}
+              </div>
+            </div>
+
+            {/* Stock si aplica */}
+            {(typeFields.required.includes('stock') || typeFields.optional.includes('stock')) && (
+              <>
+                <label>
+                  Stock {typeFields.required.includes('stock') && <span style={{ color: '#ef4444' }}>*</span>}
+                </label>
+                <input
+                  {...register('stock')}
+                  value={stockInput.displayValue}
+                  onChange={handleStockChange}
+                  inputMode="numeric"
+                  className={`input-form ${errors.stock ? 'error' : ''}`}
+                  placeholder="Cantidad en stock"
+                />
+                {errors.stock && <span className="error-message">{errors.stock.message}</span>}
+              </>
+            )}
+
+            </div>
+            )}
+
+            {/* Paso 2: Campos opcionales del tipo */}
+            {formStep === 2 && typeFields.optional.length > 0 && (
+              <div className="form-step-content">
+                <h3 className="step-title">Información Adicional del {productType?.label}</h3>
+                <p className="step-description">Estos campos son opcionales pero pueden ser útiles</p>
+                {typeFields.optional.map(fieldId => {
+              const fieldConfig = ADDITIONAL_FIELDS[fieldId];
+              if (!fieldConfig) return null;
+
+              return (
+                <div key={fieldId}>
+                  <label>
+                    {fieldConfig.label} <span style={{ color: '#6b7280', fontWeight: 400 }}>(Opcional)</span>
+                  </label>
+                  {fieldConfig.type === 'textarea' ? (
+                    <textarea
+                      {...register(fieldId)}
+                      className="input-form"
+                      placeholder={fieldConfig.placeholder}
+                      rows={3}
+                    />
+                  ) : fieldConfig.type === 'select' ? (
+                    <select {...register(fieldId)} className="input-form">
+                      {fieldConfig.options.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      {...register(fieldId)}
+                      type={fieldConfig.type}
+                      className="input-form"
+                      placeholder={fieldConfig.placeholder}
+                    />
+                  )}
+                </div>
+              );
+            })}
+              </div>
+            )}
+
+            {/* Paso 3: Campos adicionales personalizables */}
+            {formStep === 3 && (
+              <div className="form-step-content">
+                <h3 className="step-title">Campos Adicionales</h3>
+                <p className="step-description">Agrega información extra si lo necesitas</p>
+                
+                {/* Campos adicionales agregados por el usuario */}
+                {additionalFields.map(fieldId => {
+              const fieldConfig = ADDITIONAL_FIELDS[fieldId];
+              if (!fieldConfig) return null;
+
+              return (
+                <div key={fieldId} className="additional-field-wrapper">
+                  <div className="additional-field-header">
+                    <label>{fieldConfig.label}</label>
+                    <button
+                      type="button"
+                      className="remove-field-btn"
+                      onClick={() => handleRemoveAdditionalField(fieldId)}
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                  {fieldConfig.type === 'textarea' ? (
+                    <textarea
+                      {...register(fieldId)}
+                      className="input-form"
+                      placeholder={fieldConfig.placeholder}
+                      rows={3}
+                    />
+                  ) : fieldConfig.type === 'select' ? (
+                    <select {...register(fieldId)} className="input-form">
+                      {fieldConfig.options.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      {...register(fieldId)}
+                      type={fieldConfig.type}
+                      className="input-form"
+                      placeholder={fieldConfig.placeholder}
+                    />
+                  )}
+                </div>
+              );
+            })}
+
+                {/* Botón para agregar campos adicionales */}
+                <div className="add-fields-section">
+                  <label>Agregar campos adicionales</label>
+                  <div className="add-fields-grid">
+                    {Object.keys(ADDITIONAL_FIELDS)
+                      .filter(fieldId => !typeFields.optional.includes(fieldId) && !additionalFields.includes(fieldId))
+                      .map(fieldId => {
+                        const fieldConfig = ADDITIONAL_FIELDS[fieldId];
+                        return (
+                          <button
+                            key={fieldId}
+                            type="button"
+                            className="add-field-btn"
+                            onClick={() => handleAddAdditionalField(fieldId)}
+                          >
+                            <Plus size={16} />
+                            {fieldConfig.label}
+                          </button>
+                        );
+                      })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Paso 4: Imagen */}
+            {formStep === 4 && (
+              <div className="form-step-content">
+                <h3 className="step-title">Imagen del Producto</h3>
+                <p className="step-description">Agrega una imagen para identificar mejor tu producto</p>
+                <label>
+                  Imagen <span style={{ color: '#6b7280', fontWeight: 400 }}>(Opcional)</span>
+                  {!puedeSubirImagenes && <span style={{ color: '#ef4444', fontWeight: 600 }}> 🔒 Solo plan Profesional</span>}
+                </label>
+            <div className="input-upload-wrapper input-upload-centro">
+              <button
+                type="button"
+                className="input-upload-btn"
+                onClick={puedeSubirImagenes ? handleClickUpload : () => toast.error('Actualiza al plan Profesional para subir imágenes')}
+                disabled={!puedeSubirImagenes}
+                style={!puedeSubirImagenes ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+              >
+                <svg width="22" height="22" fill="none" viewBox="0 0 24 24">
+                  <path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <rect x="4" y="16" width="16" height="4" rx="2" fill="#2563eb" fillOpacity=".08" />
+                </svg>
+                {imagen ? imagen.name : puedeSubirImagenes ? 'Seleccionar imagen' : '🔒 Bloqueado'}
+              </button>
+              <input type="file" accept="image/*" onChange={handleImagenChange} ref={fileInputRef} style={{ display: 'none' }} disabled={!puedeSubirImagenes} />
+            </div>
+
+                {imagen && (
+                  <div className="image-preview">
+                    <img src={URL.createObjectURL(imagen)} alt="Preview" />
+                    <button
+                      type="button"
+                      className="remove-image-btn"
+                      onClick={() => setImagen(null)}
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Botones de navegación */}
+            <div className="form-actions form-actions-centro">
+              <button type="button" className="inventario-btn inventario-btn-secondary" onClick={onClose} disabled={subiendo}>
+                Cancelar
+              </button>
+              {formStep < 4 ? (
+                <button type="button" className="inventario-btn inventario-btn-primary" onClick={handleNext}>
+                  Siguiente →
+                </button>
+              ) : (
+                <button type="submit" className="inventario-btn inventario-btn-primary" disabled={subiendo || isSubmitting}>
+                  {subiendo ? (comprimiendo ? '🗜️ Comprimiendo...' : 'Subiendo...') : 'Agregar Producto'}
+                </button>
+              )}
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default AgregarProductoModalV2;

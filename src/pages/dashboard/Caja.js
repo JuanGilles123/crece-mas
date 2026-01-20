@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { motion } from 'framer-motion';
 import { supabase } from '../../services/api/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
+import { useProductos } from '../../hooks/useProductos';
 import OptimizedProductImage from '../../components/business/OptimizedProductImage';
 import ReciboVenta from '../../components/business/ReciboVenta';
 import ConfirmacionVenta from '../../components/business/ConfirmacionVenta';
@@ -30,7 +31,7 @@ function calcTotal(cart) {
 }
 
 export default function Caja() {
-  const { user } = useAuth();
+  const { user, organization } = useAuth();
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState([]);
   const [method, setMethod] = useState("Efectivo");
@@ -41,7 +42,12 @@ export default function Caja() {
   const [procesandoVenta, setProcesandoVenta] = useState(false);
   const [mostrandoMetodosPago, setMostrandoMetodosPago] = useState(false);
   const [mostrandoPagoEfectivo, setMostrandoPagoEfectivo] = useState(false);
+  const [mostrandoPagoMixto, setMostrandoPagoMixto] = useState(false);
   const [montoEntregado, setMontoEntregado] = useState('');
+  const [metodoMixto1, setMetodoMixto1] = useState('Efectivo');
+  const [metodoMixto2, setMetodoMixto2] = useState('Transferencia');
+  const [montoMixto1, setMontoMixto1] = useState('');
+  const [montoMixto2, setMontoMixto2] = useState('');
   const [mostrandoConfirmacion, setMostrandoConfirmacion] = useState(false);
   const [confirmacionCargando, setConfirmacionCargando] = useState(false);
   const [confirmacionExito, setConfirmacionExito] = useState(false);
@@ -49,26 +55,15 @@ export default function Caja() {
   const [incluirIva, setIncluirIva] = useState(false);
   const [porcentajeIva, setPorcentajeIva] = useState(19);
 
-  // Cargar productos del usuario
+  // Cargar productos usando React Query (optimizado con cache)
+  const { data: productosData = [], isLoading: productosLoading } = useProductos(organization?.id);
+  
   useEffect(() => {
-    const fetchProductos = async () => {
-      if (!user) return;
-      setCargando(true);
-      
-      const { data, error } = await supabase
-        .from('productos')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1000);
-        
-      if (!error) {
-        setProductos(data || []);
-      }
-      setCargando(false);
-    };
-    fetchProductos();
-  }, [user]);
+    if (productosData.length > 0) {
+      setProductos(productosData);
+    }
+    setCargando(productosLoading);
+  }, [productosData, productosLoading]);
 
   const filteredProducts = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -144,9 +139,16 @@ export default function Caja() {
       // Mostrar modal de pago en efectivo
       setMontoEntregado('');
       setMostrandoPagoEfectivo(true);
+    } else if (metodo === 'Mixto') {
+      // Mostrar modal de pago mixto
+      setMontoMixto1('');
+      setMontoMixto2('');
+      setMetodoMixto1('Efectivo');
+      setMetodoMixto2('Transferencia');
+      setMostrandoPagoMixto(true);
     } else {
-      // Para otros métodos, proceder directamente
-      confirmSale();
+      // Para otros métodos, proceder directamente pasando el método como parámetro
+      confirmSale(metodo);
     }
   };
 
@@ -171,6 +173,58 @@ export default function Caja() {
   const handleCancelarPagoEfectivo = () => {
     setMostrandoPagoEfectivo(false);
     setMontoEntregado('');
+  };
+
+  const handleValorPredefinidoMixto = (valor, esMonto1) => {
+    if (esMonto1) {
+      setMontoMixto1(prev => {
+        const montoActual = parseFloat(prev.replace(/[^\d]/g, '')) || 0;
+        const nuevoMonto = montoActual + valor;
+        return nuevoMonto.toLocaleString('es-CO');
+      });
+    } else {
+      setMontoMixto2(prev => {
+        const montoActual = parseFloat(prev.replace(/[^\d]/g, '')) || 0;
+        const nuevoMonto = montoActual + valor;
+        return nuevoMonto.toLocaleString('es-CO');
+      });
+    }
+  };
+
+  const handleConfirmarPagoMixto = () => {
+    const monto1 = parseFloat(montoMixto1.replace(/[^\d]/g, '')) || 0;
+    const monto2 = parseFloat(montoMixto2.replace(/[^\d]/g, '')) || 0;
+    const sumaMontos = monto1 + monto2;
+
+    if (monto1 <= 0 || monto2 <= 0) {
+      toast.error('Ambos montos deben ser mayores a cero');
+      return;
+    }
+
+    if (Math.abs(sumaMontos - total) > 1) { // Permitir diferencia de 1 peso por redondeo
+      toast.error(`La suma de los montos (${formatCOP(sumaMontos)}) debe ser igual al total (${formatCOP(total)})`);
+      return;
+    }
+
+    if (metodoMixto1 === metodoMixto2) {
+      toast.error('Debes seleccionar dos métodos de pago diferentes');
+      return;
+    }
+
+    setMostrandoPagoMixto(false);
+    // Pasar los detalles del pago mixto a confirmSale
+    confirmSale('Mixto', {
+      metodo1: metodoMixto1,
+      monto1: monto1,
+      metodo2: metodoMixto2,
+      monto2: monto2
+    });
+  };
+
+  const handleCancelarPagoMixto = () => {
+    setMostrandoPagoMixto(false);
+    setMontoMixto1('');
+    setMontoMixto2('');
   };
 
   const handleCerrarConfirmacion = () => {
@@ -344,10 +398,179 @@ export default function Caja() {
     </div>
   );
 
-  async function confirmSale() {
-    if (!user) {
-      console.error('Usuario no autenticado');
-      toast.error('Error: Usuario no autenticado');
+  // Componente para pago mixto
+  const PagoMixto = () => {
+    const monto1 = parseFloat(montoMixto1.replace(/[^\d]/g, '')) || 0;
+    const monto2 = parseFloat(montoMixto2.replace(/[^\d]/g, '')) || 0;
+    const sumaMontos = monto1 + monto2;
+    const diferencia = total - sumaMontos;
+    const valoresComunes = [10000, 20000, 50000, 100000];
+
+
+    return (
+      <div className="pago-efectivo-overlay">
+        <div className="pago-efectivo-container">
+          <div className="pago-efectivo-header">
+            <h3>Pago Mixto</h3>
+            <p>Total a pagar: {formatCOP(total)}</p>
+          </div>
+          
+          <div className="pago-efectivo-content">
+            {/* Método 1 */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label className="pago-efectivo-label" style={{ marginBottom: '0.5rem', display: 'block' }}>
+                Primer método de pago:
+              </label>
+              <select
+                value={metodoMixto1}
+                onChange={(e) => setMetodoMixto1(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
+                  marginBottom: '0.75rem'
+                }}
+              >
+                <option value="Efectivo">Efectivo</option>
+                <option value="Transferencia">Transferencia</option>
+                <option value="Tarjeta">Tarjeta</option>
+                <option value="Nequi">Nequi</option>
+              </select>
+              
+              <label className="pago-efectivo-label">Monto del primer método:</label>
+              <input
+                type="text"
+                value={montoMixto1}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  const cleanValue = value.replace(/[^\d,.]/g, '');
+                  setMontoMixto1(cleanValue);
+                }}
+                className="pago-efectivo-input"
+                placeholder="Ingresa el monto"
+              />
+              
+              <div className="pago-efectivo-botones">
+                {valoresComunes.map((valor, index) => (
+                  <button
+                    key={index}
+                    className="pago-efectivo-btn-valor"
+                    onClick={() => handleValorPredefinidoMixto(valor, true)}
+                  >
+                    {formatCOP(valor)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Método 2 */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label className="pago-efectivo-label" style={{ marginBottom: '0.5rem', display: 'block' }}>
+                Segundo método de pago:
+              </label>
+              <select
+                value={metodoMixto2}
+                onChange={(e) => setMetodoMixto2(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
+                  marginBottom: '0.75rem'
+                }}
+              >
+                <option value="Efectivo">Efectivo</option>
+                <option value="Transferencia">Transferencia</option>
+                <option value="Tarjeta">Tarjeta</option>
+                <option value="Nequi">Nequi</option>
+              </select>
+              
+              <label className="pago-efectivo-label">Monto del segundo método:</label>
+              <input
+                type="text"
+                value={montoMixto2}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  const cleanValue = value.replace(/[^\d,.]/g, '');
+                  setMontoMixto2(cleanValue);
+                }}
+                className="pago-efectivo-input"
+                placeholder="Ingresa el monto"
+              />
+              
+              <div className="pago-efectivo-botones">
+                {valoresComunes.map((valor, index) => (
+                  <button
+                    key={index}
+                    className="pago-efectivo-btn-valor"
+                    onClick={() => handleValorPredefinidoMixto(valor, false)}
+                  >
+                    {formatCOP(valor)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Resumen */}
+            {monto1 > 0 && monto2 > 0 && (
+              <div className="pago-efectivo-cambio" style={{ marginTop: '1rem' }}>
+                <div className="pago-efectivo-cambio-item">
+                  <span>{metodoMixto1}:</span>
+                  <span>{formatCOP(monto1)}</span>
+                </div>
+                <div className="pago-efectivo-cambio-item">
+                  <span>{metodoMixto2}:</span>
+                  <span>{formatCOP(monto2)}</span>
+                </div>
+                <div className="pago-efectivo-cambio-item">
+                  <span>Suma:</span>
+                  <span>{formatCOP(sumaMontos)}</span>
+                </div>
+                <div className="pago-efectivo-cambio-item">
+                  <span>Total:</span>
+                  <span>{formatCOP(total)}</span>
+                </div>
+                <div className={`pago-efectivo-cambio-item pago-efectivo-cambio-total ${Math.abs(diferencia) > 1 ? 'negativo' : 'positivo'}`}>
+                  <span>Diferencia:</span>
+                  <span>
+                    {Math.abs(diferencia) > 1 
+                      ? `Faltan ${formatCOP(Math.abs(diferencia))}` 
+                      : 'Correcto ✓'
+                    }
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <div className="pago-efectivo-actions">
+            <button 
+              className="pago-efectivo-btn pago-efectivo-cancelar"
+              onClick={handleCancelarPagoMixto}
+            >
+              Cancelar
+            </button>
+            <button 
+              className="pago-efectivo-btn pago-efectivo-confirmar"
+              onClick={handleConfirmarPagoMixto}
+              disabled={Math.abs(diferencia) > 1 || monto1 <= 0 || monto2 <= 0 || metodoMixto1 === metodoMixto2}
+            >
+              Confirmar Pago Mixto
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  async function confirmSale(metodoPagoOverride = null, detallesPagoMixto = null) {
+    if (!user || !organization) {
+      console.error('Usuario u organización no autenticado');
+      toast.error('Error: No hay usuario u organización activa');
+      setProcesandoVenta(false);
       return;
     }
     
@@ -356,6 +579,9 @@ export default function Caja() {
       return;
     }
 
+    // Usar el método pasado como parámetro o el estado actual
+    const metodoActual = metodoPagoOverride || method;
+
     // Mostrar modal de confirmación con carga
     setMostrandoConfirmacion(true);
     setConfirmacionCargando(true);
@@ -363,7 +589,7 @@ export default function Caja() {
     // NO establecer datosVentaConfirmada como null aquí
     
     setProcesandoVenta(true);
-    console.log('Iniciando confirmación de venta...', { cart, total, method });
+    console.log('Iniciando confirmación de venta...', { cart, total, method: metodoActual });
     
     // Validar que no se exceda el stock
     for (const item of cart) {
@@ -389,7 +615,9 @@ export default function Caja() {
     
     // Si es pago en efectivo, usar el monto del modal
     let montoPagoCliente = total;
-    if (method === "Efectivo") {
+    let metodoPagoFinal = metodoActual;
+    
+    if (metodoActual === "Efectivo") {
       const montoNumero = parseFloat(montoEntregado.replace(/[^\d]/g, ''));
       if (isNaN(montoNumero) || montoNumero < total) {
         toast.error('El monto debe ser mayor o igual al total de la venta.');
@@ -397,6 +625,10 @@ export default function Caja() {
         return;
       }
       montoPagoCliente = montoNumero;
+    } else if (metodoActual === "Mixto" && detallesPagoMixto) {
+      // Formatear método de pago mixto como string
+      metodoPagoFinal = `Mixto (${detallesPagoMixto.metodo1}: ${formatCOP(detallesPagoMixto.monto1)} + ${detallesPagoMixto.metodo2}: ${formatCOP(detallesPagoMixto.monto2)})`;
+      montoPagoCliente = detallesPagoMixto.monto1 + detallesPagoMixto.monto2;
     }
     
     try {
@@ -404,12 +636,14 @@ export default function Caja() {
       
       // Guardar la venta en la base de datos
       const ventaData = {
+        organization_id: organization.id,
         user_id: user.id,
         total: total,
-        metodo_pago: method,
+        metodo_pago: metodoPagoFinal,
         items: cart,
         fecha: new Date().toISOString(),
-        pago_cliente: montoPagoCliente
+        pago_cliente: montoPagoCliente,
+        detalles_pago_mixto: metodoActual === "Mixto" && detallesPagoMixto ? detallesPagoMixto : null
       };
       
       console.log('Datos de venta a insertar:', ventaData);
@@ -463,10 +697,11 @@ export default function Caja() {
         cashier: user.user_metadata?.full_name || user.email || "Usuario",
         register: "Caja Principal",
         items: cart,
-        metodo_pago: method,
+        metodo_pago: metodoPagoFinal,
         pagoCliente: montoPagoCliente,
         total: total,
-        cantidadProductos: cart.length
+        cantidadProductos: cart.length,
+        detalles_pago_mixto: metodoActual === "Mixto" && detallesPagoMixto ? detallesPagoMixto : null
       };
       
       console.log('Mostrando recibo:', ventaRecibo);
@@ -811,6 +1046,7 @@ export default function Caja() {
 
       {/* Pago en efectivo */}
       {mostrandoPagoEfectivo && <PagoEfectivo />}
+      {mostrandoPagoMixto && <PagoMixto />}
 
       {/* Recibo de venta */}
       {ventaCompletada && (

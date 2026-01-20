@@ -195,16 +195,30 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
             });
             // Buscar campos requeridos de forma flexible (incluyendo nombres exactos del Excel)
             const nombre = producto.nombre || producto.name || producto.Nombre || producto.Name || producto.NOMBRE || '';
+            const tipo = (producto.tipo || producto.Tipo || producto.TIPO || 'fisico').toLowerCase();
             const precioCompra = producto.precio_compra || producto.precio_compra || producto.Precio_Compra || producto.price_compra || 
-                                producto['PRECIO DE COMPRA'] || producto['PRECIO DE COMPRA '] || '';
+                                producto['PRECIO DE COMPRA'] || producto['PRECIO DE COMPRA '] || producto['PRECIO COMPRA **'] || '';
             const precioVenta = producto.precio_venta || producto.precio_venta || producto.Precio_Venta || producto.price_venta || 
-                               producto['PRECIO DE VENTA'] || '';
+                               producto['PRECIO DE VENTA'] || producto['PRECIO VENTA *'] || '';
             const stock = producto.stock || producto.Stock || producto.cantidad || producto.Cantidad || producto.STOCK || '';
             const imagen = producto.imagen || producto.Imagen || producto.IMAGEN || producto['IMAGEN(OPCIONAL)'] || '';
             
-            // Validar que tenga los campos requeridos
-            if (!nombre || !precioCompra || !precioVenta || !stock) {
-              continue;
+            // Validar tipo de producto
+            const tiposValidos = ['fisico', 'servicio', 'comida', 'accesorio'];
+            const tipoValido = tiposValidos.includes(tipo) ? tipo : 'fisico';
+            
+            // Validar campos requeridos según tipo
+            if (!nombre || !precioVenta) {
+              continue; // Estos son obligatorios para todos
+            }
+            
+            // Validar campos condicionales según tipo
+            if ((tipoValido === 'fisico' || tipoValido === 'comida' || tipoValido === 'accesorio') && !precioCompra) {
+              continue; // precio_compra es obligatorio para estos tipos
+            }
+            
+            if ((tipoValido === 'fisico' || tipoValido === 'comida') && stock === '') {
+              continue; // stock es obligatorio para estos tipos
             }
 
             // Convertir números
@@ -223,13 +237,49 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
             // Crear producto final (solo con columnas que existen en la tabla)
             const productoFinal = {
               nombre: nombre,
-              precio_compra: precioCompraNum,
+              tipo: tipoValido,
               precio_venta: precioVentaNum,
-              stock: stockNum,
               organization_id: userProfile?.organization_id,
-              codigo: producto['CODIGO PRODUCTO'] || producto.codigo || producto.Codigo || 'PROD-' + Date.now() + '-' + i,
+              codigo: producto['CODIGO PRODUCTO'] || producto.codigo || producto.Codigo || producto['CODIGO *'] || 'PROD-' + Date.now() + '-' + i,
               imagen: imagen || null // Guardamos la imagen original para procesar después
             };
+            
+            // Agregar precio_compra solo si tiene valor (obligatorio para fisico, comida, accesorio)
+            if (precioCompraNum > 0 || tipoValido === 'fisico' || tipoValido === 'comida' || tipoValido === 'accesorio') {
+              productoFinal.precio_compra = precioCompraNum || 0;
+            }
+            
+            // Agregar stock solo si tiene valor o es obligatorio
+            if (stockNum > 0 || tipoValido === 'fisico' || tipoValido === 'comida') {
+              productoFinal.stock = stockNum || 0;
+            } else if (tipoValido === 'accesorio' && stockNum >= 0) {
+              productoFinal.stock = stockNum; // Opcional para accesorio
+            }
+            
+            // Agregar campos opcionales desde metadata si existen
+            const metadata = {};
+            const camposMetadata = ['peso', 'unidad_peso', 'dimensiones', 'marca', 'modelo', 'color', 'talla', 'material', 'categoria', 
+                                   'duracion', 'descripcion', 'ingredientes', 'alergenos', 'calorias', 'porcion', 'variaciones'];
+            
+            camposMetadata.forEach(campo => {
+              const valor = producto[campo] || producto[campo.toUpperCase()] || producto[campo.replace('_', ' ').toUpperCase()] || '';
+              if (valor && valor.toString().trim() !== '') {
+                metadata[campo] = valor.toString().trim();
+              }
+            });
+            
+            // Agregar fecha_vencimiento si existe
+            if (producto.fecha_vencimiento || producto['FECHA VENCIMIENTO (OPCIONAL)'] || producto['FECHA_VENCIMIENTO']) {
+              const fecha = producto.fecha_vencimiento || producto['FECHA VENCIMIENTO (OPCIONAL)'] || producto['FECHA_VENCIMIENTO'];
+              if (fecha && fecha.toString().trim() !== '') {
+                metadata.fecha_vencimiento = fecha.toString().trim();
+              }
+            }
+            
+            // Agregar metadata solo si tiene campos
+            if (Object.keys(metadata).length > 0) {
+              productoFinal.metadata = metadata;
+            }
             productos.push(productoFinal);
           }
           
@@ -343,16 +393,30 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
       });
       // Buscar campos requeridos de forma flexible (incluyendo nombres exactos del Excel)
       const nombre = producto.nombre || producto.name || producto.Nombre || producto.Name || producto.NOMBRE || '';
+      const tipo = (producto.tipo || producto.Tipo || producto.TIPO || 'fisico').toLowerCase();
       const precioCompra = producto.precio_compra || producto.precio_compra || producto.Precio_Compra || producto.price_compra || 
-                          producto['PRECIO DE COMPRA'] || producto['PRECIO DE COMPRA '] || '';
+                          producto['PRECIO DE COMPRA'] || producto['PRECIO DE COMPRA '] || producto['PRECIO COMPRA **'] || '';
       const precioVenta = producto.precio_venta || producto.precio_venta || producto.Precio_Venta || producto.price_venta || 
-                         producto['PRECIO DE VENTA'] || '';
+                         producto['PRECIO DE VENTA'] || producto['PRECIO VENTA *'] || '';
       const stock = producto.stock || producto.Stock || producto.cantidad || producto.Cantidad || producto.STOCK || '';
       const imagen = producto.imagen || producto.Imagen || producto.IMAGEN || producto['IMAGEN(OPCIONAL)'] || '';
       
-      // Validar datos requeridos
-      if (!nombre || !precioCompra || !precioVenta || !stock) {
-        continue;
+      // Validar tipo de producto
+      const tiposValidos = ['fisico', 'servicio', 'comida', 'accesorio'];
+      const tipoValido = tiposValidos.includes(tipo) ? tipo : 'fisico';
+      
+      // Validar campos requeridos según tipo
+      if (!nombre || !precioVenta) {
+        continue; // Estos son obligatorios para todos
+      }
+      
+      // Validar campos condicionales según tipo
+      if ((tipoValido === 'fisico' || tipoValido === 'comida' || tipoValido === 'accesorio') && !precioCompra) {
+        continue; // precio_compra es obligatorio para estos tipos
+      }
+      
+      if ((tipoValido === 'fisico' || tipoValido === 'comida') && stock === '') {
+        continue; // stock es obligatorio para estos tipos
       }
 
       // Convertir números
@@ -373,13 +437,49 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
       // Crear producto final (solo con columnas que existen en la tabla)
       const productoFinal = {
         nombre: nombre,
-        precio_compra: precioCompraNum,
+        tipo: tipoValido,
         precio_venta: precioVentaNum,
-        stock: stockNum,
         organization_id: userProfile?.organization_id,
-        codigo: producto.codigo || producto.Codigo || producto.CODIGO || 'PROD-' + Date.now() + '-' + i,
+        codigo: producto.codigo || producto.Codigo || producto.CODIGO || producto['CODIGO *'] || 'PROD-' + Date.now() + '-' + i,
         imagen: imagen || null // Guardamos la imagen original para procesar después
       };
+      
+      // Agregar precio_compra solo si tiene valor (obligatorio para fisico, comida, accesorio)
+      if (precioCompraNum > 0 || tipoValido === 'fisico' || tipoValido === 'comida' || tipoValido === 'accesorio') {
+        productoFinal.precio_compra = precioCompraNum || 0;
+      }
+      
+      // Agregar stock solo si tiene valor o es obligatorio
+      if (stockNum > 0 || tipoValido === 'fisico' || tipoValido === 'comida') {
+        productoFinal.stock = stockNum || 0;
+      } else if (tipoValido === 'accesorio' && stockNum >= 0) {
+        productoFinal.stock = stockNum; // Opcional para accesorio
+      }
+      
+      // Agregar campos opcionales desde metadata si existen
+      const metadata = {};
+      const camposMetadata = ['peso', 'unidad_peso', 'dimensiones', 'marca', 'modelo', 'color', 'talla', 'material', 'categoria', 
+                             'duracion', 'descripcion', 'ingredientes', 'alergenos', 'calorias', 'porcion', 'variaciones'];
+      
+      camposMetadata.forEach(campo => {
+        const valor = producto[campo] || producto[campo.toUpperCase()] || producto[campo.replace('_', ' ').toUpperCase()] || '';
+        if (valor && valor.toString().trim() !== '') {
+          metadata[campo] = valor.toString().trim();
+        }
+      });
+      
+      // Agregar fecha_vencimiento si existe
+      if (producto.fecha_vencimiento || producto['FECHA VENCIMIENTO (OPCIONAL)'] || producto['FECHA_VENCIMIENTO']) {
+        const fecha = producto.fecha_vencimiento || producto['FECHA VENCIMIENTO (OPCIONAL)'] || producto['FECHA_VENCIMIENTO'];
+        if (fecha && fecha.toString().trim() !== '') {
+          metadata.fecha_vencimiento = fecha.toString().trim();
+        }
+      }
+      
+      // Agregar metadata solo si tiene campos
+      if (Object.keys(metadata).length > 0) {
+        productoFinal.metadata = metadata;
+      }
       productos.push(productoFinal);
     }
     

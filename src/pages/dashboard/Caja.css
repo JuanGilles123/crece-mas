@@ -1737,6 +1737,7 @@
   justify-content: center;
   z-index: 1001;
   padding: 1rem;
+  overflow-y: auto;
 }
 
 .pago-efectivo-container {
@@ -1745,13 +1746,18 @@
   padding: 2rem;
   max-width: 500px;
   width: 100%;
+  max-height: calc(100vh - 2rem);
+  display: flex;
+  flex-direction: column;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   animation: slideIn 0.3s ease-out;
+  margin: auto;
 }
 
 .pago-efectivo-header {
   text-align: center;
   margin-bottom: 2rem;
+  flex-shrink: 0;
 }
 
 .pago-efectivo-header h3 {
@@ -1770,6 +1776,28 @@
 
 .pago-efectivo-content {
   margin-bottom: 2rem;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  padding-right: 0.5rem;
+}
+
+.pago-efectivo-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.pago-efectivo-content::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+  border-radius: 3px;
+}
+
+.pago-efectivo-content::-webkit-scrollbar-thumb {
+  background: var(--border-secondary);
+  border-radius: 3px;
+}
+
+.pago-efectivo-content::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
 }
 
 .pago-efectivo-input-section {
@@ -1908,6 +1936,8 @@
 .pago-efectivo-actions {
   display: flex;
   gap: 1rem;
+  flex-shrink: 0;
+  margin-top: auto;
 }
 
 .pago-efectivo-btn {
@@ -1949,10 +1979,17 @@
 
 /* Responsive para pago en efectivo */
 @media (max-width: 768px) {
+  .pago-efectivo-overlay {
+    padding: 0.5rem;
+    align-items: flex-start;
+    padding-top: 1rem;
+  }
+  
   .pago-efectivo-container {
-    margin: 0.5rem;
+    margin: 0;
     padding: 1.5rem;
     max-width: calc(100vw - 1rem);
+    max-height: calc(100vh - 1rem);
   }
   
   .pago-efectivo-botones {
@@ -1972,9 +2009,16 @@
 }
 
 @media (max-width: 600px) {
+  .pago-efectivo-overlay {
+    padding: 0.5rem;
+    align-items: flex-start;
+    padding-top: 0.5rem;
+  }
+  
   .pago-efectivo-container {
-    margin: 0.5rem;
+    margin: 0;
     padding: 1.2rem;
+    max-height: calc(100vh - 1rem);
   }
   
   .pago-efectivo-botones {
@@ -1999,9 +2043,28 @@
 }
 
 @media (max-width: 480px) {
+  .pago-efectivo-overlay {
+    padding: 0.3rem;
+    align-items: flex-start;
+    padding-top: 0.5rem;
+  }
+  
   .pago-efectivo-container {
-    margin: 0.3rem;
+    margin: 0;
     padding: 1rem;
+    max-height: calc(100vh - 0.6rem);
+  }
+  
+  .pago-efectivo-header {
+    margin-bottom: 1rem;
+  }
+  
+  .pago-efectivo-header h3 {
+    font-size: 1.25rem;
+  }
+  
+  .pago-efectivo-header p {
+    font-size: 1rem;
   }
   
   .pago-efectivo-botones {
