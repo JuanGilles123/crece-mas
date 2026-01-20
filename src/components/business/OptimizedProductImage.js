@@ -1,8 +1,12 @@
 import React, { memo, useState, useCallback } from 'react';
 import { useImageCache } from '../../hooks/useImageCache';
 
-const OptimizedProductImage = memo(({ imagePath, alt, className, onError }) => {
-  const { imageUrl, loading, error } = useImageCache(imagePath);
+const OptimizedProductImage = memo(({ imagePath, src, alt, className, onError }) => {
+  // Soporte para ambas props: imagePath (preferido) o src (compatibilidad)
+  const actualImagePath = imagePath || src;
+  
+  // Los hooks deben llamarse antes de cualquier return temprano
+  const { imageUrl, loading, error } = useImageCache(actualImagePath || null);
   const [imageLoaded, setImageLoaded] = useState(false);
 
   const handleLoad = useCallback(() => {
@@ -12,6 +16,23 @@ const OptimizedProductImage = memo(({ imagePath, alt, className, onError }) => {
   const handleError = useCallback((e) => {
     if (onError) onError(e);
   }, [onError]);
+
+  // Si no hay ruta de imagen, mostrar placeholder inmediatamente
+  if (!actualImagePath || actualImagePath.trim() === '' || actualImagePath === 'null' || actualImagePath === 'undefined') {
+    return (
+      <div className={className} style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#f3f4f6',
+        borderRadius: '12px',
+        color: '#666',
+        fontSize: '12px'
+      }}>
+        Sin imagen
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -91,7 +112,9 @@ const OptimizedProductImage = memo(({ imagePath, alt, className, onError }) => {
   );
 }, (prevProps, nextProps) => {
   // Custom comparison para evitar re-renders innecesarios
-  return prevProps.imagePath === nextProps.imagePath &&
+  const prevPath = prevProps.imagePath || prevProps.src;
+  const nextPath = nextProps.imagePath || nextProps.src;
+  return prevPath === nextPath &&
          prevProps.alt === nextProps.alt &&
          prevProps.className === nextProps.className;
 });

@@ -20,6 +20,13 @@
   min-height: 60px;
 }
 
+/* Asegurar que esté por encima del contenido pero debajo de modales */
+@media (max-width: 768px) {
+  .bottom-nav {
+    z-index: 1000;
+  }
+}
+
 .bottom-nav-item {
   flex: 1;
   display: flex;

@@ -2,14 +2,16 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { User, Settings, Building2, LogOut, Edit3, Save, X, Lock, Sliders, Bell, CreditCard, BarChart3, Crown, Sparkles, Shield } from 'lucide-react';
+import { User, Settings, Building2, LogOut, Edit3, Save, X, Lock, Sliders, Bell, CreditCard, BarChart3, Crown, Sparkles, Shield, Key } from 'lucide-react';
 import { useSubscription } from '../../hooks/useSubscription';
 import ThemeToggle from '../../components/ui/ThemeToggle';
 import { supabase } from '../../services/api/supabaseClient';
+import { useUpdateEmployeeCode } from '../../hooks/useTeam';
+import EditarCodigoEmpleadoModal from '../../components/EditarCodigoEmpleadoModal';
 import './Perfil.css';
 
 const Perfil = () => {
-  const { user } = useAuth();
+  const { user, organization } = useAuth();
   const navigate = useNavigate();
   const { isVIP, planName } = useSubscription();
   const [activeTab, setActiveTab] = useState('datos');
@@ -18,8 +20,36 @@ const Perfil = () => {
   const [editandoNombre, setEditandoNombre] = useState(false);
   const [nombreCompleto, setNombreCompleto] = useState(user?.user_metadata?.full_name || '');
   const [guardandoNombre, setGuardandoNombre] = useState(false);
+  const [employeeData, setEmployeeData] = useState(null);
+  const [editandoCodigo, setEditandoCodigo] = useState(false);
+  const updateEmployeeCode = useUpdateEmployeeCode();
 
   const isSuperAdmin = user?.email === 'juanjosegilarbelaez@gmail.com';
+
+  // Cargar datos del empleado si es empleado
+  React.useEffect(() => {
+    const cargarDatosEmpleado = async () => {
+      if (!user?.id || !organization?.id) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('team_members')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('organization_id', organization.id)
+          .eq('is_employee', true)
+          .single();
+
+        if (!error && data) {
+          setEmployeeData(data);
+        }
+      } catch (error) {
+        console.error('Error cargando datos de empleado:', error);
+      }
+    };
+
+    cargarDatosEmpleado();
+  }, [user?.id, organization?.id]);
 
   const handleLogout = async () => {
     setLoading(true);
@@ -322,6 +352,26 @@ const Perfil = () => {
                     {user?.created_at ? new Date(user.created_at).toLocaleDateString('es-CO') : 'No disponible'}
                   </p>
                 </div>
+                {employeeData && (
+                  <div className="perfil-dato-item">
+                    <label className="perfil-dato-label">
+                      <Key size={16} style={{ marginRight: '0.5rem' }} />
+                      Código de Empleado
+                    </label>
+                    <div className="perfil-dato-display">
+                      <p className="perfil-dato-value" style={{ fontFamily: 'Courier New, monospace' }}>
+                        {employeeData.employee_code || 'Sin código'}
+                      </p>
+                      <button
+                        className="perfil-edit-btn perfil-edit-start"
+                        onClick={() => setEditandoCodigo(true)}
+                      >
+                        <Edit3 size={16} />
+                        Editar
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
               </div>
             </motion.div>
@@ -535,6 +585,25 @@ const Perfil = () => {
           </AnimatePresence>
         </motion.div>
       </div>
+
+      {editandoCodigo && employeeData && (
+        <EditarCodigoEmpleadoModal
+          open={editandoCodigo}
+          onClose={() => setEditandoCodigo(false)}
+          onGuardar={async (nuevoCodigo) => {
+            await updateEmployeeCode.mutateAsync({
+              memberId: employeeData.id,
+              newCode: nuevoCodigo,
+              organizationId: organization?.id
+            });
+            setEmployeeData({ ...employeeData, employee_code: nuevoCodigo });
+            setEditandoCodigo(false);
+          }}
+          codigoActual={employeeData.employee_code}
+          nombreEmpleado={employeeData.employee_name || user?.user_metadata?.full_name}
+          cargando={updateEmployeeCode.isLoading}
+        />
+      )}
     </motion.div>
   );
 };
