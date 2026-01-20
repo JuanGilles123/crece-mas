@@ -11,7 +11,7 @@ import { canUseToppings } from '../utils/toppingsUtils';
 import { calcularPrecioConToppings } from '../utils/toppingsUtils';
 import { supabase } from '../services/api/supabaseClient';
 import ToppingsSelector from '../components/ToppingsSelector';
-import OptimizedProductImage from '../components/OptimizedProductImage';
+import OptimizedProductImage from '../components/business/OptimizedProductImage';
 import toast from 'react-hot-toast';
 import './TomarPedido.css';
 

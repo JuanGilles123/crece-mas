@@ -4,7 +4,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { supabase } from '../../services/api/supabaseClient';
-import { FormSkeleton } from '../../components/ui/SkeletonLoader';
 import LottieLoader from '../../components/ui/LottieLoader';
 import '../../pages/dashboard/Inventario.css';
 import { useAuth } from '../../context/AuthContext';

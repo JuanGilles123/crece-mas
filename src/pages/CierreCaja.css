@@ -598,9 +598,24 @@
   }
 }
 
+@media (max-width: 1024px) {
+  .cierre-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  
+  .cierre-caja {
+    padding: 1.5rem;
+  }
+}
+
 @media (max-width: 768px) {
   .cierre-caja {
     padding: 1rem;
+  }
+
+  .cierre-header {
+    padding: 1.5rem;
   }
 
   .cierre-header h1 {
@@ -614,9 +629,120 @@
   .cierre-panel {
     padding: 1.5rem;
   }
+  
+  .cierre-panel h2 {
+    font-size: 1.25rem;
+  }
+
+  .resumen-card {
+    padding: 1.25rem;
+  }
+  
+  .resumen-card h3 {
+    font-size: 1.5rem;
+  }
 
   .venta-item {
-    grid-template-columns: 60px 1fr auto;
+    grid-template-columns: 50px 1fr auto;
+    gap: 0.75rem;
+    padding: 0.875rem;
+  }
+  
+  .venta-hora {
+    font-size: 0.8rem;
+  }
+  
+  .venta-metodo {
+    font-size: 0.8rem;
+  }
+  
+  .venta-total {
+    font-size: 0.9rem;
+  }
+  
+  .cierre-grid {
+    gap: 1rem;
+  }
+  
+  .calculo-container {
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .cierre-caja {
+    padding: 0.75rem;
+  }
+  
+  .cierre-header {
+    padding: 1rem;
+  }
+
+  .cierre-header h1 {
+    font-size: 1.75rem;
+  }
+
+  .cierre-header p {
+    font-size: 0.9rem;
+  }
+
+  .cierre-panel {
+    padding: 1rem;
+  }
+  
+  .cierre-panel h2 {
+    font-size: 1.1rem;
+  }
+
+  .resumen-card {
+    padding: 1rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  
+  .resumen-card h3 {
+    font-size: 1.5rem;
+  }
+  
+  .resumen-label {
+    font-size: 0.8rem;
+  }
+
+  .venta-item {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+    padding: 0.75rem;
+  }
+  
+  .venta-hora {
+    font-size: 0.75rem;
+    order: 3;
+  }
+  
+  .venta-metodo {
+    font-size: 0.75rem;
+    order: 2;
+  }
+  
+  .venta-total {
+    font-size: 1rem;
+    order: 1;
+    text-align: left;
+    font-weight: 700;
+  }
+  
+  .input-group {
+    gap: 0.5rem;
+  }
+  
+  .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .modal-actions {
+    flex-direction: column;
     gap: 0.75rem;
   }
 }

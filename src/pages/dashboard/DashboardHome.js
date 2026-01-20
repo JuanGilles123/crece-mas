@@ -5,7 +5,6 @@ import { supabase } from '../../services/api/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import { ShoppingCart, Package, TrendingUp, AlertTriangle, Zap, Users, User, Calculator, Calendar } from 'lucide-react';
 import './DashboardHome.css';
-import obrero from '../../assets/obrero.png';
 
 const DashboardHome = () => {
   const { userProfile, user } = useAuth();

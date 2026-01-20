@@ -38,10 +38,20 @@ if (!supabaseUrl.match(/^https?:\/\/.+/)) {
   const errorMessage = 'REACT_APP_SUPABASE_URL debe ser una URL válida (ej: https://xxx.supabase.co)';
   if (process.env.NODE_ENV === 'development') {
     console.error(errorMessage);
-    throw new Error(errorMessage);
+    // No lanzar error, permitir que la app muestre un mensaje útil
+    // throw new Error(errorMessage);
   } else {
     throw new Error('Error de configuración del sistema.');
   }
+}
+
+// Verificar si son valores de ejemplo
+if (supabaseUrl.includes('your_supabase') || supabaseAnonKey.includes('your_supabase') || 
+    supabaseUrl === 'your_supabase_project_url' || supabaseAnonKey === 'your_supabase_anon_key') {
+  console.error(`
+    ❌ ERROR: Variables de entorno no configuradas
+    Por favor configura .env.local con tus credenciales reales de Supabase
+  `);
 }
 
 // Crear cliente de Supabase con validaciones

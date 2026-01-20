@@ -814,16 +814,25 @@
       font-size: 0.9rem;
     }
   
-    .resumen-ventas-tabla-container { 
-      max-height: 400px; 
-      overflow-x: auto;
-    }
+  .resumen-ventas-tabla-container { 
+    max-height: 400px; 
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    position: relative;
+  }
   
-    .resumen-ventas-tabla th,
-    .resumen-ventas-tabla td {
-      padding: 0.8rem 0.6rem;
-      font-size: 0.85rem;
-    }
+  .resumen-ventas-tabla {
+    min-width: 600px;
+    width: 100%;
+  }
+  
+  .resumen-ventas-tabla th,
+  .resumen-ventas-tabla td {
+    padding: 0.8rem 0.6rem;
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
   
     .resumen-ventas-tabla th:nth-child(1),
     .resumen-ventas-tabla td:nth-child(1) { 

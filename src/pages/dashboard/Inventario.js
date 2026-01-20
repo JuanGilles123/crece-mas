@@ -1,13 +1,12 @@
 
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import './Inventario.css';
 import AgregarProductoModal from '../../components/modals/AgregarProductoModal';
 import EditarProductoModal from '../../components/modals/EditarProductoModal';
 import ImportarProductosCSV from '../../components/forms/ImportarProductosCSV';
 import OptimizedProductImage from '../../components/business/OptimizedProductImage';
-import { ProductCardSkeleton, ProductListSkeleton, InventoryHeaderSkeleton } from '../../components/ui/SkeletonLoader';
 import LottieLoader from '../../components/ui/LottieLoader';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../services/api/supabaseClient';
@@ -32,9 +31,6 @@ const deleteImageFromStorage = async (imagePath) => {
     return false;
   }
 };
-
-const productosIniciales = [];
-
 
 const Inventario = () => {
   const { user } = useAuth();

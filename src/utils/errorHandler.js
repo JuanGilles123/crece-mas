@@ -84,7 +84,7 @@ const getErrorType = (error) => {
     return 'weak_password';
   }
   
-  if (errorMessage.includes('email') && errorMessage.includes('already') ||
+  if ((errorMessage.includes('email') && errorMessage.includes('already')) ||
       errorMessage.includes('user already registered')) {
     return 'email_already_registered';
   }
@@ -200,9 +200,11 @@ export const safeAsync = async (asyncFn, options = {}) => {
   }
 };
 
-export default {
+const errorHandler = {
   getErrorMessage,
   handleError,
   safeAsync,
   getErrorType
 };
+
+export default errorHandler;

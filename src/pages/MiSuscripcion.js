@@ -17,7 +17,7 @@ import {
 import { useSubscription } from '../hooks/useSubscription';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../services/api/supabaseClient';
-import LottieLoader from '../components/LottieLoader';
+import LottieLoader from '../components/ui/LottieLoader';
 import toast from 'react-hot-toast';
 import './MiSuscripcion.css';
 

@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../services/api/supabaseClient';
 import { useAuth } from '../context/AuthContext';
-import LottieLoader from '../components/LottieLoader';
+import LottieLoader from '../components/ui/LottieLoader';
 import toast from 'react-hot-toast';
 import './PlatformAnalytics.css';
 

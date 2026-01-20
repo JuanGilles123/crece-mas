@@ -4,7 +4,6 @@ import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { User, Settings, Building2, LogOut, Edit3, Save, X, Lock, Sliders, Bell, CreditCard, BarChart3, Crown, Sparkles, Shield } from 'lucide-react';
 import { useSubscription } from '../../hooks/useSubscription';
-import ConfiguracionFacturacion from '../../components/forms/ConfiguracionFacturacion';
 import ThemeToggle from '../../components/ui/ThemeToggle';
 import { supabase } from '../../services/api/supabaseClient';
 import './Perfil.css';

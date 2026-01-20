@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../../services/api/supabaseClient';
 import styles from './Auth.module.css';
-import { MailIcon } from '../../constants/Icons';
 import { Mail } from 'lucide-react';
 import { Link } from 'react-router-dom';
 

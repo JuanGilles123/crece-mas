@@ -672,10 +672,12 @@
 
   .team-stats {
     grid-template-columns: 1fr;
+    gap: 1rem;
   }
 
   .members-grid {
     grid-template-columns: 1fr;
+    gap: 1rem;
   }
 
   .member-card {
@@ -699,6 +701,8 @@
     width: 100%;
     margin-left: 0;
     justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
 
   .invitation-info {
@@ -708,7 +712,8 @@
   }
 
   .modal-container {
-    margin: 1rem;
+    margin: 0.5rem;
+    max-width: calc(100vw - 1rem);
   }
 
   .modal-header,
@@ -722,6 +727,69 @@
 
   .role-select-group {
     width: 100%;
+  }
+  
+  .modal-actions {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .gestion-equipo-container {
+    padding: 0.75rem;
+  }
+
+  .gestion-equipo-header {
+    padding: 1rem;
+  }
+
+  .header-content h1 {
+    font-size: 1.25rem;
+  }
+
+  .team-stats {
+    gap: 0.75rem;
+  }
+
+  .stat-card {
+    padding: 1rem;
+  }
+
+  .members-grid {
+    gap: 0.75rem;
+  }
+
+  .member-card {
+    padding: 1rem;
+  }
+
+  .member-actions {
+    flex-direction: column;
+  }
+
+  .member-actions .btn {
+    width: 100%;
+  }
+
+  .modal-container {
+    margin: 0;
+    border-radius: 20px 20px 0 0;
+    max-height: 90vh;
+  }
+
+  .modal-header,
+  .modal-form {
+    padding: 1rem;
+  }
+
+  .modal-header h3 {
+    font-size: 1.25rem;
   }
 }
 

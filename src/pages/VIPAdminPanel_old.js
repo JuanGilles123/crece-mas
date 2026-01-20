@@ -28,7 +28,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../services/api/supabaseClient';
 import toast from 'react-hot-toast';
-import LottieLoader from '../components/LottieLoader';
+import LottieLoader from '../components/ui/LottieLoader';
 import './VIPAdminPanel.css';
 
 const PLANES_DISPONIBLES = [

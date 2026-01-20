@@ -13,7 +13,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { useSubscription } from '../hooks/useSubscription';
-import LottieLoader from '../components/LottieLoader';
+import LottieLoader from '../components/ui/LottieLoader';
 import { supabase } from '../services/api/supabaseClient';
 import toast from 'react-hot-toast';
 import './Pricing.css';
