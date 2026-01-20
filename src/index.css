@@ -6,6 +6,10 @@
 @import './styles/ios-responsive.css';
 @import './styles/ios-dashboard-global.css';
 
+/* 📱 Importar utilidades responsivas */
+@import './styles/responsive-utilities.css';
+@import './styles/global-responsive-fixes.css';
+
 * {
   box-sizing: border-box;
 }

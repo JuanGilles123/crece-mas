@@ -1,5 +1,5 @@
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../services/api/supabaseClient';
 import toast from 'react-hot-toast';
 
 // Hook para obtener productos (versión simple sin paginación)

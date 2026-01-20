@@ -7,17 +7,17 @@ import { lazy, Suspense } from 'react';
 // Imports críticos (carga inmediata)
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
-import ProtectedRoute from './components/ProtectedRoute';
+import ProtectedRoute from './components/layout/ProtectedRoute';
 import './styles/themes.css';
 
 // Lazy loading de componentes (carga bajo demanda)
-const Home = lazy(() => import('./pages/Home'));
-const Login = lazy(() => import('./pages/Login'));
-const Registro = lazy(() => import('./pages/Registro'));
-const Recuperar = lazy(() => import('./pages/Recuperar'));
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const RestablecerContrasena = lazy(() => import('./pages/ResetPassword'));
-const Confirmacion = lazy(() => import('./pages/Confirmacion'));
+const Home = lazy(() => import('./pages/public/Home'));
+const Login = lazy(() => import('./pages/auth/Login'));
+const Registro = lazy(() => import('./pages/auth/Registro'));
+const Recuperar = lazy(() => import('./pages/auth/Recuperar'));
+const Dashboard = lazy(() => import('./pages/dashboard/Dashboard'));
+const RestablecerContrasena = lazy(() => import('./pages/auth/ResetPassword'));
+const Confirmacion = lazy(() => import('./pages/auth/Confirmacion'));
 const ConfirmacionExitosa = lazy(() => import('./components/ConfirmacionExitosa'));
 const Invitaciones = lazy(() => import('./pages/Invitaciones'));
 const InvitePublic = lazy(() => import('./pages/InvitePublic'));

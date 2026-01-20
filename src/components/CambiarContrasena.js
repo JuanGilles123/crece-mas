@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Lock, Eye, EyeOff, Check, X, AlertCircle } from 'lucide-react';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../services/api/supabaseClient';
 import toast from 'react-hot-toast';
 import './CambiarContrasena.css';
 

@@ -18,7 +18,7 @@
     <link rel="apple-touch-icon" href="/logo-crece.svg?v=5" />
     
     <!-- Meta tags optimizados -->
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes, shrink-to-fit=no" />
     <meta name="theme-color" content="#8B5CF6" />
     <meta name="description" content="Sistema de punto de venta y gestión de inventario para pequeños negocios. Gestiona ventas, inventario y reportes en tiempo real." />
     <meta name="keywords" content="punto de venta, POS, inventario, ventas, gestión, negocios, facturación" />
@@ -34,6 +34,16 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Crece+ - Sistema de Punto de Venta" />
     <meta name="twitter:description" content="Sistema completo para gestionar tu negocio" />
+    
+    <!-- Security Headers -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="X-Frame-Options" content="DENY" />
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block" />
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
+    <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()" />
+    
+    <!-- Content Security Policy -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.supabase.co https://*.supabase.in; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co https://*.supabase.in wss://*.supabase.co wss://*.supabase.in; frame-src 'self' https://*.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;" />
     
     <!-- PWA -->
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />

@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import { usePedidos, useActualizarPedido } from '../hooks/usePedidos';
 import { canUsePedidos, getPedidoEstadoColor } from '../utils/mesasUtils';
-import OptimizedProductImage from '../components/OptimizedProductImage';
+import OptimizedProductImage from '../components/business/OptimizedProductImage';
 import './PanelCocina.css';
 
 const formatCOP = (value) => {

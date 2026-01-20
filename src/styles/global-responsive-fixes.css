@@ -1,0 +1,366 @@
+/* 🔧 Global Responsive Fixes - Correcciones globales para responsividad */
+
+/* === PREVENIR OVERFLOW HORIZONTAL === */
+html,
+body {
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
+  position: relative;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* === IMÁGENES RESPONSIVAS === */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* === TABLAS RESPONSIVAS === */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/* Contenedor para tablas con scroll horizontal en móvil */
+.table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
+  margin: 1rem 0;
+}
+
+.table-wrapper table {
+  min-width: 600px;
+}
+
+@media (max-width: 768px) {
+  .table-wrapper {
+    margin: 0.5rem 0;
+  }
+  
+  .table-wrapper table {
+    min-width: 500px;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .table-wrapper table {
+    min-width: 400px;
+    font-size: 0.85rem;
+  }
+}
+
+/* === MODALES RESPONSIVOS === */
+.modal-overlay,
+.modal-bg,
+[class*="modal-overlay"],
+[class*="modal-bg"] {
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 768px) {
+  .modal-overlay,
+  .modal-bg,
+  [class*="modal-overlay"],
+  [class*="modal-bg"] {
+    padding: 0;
+    align-items: flex-end;
+  }
+  
+  .modal-content,
+  .modal-card,
+  [class*="modal-content"],
+  [class*="modal-card"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    border-radius: 20px 20px 0 0 !important;
+    max-height: 90vh !important;
+  }
+}
+
+/* === FORMULARIOS RESPONSIVOS === */
+form {
+  width: 100%;
+  max-width: 100%;
+}
+
+input,
+textarea,
+select {
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Prevenir zoom en iOS al hacer focus en inputs */
+@media (max-width: 768px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="search"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* === BOTONES TOUCH-FRIENDLY === */
+button,
+.btn,
+[role="button"],
+a.button {
+  min-height: 44px;
+  min-width: 44px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (max-width: 768px) {
+  button,
+  .btn,
+  [role="button"] {
+    padding: 12px 20px !important;
+    font-size: 16px !important;
+  }
+}
+
+/* === GRIDS RESPONSIVOS === */
+.grid-auto-fit {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+@media (max-width: 768px) {
+  .grid-auto-fit {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .grid-auto-fit {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+}
+
+/* === CARDS RESPONSIVOS === */
+.card {
+  width: 100%;
+  max-width: 100%;
+  padding: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .card {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .card {
+    padding: 0.75rem;
+  }
+}
+
+/* === CONTAINERS RESPONSIVOS === */
+.container {
+  width: 100%;
+  max-width: 100%;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media (min-width: 640px) {
+  .container {
+    max-width: 640px;
+  }
+}
+
+@media (min-width: 768px) {
+  .container {
+    max-width: 768px;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container {
+    max-width: 1024px;
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .container {
+    max-width: 1280px;
+  }
+}
+
+/* === FLEXBOX RESPONSIVO === */
+.flex-responsive {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+@media (max-width: 768px) {
+  .flex-responsive {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+}
+
+/* === TEXT RESPONSIVE === */
+h1 {
+  font-size: clamp(1.5rem, 4vw, 2.5rem);
+}
+
+h2 {
+  font-size: clamp(1.25rem, 3vw, 2rem);
+}
+
+h3 {
+  font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+}
+
+h4 {
+  font-size: clamp(1rem, 2vw, 1.25rem);
+}
+
+/* === SPACING RESPONSIVE === */
+@media (max-width: 768px) {
+  .p-responsive {
+    padding: 1rem !important;
+  }
+  
+  .m-responsive {
+    margin: 1rem !important;
+  }
+  
+  .px-responsive {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+  
+  .py-responsive {
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .p-responsive {
+    padding: 0.75rem !important;
+  }
+  
+  .m-responsive {
+    margin: 0.75rem !important;
+  }
+  
+  .px-responsive {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+  
+  .py-responsive {
+    padding-top: 0.75rem !important;
+    padding-bottom: 0.75rem !important;
+  }
+}
+
+/* === SCROLL SMOOTH === */
+.scroll-container {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  overflow-y: auto;
+}
+
+/* === SAFE AREA SUPPORT === */
+@supports (padding: max(0px)) {
+  .safe-top {
+    padding-top: max(1rem, env(safe-area-inset-top));
+  }
+  
+  .safe-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+  
+  .safe-left {
+    padding-left: max(1rem, env(safe-area-inset-left));
+  }
+  
+  .safe-right {
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+}
+
+/* === FIX PARA ELEMENTOS QUE SE SALEN === */
+* {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Prevenir que elementos con position fixed se salgan */
+[class*="fixed"],
+[class*="sticky"] {
+  max-width: 100vw;
+}
+
+/* === OPTIMIZACIÓN DE TOUCH === */
+@media (hover: none) and (pointer: coarse) {
+  /* Dispositivos táctiles */
+  a,
+  button,
+  [role="button"],
+  input[type="checkbox"],
+  input[type="radio"],
+  select {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Remover hover effects en móvil */
+  *:hover {
+    transition: none;
+  }
+}
+
+/* === PRINT STYLES === */
+@media print {
+  .no-print,
+  button,
+  .btn,
+  nav,
+  .sidebar,
+  .header {
+    display: none !important;
+  }
+  
+  body {
+    background: white;
+    color: black;
+  }
+  
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+}

@@ -16,8 +16,8 @@ import {
 } from 'lucide-react';
 import { useSubscription } from '../hooks/useSubscription';
 import { useAuth } from '../context/AuthContext';
-import { supabase } from '../supabaseClient';
-import LottieLoader from '../components/LottieLoader';
+import { supabase } from '../services/api/supabaseClient';
+import LottieLoader from '../components/ui/LottieLoader';
 import toast from 'react-hot-toast';
 import './MiSuscripcion.css';
 

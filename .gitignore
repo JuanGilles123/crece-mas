@@ -13,11 +13,63 @@
 
 # misc
 .DS_Store
+.env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+.env*.local
 
+# Logs
+logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+lerna-debug.log*
+pnpm-debug.log*
+
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS generated files
+Thumbs.db
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Desktop.ini
+
+# Backup files
+*.bak
+*.backup
+*.tmp
+*.swp
+*~
+backup-before-optimization/
+
+# Secrets and sensitive data
+secrets/
+*.pem
+*.key
+*.cert
+*.crt
+*.p12
+*.pfx
+
+# Build artifacts
+dist/
+build/
+*.tsbuildinfo
+
+# Coverage directory used by tools like istanbul
+coverage/
+.nyc_output/

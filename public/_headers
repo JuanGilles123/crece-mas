@@ -1,0 +1,29 @@
+# Headers de Seguridad HTTP
+# Para Vercel: Este archivo se usa automáticamente
+# Para Netlify: Este archivo se usa automáticamente
+# Para otros servidores: Configurar según documentación del servidor
+
+# Content Security Policy
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.supabase.co https://*.supabase.in; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co https://*.supabase.in wss://*.supabase.co wss://*.supabase.in; frame-src 'self' https://*.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;
+
+# X-Frame-Options: Previene clickjacking
+  X-Frame-Options: DENY
+
+# X-Content-Type-Options: Previene MIME sniffing
+  X-Content-Type-Options: nosniff
+
+# Referrer-Policy: Controla qué información de referrer se envía
+  Referrer-Policy: strict-origin-when-cross-origin
+
+# Permissions-Policy: Controla qué features del navegador están disponibles
+  Permissions-Policy: geolocation=(), microphone=(), camera=()
+
+# Strict-Transport-Security: Fuerza HTTPS
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+
+# X-XSS-Protection: Protección adicional contra XSS (legacy pero útil)
+  X-XSS-Protection: 1; mode=block
+
+# Feature-Policy (legacy, reemplazado por Permissions-Policy pero mantener compatibilidad)
+  Feature-Policy: geolocation 'none'; microphone 'none'; camera 'none'

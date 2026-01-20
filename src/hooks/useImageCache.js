@@ -50,7 +50,7 @@ export const useImageCache = (imagePath) => {
     // Función para generar signed URL
     const generateSignedUrl = async () => {
       try {
-        const { supabase } = await import('../supabaseClient');
+        const { supabase } = await import('../services/api/supabaseClient');
         
         // Extraer la ruta del archivo de la URL completa si es necesario
         let filePath = imagePath;

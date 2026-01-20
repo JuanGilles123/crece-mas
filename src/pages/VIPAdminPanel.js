@@ -21,9 +21,9 @@ import {
   Zap,
   RefreshCw
 } from 'lucide-react';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../services/api/supabaseClient';
 import toast from 'react-hot-toast';
-import LottieLoader from '../components/LottieLoader';
+import LottieLoader from '../components/ui/LottieLoader';
 import './VIPAdminPanel.css';
 
 const VIPAdminPanel = () => {
