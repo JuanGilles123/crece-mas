@@ -54,6 +54,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
+    "start:network": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
@@ -67,7 +68,8 @@
     "analyze": "npm run build && npx bundle-analyzer build/static/js/*.js",
     "serve": "serve -s build -l 3000",
     "setup-toppings": "bash setup-toppings.sh",
-    "setup-storage-policies": "node ejecutar-politicas-storage.js"
+    "setup-storage-policies": "node ejecutar-politicas-storage.js",
+    "generar-plantilla-excel": "node scripts/generar-plantilla-excel.js"
   },
   "eslintConfig": {
     "extends": [

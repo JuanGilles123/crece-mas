@@ -24,8 +24,8 @@ export const useImageCache = (imagePath) => {
     // Verificar cache global
     if (globalImageCache.has(imagePath)) {
       const cachedData = globalImageCache.get(imagePath);
-      // Verificar si la URL cacheada aún es válida (menos de 50 minutos)
-      if (Date.now() - cachedData.timestamp < 3000000) {
+      // Verificar si la URL cacheada aún es válida (menos de 2 horas para URLs públicas)
+      if (Date.now() - cachedData.timestamp < 7200000) {
         if (mountedRef.current) {
           setImageUrl(cachedData.url);
           setLoading(false);
@@ -47,8 +47,8 @@ export const useImageCache = (imagePath) => {
       });
     };
 
-    // Función para generar signed URL
-    const generateSignedUrl = async () => {
+    // Función para generar URL de imagen (optimizada para performance)
+    const generateImageUrl = async () => {
       try {
         const { supabase } = await import('../services/api/supabaseClient');
         
@@ -61,23 +61,29 @@ export const useImageCache = (imagePath) => {
         // Limpiar la ruta (remover espacios, caracteres especiales, etc.)
         filePath = filePath.trim();
 
-        const { data, error } = await supabase.storage
+        // Intentar usar URL pública primero (más rápido, sin firma)
+        // Esto funciona si el bucket 'productos' es público
+        const { data: publicData } = supabase.storage
+          .from('productos')
+          .getPublicUrl(filePath);
+        
+        if (publicData?.publicUrl) {
+          return publicData.publicUrl;
+        }
+        
+        // Fallback: usar signed URL si la pública no está disponible
+        const { data: signedData, error } = await supabase.storage
           .from('productos')
           .createSignedUrl(filePath, 3600);
 
         if (error) {
-          console.warn('⚠️ Error generando signed URL para:', filePath);
-          console.warn('   Error:', error.message);
-          // Si es un error 400, probablemente el archivo no existe
-          if (error.statusCode === 400 || error.message?.includes('not found')) {
-            console.warn('   El archivo no existe en storage o la ruta es incorrecta');
-          }
+          console.warn('⚠️ Error generando URL para:', filePath);
           throw error;
         }
 
-        return data.signedUrl;
+        return signedData.signedUrl;
       } catch (err) {
-        console.error('❌ Error en generateSignedUrl:', err);
+        console.error('❌ Error en generateImageUrl:', err);
         throw err;
       }
     };
@@ -85,19 +91,19 @@ export const useImageCache = (imagePath) => {
     // Proceso de carga
     const loadImage = async () => {
       try {
-        const signedUrl = await generateSignedUrl();
+        const imageUrl = await generateImageUrl();
         
-        // Guardar en cache global
+        // Guardar en cache global (aumentar tiempo de cache a 2 horas)
         globalImageCache.set(imagePath, {
-          url: signedUrl,
+          url: imageUrl,
           timestamp: Date.now()
         });
 
-        // Precargar la imagen
-        await preloadImage(signedUrl);
+        // Precargar la imagen (solo si está en viewport o cerca)
+        await preloadImage(imageUrl);
 
         if (mountedRef.current) {
-          setImageUrl(signedUrl);
+          setImageUrl(imageUrl);
           setLoading(false);
         }
       } catch (err) {

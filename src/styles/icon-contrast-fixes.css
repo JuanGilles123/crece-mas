@@ -1,0 +1,254 @@
+/* 🎨 Icon Contrast Fixes - Mejoras de contraste para iconos */
+
+/* Asegurar que todos los iconos de Lucide React tengan buen contraste */
+svg[class*="lucide"],
+svg[class*="icon"],
+.lucide-icon,
+.icon {
+  color: var(--text-primary);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Iconos en modo oscuro - aumentar contraste */
+.dark svg[class*="lucide"],
+.dark-theme svg[class*="lucide"],
+.dark .lucide-icon,
+.dark-theme .lucide-icon {
+  color: var(--text-primary);
+  opacity: 0.95; /* Asegurar visibilidad */
+}
+
+/* Iconos en modo claro - mantener contraste */
+:root:not(.dark):not(.dark-theme) svg[class*="lucide"],
+:root:not(.dark):not(.dark-theme) .lucide-icon {
+  color: var(--text-primary);
+  opacity: 0.9;
+}
+
+/* Iconos en botones - asegurar visibilidad */
+button svg,
+.btn svg,
+[role="button"] svg {
+  color: inherit;
+  opacity: 1;
+}
+
+/* Iconos en botones primarios */
+.btn-primary svg,
+button[class*="primary"] svg {
+  color: var(--text-inverse);
+  opacity: 1;
+}
+
+/* Iconos en botones secundarios */
+.btn-secondary svg,
+button[class*="secondary"] svg {
+  color: var(--text-primary);
+  opacity: 0.9;
+}
+
+/* Iconos en modo oscuro dentro de botones */
+.dark .btn-secondary svg,
+.dark-theme .btn-secondary svg {
+  color: var(--text-primary);
+  opacity: 1;
+}
+
+/* Iconos en enlaces */
+a svg {
+  color: var(--accent-primary);
+  transition: opacity 0.2s ease;
+}
+
+a:hover svg {
+  opacity: 1;
+}
+
+/* Iconos en cards */
+.card svg,
+[class*="card"] svg {
+  color: var(--text-primary);
+}
+
+/* Iconos en inputs */
+input + svg,
+.input-icon svg {
+  color: var(--text-secondary);
+  opacity: 0.8;
+}
+
+input:focus + svg,
+.input:focus ~ svg {
+  color: var(--accent-primary);
+  opacity: 1;
+}
+
+/* Iconos en modo oscuro dentro de inputs */
+.dark input + svg,
+.dark-theme input + svg {
+  color: var(--text-secondary);
+  opacity: 0.9;
+}
+
+.dark input:focus + svg,
+.dark-theme input:focus ~ svg {
+  color: var(--accent-primary);
+  opacity: 1;
+}
+
+/* Iconos en navegación */
+nav svg,
+.nav svg,
+[class*="nav"] svg {
+  color: var(--text-primary);
+  opacity: 0.9;
+}
+
+nav a:hover svg,
+.nav a:hover svg {
+  opacity: 1;
+}
+
+/* Iconos en modo oscuro en navegación */
+.dark nav svg,
+.dark-theme nav svg {
+  opacity: 1;
+}
+
+/* Iconos en tablas */
+table svg,
+.table svg {
+  color: var(--text-primary);
+}
+
+/* Iconos en badges */
+.badge svg,
+[class*="badge"] svg {
+  color: inherit;
+  opacity: 1;
+}
+
+/* Iconos con colores específicos - mantener visibilidad */
+.icon-success svg {
+  color: var(--accent-success);
+  opacity: 1;
+}
+
+.icon-warning svg {
+  color: var(--accent-warning);
+  opacity: 1;
+}
+
+.icon-error svg,
+.icon-danger svg {
+  color: var(--accent-error);
+  opacity: 1;
+}
+
+.icon-info svg {
+  color: var(--accent-primary);
+  opacity: 1;
+}
+
+/* Asegurar que iconos pequeños sean visibles */
+svg[width="16"],
+svg[height="16"],
+.icon-small svg {
+  stroke-width: 2.5;
+  opacity: 1;
+}
+
+/* Iconos medianos */
+svg[width="20"],
+svg[height="20"],
+.icon-medium svg {
+  stroke-width: 2;
+  opacity: 1;
+}
+
+/* Iconos grandes */
+svg[width="24"],
+svg[height="24"],
+.icon-large svg {
+  stroke-width: 2;
+  opacity: 1;
+}
+
+/* Mejorar contraste en fondos claros */
+.bg-white svg,
+.bg-light svg,
+[style*="background: white"] svg,
+[style*="background-color: white"] svg {
+  color: var(--text-primary);
+  opacity: 0.9;
+}
+
+/* Mejorar contraste en fondos oscuros */
+.bg-dark svg,
+.bg-black svg,
+[style*="background: black"] svg,
+[style*="background-color: black"] svg {
+  color: var(--text-inverse);
+  opacity: 1;
+}
+
+/* Iconos en hover - aumentar opacidad */
+svg:hover,
+.icon:hover svg {
+  opacity: 1;
+  transition: opacity 0.2s ease;
+}
+
+/* Asegurar que iconos en disabled no se vean */
+button:disabled svg,
+.btn:disabled svg,
+[disabled] svg {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Iconos en loading states */
+.loading svg,
+[class*="loading"] svg {
+  opacity: 0.6;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Responsive: Asegurar que iconos sean visibles en móvil */
+@media (max-width: 768px) {
+  svg[class*="lucide"],
+  .lucide-icon {
+    opacity: 1; /* Máxima visibilidad en móvil */
+  }
+}
+
+/* Mejoras específicas para accesibilidad */
+@media (prefers-contrast: high) {
+  svg[class*="lucide"],
+  .lucide-icon {
+    stroke-width: 2.5;
+    opacity: 1;
+  }
+}
+
+/* Mejoras para modo de alto contraste del sistema */
+@media (prefers-contrast: high) {
+  .dark svg,
+  .dark-theme svg {
+    stroke-width: 3;
+    opacity: 1;
+  }
+}

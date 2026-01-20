@@ -46,7 +46,7 @@ export const IMAGE_CONFIG = {
 // Configuración de queries optimizadas
 export const QUERY_CONFIG = {
   // Campos mínimos por tabla
-  PRODUCTOS_FIELDS: 'id, nombre, precio, stock, imagen_url, categoria, codigo, organization_id, created_at',
+  PRODUCTOS_FIELDS: 'id, nombre, precio_venta, precio_compra, stock, imagen, codigo, organization_id, created_at, tipo, metadata',
   VENTAS_FIELDS: 'id, total, metodo_pago, created_at, items, usuario_nombre, organization_id',
   USUARIOS_FIELDS: 'id, email, nombre, rol, organization_id, created_at',
 };

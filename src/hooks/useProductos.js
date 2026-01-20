@@ -9,13 +9,13 @@ export const useProductos = (organizationId) => {
     queryFn: async () => {
       if (!organizationId) return [];
       
-      // Select solo los campos necesarios para mejor performance
+      // Select solo los campos necesarios para mejor performance (reducido aún más)
       const { data, error } = await supabase
         .from('productos')
-        .select('id, nombre, precio, stock, imagen_url, categoria, codigo, organization_id, created_at')
+        .select('id, nombre, precio_venta, precio_compra, stock, imagen, codigo, tipo')
         .eq('organization_id', organizationId)
         .order('created_at', { ascending: false })
-        .limit(300); // Reducido de 500 a 300 para mejor performance
+        .limit(200); // Reducido de 300 a 200 para mejor performance inicial
 
       if (error) {
         console.error('Error fetching productos:', error);

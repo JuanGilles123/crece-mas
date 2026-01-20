@@ -83,6 +83,22 @@ const DashboardHome = () => {
     }).format(value);
   };
 
+  // Función para obtener el primer nombre
+  const getPrimerNombre = () => {
+    // Intentar obtener el nombre completo de diferentes fuentes
+    const nombreCompleto = 
+      userProfile?.nombre || 
+      user?.user_metadata?.full_name || 
+      user?.email?.split('@')[0] || 
+      'Usuario';
+    
+    // Extraer el primer nombre (primera palabra)
+    const primerNombre = nombreCompleto.split(' ')[0];
+    
+    // Capitalizar primera letra
+    return primerNombre.charAt(0).toUpperCase() + primerNombre.slice(1).toLowerCase();
+  };
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -127,16 +143,36 @@ const DashboardHome = () => {
       initial="hidden"
       animate="visible"
     >
-      {/* Header de bienvenida */}
-      <motion.div className="dashboard-welcome-header" variants={cardVariants}>
+      {/* Barra lateral de accesos rápidos */}
+      <motion.div className="accesos-rapidos-sidebar" variants={cardVariants}>
+        <h2><Zap size={18} /> Accesos</h2>
+        <div className="accesos-vertical">
+          {accesosRapidos.map((acceso, index) => (
+            <motion.div
+              key={index}
+              className="acceso-item"
+              variants={cardVariants}
+              whileHover={{ scale: 1.05, x: 4 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => navigate(acceso.path)}
+              style={{ '--card-color': acceso.color }}
+            >
+              <acceso.icon size={24} />
+              <span>{acceso.label}</span>
+            </motion.div>
+          ))}
+        </div>
+      </motion.div>
+
+      {/* Contenido principal */}
+      <div className="dashboard-content">
+        {/* Header de bienvenida */}
+        <motion.div className="dashboard-welcome-header" variants={cardVariants}>
         <div className="welcome-content">
           <div className="welcome-text">
             <span className="welcome-greeting">¡Hola de nuevo!</span>
             <h1 className="welcome-name">
-              {(userProfile?.nombre || user?.email?.split('@')[0] || 'Usuario')
-                .split(' ')
-                .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-                .join(' ')}
+              {getPrimerNombre()}
             </h1>
             <p className="welcome-org">
               {(userProfile?.organization_name || 'Tu Negocio')
@@ -219,27 +255,7 @@ const DashboardHome = () => {
           </motion.div>
         </div>
       </motion.div>
-
-      {/* Accesos rápidos */}
-      <motion.div className="accesos-rapidos-container" variants={cardVariants}>
-        <h2><Zap size={20} /> Accesos Rápidos</h2>
-        <div className="accesos-grid">
-          {accesosRapidos.map((acceso, index) => (
-            <motion.div
-              key={index}
-              className="acceso-card"
-              variants={cardVariants}
-              whileHover={{ scale: 1.08, y: -8 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => navigate(acceso.path)}
-              style={{ '--card-color': acceso.color }}
-            >
-              <acceso.icon size={40} />
-              <p>{acceso.label}</p>
-            </motion.div>
-          ))}
-        </div>
-      </motion.div>
+      </div>
     </motion.div>
   );
 };

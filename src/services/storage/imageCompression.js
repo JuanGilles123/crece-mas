@@ -8,13 +8,13 @@ import imageCompression from 'browser-image-compression';
  */
 export const compressImage = async (file, options = {}) => {
   try {
-    // Configuración por defecto para compresión
+    // Configuración por defecto para compresión (optimizada para performance)
     const defaultOptions = {
-      maxSizeMB: 0.5, // Máximo 500KB
-      maxWidthOrHeight: 800, // Máximo 800px de ancho o alto
+      maxSizeMB: 0.3, // Máximo 300KB (reducido de 500KB)
+      maxWidthOrHeight: 600, // Máximo 600px de ancho o alto (reducido de 800px)
       useWebWorker: true,
       fileType: 'image/jpeg', // Convertir a JPEG para mejor compresión
-      initialQuality: 0.8, // Calidad inicial del 80%
+      initialQuality: 0.7, // Calidad inicial del 70% (reducido de 80% para mejor performance)
       ...options
     };
     
@@ -35,10 +35,10 @@ export const compressImage = async (file, options = {}) => {
  */
 export const compressProductImage = async (file) => {
   return compressImage(file, {
-    maxSizeMB: 0.3, // Máximo 300KB para productos
-    maxWidthOrHeight: 600, // Máximo 600px para productos
+    maxSizeMB: 0.15, // Máximo 150KB para productos (reducido de 300KB)
+    maxWidthOrHeight: 400, // Máximo 400px para productos (reducido de 600px)
     fileType: 'image/jpeg',
-    initialQuality: 0.75 // Calidad del 75% para productos
+    initialQuality: 0.65 // Calidad del 65% para productos (reducido de 75% para mejor performance)
   });
 };
 

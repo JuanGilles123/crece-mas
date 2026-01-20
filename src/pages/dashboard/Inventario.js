@@ -1,10 +1,10 @@
 
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import './Inventario.css';
-import AgregarProductoModal from '../../components/modals/AgregarProductoModal';
-import EditarProductoModal from '../../components/modals/EditarProductoModal';
+import AgregarProductoModalV2 from '../../components/modals/AgregarProductoModalV2';
+import EditarProductoModalV2 from '../../components/modals/EditarProductoModalV2';
 import ImportarProductosCSV from '../../components/forms/ImportarProductosCSV';
 import OptimizedProductImage from '../../components/business/OptimizedProductImage';
 import LottieLoader from '../../components/ui/LottieLoader';
@@ -33,7 +33,7 @@ const deleteImageFromStorage = async (imagePath) => {
 };
 
 const Inventario = () => {
-  const { user } = useAuth();
+  const { user, organization } = useAuth();
   const [modalOpen, setModalOpen] = useState(false);
   const [editarModalOpen, setEditarModalOpen] = useState(false);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
@@ -43,14 +43,16 @@ const Inventario = () => {
   // Suponiendo que el usuario tiene moneda en user.user_metadata.moneda
   const moneda = user?.user_metadata?.moneda || 'COP';
 
-  // React Query hooks
-  const { data: productos = [], isLoading: cargando, error } = useProductos(user?.id);
+  // React Query hooks - usar organization?.id en lugar de user?.id
+  const { data: productos = [], isLoading: cargando, error } = useProductos(organization?.id);
   const eliminarProductoMutation = useEliminarProducto();
 
-  // Mostrar error si hay problemas cargando productos
-  if (error) {
-    toast.error('Error al cargar productos');
-  }
+  // Mostrar error si hay problemas cargando productos (usando useEffect para evitar setState durante render)
+  useEffect(() => {
+    if (error) {
+      toast.error('Error al cargar productos');
+    }
+  }, [error]);
 
   // Filtrar productos basado en la búsqueda
   const filteredProducts = productos.filter((producto) => {
@@ -262,8 +264,8 @@ const Inventario = () => {
         )}
         {/* Panel lateral eliminado por solicitud */}
       </div>
-      <AgregarProductoModal open={modalOpen} onClose={() => setModalOpen(false)} onProductoAgregado={handleAgregarProducto} moneda={moneda} />
-      <EditarProductoModal 
+      <AgregarProductoModalV2 open={modalOpen} onClose={() => setModalOpen(false)} onProductoAgregado={handleAgregarProducto} moneda={moneda} />
+      <EditarProductoModalV2 
         open={editarModalOpen} 
         onClose={() => {
           setEditarModalOpen(false);

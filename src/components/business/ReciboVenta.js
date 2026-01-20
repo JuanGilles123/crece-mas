@@ -21,7 +21,7 @@ function formatCOP(value) {
   }).format(value);
 }
 
-export default function ReciboVenta({ venta, onNuevaVenta, onCerrar }) {
+export default function ReciboVenta({ venta, onNuevaVenta, onCerrar, mostrarCerrar = false }) {
   const { user, organization } = useAuth();
   const [generandoPDF, setGenerandoPDF] = useState(false);
   const reciboRef = useRef(null);
@@ -436,6 +436,15 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
   const nuevaVenta = () => {
     if (onNuevaVenta) {
       onNuevaVenta();
+    }
+    if (onCerrar) {
+      onCerrar();
+    }
+  };
+
+  const cerrarRecibo = () => {
+    if (onCerrar) {
+      onCerrar();
     }
   };
 
@@ -897,9 +906,20 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
             <Download className="recibo-btn-icon" /> 
             {generandoPDF ? 'Generando...' : 'PDF'}
           </button>
-          <button className="recibo-btn recibo-btn-primary" onClick={nuevaVenta}>
-            Nueva venta
-          </button>
+          {mostrarCerrar ? (
+            <>
+              <button className="recibo-btn recibo-btn-secondary" onClick={cerrarRecibo}>
+                Cancelar
+              </button>
+              <button className="recibo-btn recibo-btn-primary" onClick={cerrarRecibo}>
+                Cerrar
+              </button>
+            </>
+          ) : (
+            <button className="recibo-btn recibo-btn-primary" onClick={nuevaVenta}>
+              Nueva venta
+            </button>
+          )}
         </div>
       </div>
     </div>

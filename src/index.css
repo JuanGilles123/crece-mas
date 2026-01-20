@@ -9,6 +9,7 @@
 /* 📱 Importar utilidades responsivas */
 @import './styles/responsive-utilities.css';
 @import './styles/global-responsive-fixes.css';
+@import './styles/icon-contrast-fixes.css';
 
 * {
   box-sizing: border-box;
