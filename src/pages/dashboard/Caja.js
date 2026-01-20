@@ -61,6 +61,14 @@ export default function Caja() {
   useEffect(() => {
     if (productosData.length > 0) {
       setProductos(productosData);
+      // Debug: verificar rutas de imágenes
+      const productosConImagen = productosData.filter(p => p.imagen);
+      if (productosConImagen.length > 0) {
+        console.log('📦 Productos con imagen encontrados:', productosConImagen.length);
+        console.log('📸 Ejemplo de rutas de imagen:', productosConImagen.slice(0, 3).map(p => ({ nombre: p.nombre, imagen: p.imagen })));
+      } else {
+        console.warn('⚠️ No se encontraron productos con imágenes');
+      }
     }
     setCargando(productosLoading);
   }, [productosData, productosLoading]);

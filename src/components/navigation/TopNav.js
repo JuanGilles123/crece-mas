@@ -47,10 +47,20 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
         const element = dropdownRefs.current[openDropdown];
         if (element) {
           const rect = element.getBoundingClientRect();
-          setDropdownPosition({
-            top: rect.bottom + 8,
-            left: rect.left
-          });
+          const isMobile = window.innerWidth <= 768;
+          
+          if (isMobile) {
+            setDropdownPosition({
+              top: rect.bottom + 8,
+              left: 'auto',
+              right: 12
+            });
+          } else {
+            setDropdownPosition({
+              top: rect.bottom + 8,
+              left: rect.left
+            });
+          }
         }
       }
     };
@@ -73,10 +83,22 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
       const element = dropdownRefs.current[groupLabel];
       if (element) {
         const rect = element.getBoundingClientRect();
-        setDropdownPosition({
-          top: rect.bottom + 8,
-          left: rect.left
-        });
+        const isMobile = window.innerWidth <= 768;
+        
+        if (isMobile) {
+          // En móvil, posicionar desde la derecha
+          setDropdownPosition({
+            top: rect.bottom + 8,
+            left: 'auto',
+            right: 12
+          });
+        } else {
+          // En desktop, posicionar normalmente
+          setDropdownPosition({
+            top: rect.bottom + 8,
+            left: rect.left
+          });
+        }
       }
       setOpenDropdown(groupLabel);
     }
@@ -285,7 +307,8 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
                         className="top-nav-dropdown-menu"
                         style={{
                           top: `${dropdownPosition.top}px`,
-                          left: `${dropdownPosition.left}px`
+                          left: dropdownPosition.left === 'auto' ? 'auto' : `${dropdownPosition.left}px`,
+                          right: dropdownPosition.right ? `${dropdownPosition.right}px` : 'auto'
                         }}
                       >
                         {group.items.map((item) => {
@@ -368,7 +391,7 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
                   className="top-nav-profile-dropdown"
                   style={{
                     top: `${profileRef.current?.getBoundingClientRect().bottom + 8}px`,
-                    right: '24px'
+                    right: window.innerWidth <= 768 ? '12px' : '24px'
                   }}
                 >
                   {/* Selector de organizaciones */}

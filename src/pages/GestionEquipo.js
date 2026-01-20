@@ -35,8 +35,12 @@ import {
   useUpdateCustomRole,
   useDeleteCustomRole,
   useAssignCustomRole,
+  useCreateEmployee,
+  useUpdateEmployeeCode,
 } from '../hooks/useTeam';
 import CrearRolModal from '../components/CrearRolModal';
+import AgregarEmpleadoModal from '../components/AgregarEmpleadoModal';
+import EditarCodigoEmpleadoModal from '../components/EditarCodigoEmpleadoModal';
 import toast from 'react-hot-toast';
 import './GestionEquipo.css';
 
@@ -199,10 +203,11 @@ const InvitarModal = ({ open, onClose, onInvitar, cargando }) => {
   );
 };
 
-const MemberCard = ({ member, onUpdateRole, onRemove, isOwner, customRoles = [], onAssignCustomRole }) => {
+const MemberCard = ({ member, onUpdateRole, onRemove, isOwner, customRoles = [], onAssignCustomRole, onUpdateCode }) => {
   const [editando, setEditando] = useState(false);
   const [nuevoRole, setNuevoRole] = useState(member.role);
   const [customRoleId, setCustomRoleId] = useState(member.custom_role_id || '');
+  const [editandoCodigo, setEditandoCodigo] = useState(false);
 
   // Determinar el rol a mostrar
   let roleInfo;
@@ -255,16 +260,36 @@ const MemberCard = ({ member, onUpdateRole, onRemove, isOwner, customRoles = [],
 
       <div className="member-info">
         <div className="member-name">
-          {member.user_profiles?.full_name || 'Sin nombre'}
+          {member.is_employee ? member.nombre : (member.user_profiles?.full_name || 'Sin nombre')}
           {member.role === 'owner' && (
             <span className="owner-badge">
               <Crown size={14} /> Propietario
             </span>
           )}
+          {member.is_employee && (
+            <span className="employee-badge">
+              <User size={14} /> Empleado
+            </span>
+          )}
         </div>
         <div className="member-email">{member.email}</div>
-        {member.user_profiles?.phone && (
-          <div className="member-phone">{member.user_profiles.phone}</div>
+        {(member.user_profiles?.phone || member.telefono) && (
+          <div className="member-phone">{member.user_profiles?.phone || member.telefono}</div>
+        )}
+        {member.is_employee && (
+          <div className="member-code">
+            <Key size={12} />
+            Código: {member.employee_code || member.codigo || 'Sin código'}
+            {isOwner && (
+              <button
+                className="btn-edit-code"
+                onClick={() => setEditandoCodigo(true)}
+                title="Editar código"
+              >
+                <Edit3 size={12} />
+              </button>
+            )}
+          </div>
         )}
       </div>
 
@@ -355,6 +380,19 @@ const MemberCard = ({ member, onUpdateRole, onRemove, isOwner, customRoles = [],
       {member.status === 'inactive' && (
         <div className="member-status inactive">Inactivo</div>
       )}
+
+      {editandoCodigo && (
+        <EditarCodigoEmpleadoModal
+          open={editandoCodigo}
+          onClose={() => setEditandoCodigo(false)}
+          onGuardar={async (nuevoCodigo) => {
+            await onUpdateCode(member.id, nuevoCodigo);
+            setEditandoCodigo(false);
+          }}
+          codigoActual={member.employee_code || member.codigo}
+          nombreEmpleado={member.employee_name || member.nombre || 'Empleado'}
+        />
+      )}
     </motion.div>
   );
 };
@@ -423,6 +461,7 @@ const GestionEquipo = () => {
   const { hasFeature, planSlug, loading: subscriptionLoading, isVIP } = useSubscription();
   
   const [invitarModalOpen, setInvitarModalOpen] = useState(false);
+  const [agregarEmpleadoModalOpen, setAgregarEmpleadoModalOpen] = useState(false);
   const [crearRolModalOpen, setCrearRolModalOpen] = useState(false);
   const [rolAEditar, setRolAEditar] = useState(null);
 
@@ -443,6 +482,8 @@ const GestionEquipo = () => {
   const updateCustomRole = useUpdateCustomRole();
   const deleteCustomRole = useDeleteCustomRole();
   const assignCustomRole = useAssignCustomRole();
+  const createEmployee = useCreateEmployee();
+  const updateEmployeeCode = useUpdateEmployeeCode();
 
   const isOwner = hasRole('owner', 'admin');
   
@@ -472,6 +513,25 @@ const GestionEquipo = () => {
       setInvitarModalOpen(false);
     } catch (error) {
       console.error('Error invitando:', error);
+    }
+  };
+
+  const handleAgregarEmpleado = async ({ nombre, email, telefono, role, customRoleId, codigo }) => {
+    try {
+      const result = await createEmployee.mutateAsync({
+        organizationId: organization.id,
+        nombre,
+        email,
+        telefono,
+        role,
+        customRoleId,
+        codigo
+      });
+      // Retornar el resultado con el código para que el modal lo muestre
+      return result;
+    } catch (error) {
+      console.error('Error agregando empleado:', error);
+      throw error;
     }
   };
 
@@ -545,6 +605,14 @@ const GestionEquipo = () => {
     });
   };
 
+  const handleActualizarCodigo = async (memberId, nuevoCodigo) => {
+    await updateEmployeeCode.mutateAsync({
+      memberId,
+      newCode: nuevoCodigo,
+      organizationId: organization.id
+    });
+  };
+
   if (!organization) {
     return (
       <div className="gestion-equipo-container">
@@ -572,14 +640,24 @@ const GestionEquipo = () => {
         </div>
 
         {isOwner && (
-          <button 
-            className="btn btn-primary"
-            onClick={() => setInvitarModalOpen(true)}
-            disabled={limitReached}
-          >
-            <UserPlus size={20} />
-            Invitar Miembro
-          </button>
+          <div className="header-actions">
+            <button 
+              className="btn btn-secondary"
+              onClick={() => setAgregarEmpleadoModalOpen(true)}
+              disabled={limitReached}
+            >
+              <UserPlus size={20} />
+              Agregar Empleado
+            </button>
+            <button 
+              className="btn btn-primary"
+              onClick={() => setInvitarModalOpen(true)}
+              disabled={limitReached}
+            >
+              <Mail size={20} />
+              Invitar Miembro
+            </button>
+          </div>
         )}
       </div>
 
@@ -629,6 +707,7 @@ const GestionEquipo = () => {
                 isOwner={isOwner}
                 customRoles={customRoles}
                 onAssignCustomRole={handleAsignarRol}
+                onUpdateCode={handleActualizarCodigo}
               />
             ))}
           </div>
@@ -733,7 +812,7 @@ const GestionEquipo = () => {
         </div>
       )}
 
-      {/* Modal de invitación */}
+      {/* Modales */}
       <AnimatePresence>
         {invitarModalOpen && (
           <InvitarModal
@@ -741,6 +820,16 @@ const GestionEquipo = () => {
             onClose={() => setInvitarModalOpen(false)}
             onInvitar={handleInvitar}
             cargando={createInvitation.isLoading}
+          />
+        )}
+
+        {agregarEmpleadoModalOpen && (
+          <AgregarEmpleadoModal
+            open={agregarEmpleadoModalOpen}
+            onClose={() => setAgregarEmpleadoModalOpen(false)}
+            onAgregar={handleAgregarEmpleado}
+            cargando={createEmployee.isLoading}
+            customRoles={customRoles}
           />
         )}
 

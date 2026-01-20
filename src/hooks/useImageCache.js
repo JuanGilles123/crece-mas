@@ -16,8 +16,9 @@ export const useImageCache = (imagePath) => {
   }, []);
 
   useEffect(() => {
-    if (!imagePath) {
+    if (!imagePath || imagePath.trim() === '' || imagePath === 'null' || imagePath === 'undefined') {
       setLoading(false);
+      setError(true);
       return;
     }
 
@@ -52,14 +53,35 @@ export const useImageCache = (imagePath) => {
       try {
         const { supabase } = await import('../services/api/supabaseClient');
         
+        if (!imagePath) {
+          throw new Error('imagePath está vacío o es null');
+        }
+
         // Extraer la ruta del archivo de la URL completa si es necesario
         let filePath = imagePath;
+        
+        // Si es una URL completa de Supabase Storage, extraer la ruta
         if (imagePath.includes('/storage/v1/object/public/productos/')) {
           filePath = imagePath.split('/storage/v1/object/public/productos/')[1];
+        } else if (imagePath.includes('/storage/v1/object/sign/productos/')) {
+          filePath = imagePath.split('/storage/v1/object/sign/productos/')[1].split('?')[0];
+        } else if (imagePath.includes('productos/')) {
+          // Si contiene 'productos/', podría ser una ruta parcial
+          const parts = imagePath.split('productos/');
+          if (parts.length > 1) {
+            filePath = parts[1].split('?')[0];
+          }
         }
         
         // Limpiar la ruta (remover espacios, caracteres especiales, etc.)
         filePath = filePath.trim();
+        
+        // Si después de limpiar está vacío, usar el original
+        if (!filePath) {
+          filePath = imagePath.trim();
+        }
+
+        console.log('🖼️ Generando URL para imagen:', { original: imagePath, filePath });
 
         // Intentar usar URL pública primero (más rápido, sin firma)
         // Esto funciona si el bucket 'productos' es público
@@ -68,6 +90,7 @@ export const useImageCache = (imagePath) => {
           .getPublicUrl(filePath);
         
         if (publicData?.publicUrl) {
+          console.log('✅ URL pública generada:', publicData.publicUrl);
           return publicData.publicUrl;
         }
         
@@ -77,13 +100,14 @@ export const useImageCache = (imagePath) => {
           .createSignedUrl(filePath, 3600);
 
         if (error) {
-          console.warn('⚠️ Error generando URL para:', filePath);
+          console.error('❌ Error generando signed URL:', error, 'para ruta:', filePath);
           throw error;
         }
 
+        console.log('✅ Signed URL generada:', signedData.signedUrl);
         return signedData.signedUrl;
       } catch (err) {
-        console.error('❌ Error en generateImageUrl:', err);
+        console.error('❌ Error en generateImageUrl:', err, 'imagePath original:', imagePath);
         throw err;
       }
     };
@@ -99,15 +123,21 @@ export const useImageCache = (imagePath) => {
           timestamp: Date.now()
         });
 
-        // Precargar la imagen (solo si está en viewport o cerca)
-        await preloadImage(imageUrl);
+        // Precargar la imagen para verificar que es válida
+        try {
+          await preloadImage(imageUrl);
+          console.log('✅ Imagen precargada exitosamente:', imagePath);
+        } catch (preloadError) {
+          console.warn('⚠️ Error precargando imagen (pero continuando):', preloadError);
+          // Continuar aunque falle la precarga, la imagen podría cargar en el navegador
+        }
 
         if (mountedRef.current) {
           setImageUrl(imageUrl);
           setLoading(false);
         }
       } catch (err) {
-        console.warn('⚠️ No se pudo cargar la imagen:', imagePath);
+        console.error('❌ No se pudo cargar la imagen:', imagePath, 'Error:', err);
         if (mountedRef.current) {
           setError(true);
           setLoading(false);

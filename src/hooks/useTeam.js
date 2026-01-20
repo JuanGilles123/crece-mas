@@ -54,24 +54,48 @@ export const useTeamMembers = (organizationId) => {
         return [];
       }
 
-      // Obtener user_profiles por separado
-      const userIds = members.map(m => m.user_id);
+      // Separar miembros con user_id y empleados sin user_id
+      const userIds = members.filter(m => m.user_id).map(m => m.user_id);
       
-      const { data: profiles, error: profilesError } = await supabase
-        .from('user_profiles')
-        .select('user_id, full_name, phone, avatar_url, email')
-        .in('user_id', userIds);
+      let profiles = [];
+      if (userIds.length > 0) {
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('user_profiles')
+          .select('user_id, full_name, phone, avatar_url, email')
+          .in('user_id', userIds);
 
-      if (profilesError) {
-        console.error('Error fetching profiles:', profilesError);
+        if (profilesError) {
+          console.error('Error fetching profiles:', profilesError);
+        } else {
+          profiles = profilesData || [];
+        }
       }
 
       // Combinar manualmente
-      return members.map(member => ({
-        ...member,
-        user_profiles: profiles?.find(p => p.user_id === member.user_id) || null,
-        email: profiles?.find(p => p.user_id === member.user_id)?.email || 'No disponible'
-      }));
+      return members.map(member => {
+        // Si es empleado sin login (is_employee = true y user_id = null)
+        if (member.is_employee && !member.user_id) {
+          return {
+            ...member,
+            user_profiles: null,
+            email: member.employee_email || 'Sin email',
+            nombre: member.employee_name,
+            telefono: member.employee_phone,
+            codigo: member.employee_code,
+            is_employee: true
+          };
+        }
+        
+        // Miembro normal con user_id
+        const profile = profiles.find(p => p.user_id === member.user_id);
+        return {
+          ...member,
+          user_profiles: profile || null,
+          email: profile?.email || 'No disponible',
+          nombre: profile?.full_name,
+          is_employee: false
+        };
+      });
     },
     enabled: !!organizationId,
     staleTime: 2 * 60 * 1000, // 2 minutos
@@ -624,6 +648,101 @@ export const useAssignCustomRole = () => {
     onError: (error) => {
       console.error('Error assigning custom role:', error);
       toast.error(error.message || 'Error al asignar rol');
+    },
+  });
+};
+
+// ============================================
+// Hook para actualizar código de empleado
+// ============================================
+export const useUpdateEmployeeCode = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ memberId, newCode, organizationId }) => {
+      const { data, error } = await supabase
+        .from('team_members')
+        .update({ employee_code: newCode })
+        .eq('id', memberId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating employee code:', error);
+        throw new Error(error.message || 'Error al actualizar el código del empleado');
+      }
+
+      return data;
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries(['teamMembers', variables.organizationId]);
+      toast.success('Código de empleado actualizado exitosamente');
+    },
+    onError: (error) => {
+      console.error('Error updating employee code:', error);
+      toast.error(error.message || 'Error al actualizar el código del empleado');
+    },
+  });
+};
+
+// ============================================
+// Hook para crear empleado sin login
+// ============================================
+export const useCreateEmployee = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ organizationId, nombre, email, telefono, role, customRoleId, codigo, pin }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // Nota: No podemos crear usuarios en Supabase Auth desde el cliente
+      // El empleado se creará sin user_id y podrá hacer login usando el código
+      // El login se manejará mediante una función que busca el empleado por código
+      // y crea una sesión temporal o usa un método alternativo
+      
+      // Por ahora, dejamos user_id como null
+      // El sistema de login con código manejará la autenticación
+      let authUserId = null;
+      
+      // Crear el empleado en team_members
+      const { data, error } = await supabase
+        .from('team_members')
+        .insert([{
+          organization_id: organizationId,
+          user_id: authUserId, // Si se creó en Auth, usar ese ID, sino null
+          role,
+          custom_role_id: customRoleId || null,
+          status: 'active',
+          invited_by: user.id,
+          employee_code: codigo, // Código único para login futuro
+          employee_name: nombre, // Nombre del empleado
+          employee_email: email || null, // Email opcional
+          employee_phone: telefono || null, // Teléfono opcional
+          is_employee: true, // Marcar como empleado sin login
+          joined_at: new Date().toISOString()
+        }])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating employee:', error);
+        throw new Error(error.message || 'Error al crear empleado');
+      }
+
+      // Retornar el empleado creado con el código
+      // La contraseña inicial es el mismo código (se maneja en el login)
+      return { 
+        ...data, 
+        codigo: data.employee_code || codigo
+      };
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries(['teamMembers', variables.organizationId]);
+      toast.success('Empleado agregado exitosamente');
+    },
+    onError: (error) => {
+      console.error('Error creating employee:', error);
+      toast.error(error.message || 'Error al crear empleado');
     },
   });
 };

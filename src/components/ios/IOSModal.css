@@ -6,7 +6,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 9999;
+  z-index: 10000;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -14,6 +14,13 @@
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   animation: backdropFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Asegurar que los modales estén por encima de todo en móvil */
+@media (max-width: 768px) {
+  .ios-modal-overlay {
+    z-index: 10003 !important; /* Por encima de dropdowns */
+  }
 }
 
 @keyframes backdropFadeIn {
