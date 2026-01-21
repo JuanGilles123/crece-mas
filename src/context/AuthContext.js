@@ -102,12 +102,6 @@ export function AuthProvider({ children }) {
             owner_email: ownerEmail
           };
           
-          console.log('🏢 Organization loaded:', {
-            name: orgWithOwnerEmail.name,
-            owner_id: orgWithOwnerEmail.owner_id,
-            owner_email: ownerEmail,
-          });
-          
           setOrganization(orgWithOwnerEmail);          // Actualizar el perfil con el rol efectivo y organization_id si viene de team_members
           if (effectiveRole !== profile.role || orgId !== profile.organization_id) {
             const updatedProfile = {

@@ -32,12 +32,6 @@ export const useSubscription = () => {
     
     // Si el usuario O la organización es VIP, otorgar acceso completo
     if (userIsVIP || orgIsVIP) {
-      console.log('🌟 VIP Access detected - Full access granted');
-      console.log(`   User: ${user?.email}`);
-      console.log(`   Organization: ${organization?.name}`);
-      console.log(`   Owner email: ${organization?.owner_email}`);
-      console.log(`   User is VIP: ${userIsVIP}`);
-      console.log(`   Organization is VIP: ${orgIsVIP}`);
       setSubscription({
         plan: { slug: 'enterprise', name: 'VIP Access' },
         status: 'active',

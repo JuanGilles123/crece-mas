@@ -1,7 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 
-// Cache global para todas las imágenes
-const globalImageCache = new Map();
+// Cache global para todas las imágenes (compartido entre componentes)
+// Usar window.__imageCache si existe (para compartir con Inventario), sino crear uno nuevo
+const globalImageCache = (() => {
+  if (typeof window !== 'undefined') {
+    if (!window.__imageCache) {
+      window.__imageCache = new Map();
+    }
+    return window.__imageCache;
+  }
+  return new Map();
+})();
 
 export const useImageCache = (imagePath) => {
   const [imageUrl, setImageUrl] = useState(null);
@@ -32,23 +41,7 @@ export const useImageCache = (imagePath) => {
       return;
     }
 
-    // Verificar cache global
-    if (globalImageCache.has(imagePath)) {
-      const cachedData = globalImageCache.get(imagePath);
-      // Verificar si la URL cacheada aún es válida (menos de 2 horas para URLs públicas)
-      if (Date.now() - cachedData.timestamp < 7200000) {
-        if (mountedRef.current) {
-          setImageUrl(cachedData.url);
-          setLoading(false);
-        }
-        return;
-      } else {
-        // Remover URL expirada del cache
-        globalImageCache.delete(imagePath);
-      }
-    }
-
-    // Función para generar URL de imagen (optimizada para performance)
+    // Función para generar URL de imagen (debe estar definida antes de usarse)
     const generateImageUrl = async () => {
       try {
         const { supabase } = await import('../services/api/supabaseClient');
@@ -86,107 +79,47 @@ export const useImageCache = (imagePath) => {
           filePath = decodeURIComponent(filePath);
         } catch (e) {
           // Si falla la decodificación, usar el original
-          console.warn('⚠️ Error decodificando ruta, usando original:', filePath);
         }
-
-        console.log('🖼️ Generando URL para imagen:', { 
-          original: imagePath, 
-          filePath,
-          length: filePath.length,
-          firstChars: filePath.substring(0, 50)
-        });
 
         // Intentar usar signed URL primero (más confiable si el bucket no es público)
         // El bucket 'productos' puede requerir autenticación
-        console.log('🔍 Intentando generar signed URL para:', filePath);
         try {
-          const startTime = Date.now();
           const { data: signedData, error: signedError } = await supabase.storage
             .from('productos')
             .createSignedUrl(filePath, 3600); // 1 hora de validez
-          const endTime = Date.now();
-          
-          console.log(`⏱️ Tiempo de respuesta signed URL: ${endTime - startTime}ms`);
-          console.log('📦 Respuesta completa de createSignedUrl:', {
-            hasData: !!signedData,
-            hasError: !!signedError,
-            dataKeys: signedData ? Object.keys(signedData) : null,
-            signedUrl: signedData?.signedUrl ? signedData.signedUrl.substring(0, 150) : null
-          });
 
           if (signedError) {
-            console.error('❌ Error generando signed URL:', {
-              error: signedError,
-              message: signedError.message,
-              status: signedError.statusCode || 'N/A',
-              filePath: filePath
-            });
-            console.warn('⚠️ Intentando URL pública como fallback...');
+            // Intentar URL pública como fallback
           } else if (signedData?.signedUrl) {
-            // Verificar que la URL tenga el token en el query string
             const urlString = signedData.signedUrl;
             const hasToken = urlString.includes('token=');
-            const urlParts = urlString.split('?');
-            const queryString = urlParts.length > 1 ? urlParts[1] : '';
             
-            console.log('✅ Signed URL generada:', {
-              baseUrl: urlParts[0],
-              hasQueryString: urlParts.length > 1,
-              queryStringLength: queryString.length,
-              hasToken: hasToken,
-              urlLength: urlString.length
-            });
-            
-            if (!hasToken) {
-              console.error('❌ ERROR CRÍTICO: La signed URL no contiene el parámetro "token"!');
-              console.error('URL completa recibida:', urlString);
-              console.error('Esto puede indicar un problema con las políticas de storage o la autenticación');
-              // No lanzar error, intentar URL pública como fallback
-              console.warn('⚠️ Intentando URL pública como fallback...');
-            } else {
-              console.log('✅ Token encontrado en URL. URL válida.');
+            if (hasToken) {
               return urlString;
             }
-          } else {
-            console.warn('⚠️ Signed URL no devolvió signedUrl en la respuesta');
-            console.warn('Respuesta completa:', JSON.stringify(signedData, null, 2));
+            // Si no tiene token, intentar URL pública como fallback
           }
         } catch (signedErr) {
-          console.error('❌ Excepción al generar signed URL:', {
-            error: signedErr,
-            message: signedErr.message,
-            stack: signedErr.stack
-          });
-          console.warn('⚠️ Intentando URL pública como fallback...');
+          // Intentar URL pública como fallback
         }
         
         // Fallback: usar URL pública si está disponible
-        console.log('🔍 Intentando generar URL pública para:', filePath);
         try {
           const { data: publicData } = supabase.storage
             .from('productos')
             .getPublicUrl(filePath);
           
           if (publicData?.publicUrl) {
-            console.log('✅ URL pública generada (puede requerir políticas de acceso público):', publicData.publicUrl.substring(0, 100) + '...');
-            console.warn('⚠️ NOTA: Si el bucket no es público, esta URL puede no funcionar. Usa signed URLs.');
             return publicData.publicUrl;
-          } else {
-            console.warn('⚠️ getPublicUrl no devolvió datos');
           }
         } catch (publicErr) {
-          console.error('❌ Error obteniendo URL pública:', {
-            error: publicErr,
-            message: publicErr.message
-          });
+          // Continuar con el error
         }
         
         // Si llegamos aquí, ningún método funcionó
-        const errorMsg = `No se pudo generar URL válida para: ${filePath}. Verifica que el archivo exista y que las políticas de storage permitan acceso. El bucket puede requerir autenticación (signed URLs).`;
-        console.error('❌', errorMsg);
+        const errorMsg = `No se pudo generar URL válida para: ${filePath}. Verifica que el archivo exista y que las políticas de storage permitan acceso.`;
         throw new Error(errorMsg);
       } catch (err) {
-        console.error('❌ Error en generateImageUrl:', err, 'imagePath original:', imagePath);
         throw err;
       }
     };
@@ -205,33 +138,21 @@ export const useImageCache = (imagePath) => {
           throw new Error('No se generó una URL válida');
         }
         
-        // Guardar en cache global (aumentar tiempo de cache a 2 horas)
         globalImageCache.set(imagePath, {
           url: imageUrl,
           timestamp: Date.now()
         });
-
-        // No precargar la imagen, dejarla que el navegador la cargue directamente
-        // Esto evita problemas de CORS y permite que el navegador maneje la carga
-        console.log('✅ URL generada, asignando al componente:', {
-          urlLength: imageUrl.length,
-          hasToken: imageUrl.includes('token='),
-          urlPreview: imageUrl.substring(0, 120) + '...' + imageUrl.substring(imageUrl.length - 50),
-          fullUrl: imageUrl // Log completo para debugging
-        });
-        
-        // Validar que la URL esté completa antes de asignarla
-        if (!imageUrl.includes('token=') && imageUrl.includes('/sign/')) {
-          console.error('❌ ADVERTENCIA: URL firmada sin token detectada antes de asignar!');
-        }
         
         if (mountedRef.current) {
           setImageUrl(imageUrl);
           setLoading(false);
           setError(false);
         }
+
+        // Precargar la imagen DESPUÉS de actualizar el estado
+        const img = new Image();
+        img.src = imageUrl;
       } catch (err) {
-        console.error('❌ No se pudo cargar la imagen:', imagePath, 'Error:', err.message || err);
         if (mountedRef.current) {
           setError(true);
           setLoading(false);
@@ -240,7 +161,63 @@ export const useImageCache = (imagePath) => {
       }
     };
 
-    loadImage();
+    // Función para verificar el cache
+    const checkCache = () => {
+      if (globalImageCache.has(imagePath)) {
+        const cachedData = globalImageCache.get(imagePath);
+        // Verificar si la URL cacheada aún es válida (menos de 2 horas para URLs públicas)
+        if (Date.now() - cachedData.timestamp < 7200000) {
+          if (mountedRef.current) {
+            setImageUrl(cachedData.url);
+            setLoading(false);
+            setError(false);
+          }
+          return true; // Encontrado en cache
+        } else {
+          // Remover URL expirada del cache
+          globalImageCache.delete(imagePath);
+        }
+      }
+      return false; // No encontrado en cache
+    };
+
+    // Verificar cache inmediatamente
+    if (checkCache()) {
+      return; // Encontrado en cache, no hacer nada más
+    }
+
+    // Si no está en cache y el cache es pequeño, verificar periódicamente
+    // Esto es útil cuando Inventario está precargando imágenes
+    let cacheCheckInterval = null;
+    if (globalImageCache.size < 10) {
+      let attempts = 0;
+      const maxAttempts = 10; // Verificar hasta 10 veces (5 segundos)
+      
+      cacheCheckInterval = setInterval(() => {
+        attempts++;
+        if (checkCache()) {
+          // Encontrado en cache, limpiar intervalo
+          clearInterval(cacheCheckInterval);
+          return;
+        }
+        
+        if (attempts >= maxAttempts) {
+          // Después de varios intentos, continuar con la generación normal
+          clearInterval(cacheCheckInterval);
+          loadImage();
+        }
+      }, 500); // Verificar cada 500ms
+      
+      // Cleanup del intervalo
+      return () => {
+        if (cacheCheckInterval) {
+          clearInterval(cacheCheckInterval);
+        }
+      };
+    } else {
+      // Cache grande, probablemente ya está todo cargado, generar URL inmediatamente
+      loadImage();
+    }
   }, [imagePath]);
 
   return { imageUrl, loading, error };

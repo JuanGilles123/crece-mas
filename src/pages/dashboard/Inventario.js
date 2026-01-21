@@ -50,6 +50,72 @@ const Inventario = () => {
   const { data: productos = [], isLoading: cargando, error } = useProductos(organization?.id);
   const eliminarProductoMutation = useEliminarProducto();
 
+  // Precargar imágenes cuando se cargan los productos
+  useEffect(() => {
+    if (productos.length > 0 && organization?.id && supabase) {
+      // Precargar imágenes de productos con imagen válida
+      const productosConImagen = productos.filter(
+        p => p.imagen && 
+        p.imagen.trim() !== '' && 
+        p.imagen !== 'null' && 
+        p.imagen !== 'undefined'
+      );
+      
+      if (productosConImagen.length > 0) {
+        // Precargar las primeras 30 imágenes (las más visibles)
+        const imagenesAPrecargar = productosConImagen.slice(0, 30);
+        
+        imagenesAPrecargar.forEach(async (producto) => {
+          try {
+            let filePath = producto.imagen;
+            
+            // Extraer la ruta del archivo
+            if (filePath.includes('/storage/v1/object/public/productos/')) {
+              filePath = filePath.split('/storage/v1/object/public/productos/')[1];
+            } else if (filePath.includes('/storage/v1/object/sign/productos/')) {
+              filePath = filePath.split('/storage/v1/object/sign/productos/')[1].split('?')[0];
+            } else if (filePath.includes('productos/')) {
+              const parts = filePath.split('productos/');
+              if (parts.length > 1) {
+                filePath = parts[1].split('?')[0];
+              }
+            }
+            
+            filePath = filePath.trim();
+            
+            // Decodificar la ruta si viene codificada
+            try {
+              filePath = decodeURIComponent(filePath);
+            } catch (e) {
+              // Si falla la decodificación, usar el original
+            }
+            
+            // Generar signed URL y precargarla
+            const { data, error } = await supabase.storage
+              .from('productos')
+              .createSignedUrl(filePath, 3600);
+            
+            if (!error && data?.signedUrl) {
+              // Guardar en cache global inmediatamente
+              const globalImageCache = (window.__imageCache || new Map());
+              globalImageCache.set(producto.imagen, {
+                url: data.signedUrl,
+                timestamp: Date.now()
+              });
+              window.__imageCache = globalImageCache;
+              
+              // Precargar la imagen en el navegador
+              const img = new Image();
+              img.src = data.signedUrl;
+            }
+          } catch (err) {
+            // Error silencioso en precarga
+          }
+        });
+      }
+    }
+  }, [productos, organization?.id]);
+
   // Mostrar error si hay problemas cargando productos (usando useEffect para evitar setState durante render)
   useEffect(() => {
     if (error) {
@@ -187,7 +253,6 @@ const Inventario = () => {
   const handleAgregarProducto = async (nuevo) => {
     // Esta función ya no es necesaria ya que React Query maneja la mutación
     // en el componente AgregarProductoModal
-    console.log('Producto agregado:', nuevo);
   };
 
   // Editar producto
@@ -213,10 +278,8 @@ const Inventario = () => {
     try {
       // Eliminar imagen del storage si existe
       if (producto.imagen) {
-        console.log('Eliminando imagen del storage:', producto.imagen);
         const imageDeleted = await deleteImageFromStorage(producto.imagen);
         if (!imageDeleted) {
-          console.warn('No se pudo eliminar la imagen del storage, pero continuando con la eliminación del producto');
         }
       }
 
@@ -312,7 +375,6 @@ const Inventario = () => {
                   alt={prod.nombre} 
                   className="inventario-img-lista"
                   onError={(e) => {
-                    console.log('Error cargando imagen:', prod.imagen);
                   }}
                 />
                 <div className="inventario-lista-info">
@@ -374,7 +436,6 @@ const Inventario = () => {
                   alt={prod.nombre} 
                   className="inventario-img"
                   onError={(e) => {
-                    console.log('Error cargando imagen:', prod.imagen);
                   }}
                 />
                 <div className="inventario-info">
