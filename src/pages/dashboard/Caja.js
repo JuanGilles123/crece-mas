@@ -6,7 +6,7 @@ import { useProductos } from '../../hooks/useProductos';
 import OptimizedProductImage from '../../components/business/OptimizedProductImage';
 import ReciboVenta from '../../components/business/ReciboVenta';
 import ConfirmacionVenta from '../../components/business/ConfirmacionVenta';
-import { ShoppingCart, Trash2, Search, CheckCircle, X, CreditCard, Banknote, Smartphone, Wallet } from 'lucide-react';
+import { ShoppingCart, Trash2, Search, CheckCircle, CreditCard, Banknote, Smartphone, Wallet, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import './Caja.css';
 
@@ -54,6 +54,7 @@ export default function Caja() {
   const [datosVentaConfirmada, setDatosVentaConfirmada] = useState(null);
   const [incluirIva, setIncluirIva] = useState(false);
   const [porcentajeIva, setPorcentajeIva] = useState(19);
+  const [metodoSeleccionado, setMetodoSeleccionado] = useState(null);
 
   // Cargar productos usando React Query (optimizado con cache)
   const { data: productosData = [], isLoading: productosLoading } = useProductos(organization?.id);
@@ -151,8 +152,15 @@ export default function Caja() {
     setCart((prev) => prev.map((i) => (i.id === id ? { ...i, qty: i.qty + 1 } : i)));
   };
   
-  const dec = (id) =>
-    setCart((prev) => prev.map((i) => (i.id === id ? { ...i, qty: Math.max(1, i.qty - 1) } : i)).filter((i) => i.qty > 0));
+  const dec = (id) => {
+    setCart((prev) => {
+      const updated = prev.map((i) => 
+        i.id === id ? { ...i, qty: i.qty - 1 } : i
+      );
+      // Eliminar productos con cantidad 0 o menor
+      return updated.filter((i) => i.qty > 0);
+    });
+  };
   const removeItem = (id) => setCart((prev) => prev.filter((i) => i.id !== id));
 
   const handleNuevaVenta = () => {
@@ -426,53 +434,70 @@ export default function Caja() {
       <div className="metodos-pago-container">
         <div className="metodos-pago-header">
           <h3>Selecciona el método de pago</h3>
-          <p>Total a pagar: {formatCOP(total)}</p>
+          <p className="metodos-pago-total">Total a pagar: <span>{formatCOP(total)}</span></p>
         </div>
         
         <div className="metodos-pago-grid">
           <button 
-            className="metodo-pago-btn"
-            onClick={() => handleSeleccionarMetodoPago('Efectivo')}
+            className={`metodo-pago-card ${metodoSeleccionado === 'Efectivo' ? 'selected' : ''}`}
+            onClick={() => setMetodoSeleccionado('Efectivo')}
           >
-            <Banknote className="metodo-pago-icon" />
+            <Banknote className="metodo-pago-icon" size={32} />
             <span className="metodo-pago-label">Efectivo</span>
             <span className="metodo-pago-desc">Pago en efectivo</span>
           </button>
           
           <button 
-            className="metodo-pago-btn"
-            onClick={() => handleSeleccionarMetodoPago('Transferencia')}
+            className={`metodo-pago-card ${metodoSeleccionado === 'Transferencia' ? 'selected' : ''}`}
+            onClick={() => setMetodoSeleccionado('Transferencia')}
           >
-            <CreditCard className="metodo-pago-icon" />
+            <CreditCard className="metodo-pago-icon" size={32} />
             <span className="metodo-pago-label">Transferencia</span>
             <span className="metodo-pago-desc">Transferencia bancaria</span>
           </button>
           
           <button 
-            className="metodo-pago-btn"
-            onClick={() => handleSeleccionarMetodoPago('Nequi')}
+            className={`metodo-pago-card ${metodoSeleccionado === 'Nequi' ? 'selected' : ''}`}
+            onClick={() => setMetodoSeleccionado('Nequi')}
           >
-            <Smartphone className="metodo-pago-icon" />
+            <Smartphone className="metodo-pago-icon" size={32} />
             <span className="metodo-pago-label">Nequi</span>
             <span className="metodo-pago-desc">Pago móvil</span>
           </button>
           
           <button 
-            className="metodo-pago-btn"
-            onClick={() => handleSeleccionarMetodoPago('Mixto')}
+            className={`metodo-pago-card ${metodoSeleccionado === 'Mixto' ? 'selected' : ''}`}
+            onClick={() => setMetodoSeleccionado('Mixto')}
           >
-            <Wallet className="metodo-pago-icon" />
+            <Wallet className="metodo-pago-icon" size={32} />
             <span className="metodo-pago-label">Mixto</span>
             <span className="metodo-pago-desc">Varios métodos</span>
           </button>
         </div>
         
-        <button 
-          className="metodos-pago-cancelar"
-          onClick={() => setMostrandoMetodosPago(false)}
-        >
-          Cancelar
-        </button>
+        <div className="metodos-pago-actions">
+          <button 
+            className="metodos-pago-cancelar"
+            onClick={() => {
+              setMostrandoMetodosPago(false);
+              setMetodoSeleccionado(null);
+            }}
+          >
+            Cancelar
+          </button>
+          <button 
+            className="metodos-pago-continuar"
+            onClick={() => {
+              if (metodoSeleccionado) {
+                handleSeleccionarMetodoPago(metodoSeleccionado);
+                setMetodoSeleccionado(null);
+              }
+            }}
+            disabled={!metodoSeleccionado}
+          >
+            Continuar
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1036,41 +1061,71 @@ export default function Caja() {
         </div>
       </div>
 
-      {/* Botón fijo en móvil para abrir carrito */}
-      <div className="caja-mobile-footer">
+      {/* Footer fijo en móvil - Oculto cuando el carrito está abierto */}
+      {!showCartMobile && (
+        <div className="caja-mobile-footer">
         <div className="caja-mobile-total">
-          <p className="caja-mobile-total-label">Total</p>
-          <p className="caja-mobile-total-amount">{formatCOP(total)}</p>
+          <span className="caja-mobile-total-label">Total</span>
+          <span className="caja-mobile-total-amount">{formatCOP(total)}</span>
         </div>
-        <button 
-          className="caja-mobile-cart-btn"
-          onClick={() => setShowCartMobile(true)}
-        >
-          <ShoppingCart className="caja-mobile-cart-icon" /> 
-          Ver carrito ({cart.reduce((n, i) => n + i.qty, 0)})
-        </button>
-        <button 
-          className="caja-mobile-pay-btn"
-          onClick={() => setShowCartMobile(true)} 
-          disabled={cart.length === 0}
-        >
-          Cobrar
-        </button>
-      </div>
+        {cart.length > 0 ? (
+          <>
+            <button 
+              className="caja-mobile-cart-btn"
+              onClick={() => setShowCartMobile(true)}
+            >
+              <ShoppingCart className="caja-mobile-cart-icon" size={18} /> 
+              <span className="caja-mobile-cart-text">Carrito ({cart.reduce((n, i) => n + i.qty, 0)})</span>
+            </button>
+            <button 
+              className="caja-mobile-pay-btn"
+              onClick={handleContinuar} 
+              disabled={cart.length === 0 || procesandoVenta}
+            >
+              Cobrar
+            </button>
+          </>
+        ) : (
+          <div style={{ flex: 1 }}></div>
+        )}
+        </div>
+      )}
 
       {/* Overlay del carrito en móvil */}
       {showCartMobile && (
-        <div className="caja-mobile-overlay">
+        <>
+          <div 
+            className="caja-mobile-overlay-backdrop"
+            onClick={() => setShowCartMobile(false)}
+          />
+          <div className="caja-mobile-overlay">
           <div className="caja-mobile-cart-header">
+            <button 
+              className="caja-mobile-back-btn"
+              onClick={() => setShowCartMobile(false)}
+              aria-label="Volver a productos"
+            >
+              <ArrowLeft size={20} />
+            </button>
             <h3 className="caja-mobile-cart-title">
               <ShoppingCart className="caja-mobile-cart-icon" /> Carrito
             </h3>
-            <button 
-              className="caja-mobile-close-btn"
-              onClick={() => setShowCartMobile(false)}
-            >
-              <X size={20} />
-            </button>
+            {cart.length > 0 && (
+              <button 
+                className="caja-mobile-clear-all-btn"
+                onClick={() => {
+                  if (window.confirm('¿Estás seguro de que quieres vaciar todo el carrito?')) {
+                    setCart([]);
+                  }
+                }}
+                aria-label="Vaciar carrito"
+              >
+                <Trash2 size={18} />
+              </button>
+            )}
+            {cart.length === 0 && (
+              <div style={{ width: '36px' }}></div>
+            )}
           </div>
 
           <div className="caja-mobile-cart-content">
@@ -1090,36 +1145,46 @@ export default function Caja() {
                           className="caja-mobile-cart-item-image-img"
                         />
                       </div>
-                      <div className="caja-mobile-cart-item-info">
-                        <p className="caja-mobile-cart-item-name">{item.nombre}</p>
-                        <p className="caja-mobile-cart-item-price">{formatCOP(item.precio_venta)} c/u</p>
-                      </div>
-                      <div className="caja-mobile-cart-item-controls">
-                        <button 
-                          className="caja-mobile-qty-btn caja-mobile-qty-btn-minus"
-                          onClick={() => dec(item.id)}
-                          aria-label="Disminuir cantidad"
+                      <div className="caja-mobile-cart-item-content">
+                        <p 
+                          className="caja-mobile-cart-item-name"
+                          title={item.nombre}
+                          onClick={(e) => {
+                            // En móvil, al hacer tap largo o doble tap, mostrar el nombre completo
+                            const element = e.currentTarget;
+                            if (element.scrollHeight > element.clientHeight) {
+                              // Si el texto está truncado, mostrar tooltip
+                              element.classList.add('caja-mobile-cart-item-name-expanded');
+                              setTimeout(() => {
+                                element.classList.remove('caja-mobile-cart-item-name-expanded');
+                              }, 3000);
+                            }
+                          }}
                         >
-                          <span className="caja-mobile-qty-icon">−</span>
-                        </button>
-                        <span className="caja-mobile-qty-display">{item.qty}</span>
-                        <button 
-                          className="caja-mobile-qty-btn caja-mobile-qty-btn-plus"
-                          onClick={() => inc(item.id)}
-                          aria-label="Aumentar cantidad"
-                        >
-                          <span className="caja-mobile-qty-icon">+</span>
-                        </button>
+                          {item.nombre}
+                        </p>
+                        <div className="caja-mobile-cart-item-controls">
+                          <button 
+                            className="caja-mobile-qty-btn caja-mobile-qty-btn-minus"
+                            onClick={() => dec(item.id)}
+                            aria-label="Disminuir cantidad"
+                          >
+                            <span className="caja-mobile-qty-icon">−</span>
+                          </button>
+                          <span className="caja-mobile-qty-display">{item.qty}</span>
+                          <button 
+                            className="caja-mobile-qty-btn caja-mobile-qty-btn-plus"
+                            onClick={() => inc(item.id)}
+                            aria-label="Aumentar cantidad"
+                          >
+                            <span className="caja-mobile-qty-icon">+</span>
+                          </button>
+                        </div>
                       </div>
-                      <div className="caja-mobile-cart-item-total">
-                        {formatCOP(item.qty * item.precio_venta)}
+                      <div className="caja-mobile-cart-item-price-section">
+                        <p className="caja-mobile-cart-item-unit-price">{formatCOP(item.precio_venta)} c/u</p>
+                        <p className="caja-mobile-cart-item-total">{formatCOP(item.qty * item.precio_venta)}</p>
                       </div>
-                      <button 
-                        className="caja-mobile-remove-btn"
-                        onClick={() => removeItem(item.id)}
-                      >
-                        <Trash2 size={14} />
-                      </button>
                     </li>
                   );
                 })}
@@ -1133,17 +1198,26 @@ export default function Caja() {
               <span className="caja-mobile-total-amount">{formatCOP(total)}</span>
             </div>
             
-            
-            <button 
-              className="caja-mobile-confirm-btn"
-              onClick={handleContinuar} 
-              disabled={cart.length === 0 || procesandoVenta}
-            >
-              <CheckCircle className="caja-mobile-confirm-icon" /> 
-              {procesandoVenta ? 'Procesando...' : 'Continuar'}
-            </button>
+            <div className="caja-mobile-cart-footer-actions">
+              <button 
+                className="caja-mobile-back-to-products-btn"
+                onClick={() => setShowCartMobile(false)}
+              >
+                <ArrowLeft className="caja-mobile-back-icon" size={16} />
+                <span className="caja-mobile-btn-text">Seguir</span>
+              </button>
+              <button 
+                className="caja-mobile-confirm-btn"
+                onClick={handleContinuar} 
+                disabled={cart.length === 0 || procesandoVenta}
+              >
+                <CheckCircle className="caja-mobile-confirm-icon" size={18} /> 
+                <span className="caja-mobile-btn-text">{procesandoVenta ? 'Procesando...' : 'Pagar'}</span>
+              </button>
+            </div>
           </div>
-        </div>
+          </div>
+        </>
       )}
 
       {/* Métodos de pago */}
