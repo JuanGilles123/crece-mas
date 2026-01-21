@@ -62,12 +62,41 @@ export default function Caja() {
     if (productosData.length > 0) {
       setProductos(productosData);
       // Debug: verificar rutas de imágenes
-      const productosConImagen = productosData.filter(p => p.imagen);
+      const productosConImagen = productosData.filter(p => p.imagen && p.imagen.trim() !== '' && p.imagen !== 'null' && p.imagen !== 'undefined');
+      const productosSinImagen = productosData.filter(p => !p.imagen || p.imagen.trim() === '' || p.imagen === 'null' || p.imagen === 'undefined');
+      
+      console.log('📦 Total de productos:', productosData.length);
+      console.log('✅ Productos con imagen válida:', productosConImagen.length);
+      console.log('❌ Productos sin imagen:', productosSinImagen.length);
+      
       if (productosConImagen.length > 0) {
-        console.log('📦 Productos con imagen encontrados:', productosConImagen.length);
-        console.log('📸 Ejemplo de rutas de imagen:', productosConImagen.slice(0, 3).map(p => ({ nombre: p.nombre, imagen: p.imagen })));
+        console.log('📸 Ejemplo de rutas de imagen (primeros 3):', 
+          productosConImagen.slice(0, 3).map(p => ({ 
+            id: p.id,
+            nombre: p.nombre, 
+            imagen: p.imagen,
+            tipo: typeof p.imagen,
+            length: p.imagen?.length
+          }))
+        );
+        
+        // Verificar formato de la primera imagen
+        const primeraImagen = productosConImagen[0].imagen;
+        console.log('🔍 Análisis de primera imagen:', {
+          original: primeraImagen,
+          esURL: primeraImagen?.startsWith('http'),
+          contieneStorage: primeraImagen?.includes('storage'),
+          contieneProductos: primeraImagen?.includes('productos')
+        });
       } else {
-        console.warn('⚠️ No se encontraron productos con imágenes');
+        console.warn('⚠️ No se encontraron productos con imágenes válidas');
+        if (productosSinImagen.length > 0) {
+          console.log('📋 Ejemplo de productos sin imagen:', productosSinImagen.slice(0, 3).map(p => ({
+            id: p.id,
+            nombre: p.nombre,
+            imagen: p.imagen
+          })));
+        }
       }
     }
     setCargando(productosLoading);
