@@ -9,10 +9,10 @@ export const useProductos = (organizationId) => {
     queryFn: async () => {
       if (!organizationId) return [];
       
-      // Select solo los campos necesarios para mejor performance (reducido aún más)
+      // Select campos necesarios incluyendo created_at y metadata para filtros y métricas
       const { data, error } = await supabase
         .from('productos')
-        .select('id, nombre, precio_venta, precio_compra, stock, imagen, codigo, tipo')
+        .select('id, nombre, precio_venta, precio_compra, stock, imagen, codigo, tipo, created_at, metadata')
         .eq('organization_id', organizationId)
         .order('created_at', { ascending: false })
         .limit(200); // Reducido de 300 a 200 para mejor performance inicial
