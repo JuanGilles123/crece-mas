@@ -238,9 +238,9 @@ const Inventario = () => {
                 />
                 <div className="inventario-info">
                   <div className="inventario-nombre">{prod.nombre}</div>
-                  <div style={{display:'flex',gap:'1.2rem',justifyContent:'center',marginBottom:4}}>
-                    <span style={{color:'var(--accent-primary)',fontWeight:700}}>Compra: {prod.precio_compra?.toLocaleString('es-CO')}</span>
-                    <span style={{color:'var(--accent-success)',fontWeight:700}}>Venta: {prod.precio_venta?.toLocaleString('es-CO')}</span>
+                  <div style={{display:'flex',gap:'0.8rem',justifyContent:'center',marginBottom:2}}>
+                    <span style={{color:'var(--accent-primary)',fontWeight:700,fontSize:'0.85rem'}}>Compra: {prod.precio_compra?.toLocaleString('es-CO')}</span>
+                    <span style={{color:'var(--accent-success)',fontWeight:700,fontSize:'0.85rem'}}>Venta: {prod.precio_venta?.toLocaleString('es-CO')}</span>
                   </div>
                   <div className="inventario-stock">Stock: {prod.stock}</div>
                 </div>

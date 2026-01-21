@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from "react";
+import React, { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { motion } from 'framer-motion';
 import { supabase } from '../../services/api/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
@@ -273,9 +273,45 @@ export default function Caja() {
 
   // Componente para pago en efectivo
   const PagoEfectivo = () => {
+    // Estado local para el input que se actualiza en tiempo real
+    const [inputValue, setInputValue] = useState(montoEntregado);
+    // Estado para controlar si se deben mostrar los cálculos (solo cuando el usuario termine de escribir)
+    const [mostrarCalculos, setMostrarCalculos] = useState(false);
+    const montoEntregadoRef = useRef(montoEntregado);
+    const valoresComunes = [1000, 5000, 10000, 20000, 50000, 100000];
+    
+    // Actualizar ref cuando montoEntregado cambia externamente
+    useEffect(() => {
+      montoEntregadoRef.current = montoEntregado;
+      setInputValue(montoEntregado);
+      setMostrarCalculos(true); // Mostrar cálculos cuando cambia externamente (botones de valores comunes)
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [montoEntregado]);
+
+    // Debounce: actualizar montoEntregado solo después de que el usuario deje de escribir
+    useEffect(() => {
+      // Solo actualizar si el valor del input es diferente y no es una actualización externa
+      if (inputValue === montoEntregadoRef.current) {
+        return; // No hacer nada si ya están sincronizados
+      }
+
+      // Ocultar cálculos mientras el usuario está escribiendo
+      setMostrarCalculos(false);
+
+      const timer = setTimeout(() => {
+        // Verificar nuevamente antes de actualizar (por si cambió externamente)
+        if (inputValue !== montoEntregadoRef.current) {
+          setMontoEntregado(inputValue);
+          setMostrarCalculos(true); // Mostrar cálculos después del debounce
+        }
+      }, 500); // Esperar 500ms después de que el usuario deje de escribir
+
+      return () => clearTimeout(timer);
+    }, [inputValue]);
+
+    // Calcular monto y cambio solo cuando montoEntregado cambie (no en cada keystroke)
     const monto = parseFloat(montoEntregado.replace(/[^\d]/g, '')) || 0;
     const cambio = monto - total;
-    const valoresComunes = [1000, 5000, 10000, 20000, 50000, 100000];
 
     return (
       <div className="pago-efectivo-overlay">
@@ -290,15 +326,18 @@ export default function Caja() {
               <label className="pago-efectivo-label">Monto entregado por el cliente</label>
               <input
                 type="text"
-                value={montoEntregado}
+                value={inputValue}
                 onChange={(e) => {
                   const value = e.target.value;
                   // Permitir solo números y comas/puntos para formato
                   const cleanValue = value.replace(/[^\d,.]/g, '');
-                  // Solo actualizar si el valor es diferente para evitar re-renders innecesarios
-                  if (cleanValue !== montoEntregado) {
-                    setMontoEntregado(cleanValue);
-                  }
+                  // Actualizar solo el estado local (no causa recálculos)
+                  setInputValue(cleanValue);
+                }}
+                onBlur={() => {
+                  // Actualizar inmediatamente cuando el usuario termine de escribir
+                  setMontoEntregado(inputValue);
+                  setMostrarCalculos(true); // Mostrar cálculos al salir del input
                 }}
                 className="pago-efectivo-input"
                 placeholder="Ingresa el monto"
@@ -319,7 +358,10 @@ export default function Caja() {
                 <p className="pago-efectivo-subtitle">Valores comunes:</p>
                 <button 
                   className="pago-efectivo-limpiar-btn"
-                  onClick={() => setMontoEntregado('')}
+                  onClick={() => {
+                    setInputValue('');
+                    setMontoEntregado('');
+                  }}
                   title="Limpiar monto"
                 >
                   Limpiar
@@ -338,7 +380,7 @@ export default function Caja() {
               </div>
             </div>
 
-            {monto > 0 && (
+            {mostrarCalculos && monto > 0 && (
               <div className="pago-efectivo-cambio">
                 <div className="pago-efectivo-cambio-item">
                   <span>Monto entregado:</span>
