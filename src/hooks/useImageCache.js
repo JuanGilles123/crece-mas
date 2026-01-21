@@ -16,9 +16,19 @@ export const useImageCache = (imagePath) => {
   }, []);
 
   useEffect(() => {
+    // Resetear estados al cambiar imagePath
+    if (mountedRef.current) {
+      setLoading(true);
+      setError(false);
+      setImageUrl(null);
+    }
+
     if (!imagePath || imagePath.trim() === '' || imagePath === 'null' || imagePath === 'undefined') {
-      setLoading(false);
-      setError(true);
+      if (mountedRef.current) {
+        setLoading(false);
+        setError(true);
+        setImageUrl(null);
+      }
       return;
     }
 
@@ -37,16 +47,6 @@ export const useImageCache = (imagePath) => {
         globalImageCache.delete(imagePath);
       }
     }
-
-    // Precargar imagen
-    const preloadImage = (url) => {
-      return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(url);
-        img.onerror = reject;
-        img.src = url;
-      });
-    };
 
     // Función para generar URL de imagen (optimizada para performance)
     const generateImageUrl = async () => {
@@ -81,31 +81,110 @@ export const useImageCache = (imagePath) => {
           filePath = imagePath.trim();
         }
 
-        console.log('🖼️ Generando URL para imagen:', { original: imagePath, filePath });
-
-        // Intentar usar URL pública primero (más rápido, sin firma)
-        // Esto funciona si el bucket 'productos' es público
-        const { data: publicData } = supabase.storage
-          .from('productos')
-          .getPublicUrl(filePath);
-        
-        if (publicData?.publicUrl) {
-          console.log('✅ URL pública generada:', publicData.publicUrl);
-          return publicData.publicUrl;
-        }
-        
-        // Fallback: usar signed URL si la pública no está disponible
-        const { data: signedData, error } = await supabase.storage
-          .from('productos')
-          .createSignedUrl(filePath, 3600);
-
-        if (error) {
-          console.error('❌ Error generando signed URL:', error, 'para ruta:', filePath);
-          throw error;
+        // Decodificar la ruta si viene codificada
+        try {
+          filePath = decodeURIComponent(filePath);
+        } catch (e) {
+          // Si falla la decodificación, usar el original
+          console.warn('⚠️ Error decodificando ruta, usando original:', filePath);
         }
 
-        console.log('✅ Signed URL generada:', signedData.signedUrl);
-        return signedData.signedUrl;
+        console.log('🖼️ Generando URL para imagen:', { 
+          original: imagePath, 
+          filePath,
+          length: filePath.length,
+          firstChars: filePath.substring(0, 50)
+        });
+
+        // Intentar usar signed URL primero (más confiable si el bucket no es público)
+        // El bucket 'productos' puede requerir autenticación
+        console.log('🔍 Intentando generar signed URL para:', filePath);
+        try {
+          const startTime = Date.now();
+          const { data: signedData, error: signedError } = await supabase.storage
+            .from('productos')
+            .createSignedUrl(filePath, 3600); // 1 hora de validez
+          const endTime = Date.now();
+          
+          console.log(`⏱️ Tiempo de respuesta signed URL: ${endTime - startTime}ms`);
+          console.log('📦 Respuesta completa de createSignedUrl:', {
+            hasData: !!signedData,
+            hasError: !!signedError,
+            dataKeys: signedData ? Object.keys(signedData) : null,
+            signedUrl: signedData?.signedUrl ? signedData.signedUrl.substring(0, 150) : null
+          });
+
+          if (signedError) {
+            console.error('❌ Error generando signed URL:', {
+              error: signedError,
+              message: signedError.message,
+              status: signedError.statusCode || 'N/A',
+              filePath: filePath
+            });
+            console.warn('⚠️ Intentando URL pública como fallback...');
+          } else if (signedData?.signedUrl) {
+            // Verificar que la URL tenga el token en el query string
+            const urlString = signedData.signedUrl;
+            const hasToken = urlString.includes('token=');
+            const urlParts = urlString.split('?');
+            const queryString = urlParts.length > 1 ? urlParts[1] : '';
+            
+            console.log('✅ Signed URL generada:', {
+              baseUrl: urlParts[0],
+              hasQueryString: urlParts.length > 1,
+              queryStringLength: queryString.length,
+              hasToken: hasToken,
+              urlLength: urlString.length
+            });
+            
+            if (!hasToken) {
+              console.error('❌ ERROR CRÍTICO: La signed URL no contiene el parámetro "token"!');
+              console.error('URL completa recibida:', urlString);
+              console.error('Esto puede indicar un problema con las políticas de storage o la autenticación');
+              // No lanzar error, intentar URL pública como fallback
+              console.warn('⚠️ Intentando URL pública como fallback...');
+            } else {
+              console.log('✅ Token encontrado en URL. URL válida.');
+              return urlString;
+            }
+          } else {
+            console.warn('⚠️ Signed URL no devolvió signedUrl en la respuesta');
+            console.warn('Respuesta completa:', JSON.stringify(signedData, null, 2));
+          }
+        } catch (signedErr) {
+          console.error('❌ Excepción al generar signed URL:', {
+            error: signedErr,
+            message: signedErr.message,
+            stack: signedErr.stack
+          });
+          console.warn('⚠️ Intentando URL pública como fallback...');
+        }
+        
+        // Fallback: usar URL pública si está disponible
+        console.log('🔍 Intentando generar URL pública para:', filePath);
+        try {
+          const { data: publicData } = supabase.storage
+            .from('productos')
+            .getPublicUrl(filePath);
+          
+          if (publicData?.publicUrl) {
+            console.log('✅ URL pública generada (puede requerir políticas de acceso público):', publicData.publicUrl.substring(0, 100) + '...');
+            console.warn('⚠️ NOTA: Si el bucket no es público, esta URL puede no funcionar. Usa signed URLs.');
+            return publicData.publicUrl;
+          } else {
+            console.warn('⚠️ getPublicUrl no devolvió datos');
+          }
+        } catch (publicErr) {
+          console.error('❌ Error obteniendo URL pública:', {
+            error: publicErr,
+            message: publicErr.message
+          });
+        }
+        
+        // Si llegamos aquí, ningún método funcionó
+        const errorMsg = `No se pudo generar URL válida para: ${filePath}. Verifica que el archivo exista y que las políticas de storage permitan acceso. El bucket puede requerir autenticación (signed URLs).`;
+        console.error('❌', errorMsg);
+        throw new Error(errorMsg);
       } catch (err) {
         console.error('❌ Error en generateImageUrl:', err, 'imagePath original:', imagePath);
         throw err;
@@ -114,8 +193,17 @@ export const useImageCache = (imagePath) => {
 
     // Proceso de carga
     const loadImage = async () => {
+      if (mountedRef.current) {
+        setLoading(true);
+        setError(false);
+      }
+
       try {
         const imageUrl = await generateImageUrl();
+        
+        if (!imageUrl) {
+          throw new Error('No se generó una URL válida');
+        }
         
         // Guardar en cache global (aumentar tiempo de cache a 2 horas)
         globalImageCache.set(imagePath, {
@@ -123,24 +211,31 @@ export const useImageCache = (imagePath) => {
           timestamp: Date.now()
         });
 
-        // Precargar la imagen para verificar que es válida
-        try {
-          await preloadImage(imageUrl);
-          console.log('✅ Imagen precargada exitosamente:', imagePath);
-        } catch (preloadError) {
-          console.warn('⚠️ Error precargando imagen (pero continuando):', preloadError);
-          // Continuar aunque falle la precarga, la imagen podría cargar en el navegador
+        // No precargar la imagen, dejarla que el navegador la cargue directamente
+        // Esto evita problemas de CORS y permite que el navegador maneje la carga
+        console.log('✅ URL generada, asignando al componente:', {
+          urlLength: imageUrl.length,
+          hasToken: imageUrl.includes('token='),
+          urlPreview: imageUrl.substring(0, 120) + '...' + imageUrl.substring(imageUrl.length - 50),
+          fullUrl: imageUrl // Log completo para debugging
+        });
+        
+        // Validar que la URL esté completa antes de asignarla
+        if (!imageUrl.includes('token=') && imageUrl.includes('/sign/')) {
+          console.error('❌ ADVERTENCIA: URL firmada sin token detectada antes de asignar!');
         }
-
+        
         if (mountedRef.current) {
           setImageUrl(imageUrl);
           setLoading(false);
+          setError(false);
         }
       } catch (err) {
-        console.error('❌ No se pudo cargar la imagen:', imagePath, 'Error:', err);
+        console.error('❌ No se pudo cargar la imagen:', imagePath, 'Error:', err.message || err);
         if (mountedRef.current) {
           setError(true);
           setLoading(false);
+          setImageUrl(null);
         }
       }
     };
