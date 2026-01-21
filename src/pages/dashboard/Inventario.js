@@ -1,6 +1,6 @@
 
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import './Inventario.css';
 import AgregarProductoModalV2 from '../../components/modals/AgregarProductoModalV2';
@@ -8,6 +8,8 @@ import EditarProductoModalV2 from '../../components/modals/EditarProductoModalV2
 import ImportarProductosCSV from '../../components/forms/ImportarProductosCSV';
 import OptimizedProductImage from '../../components/business/OptimizedProductImage';
 import LottieLoader from '../../components/ui/LottieLoader';
+import InventarioStats from '../../components/inventario/InventarioStats';
+import InventarioFilters from '../../components/inventario/InventarioFilters';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../services/api/supabaseClient';
 import { Search, List, Grid3X3 } from 'lucide-react';
@@ -40,6 +42,7 @@ const Inventario = () => {
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
   const [modoLista, setModoLista] = useState(false);
   const [query, setQuery] = useState('');
+  const [filters, setFilters] = useState({});
   // Suponiendo que el usuario tiene moneda en user.user_metadata.moneda
   const moneda = user?.user_metadata?.moneda || 'COP';
 
@@ -54,12 +57,131 @@ const Inventario = () => {
     }
   }, [error]);
 
-  // Filtrar productos basado en la búsqueda
-  const filteredProducts = productos.filter((producto) => {
-    const searchTerm = query.toLowerCase().trim();
-    if (!searchTerm) return true;
-    return producto.nombre.toLowerCase().includes(searchTerm);
-  });
+  // Función para obtener la fecha límite según el filtro
+  const getFechaDesde = (opcion) => {
+    if (!opcion) return null;
+    const ahora = new Date();
+    const desde = new Date();
+    
+    switch (opcion) {
+      case 'hoy':
+        desde.setHours(0, 0, 0, 0);
+        break;
+      case 'semana':
+        desde.setDate(ahora.getDate() - 7);
+        break;
+      case 'mes':
+        desde.setMonth(ahora.getMonth() - 1);
+        break;
+      case 'tres-meses':
+        desde.setMonth(ahora.getMonth() - 3);
+        break;
+      case 'seis-meses':
+        desde.setMonth(ahora.getMonth() - 6);
+        break;
+      case 'año':
+        desde.setFullYear(ahora.getFullYear() - 1);
+        break;
+      default:
+        return null;
+    }
+    return desde;
+  };
+
+  // Filtrar productos basado en búsqueda y filtros dinámicos
+  const filteredProducts = useMemo(() => {
+    return productos.filter((producto) => {
+      // Filtro de búsqueda por nombre
+      const searchTerm = query.toLowerCase().trim();
+      if (searchTerm && !producto.nombre.toLowerCase().includes(searchTerm)) {
+        return false;
+      }
+
+      // Procesar filtros dinámicos
+      for (const filterKey of Object.keys(filters)) {
+        const match = filterKey.match(/^(.+?)_(min|max|value|condition|multi)$/);
+        if (!match) continue;
+
+        const fieldId = match[1];
+        const filterType = match[2];
+        const filterValue = filters[filterKey];
+
+        // Obtener valor del producto (puede ser campo directo o metadata)
+        let productValue = null;
+        if (fieldId === 'margen_utilidad') {
+          const precioVenta = producto.precio_venta || 0;
+          const precioCompra = producto.precio_compra || 0;
+          productValue = precioVenta > 0 ? ((precioVenta - precioCompra) / precioVenta) * 100 : 0;
+        } else if (fieldId === 'alta_utilidad') {
+          const precioVenta = producto.precio_venta || 0;
+          const precioCompra = producto.precio_compra || 0;
+          productValue = precioVenta > 0 ? ((precioVenta - precioCompra) / precioVenta) * 100 : 0;
+        } else {
+          // Intentar obtener del producto directo
+          productValue = producto[fieldId];
+          
+          // Si no existe, buscar en metadata
+          if (productValue === undefined && producto.metadata) {
+            productValue = producto.metadata[fieldId];
+          }
+        }
+
+        // Aplicar filtro según tipo
+        if (filterType === 'multi') {
+          // Selección múltiple - el producto debe estar en la lista
+          if (!Array.isArray(filterValue) || filterValue.length === 0) continue;
+          if (!filterValue.includes(productValue)) return false;
+        } else if (filterType === 'value') {
+          if (fieldId === 'created_at' || fieldId === 'fecha_vencimiento') {
+            // Filtros de fecha con opciones rápidas
+            const fechaDesde = getFechaDesde(filterValue);
+            if (fechaDesde && productValue) {
+              const fechaProducto = new Date(productValue);
+              if (fechaProducto < fechaDesde) return false;
+            }
+          } else if (typeof filterValue === 'string') {
+            // Búsqueda de texto (contains)
+            const searchValue = filterValue.toLowerCase();
+            const productStr = String(productValue || '').toLowerCase();
+            if (!productStr.includes(searchValue)) return false;
+          } else {
+            // Comparación exacta
+            if (productValue !== filterValue) return false;
+          }
+        } else if (filterType === 'min') {
+          // Filtro de rango mínimo
+          if (fieldId === 'created_at' || fieldId === 'fecha_vencimiento') {
+            if (productValue && new Date(productValue) < new Date(filterValue)) return false;
+          } else {
+            const numValue = Number(productValue || 0);
+            const numFilter = Number(filterValue);
+            if (numValue < numFilter) return false;
+          }
+        } else if (filterType === 'max') {
+          // Filtro de rango máximo
+          if (fieldId === 'created_at' || fieldId === 'fecha_vencimiento') {
+            if (productValue && new Date(productValue) > new Date(filterValue)) return false;
+          } else {
+            const numValue = Number(productValue || 0);
+            const numFilter = Number(filterValue);
+            if (numValue > numFilter) return false;
+          }
+        } else if (filterType === 'condition') {
+          // Condiciones especiales
+          if (fieldId === 'stock') {
+            const stock = Number(productValue || 0);
+            if (filterValue === 'bajo' && (stock >= 10 || stock === null)) return false;
+            if (filterValue === 'sin' && stock !== 0) return false;
+            if (filterValue === 'con' && (stock === 0 || stock === null)) return false;
+          } else if (fieldId === 'alta_utilidad') {
+            if (productValue <= 50) return false;
+          }
+        }
+      }
+
+      return true;
+    });
+  }, [productos, query, filters]);
 
   // Guardar producto en Supabase (ahora manejado por React Query en AgregarProductoModal)
   const handleAgregarProducto = async (nuevo) => {
@@ -101,7 +223,7 @@ const Inventario = () => {
       // Usar React Query mutation para eliminar
       eliminarProductoMutation.mutate({ 
         id: producto.id, 
-        userId: user.id 
+        organizationId: organization?.id 
       });
     } catch (error) {
       console.error('Error:', error);
@@ -121,24 +243,39 @@ const Inventario = () => {
           <LottieLoader size="medium" message="Cargando inventario..." />
         </div>
       ) : (
-        <div className="inventario-header">
-          <div className="inventario-search-container">
-            <Search className="inventario-search-icon" size={20} />
-            <input 
-              className="inventario-search" 
-              placeholder="Buscar producto..." 
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
+        <>
+          {/* Métricas del inventario - se actualizan con los productos filtrados */}
+          {productos.length > 0 && (
+            <InventarioStats productos={filteredProducts} />
+          )}
+
+          {/* Filtros */}
+          <InventarioFilters 
+            productos={productos}
+            filters={filters}
+            onFilterChange={setFilters}
+          />
+
+          {/* Header con búsqueda y acciones */}
+          <div className="inventario-header">
+            <div className="inventario-search-container">
+              <Search className="inventario-search-icon" size={20} />
+              <input 
+                className="inventario-search" 
+                placeholder="Buscar producto..." 
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </div>
+            <div className="inventario-actions">
+              <button className="inventario-btn inventario-btn-primary" onClick={() => setModalOpen(true)}>Nuevo producto</button>
+              <button className="inventario-btn inventario-btn-secondary" onClick={() => setCsvModalOpen(true)}>Importar CSV</button>
+              <button className="inventario-btn inventario-btn-secondary" onClick={() => setModoLista(m => !m)}>
+                {modoLista ? <Grid3X3 size={18} /> : <List size={18} />}
+              </button>
+            </div>
           </div>
-          <div className="inventario-actions">
-            <button className="inventario-btn inventario-btn-primary" onClick={() => setModalOpen(true)}>Nuevo producto</button>
-            <button className="inventario-btn inventario-btn-secondary" onClick={() => setCsvModalOpen(true)}>Importar CSV</button>
-            <button className="inventario-btn inventario-btn-secondary" onClick={() => setModoLista(m => !m)}>
-              {modoLista ? <Grid3X3 size={18} /> : <List size={18} />}
-            </button>
-          </div>
-        </div>
+        </>
       )}
       <div className="inventario-content">
         {modoLista ? (
@@ -149,7 +286,9 @@ const Inventario = () => {
               </div>
             ) : filteredProducts.length === 0 ? (
               <div style={{textAlign:'center',width:'100%',padding:'2rem'}}>
-                {query ? `No se encontraron productos para "${query}"` : 'No hay productos aún.'}
+                {query || Object.keys(filters).length > 0 
+                  ? 'No se encontraron productos con los filtros aplicados.' 
+                  : 'No hay productos aún.'}
               </div>
             ) : filteredProducts.map((prod, index) => (
               <motion.div 
@@ -209,7 +348,9 @@ const Inventario = () => {
               </div>
             ) : filteredProducts.length === 0 ? (
               <div style={{textAlign:'center',width:'100%',padding:'2rem'}}>
-                {query ? `No se encontraron productos para "${query}"` : 'No hay productos aún.'}
+                {query || Object.keys(filters).length > 0 
+                  ? 'No se encontraron productos con los filtros aplicados.' 
+                  : 'No hay productos aún.'}
               </div>
             ) : filteredProducts.map((prod, index) => (
               <motion.div 
