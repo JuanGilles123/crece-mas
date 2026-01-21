@@ -6,7 +6,7 @@ import { useProductos } from '../../hooks/useProductos';
 import OptimizedProductImage from '../../components/business/OptimizedProductImage';
 import ReciboVenta from '../../components/business/ReciboVenta';
 import ConfirmacionVenta from '../../components/business/ConfirmacionVenta';
-import { ShoppingCart, Trash2, Plus, Minus, Search, CheckCircle, X, CreditCard, Banknote, Smartphone, Wallet } from 'lucide-react';
+import { ShoppingCart, Trash2, Search, CheckCircle, X, CreditCard, Banknote, Smartphone, Wallet } from 'lucide-react';
 import toast from 'react-hot-toast';
 import './Caja.css';
 
@@ -910,38 +910,51 @@ export default function Caja() {
             <p className="caja-empty-cart">Aún no has agregado productos.</p>
           ) : (
             <ul className="caja-cart-list">
-              {cart.map((item) => (
-                <li key={item.id} className="caja-cart-item">
-                  <div className="caja-cart-item-info">
-                    <p className="caja-cart-item-name">{item.nombre}</p>
-                    <p className="caja-cart-item-price">{formatCOP(item.precio_venta)} c/u</p>
-                  </div>
-                  <div className="caja-cart-item-controls">
+              {cart.map((item) => {
+                // Buscar el producto completo para obtener la imagen
+                const productoCompleto = productos.find(p => p.id === item.id);
+                return (
+                  <li key={item.id} className="caja-cart-item">
+                    <div className="caja-cart-item-image">
+                      <OptimizedProductImage
+                        imagePath={productoCompleto?.imagen}
+                        alt={item.nombre}
+                        className="caja-cart-item-image-img"
+                      />
+                    </div>
+                    <div className="caja-cart-item-info">
+                      <p className="caja-cart-item-name">{item.nombre}</p>
+                      <p className="caja-cart-item-price">{formatCOP(item.precio_venta)} c/u</p>
+                    </div>
+                    <div className="caja-cart-item-controls">
+                      <button 
+                        className="caja-qty-btn caja-qty-btn-minus"
+                        onClick={() => dec(item.id)}
+                        aria-label="Disminuir cantidad"
+                      >
+                        <span className="caja-qty-icon">−</span>
+                      </button>
+                      <span className="caja-qty-display">{item.qty}</span>
+                      <button 
+                        className="caja-qty-btn caja-qty-btn-plus"
+                        onClick={() => inc(item.id)}
+                        aria-label="Aumentar cantidad"
+                      >
+                        <span className="caja-qty-icon">+</span>
+                      </button>
+                    </div>
+                    <div className="caja-cart-item-total">
+                      {formatCOP(item.qty * item.precio_venta)}
+                    </div>
                     <button 
-                      className="caja-qty-btn"
-                      onClick={() => dec(item.id)}
+                      className="caja-remove-btn"
+                      onClick={() => removeItem(item.id)}
                     >
-                      <Minus size={16} />
+                      <Trash2 size={16} />
                     </button>
-                    <span className="caja-qty-display">{item.qty}</span>
-                    <button 
-                      className="caja-qty-btn"
-                      onClick={() => inc(item.id)}
-                    >
-                      <Plus size={16} />
-                    </button>
-                  </div>
-                  <div className="caja-cart-item-total">
-                    {formatCOP(item.qty * item.precio_venta)}
-                  </div>
-                  <button 
-                    className="caja-remove-btn"
-                    onClick={() => removeItem(item.id)}
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
@@ -1023,38 +1036,51 @@ export default function Caja() {
               <p className="caja-mobile-empty-cart">Aún no has agregado productos.</p>
             ) : (
               <ul className="caja-mobile-cart-list">
-                {cart.map((item) => (
-                  <li key={item.id} className="caja-mobile-cart-item">
-                    <div className="caja-mobile-cart-item-info">
-                      <p className="caja-mobile-cart-item-name">{item.nombre}</p>
-                      <p className="caja-mobile-cart-item-price">{formatCOP(item.precio_venta)} c/u</p>
-                    </div>
-                    <div className="caja-mobile-cart-item-controls">
+                {cart.map((item) => {
+                  // Buscar el producto completo para obtener la imagen
+                  const productoCompleto = productos.find(p => p.id === item.id);
+                  return (
+                    <li key={item.id} className="caja-mobile-cart-item">
+                      <div className="caja-mobile-cart-item-image">
+                        <OptimizedProductImage
+                          imagePath={productoCompleto?.imagen}
+                          alt={item.nombre}
+                          className="caja-mobile-cart-item-image-img"
+                        />
+                      </div>
+                      <div className="caja-mobile-cart-item-info">
+                        <p className="caja-mobile-cart-item-name">{item.nombre}</p>
+                        <p className="caja-mobile-cart-item-price">{formatCOP(item.precio_venta)} c/u</p>
+                      </div>
+                      <div className="caja-mobile-cart-item-controls">
+                        <button 
+                          className="caja-mobile-qty-btn caja-mobile-qty-btn-minus"
+                          onClick={() => dec(item.id)}
+                          aria-label="Disminuir cantidad"
+                        >
+                          <span className="caja-mobile-qty-icon">−</span>
+                        </button>
+                        <span className="caja-mobile-qty-display">{item.qty}</span>
+                        <button 
+                          className="caja-mobile-qty-btn caja-mobile-qty-btn-plus"
+                          onClick={() => inc(item.id)}
+                          aria-label="Aumentar cantidad"
+                        >
+                          <span className="caja-mobile-qty-icon">+</span>
+                        </button>
+                      </div>
+                      <div className="caja-mobile-cart-item-total">
+                        {formatCOP(item.qty * item.precio_venta)}
+                      </div>
                       <button 
-                        className="caja-mobile-qty-btn"
-                        onClick={() => dec(item.id)}
+                        className="caja-mobile-remove-btn"
+                        onClick={() => removeItem(item.id)}
                       >
-                        <Minus size={14} />
+                        <Trash2 size={14} />
                       </button>
-                      <span className="caja-mobile-qty-display">{item.qty}</span>
-                      <button 
-                        className="caja-mobile-qty-btn"
-                        onClick={() => inc(item.id)}
-                      >
-                        <Plus size={14} />
-                      </button>
-                    </div>
-                    <div className="caja-mobile-cart-item-total">
-                      {formatCOP(item.qty * item.precio_venta)}
-                    </div>
-                    <button 
-                      className="caja-mobile-remove-btn"
-                      onClick={() => removeItem(item.id)}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </li>
-                ))}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
