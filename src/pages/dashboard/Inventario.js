@@ -253,7 +253,6 @@ const Inventario = () => {
   const handleAgregarProducto = async (nuevo) => {
     // Esta función ya no es necesaria ya que React Query maneja la mutación
     // en el componente AgregarProductoModal
-    console.log('Producto agregado:', nuevo);
   };
 
   // Editar producto
@@ -279,10 +278,8 @@ const Inventario = () => {
     try {
       // Eliminar imagen del storage si existe
       if (producto.imagen) {
-        console.log('Eliminando imagen del storage:', producto.imagen);
         const imageDeleted = await deleteImageFromStorage(producto.imagen);
         if (!imageDeleted) {
-          console.warn('No se pudo eliminar la imagen del storage, pero continuando con la eliminación del producto');
         }
       }
 
@@ -380,7 +377,6 @@ const Inventario = () => {
                   alt={prod.nombre} 
                   className="inventario-img-lista"
                   onError={(e) => {
-                    console.log('Error cargando imagen:', prod.imagen);
                   }}
                 />
                 <div className="inventario-lista-info">
@@ -442,7 +438,6 @@ const Inventario = () => {
                   alt={prod.nombre} 
                   className="inventario-img"
                   onError={(e) => {
-                    console.log('Error cargando imagen:', prod.imagen);
                   }}
                 />
                 <div className="inventario-info">
