@@ -527,25 +527,24 @@ const InventarioFilters = ({ productos, onFilterChange, filters }) => {
           </button>
         )}
 
-        {availableFields.length > 0 && (
-          <div className="inventario-filters-add">
-            <select
-              className="inventario-filter-field-selector"
-              value=""
-              onChange={(e) => {
-                if (e.target.value) {
-                  setActiveFilterId(e.target.value);
-                  setShowFilters(true);
-                }
-              }}
-            >
-              <option value="">+ Agregar filtro</option>
-              {availableFields.map(field => (
-                <option key={field.id} value={field.id}>{field.label}</option>
-              ))}
-            </select>
-          </div>
-        )}
+        <div className="inventario-filters-add">
+          <select
+            className="inventario-filter-field-selector"
+            value=""
+            onChange={(e) => {
+              if (e.target.value) {
+                setActiveFilterId(e.target.value);
+                setShowFilters(true);
+              }
+            }}
+            disabled={availableFields.length === 0}
+          >
+            <option value="">+ Agregar filtro</option>
+            {availableFields.map(field => (
+              <option key={field.id} value={field.id}>{field.label}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Filtros activos siempre visibles */}

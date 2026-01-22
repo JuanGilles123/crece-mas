@@ -32,8 +32,8 @@ const DashboardLayout = () => {
         type: 'single',
         to: "/dashboard",
         icon: BarChart3,
-        label: "Dashboard",
-        title: "Dashboard",
+        label: "Inicio",
+        title: "Inicio",
         end: true,
         visible: hasPermission('dashboard') || true
       },

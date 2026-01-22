@@ -315,15 +315,15 @@ const Inventario = () => {
             <InventarioStats productos={filteredProducts} />
           )}
 
-          {/* Filtros */}
-          <InventarioFilters 
-            productos={productos}
-            filters={filters}
-            onFilterChange={setFilters}
-          />
-
-          {/* Header con búsqueda y acciones */}
-          <div className="inventario-header">
+          {/* Header con búsqueda y acciones - Separados para mejor control responsive */}
+          <div className="inventario-header-wrapper">
+            <div className="inventario-actions">
+              <button className="inventario-btn inventario-btn-primary" onClick={() => setModalOpen(true)}>Nuevo producto</button>
+              <button className="inventario-btn inventario-btn-secondary" onClick={() => setCsvModalOpen(true)}>Importar CSV</button>
+              <button className="inventario-btn inventario-btn-secondary inventario-btn-view-toggle" onClick={() => setModoLista(m => !m)}>
+                {modoLista ? <Grid3X3 size={18} /> : <List size={18} />}
+              </button>
+            </div>
             <div className="inventario-search-container">
               <div className="search-input-wrapper">
                 <Search className="inventario-search-icon" size={20} />
@@ -335,17 +335,17 @@ const Inventario = () => {
                 />
               </div>
             </div>
-            <div className="inventario-actions">
-              <button className="inventario-btn inventario-btn-primary" onClick={() => setModalOpen(true)}>Nuevo producto</button>
-              <button className="inventario-btn inventario-btn-secondary" onClick={() => setCsvModalOpen(true)}>Importar CSV</button>
-              <button className="inventario-btn inventario-btn-secondary" onClick={() => setModoLista(m => !m)}>
-                {modoLista ? <Grid3X3 size={18} /> : <List size={18} />}
-              </button>
-            </div>
           </div>
-        </>
-      )}
-      <div className="inventario-content">
+
+          {/* Filtros - Debajo del buscador y antes de los productos */}
+          <InventarioFilters 
+            productos={productos}
+            filters={filters}
+            onFilterChange={setFilters}
+          />
+
+          {/* Contenido de productos */}
+          <div className="inventario-content">
         {modoLista ? (
           <div className="inventario-lista">
             {cargando ? (
@@ -470,9 +470,11 @@ const Inventario = () => {
               </motion.div>
             ))}
           </div>
-        )}
-        {/* Panel lateral eliminado por solicitud */}
-      </div>
+          )}
+          {/* Panel lateral eliminado por solicitud */}
+          </div>
+        </>
+      )}
       <AgregarProductoModalV2 open={modalOpen} onClose={() => setModalOpen(false)} onProductoAgregado={handleAgregarProducto} moneda={moneda} />
       <EditarProductoModalV2 
         open={editarModalOpen} 

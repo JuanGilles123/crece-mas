@@ -1227,7 +1227,6 @@ export default function Caja() {
                     </div>
                     <div className="caja-cart-item-info">
                       <p className="caja-cart-item-name">{item.nombre}</p>
-                      <p className="caja-cart-item-price">{formatCOP(item.precio_venta)} c/u</p>
                     </div>
                     <div className="caja-cart-item-controls">
                       <button 
@@ -1246,12 +1245,16 @@ export default function Caja() {
                         <span className="caja-qty-icon">+</span>
                       </button>
                     </div>
+                    <div className="caja-cart-item-price-unit">
+                      {formatCOP(item.precio_venta)} c/u
+                    </div>
                     <div className="caja-cart-item-total">
                       {formatCOP(item.qty * item.precio_venta)}
                     </div>
                     <button 
                       className="caja-remove-btn"
                       onClick={() => removeItem(item.id)}
+                      style={{ display: 'none' }}
                     >
                       <Trash2 size={16} />
                     </button>
@@ -1339,15 +1342,6 @@ export default function Caja() {
             {cart.length > 0 && (
               <div className="caja-mobile-cart-header-actions">
                 <button 
-                  className="caja-mobile-save-quote-btn"
-                  onClick={handleGuardarCotizacion}
-                  disabled={guardandoCotizacion}
-                  aria-label="Guardar cotización"
-                  title="Guardar como cotización"
-                >
-                  <Save size={16} />
-                </button>
-                <button 
                   className="caja-mobile-clear-all-btn"
                   onClick={() => {
                     if (window.confirm('¿Estás seguro de que quieres vaciar todo el carrito?')) {
@@ -1364,6 +1358,39 @@ export default function Caja() {
               <div style={{ width: '36px' }}></div>
             )}
           </div>
+
+          {/* Botón de Cliente en móvil */}
+          {cart.length > 0 && (
+            <div className="caja-mobile-cliente-container">
+              <button
+                className="caja-mobile-cliente-btn"
+                onClick={() => setMostrandoModalSeleccionCliente(true)}
+                title={clienteSeleccionado ? `Cliente: ${clienteSeleccionado.nombre}` : 'Seleccionar cliente'}
+              >
+                <UserCircle size={18} />
+                <span>
+                  {clienteSeleccionado 
+                    ? clienteSeleccionado.nombre.length > 25 
+                      ? `${clienteSeleccionado.nombre.substring(0, 25)}...` 
+                      : clienteSeleccionado.nombre
+                    : 'Cliente (opcional)'}
+                </span>
+                {clienteSeleccionado && (
+                  <button
+                    className="caja-mobile-cliente-remove-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setClienteSeleccionado(null);
+                    }}
+                    title="Quitar cliente"
+                    aria-label="Quitar cliente"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </button>
+            </div>
+          )}
 
           <div className="caja-mobile-cart-content">
             {cart.length === 0 ? (

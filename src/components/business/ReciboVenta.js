@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { CheckCircle, Printer, Share2, Download, Banknote, CreditCard, Smartphone } from "lucide-react";
+import { CheckCircle, Printer, Share2, Download, Banknote, CreditCard, Smartphone, MessageCircle } from "lucide-react";
 import { supabase } from '../../services/api/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import jsPDF from 'jspdf';
@@ -199,7 +199,7 @@ export default function ReciboVenta({ venta, onNuevaVenta, onCerrar, mostrarCerr
     }
   };
 
-  const compartir = () => {
+  const compartir = (enviarDirecto = false) => {
     if (!datosCompletos) {
       alert('⚠️ No has configurado los datos de facturación.\n\nVe a tu perfil → Configuración de Facturación para completar los datos de tu empresa.');
       return;
@@ -218,6 +218,7 @@ ${datosEmpresa.email ? `📧 ${datosEmpresa.email}` : ''}
 📅 ${venta.date} - ${venta.time}
 👤 Cajero: ${venta.cashier}
 🏪 ${venta.register}
+${venta.cliente ? `\n👤 Cliente: ${venta.cliente.nombre}` : ''}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -242,8 +243,16 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
 ¡Gracias por su compra! 🎉
     `.trim();
 
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(textoRecibo)}`;
-    window.open(whatsappUrl, '_blank');
+    // Si se debe enviar directo y hay cliente con teléfono
+    if (enviarDirecto && venta.cliente?.telefono) {
+      const telefono = venta.cliente.telefono.replace(/\D/g, ''); // Solo números
+      const whatsappUrl = `https://wa.me/${telefono}?text=${encodeURIComponent(textoRecibo)}`;
+      window.open(whatsappUrl, '_blank');
+    } else {
+      // Compartir genérico
+      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(textoRecibo)}`;
+      window.open(whatsappUrl, '_blank');
+    }
   };
 
   const imprimir = () => {
@@ -958,11 +967,26 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
 
         {/* Acciones */}
         <div className="recibo-actions">
-          <button className="recibo-btn recibo-btn-secondary" onClick={compartir}>
-            <Share2 className="recibo-btn-icon" /> Compartir
+          <button 
+            className="recibo-btn recibo-btn-secondary" 
+            onClick={() => compartir(false)}
+          >
+            <Share2 className="recibo-btn-icon" /> 
+            <span className="recibo-btn-text">Compartir</span>
           </button>
+          {venta.cliente?.telefono && (
+            <button 
+              className="recibo-btn recibo-btn-whatsapp" 
+              onClick={() => compartir(true)}
+              title="Enviar a WhatsApp del Cliente"
+            >
+              <MessageCircle className="recibo-btn-icon" />
+              <span className="recibo-btn-text recibo-btn-text-mobile-hidden">WhatsApp</span>
+            </button>
+          )}
           <button className="recibo-btn recibo-btn-secondary" onClick={imprimir}>
-            <Printer className="recibo-btn-icon" /> Imprimir
+            <Printer className="recibo-btn-icon" /> 
+            <span className="recibo-btn-text">Imprimir</span>
           </button>
           <button 
             className="recibo-btn recibo-btn-secondary" 
@@ -970,7 +994,7 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
             disabled={generandoPDF}
           >
             <Download className="recibo-btn-icon" /> 
-            {generandoPDF ? 'Generando...' : 'PDF'}
+            <span className="recibo-btn-text">{generandoPDF ? 'Generando...' : 'PDF'}</span>
           </button>
           {mostrarCerrar ? (
             <button className="recibo-btn recibo-btn-primary" onClick={cerrarRecibo}>

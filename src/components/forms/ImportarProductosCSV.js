@@ -593,8 +593,8 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
 
   const descargarPlantilla = (tipo = 'csv') => {
     const archivos = {
-      csv: '/plantilla_productos.csv',
-      excel: '/plantilla-importacion-productos.xlsx'
+      csv: '/templates/plantilla_productos.csv',
+      excel: '/templates/plantilla-importacion-productos.xlsx'
     };
     
     const link = document.createElement('a');
