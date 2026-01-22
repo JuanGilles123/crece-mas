@@ -61,6 +61,7 @@ export default function ReciboVenta({ venta, onNuevaVenta, onCerrar, mostrarCerr
   const cambio = venta.pagoCliente - total;
 
   // Detectar si es pago mixto y extraer detalles del string si no vienen en el objeto
+  const esCotizacion = venta.esCotizacion || venta.metodo_pago === 'COTIZACION';
   const esPagoMixto = venta.metodo_pago === 'Mixto' || venta.metodo_pago?.startsWith('Mixto (');
   let detallesPagoMixto = venta.detalles_pago_mixto;
   
@@ -231,10 +232,10 @@ ${venta.items.map(item =>
 Subtotal: ${formatCOP(subtotal)}
 TOTAL: ${formatCOP(total)}
 
-💳 PAGO:
+${esCotizacion ? '📋 COTIZACIÓN\nEstado: Pendiente de pago' : `💳 PAGO:
 Método: ${venta.metodo_pago}
 Pago del cliente: ${formatCOP(venta.pagoCliente)}
-Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambio)}
+Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambio)}`}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -592,6 +593,55 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
               color: '#6b7280',
               margin: '0'
             }}>{venta.register} · Cajero: {venta.cashier}</p>
+            {venta.numero_venta && (
+              <p className="recibo-numero-venta" style={{
+                fontSize: '0.75rem',
+                color: '#6b7280',
+                margin: '0.25rem 0 0 0',
+                fontWeight: '600'
+              }}>Orden: {venta.numero_venta}</p>
+            )}
+            {venta.cliente && (
+              <div className="recibo-cliente" style={{
+                marginTop: '0.75rem',
+                paddingTop: '0.75rem',
+                borderTop: '1px solid #e5e7eb'
+              }}>
+                <p style={{
+                  fontSize: '0.75rem',
+                  color: '#6b7280',
+                  margin: '0 0 0.25rem 0',
+                  fontWeight: '600'
+                }}>Cliente:</p>
+                <p style={{
+                  fontSize: '0.875rem',
+                  color: '#111827',
+                  margin: '0 0 0.125rem 0',
+                  fontWeight: '500'
+                }}>{venta.cliente.nombre}</p>
+                {venta.cliente.documento && (
+                  <p style={{
+                    fontSize: '0.75rem',
+                    color: '#6b7280',
+                    margin: '0 0 0.125rem 0'
+                  }}>Documento: {venta.cliente.documento}</p>
+                )}
+                {venta.cliente.telefono && (
+                  <p style={{
+                    fontSize: '0.75rem',
+                    color: '#6b7280',
+                    margin: '0 0 0.125rem 0'
+                  }}>Tel: {venta.cliente.telefono}</p>
+                )}
+                {venta.cliente.direccion && (
+                  <p style={{
+                    fontSize: '0.75rem',
+                    color: '#6b7280',
+                    margin: '0'
+                  }}>{venta.cliente.direccion}</p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Tabla de productos */}
@@ -779,9 +829,25 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
             }}>
               <span>Método de pago</span>
               <span style={{ fontWeight: '600', textTransform: 'capitalize' }}>
-                {esPagoMixto ? 'Mixto' : venta.metodo_pago}
+                {esCotizacion ? 'COTIZACIÓN' : esPagoMixto ? 'Mixto' : venta.metodo_pago}
               </span>
             </div>
+            
+            {esCotizacion && (
+              <div style={{
+                background: 'linear-gradient(135deg, #fce7f3 0%, #f3e8ff 100%)',
+                border: '1px solid #d8b4fe',
+                borderRadius: '0.5rem',
+                padding: '0.75rem',
+                marginTop: '0.5rem',
+                textAlign: 'center'
+              }}>
+                <span style={{ fontWeight: '600', color: '#9333ea' }}>📋 COTIZACIÓN</span>
+                <div style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                  Pendiente de pago
+                </div>
+              </div>
+            )}
             
             {/* Detalles de pago mixto */}
             {esPagoMixto && detallesPagoMixto && (
@@ -907,14 +973,9 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
             {generandoPDF ? 'Generando...' : 'PDF'}
           </button>
           {mostrarCerrar ? (
-            <>
-              <button className="recibo-btn recibo-btn-secondary" onClick={cerrarRecibo}>
-                Cancelar
-              </button>
-              <button className="recibo-btn recibo-btn-primary" onClick={cerrarRecibo}>
-                Cerrar
-              </button>
-            </>
+            <button className="recibo-btn recibo-btn-primary" onClick={cerrarRecibo}>
+              Cerrar
+            </button>
           ) : (
             <button className="recibo-btn recibo-btn-primary" onClick={nuevaVenta}>
               Nueva venta

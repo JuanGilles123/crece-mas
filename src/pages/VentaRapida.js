@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../services/api/supabaseClient';
+import { generarCodigoVenta } from '../utils/generarCodigoVenta';
 import { useAuth } from '../context/AuthContext';
 import { Zap, DollarSign, FileText, CreditCard, Check, X, Banknote, Building2, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -64,6 +65,9 @@ export default function VentaRapida() {
     setProcesando(true);
 
     try {
+      // Generar código de venta
+      const numeroVenta = await generarCodigoVenta(organization.id, metodoPago);
+      
       // Registrar venta rápida - COLUMNAS ACTUALIZADAS
       const ventaData = {
         organization_id: organization.id,
@@ -73,7 +77,8 @@ export default function VentaRapida() {
         tipo_venta: 'rapida',
         descripcion: descripcion.trim() || 'Venta rápida',
         items: [],
-        fecha: new Date().toISOString()
+        fecha: new Date().toISOString(),
+        numero_venta: numeroVenta
       };
 
       const { error: ventaError } = await supabase

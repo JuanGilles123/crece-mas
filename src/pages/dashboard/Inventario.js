@@ -322,13 +322,15 @@ const Inventario = () => {
           {/* Header con búsqueda y acciones */}
           <div className="inventario-header">
             <div className="inventario-search-container">
-              <Search className="inventario-search-icon" size={20} />
-              <input 
-                className="inventario-search" 
-                placeholder="Buscar producto..." 
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
+              <div className="search-input-wrapper">
+                <Search className="inventario-search-icon" size={20} />
+                <input 
+                  className="inventario-search" 
+                  placeholder="Buscar producto..." 
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+              </div>
             </div>
             <div className="inventario-actions">
               <button className="inventario-btn inventario-btn-primary" onClick={() => setModalOpen(true)}>Nuevo producto</button>
