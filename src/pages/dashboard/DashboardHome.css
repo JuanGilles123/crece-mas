@@ -5,6 +5,9 @@
   flex-direction: row;
   gap: 2rem;
   padding: 2rem;
+  box-sizing: border-box;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .dashboard-content {
@@ -194,6 +197,9 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1.5rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .metrica-card {
@@ -203,6 +209,11 @@
   text-align: center;
   border: 1px solid var(--border-primary);
   transition: all 0.3s ease;
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .metrica-card:hover {
@@ -338,6 +349,10 @@
   .metricas-container {
     padding: 1.5rem;
     border-radius: 12px;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
   }
 
   .metricas-container h2 {
@@ -348,10 +363,18 @@
   .metricas-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 0.75rem;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .metrica-card {
-    padding: 1rem;
+    padding: 1rem 0.5rem;
+    box-sizing: border-box;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
   }
 
   .metrica-card svg {
@@ -362,10 +385,14 @@
 
   .metrica-card h3 {
     font-size: 1.5rem;
+    word-break: break-word;
+    overflow-wrap: break-word;
   }
 
   .metrica-card p {
     font-size: 0.85rem;
+    word-break: break-word;
+    overflow-wrap: break-word;
   }
 }
 
@@ -384,6 +411,73 @@
     font-size: 0.95rem;
     margin-bottom: 0.75rem;
     padding-bottom: 0.5rem;
+  }
+
+  .metricas-container {
+    padding: 1rem 0.875rem;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    overflow: visible;
+    min-height: auto;
+  }
+
+  .metricas-container h2 {
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .metricas-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.6rem;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-rows: repeat(2, auto);
+    min-height: auto;
+  }
+
+  .metrica-card {
+    padding: 0.7rem 0.4rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.3rem;
+    box-sizing: border-box;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    overflow: visible;
+    margin: 0;
+    min-height: auto;
+  }
+
+  .metrica-card svg {
+    width: 18px;
+    height: 18px;
+    margin-bottom: 0.25rem;
+    flex-shrink: 0;
+  }
+
+  .metrica-card h3 {
+    font-size: 0.95rem;
+    margin: 0;
+    line-height: 1.1;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    font-weight: 700;
+  }
+
+  .metrica-card p {
+    font-size: 0.65rem;
+    margin: 0;
+    line-height: 1.1;
+    word-break: break-word;
+    overflow-wrap: break-word;
   }
 
   .accesos-vertical {
@@ -433,34 +527,54 @@
   }
 
   .metricas-grid {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-rows: repeat(2, auto);
   }
 
   .metrica-card {
-    padding: 1rem;
+    padding: 0.75rem 0.4rem;
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     align-items: center;
-    text-align: left;
-    gap: 1rem;
+    text-align: center;
+    gap: 0.3rem;
+    box-sizing: border-box;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    margin: 0;
   }
 
   .metrica-card svg {
-    width: 32px;
-    height: 32px;
-    margin-bottom: 0;
+    width: 20px;
+    height: 20px;
+    margin-bottom: 0.3rem;
     flex-shrink: 0;
   }
 
   .metrica-card h3 {
-    font-size: 1.5rem;
+    font-size: 1rem;
     margin: 0;
+    line-height: 1.1;
+    font-weight: 700;
+    word-break: break-word;
+    overflow-wrap: break-word;
   }
 
   .metrica-card p {
-    font-size: 0.8rem;
+    font-size: 0.65rem;
     margin: 0;
+    line-height: 1.1;
+    word-break: break-word;
+    overflow-wrap: break-word;
   }
 }
 

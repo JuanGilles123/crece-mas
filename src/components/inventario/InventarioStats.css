@@ -1,7 +1,10 @@
 .inventario-stats-container {
   width: 100%;
-  margin-bottom: 2rem;
+  margin: 0;
+  padding: 0;
   position: relative;
+  z-index: 0;
+  overflow: visible;
 }
 
 .inventario-stats-grid {
@@ -168,6 +171,10 @@
 
 /* Responsive */
 @media (max-width: 768px) {
+  .inventario-stats-container {
+    margin-bottom: 2rem;
+  }
+
   .inventario-stats-grid {
     gap: 0.75rem;
   }
@@ -198,6 +205,10 @@
 }
 
 @media (max-width: 480px) {
+  .inventario-stats-container {
+    margin-bottom: 2rem;
+  }
+
   .inventario-stat-card {
     min-width: 180px;
     padding: 0.875rem;

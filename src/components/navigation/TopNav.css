@@ -38,6 +38,7 @@
   justify-content: space-between;
   height: 64px;
   gap: 24px;
+  box-sizing: border-box;
 }
 
 /* Sección de logos */
@@ -47,7 +48,8 @@
   align-items: center;
   gap: 16px;
   height: 100%;
-  padding-right: 16px;
+  padding-right: 20px;
+  margin-right: 8px;
   border-right: 1px solid rgba(0, 0, 0, 0.1);
 }
 
@@ -90,7 +92,7 @@
 .top-nav-menu {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   flex: 1;
   justify-content: center;
   overflow-x: auto;
@@ -98,6 +100,8 @@
   scrollbar-width: none;
   -ms-overflow-style: none;
   -webkit-overflow-scrolling: touch;
+  padding: 0 16px;
+  box-sizing: border-box;
 }
 
 .top-nav-menu::-webkit-scrollbar {
@@ -119,6 +123,7 @@
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   -webkit-tap-highlight-color: transparent;
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+  flex-shrink: 0;
 }
 
 .top-nav-item:hover {
@@ -167,6 +172,7 @@
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
   -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
 }
 
 .top-nav-dropdown-button:hover {
@@ -271,6 +277,8 @@
   align-items: center;
   gap: 12px;
   flex-shrink: 0;
+  margin-left: 8px;
+  padding-left: 16px;
 }
 
 /* Badge de rol */
@@ -531,18 +539,70 @@
     gap: 16px;
   }
   
+  .top-nav-logo-section {
+    padding-right: 16px;
+    margin-right: 4px;
+  }
+  
   .top-nav-menu {
-    gap: 6px;
+    gap: 8px;
+    padding: 0 12px;
   }
   
   .top-nav-item,
   .top-nav-dropdown-button {
-    padding: 8px 12px;
+    padding: 8px 14px;
     font-size: 13px;
+  }
+  
+  .top-nav-right {
+    gap: 10px;
+    padding-left: 12px;
+    margin-left: 4px;
   }
   
   .top-nav-role-badge {
     display: none;
+  }
+}
+
+/* Tablet específico - entre 768px y 1024px */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .top-nav-item span,
+  .top-nav-dropdown-button span {
+    display: inline;
+  }
+  
+  .top-nav-menu {
+    gap: 10px;
+    padding: 0 12px;
+    justify-content: flex-start;
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+  }
+  
+  .top-nav-menu::-webkit-scrollbar {
+    display: block;
+    height: 4px;
+  }
+  
+  .top-nav-menu::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .top-nav-menu::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 2px;
+  }
+  
+  .top-nav-item,
+  .top-nav-dropdown-button {
+    padding: 9px 14px;
+    font-size: 13px;
+    flex-shrink: 0;
   }
 }
 
@@ -565,16 +625,18 @@
   .top-nav-logo-section {
     gap: 12px;
     padding-right: 12px;
+    margin-right: 4px;
   }
   
   .top-nav-menu {
-    gap: 4px;
+    gap: 6px;
     justify-content: flex-start;
+    padding: 0 8px;
   }
   
   .top-nav-item,
   .top-nav-dropdown-button {
-    padding: 8px 10px;
+    padding: 8px 12px;
     font-size: 12px;
     gap: 6px;
   }
@@ -587,6 +649,12 @@
   .top-nav-item svg,
   .top-nav-dropdown-button svg {
     margin: 0;
+  }
+  
+  .top-nav-right {
+    gap: 8px;
+    padding-left: 8px;
+    margin-left: 4px;
   }
   
   .top-nav-dropdown-menu {
@@ -623,6 +691,7 @@
   .top-nav-logo-section {
     gap: 8px;
     padding-right: 8px;
+    margin-right: 4px;
   }
   
   .top-nav-logo-img {
@@ -633,11 +702,22 @@
     display: none; /* Ocultar logo de empresa en móviles muy pequeños */
   }
   
+  .top-nav-menu {
+    gap: 4px;
+    padding: 0 4px;
+  }
+  
   .top-nav-item,
   .top-nav-dropdown-button {
     padding: 8px;
     min-width: 40px;
     justify-content: center;
+  }
+  
+  .top-nav-right {
+    gap: 6px;
+    padding-left: 4px;
+    margin-left: 4px;
   }
   
   .top-nav-dropdown-menu {

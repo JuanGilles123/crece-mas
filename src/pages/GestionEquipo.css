@@ -152,6 +152,7 @@
   position: relative;
   width: 100%;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .member-card:hover {
@@ -724,6 +725,21 @@
     font-size: 1.5rem;
   }
 
+  .header-content p {
+    font-size: 0.9rem;
+  }
+
+  .header-actions {
+    width: 100%;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .header-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
   .team-stats {
     grid-template-columns: 1fr;
     gap: 1rem;
@@ -745,6 +761,7 @@
 
   .member-info {
     width: 100%;
+    max-width: 100%;
   }
 
   .member-role {
@@ -792,43 +809,308 @@
     width: 100%;
     justify-content: center;
   }
+
+  .alert {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem;
+  }
+
+  .alert .btn-link {
+    align-self: flex-start;
+  }
 }
 
 @media (max-width: 480px) {
   .gestion-equipo-container {
-    padding: 0.75rem;
+    padding: 0.5rem;
+    min-height: calc(100vh - 60px);
   }
 
   .gestion-equipo-header {
-    padding: 1rem;
+    margin-bottom: 0.75rem;
+    gap: 0.5rem;
+  }
+
+  .header-content {
+    width: 100%;
   }
 
   .header-content h1 {
-    font-size: 1.25rem;
+    font-size: 1rem;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.2rem;
+  }
+
+  .header-content h1 svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .header-content p {
+    font-size: 0.75rem;
+    line-height: 1.2;
+    word-break: break-word;
+    margin: 0;
+  }
+
+  .header-actions {
+    width: 100%;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .header-actions .btn {
+    width: 100%;
+    padding: 0.5rem 0.6rem;
+    font-size: 0.8rem;
+    justify-content: center;
+  }
+
+  .header-actions .btn svg {
+    width: 14px;
+    height: 14px;
   }
 
   .team-stats {
-    gap: 0.75rem;
+    gap: 0.4rem;
+    margin-bottom: 0.75rem;
   }
 
   .stat-card {
-    padding: 1rem;
+    padding: 0.6rem 0.4rem;
+  }
+
+  .stat-value {
+    font-size: 1.5rem;
+    margin-bottom: 0.2rem;
+  }
+
+  .stat-label {
+    font-size: 0.7rem;
+  }
+
+  .team-section {
+    margin-bottom: 0.75rem;
+  }
+
+  .team-section h2 {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
   }
 
   .members-grid {
-    gap: 0.75rem;
+    gap: 0.5rem;
   }
 
   .member-card {
-    padding: 1rem;
+    padding: 0.6rem;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 0.5rem;
+    position: relative;
+  }
+
+  .member-avatar {
+    width: 48px;
+    height: 48px;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+  }
+
+  .member-avatar svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .member-info {
+    flex: 1;
+    min-width: 0;
+    max-width: calc(100% - 48px - 0.5rem - 60px);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .member-name {
+    font-size: 0.8rem;
+    margin-bottom: 0;
+    line-height: 1.3;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    flex-wrap: wrap;
+    font-weight: 700;
+  }
+
+  .owner-badge,
+  .employee-badge {
+    font-size: 0.6rem;
+    padding: 0.15rem 0.4rem;
+    gap: 0.2rem;
+    flex-shrink: 0;
+  }
+
+  .owner-badge svg,
+  .employee-badge svg {
+    width: 10px;
+    height: 10px;
+  }
+
+  .member-email {
+    font-size: 0.65rem;
+    margin-bottom: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-secondary);
+  }
+
+  .member-phone {
+    font-size: 0.65rem;
+    margin-bottom: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-tertiary);
+  }
+
+  .member-code {
+    font-size: 0.6rem;
+    padding: 0.15rem 0.3rem;
+    margin-top: 0.1rem;
+    width: fit-content;
+    max-width: 100%;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: var(--bg-secondary);
+    border-radius: 4px;
+  }
+
+  .member-code svg {
+    width: 9px;
+    height: 9px;
+    flex-shrink: 0;
+  }
+
+  .btn-edit-code {
+    padding: 0.1rem;
+    margin-left: 0.2rem;
+  }
+
+  .btn-edit-code svg {
+    width: 9px;
+    height: 9px;
+  }
+
+  .member-role {
+    flex: 0 0 auto;
+    padding-left: 0;
+    padding-top: 0.2rem;
+    border-top: none;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15rem;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .role-badges {
+    width: 100%;
+    align-items: flex-start;
+    gap: 0.15rem;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .role-badge {
+    font-size: 0.65rem;
+    padding: 0.25rem 0.5rem;
+    white-space: nowrap;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .role-badge svg {
+    width: 10px;
+    height: 10px;
+    flex-shrink: 0;
+  }
+
+  .role-badge-type {
+    font-size: 0.6rem;
+    white-space: nowrap;
+    color: var(--text-secondary);
+    margin-top: 0.1rem;
   }
 
   .member-actions {
     flex-direction: column;
+    width: auto;
+    padding-top: 0;
+    padding-left: 0;
+    border-top: none;
+    justify-content: flex-start;
+    gap: 0.3rem;
+    flex-shrink: 0;
+    position: absolute;
+    top: 0.6rem;
+    right: 0.6rem;
   }
 
-  .member-actions .btn {
+  .member-actions .btn-icon {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+  }
+
+  .member-actions .btn-icon svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .invitation-card {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 0.6rem;
+    gap: 0.6rem;
+  }
+
+  .invitation-info {
     width: 100%;
+    gap: 0.4rem;
+  }
+
+  .invitation-email {
+    font-size: 0.8rem;
+  }
+
+  .invitation-actions {
+    width: 100%;
+    justify-content: flex-end;
+    gap: 0.3rem;
+  }
+
+  .alert {
+    padding: 0.6rem;
+    font-size: 0.75rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.3rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .alert .btn-link {
+    font-size: 0.75rem;
   }
 
   .modal-container {
@@ -839,11 +1121,104 @@
 
   .modal-header,
   .modal-form {
-    padding: 1rem;
+    padding: 0.75rem;
   }
 
   .modal-header h3 {
-    font-size: 1.25rem;
+    font-size: 0.95rem;
+    gap: 0.35rem;
+  }
+
+  .modal-header h3 svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .form-group {
+    margin-bottom: 0.75rem;
+  }
+
+  .form-label {
+    font-size: 0.8rem;
+    margin-bottom: 0.3rem;
+  }
+
+  .form-input,
+  .form-select,
+  .form-textarea {
+    padding: 0.55rem 0.65rem;
+    font-size: 0.8rem;
+  }
+
+  .roles-grid {
+    gap: 0.5rem;
+  }
+
+  .role-card {
+    padding: 0.7rem;
+  }
+
+  .role-card-header {
+    margin-bottom: 0.6rem;
+    gap: 0.4rem;
+  }
+
+  .role-badge-preview {
+    font-size: 0.8rem;
+    padding: 0.35rem 0.6rem;
+  }
+
+  .role-description {
+    font-size: 0.75rem;
+    margin: 0.4rem 0;
+  }
+
+  .role-permissions-summary {
+    padding: 0.5rem;
+    font-size: 0.75rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .role-meta {
+    padding-top: 0.6rem;
+    font-size: 0.75rem;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.4rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .section-header h2 {
+    font-size: 1rem;
+  }
+
+  .empty-state,
+  .no-organization {
+    padding: 1.5rem 0.75rem;
+  }
+
+  .empty-state svg,
+  .no-organization svg {
+    width: 32px;
+    height: 32px;
+    margin-bottom: 0.5rem;
+  }
+
+  .empty-state p,
+  .no-organization p {
+    font-size: 0.85rem;
+  }
+
+  .no-organization h3 {
+    font-size: 1.1rem;
+  }
+
+  .loading {
+    padding: 1rem;
+    font-size: 0.85rem;
   }
 }
 
