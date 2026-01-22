@@ -3,10 +3,13 @@ import { motion } from 'framer-motion';
 import { supabase } from '../../services/api/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import { useProductos } from '../../hooks/useProductos';
+import { useGuardarCotizacion, useActualizarCotizacion } from '../../hooks/useCotizaciones';
+import { generarCodigoVenta } from '../../utils/generarCodigoVenta';
+import { useClientes, useCrearCliente } from '../../hooks/useClientes';
 import OptimizedProductImage from '../../components/business/OptimizedProductImage';
 import ReciboVenta from '../../components/business/ReciboVenta';
 import ConfirmacionVenta from '../../components/business/ConfirmacionVenta';
-import { ShoppingCart, Trash2, Search, CheckCircle, CreditCard, Banknote, Smartphone, Wallet, ArrowLeft } from 'lucide-react';
+import { ShoppingCart, Trash2, Search, CheckCircle, CreditCard, Banknote, Smartphone, Wallet, ArrowLeft, Save, Plus, X, UserCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import './Caja.css';
 
@@ -52,56 +55,181 @@ export default function Caja() {
   const [confirmacionCargando, setConfirmacionCargando] = useState(false);
   const [confirmacionExito, setConfirmacionExito] = useState(false);
   const [datosVentaConfirmada, setDatosVentaConfirmada] = useState(null);
-  const [incluirIva, setIncluirIva] = useState(false);
-  const [porcentajeIva, setPorcentajeIva] = useState(19);
   const [metodoSeleccionado, setMetodoSeleccionado] = useState(null);
+  const [guardandoCotizacion, setGuardandoCotizacion] = useState(false);
+  const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
+  // eslint-disable-next-line no-unused-vars
+  const [mostrandoModalSeleccionCliente, setMostrandoModalSeleccionCliente] = useState(false);
+  const [mostrandoModalCliente, setMostrandoModalCliente] = useState(false);
+  // eslint-disable-next-line no-unused-vars
+  const [busquedaCliente, setBusquedaCliente] = useState('');
+  const [nuevoCliente, setNuevoCliente] = useState({
+    nombre: '',
+    documento: '',
+    telefono: '',
+    email: '',
+    direccion: ''
+  });
+  
+  // Hooks para clientes
+  // eslint-disable-next-line no-unused-vars
+  const { data: clientes = [] } = useClientes(organization?.id);
+  const crearClienteMutation = useCrearCliente();
+
+  // Hook para guardar y actualizar cotización
+  const guardarCotizacionMutation = useGuardarCotizacion();
+  const actualizarCotizacionMutation = useActualizarCotizacion();
 
   // Cargar productos usando React Query (optimizado con cache)
   const { data: productosData = [], isLoading: productosLoading } = useProductos(organization?.id);
   
+  // Precargar imágenes cuando se cargan los productos (similar a Inventario)
+  useEffect(() => {
+    if (productosData.length > 0 && organization?.id && supabase) {
+      // Precargar imágenes de productos con imagen válida
+      const productosConImagen = productosData.filter(
+        p => p.imagen && 
+        p.imagen.trim() !== '' && 
+        p.imagen !== 'null' && 
+        p.imagen !== 'undefined'
+      );
+      
+      if (productosConImagen.length > 0) {
+        // Precargar las primeras 30 imágenes (las más visibles)
+        const imagenesAPrecargar = productosConImagen.slice(0, 30);
+        
+        imagenesAPrecargar.forEach(async (producto) => {
+          try {
+            let filePath = producto.imagen;
+            
+            // Extraer la ruta del archivo
+            if (filePath.includes('/storage/v1/object/public/productos/')) {
+              filePath = filePath.split('/storage/v1/object/public/productos/')[1];
+            } else if (filePath.includes('/storage/v1/object/sign/productos/')) {
+              filePath = filePath.split('/storage/v1/object/sign/productos/')[1].split('?')[0];
+            } else if (filePath.includes('productos/')) {
+              const parts = filePath.split('productos/');
+              if (parts.length > 1) {
+                filePath = parts[1].split('?')[0];
+              }
+            }
+            
+            filePath = filePath.trim();
+            
+            // Decodificar la ruta si viene codificada
+            try {
+              filePath = decodeURIComponent(filePath);
+            } catch (e) {
+              // Si falla la decodificación, usar el original
+            }
+            
+            // Generar signed URL y precargarla
+            const { data, error } = await supabase.storage
+              .from('productos')
+              .createSignedUrl(filePath, 3600);
+            
+            if (!error && data?.signedUrl) {
+              // Guardar en cache global inmediatamente
+              const globalImageCache = (window.__imageCache || new Map());
+              globalImageCache.set(producto.imagen, {
+                url: data.signedUrl,
+                timestamp: Date.now()
+              });
+              window.__imageCache = globalImageCache;
+              
+              // Precargar la imagen en el navegador
+              const img = new Image();
+              img.src = data.signedUrl;
+            }
+          } catch (err) {
+            // Error silencioso en precarga
+          }
+        });
+      }
+    }
+  }, [productosData, organization?.id]);
+  
   useEffect(() => {
     if (productosData.length > 0) {
       setProductos(productosData);
-      // Debug: verificar rutas de imágenes
-      const productosConImagen = productosData.filter(p => p.imagen && p.imagen.trim() !== '' && p.imagen !== 'null' && p.imagen !== 'undefined');
-      const productosSinImagen = productosData.filter(p => !p.imagen || p.imagen.trim() === '' || p.imagen === 'null' || p.imagen === 'undefined');
-      
-      console.log('📦 Total de productos:', productosData.length);
-      console.log('✅ Productos con imagen válida:', productosConImagen.length);
-      console.log('❌ Productos sin imagen:', productosSinImagen.length);
-      
-      if (productosConImagen.length > 0) {
-        console.log('📸 Ejemplo de rutas de imagen (primeros 3):', 
-          productosConImagen.slice(0, 3).map(p => ({ 
-            id: p.id,
-            nombre: p.nombre, 
-            imagen: p.imagen,
-            tipo: typeof p.imagen,
-            length: p.imagen?.length
-          }))
-        );
-        
-        // Verificar formato de la primera imagen
-        const primeraImagen = productosConImagen[0].imagen;
-        console.log('🔍 Análisis de primera imagen:', {
-          original: primeraImagen,
-          esURL: primeraImagen?.startsWith('http'),
-          contieneStorage: primeraImagen?.includes('storage'),
-          contieneProductos: primeraImagen?.includes('productos')
-        });
-      } else {
-        console.warn('⚠️ No se encontraron productos con imágenes válidas');
-        if (productosSinImagen.length > 0) {
-          console.log('📋 Ejemplo de productos sin imagen:', productosSinImagen.slice(0, 3).map(p => ({
-            id: p.id,
-            nombre: p.nombre,
-            imagen: p.imagen
-          })));
-        }
-      }
     }
     setCargando(productosLoading);
   }, [productosData, productosLoading]);
+
+  // Estado para trackear si estamos editando una cotización existente
+  const [cotizacionId, setCotizacionId] = useState(null);
+
+  // Cargar cotización desde localStorage si existe
+  useEffect(() => {
+    const cotizacionData = localStorage.getItem('cotizacionRetomar');
+    if (cotizacionData && productos.length > 0) {
+      try {
+        const cotizacion = JSON.parse(cotizacionData);
+        if (cotizacion.items && cotizacion.items.length > 0) {
+          // Guardar el ID de la cotización si existe
+          if (cotizacion.id) {
+            setCotizacionId(cotizacion.id);
+          }
+          
+          // Mapear los items de la cotización al formato del carrito
+          const itemsCarrito = cotizacion.items.map(item => {
+            // Buscar el producto completo en la lista de productos
+            const productoCompleto = productos.find(p => p.id === item.id);
+            if (productoCompleto) {
+              return {
+                id: item.id,
+                nombre: item.nombre || productoCompleto.nombre,
+                precio_venta: item.precio_venta || productoCompleto.precio_venta,
+                qty: item.qty || 1
+              };
+            }
+            return null;
+          }).filter(item => item !== null);
+
+          if (itemsCarrito.length > 0) {
+            setCart(itemsCarrito);
+            
+            // Cargar cliente si existe
+            if (cotizacion.cliente_id) {
+              // Buscar el cliente en la lista de clientes
+              const cliente = clientes.find(c => c.id === cotizacion.cliente_id);
+              if (cliente) {
+                setClienteSeleccionado(cliente);
+              } else {
+                // Si no está en la lista, intentar cargarlo desde la base de datos
+                const cargarCliente = async () => {
+                  const { data, error } = await supabase
+                    .from('clientes')
+                    .select('*')
+                    .eq('id', cotizacion.cliente_id)
+                    .single();
+                  
+                  if (!error && data) {
+                    setClienteSeleccionado(data);
+                  }
+                };
+                cargarCliente();
+              }
+            }
+            
+            // Guardar copia original para comparar cambios después
+            localStorage.setItem('cotizacionOriginal', JSON.stringify({
+              items: cotizacion.items,
+              total: cotizacion.total
+            }));
+            
+            toast.success('Cotización cargada');
+          }
+          
+          // Limpiar localStorage
+          localStorage.removeItem('cotizacionRetomar');
+        }
+      } catch (error) {
+        console.error('Error cargando cotización:', error);
+        localStorage.removeItem('cotizacionRetomar');
+      }
+    }
+  }, [productos, clientes]);
 
   const filteredProducts = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -110,8 +238,7 @@ export default function Caja() {
   }, [query, productos]);
 
   const subtotal = useMemo(() => calcTotal(cart.map((c) => ({ id: c.id, price: c.precio_venta, qty: c.qty }))), [cart]);
-  const impuestos = useMemo(() => incluirIva ? subtotal * (porcentajeIva / 100) : 0, [subtotal, incluirIva, porcentajeIva]);
-  const total = useMemo(() => subtotal + impuestos, [subtotal, impuestos]);
+  const total = useMemo(() => subtotal, [subtotal]);
 
   function addToCart(producto) {
     // Verificar stock disponible
@@ -127,16 +254,20 @@ export default function Caja() {
     setCart((prev) => {
       const idx = prev.findIndex((i) => i.id === producto.id);
       if (idx >= 0) {
+        // Si ya existe, aumentar cantidad y mover al inicio
         const next = [...prev];
         next[idx] = { ...next[idx], qty: next[idx].qty + 1 };
-        return next;
+        // Mover al inicio
+        const item = next.splice(idx, 1)[0];
+        return [item, ...next];
       }
-      return [...prev, { 
+      // Si es nuevo, agregarlo al inicio
+      return [{ 
         id: producto.id, 
         nombre: producto.nombre, 
         precio_venta: producto.precio_venta, 
         qty: 1 
-      }];
+      }, ...prev];
     });
   }
 
@@ -174,6 +305,82 @@ export default function Caja() {
       return;
     }
     setMostrandoMetodosPago(true);
+  };
+
+  // Función para guardar cotización
+  const handleGuardarCotizacion = async () => {
+    if (!user || !organization) {
+      toast.error('Error: No hay usuario u organización activa');
+      return;
+    }
+
+    if (cart.length === 0) {
+      toast.error('El carrito está vacío');
+      return;
+    }
+
+    setGuardandoCotizacion(true);
+
+    try {
+      // Generar código de cotización
+      const numeroVenta = await generarCodigoVenta(organization.id, 'COTIZACION');
+      
+      // Construir objeto de cotización con solo campos básicos requeridos
+      const cotizacionData = {
+        organization_id: organization.id,
+        user_id: user.id,
+        total: total,
+        metodo_pago: 'COTIZACION', // Valor especial para identificar cotizaciones (metodo_pago tiene NOT NULL)
+        items: cart,
+        fecha: new Date().toISOString(),
+        numero_venta: numeroVenta,
+        cliente_id: clienteSeleccionado?.id || null
+      };
+
+      // Si hay un ID de cotización existente, actualizar en lugar de crear nueva
+      if (cotizacionId) {
+        // Verificar si realmente hay cambios comparando items y total
+        const cotizacionOriginal = localStorage.getItem('cotizacionOriginal');
+        if (cotizacionOriginal) {
+          try {
+            const original = JSON.parse(cotizacionOriginal);
+            const itemsIguales = JSON.stringify(original.items) === JSON.stringify(cart);
+            const totalIgual = original.total === total;
+            
+            // Si no hay cambios, no hacer nada
+            if (itemsIguales && totalIgual) {
+              toast.info('No hay cambios en la cotización');
+              setGuardandoCotizacion(false);
+              return;
+            }
+          } catch (e) {
+            // Si no se puede comparar, continuar con la actualización
+          }
+        }
+        
+        // Actualizar cotización existente
+        await actualizarCotizacionMutation.mutateAsync({
+          id: cotizacionId,
+          updates: cotizacionData
+        });
+        
+        toast.success('Cotización actualizada exitosamente');
+        setCotizacionId(null); // Limpiar ID después de actualizar
+      } else {
+        // Crear nueva cotización
+        await guardarCotizacionMutation.mutateAsync(cotizacionData);
+      }
+      
+      // Limpiar el carrito después de guardar
+      setCart([]);
+      setQuery('');
+      localStorage.removeItem('cotizacionOriginal');
+    } catch (error) {
+      console.error('Error al guardar cotización:', error);
+      toast.error('Error al guardar la cotización');
+    } finally {
+      setGuardandoCotizacion(false);
+    }
   };
 
   const handleSeleccionarMetodoPago = (metodo) => {
@@ -738,6 +945,9 @@ export default function Caja() {
     try {
       console.log('Guardando venta en base de datos...');
       
+      // Generar código de venta amigable
+      const numeroVenta = await generarCodigoVenta(organization.id, metodoPagoFinal);
+      
       // Guardar la venta en la base de datos
       const ventaData = {
         organization_id: organization.id,
@@ -747,7 +957,9 @@ export default function Caja() {
         items: cart,
         fecha: new Date().toISOString(),
         pago_cliente: montoPagoCliente,
-        detalles_pago_mixto: metodoActual === "Mixto" && detallesPagoMixto ? detallesPagoMixto : null
+        detalles_pago_mixto: metodoActual === "Mixto" && detallesPagoMixto ? detallesPagoMixto : null,
+        numero_venta: numeroVenta,
+        cliente_id: clienteSeleccionado?.id || null
       };
       
       console.log('Datos de venta a insertar:', ventaData);
@@ -793,6 +1005,19 @@ export default function Caja() {
         }
       }
       
+      // Obtener información del cliente si existe
+      let clienteInfo = null;
+      if (clienteSeleccionado) {
+        clienteInfo = {
+          id: clienteSeleccionado.id,
+          nombre: clienteSeleccionado.nombre,
+          documento: clienteSeleccionado.documento,
+          telefono: clienteSeleccionado.telefono,
+          email: clienteSeleccionado.email,
+          direccion: clienteSeleccionado.direccion
+        };
+      }
+      
       // Crear objeto de venta para el recibo
       const ventaRecibo = {
         id: ventaResult[0].id,
@@ -805,7 +1030,9 @@ export default function Caja() {
         pagoCliente: montoPagoCliente,
         total: total,
         cantidadProductos: cart.length,
-        detalles_pago_mixto: metodoActual === "Mixto" && detallesPagoMixto ? detallesPagoMixto : null
+        detalles_pago_mixto: metodoActual === "Mixto" && detallesPagoMixto ? detallesPagoMixto : null,
+        cliente: clienteInfo,
+        numero_venta: numeroVenta
       };
       
       console.log('Mostrando recibo:', ventaRecibo);
@@ -931,46 +1158,55 @@ export default function Caja() {
             <ShoppingCart className="caja-cart-icon" /> Carrito de Venta
           </h2>
           {cart.length > 0 && (
-            <button 
-              className="caja-clear-btn"
-              onClick={() => setCart([])}
-            >
-              Vaciar
-            </button>
+            <div className="caja-cart-header-actions">
+              <button 
+                className="caja-save-quote-btn"
+                onClick={handleGuardarCotizacion}
+                disabled={guardandoCotizacion}
+                title="Guardar como cotización"
+              >
+                <Save size={16} />
+                {guardandoCotizacion ? 'Guardando...' : 'Guardar Cotización'}
+              </button>
+              <button 
+                className="caja-clear-btn"
+                onClick={() => setCart([])}
+              >
+                Vaciar
+              </button>
+            </div>
           )}
         </div>
 
-        {/* Control de IVA */}
+        {/* Botón de Cliente */}
         {cart.length > 0 && (
-          <div className="caja-iva-controls">
-            <div className="caja-iva-toggle">
-              <label className="caja-iva-label">
-                <input
-                  type="checkbox"
-                  checked={incluirIva}
-                  onChange={(e) => setIncluirIva(e.target.checked)}
-                  className="caja-iva-checkbox"
-                />
-                <span className="caja-iva-text">Incluir IVA</span>
-              </label>
-            </div>
-            {incluirIva && (
-              <div className="caja-iva-percentage">
-                <label className="caja-iva-percentage-label">Porcentaje:</label>
-                <select
-                  value={porcentajeIva}
-                  onChange={(e) => setPorcentajeIva(Number(e.target.value))}
-                  className="caja-iva-select"
-                >
-                  <option value={5}>5%</option>
-                  <option value={10}>10%</option>
-                  <option value={19}>19%</option>
-                  <option value={21}>21%</option>
-                </select>
-              </div>
+          <div className="caja-cliente-btn-container">
+            <button
+              className="caja-cliente-btn"
+              onClick={() => setMostrandoModalSeleccionCliente(true)}
+              title={clienteSeleccionado ? `Cliente: ${clienteSeleccionado.nombre}` : 'Seleccionar cliente'}
+            >
+              <UserCircle size={18} />
+              <span>
+                {clienteSeleccionado 
+                  ? clienteSeleccionado.nombre.length > 20 
+                    ? `${clienteSeleccionado.nombre.substring(0, 20)}...` 
+                    : clienteSeleccionado.nombre
+                  : 'Cliente (opcional)'}
+              </span>
+            </button>
+            {clienteSeleccionado && (
+              <button
+                className="caja-cliente-remove-btn"
+                onClick={() => setClienteSeleccionado(null)}
+                title="Quitar cliente"
+              >
+                <X size={14} />
+              </button>
             )}
           </div>
         )}
+
 
         <div className="caja-cart-items">
           {cart.length === 0 ? (
@@ -1028,16 +1264,6 @@ export default function Caja() {
 
         <div className="caja-cart-footer">
           <div className="caja-total-breakdown">
-            <div className="caja-total-row">
-              <span className="caja-total-label">Subtotal</span>
-              <span className="caja-total-amount">{formatCOP(subtotal)}</span>
-            </div>
-            {incluirIva && (
-              <div className="caja-total-row">
-                <span className="caja-total-label">IVA ({porcentajeIva}%)</span>
-                <span className="caja-total-amount">{formatCOP(impuestos)}</span>
-              </div>
-            )}
             <div className="caja-total-row caja-total-final">
               <span className="caja-total-label">Total</span>
               <span className="caja-total-amount">{formatCOP(total)}</span>
@@ -1111,17 +1337,28 @@ export default function Caja() {
               <ShoppingCart className="caja-mobile-cart-icon" /> Carrito
             </h3>
             {cart.length > 0 && (
-              <button 
-                className="caja-mobile-clear-all-btn"
-                onClick={() => {
-                  if (window.confirm('¿Estás seguro de que quieres vaciar todo el carrito?')) {
-                    setCart([]);
-                  }
-                }}
-                aria-label="Vaciar carrito"
-              >
-                <Trash2 size={18} />
-              </button>
+              <div className="caja-mobile-cart-header-actions">
+                <button 
+                  className="caja-mobile-save-quote-btn"
+                  onClick={handleGuardarCotizacion}
+                  disabled={guardandoCotizacion}
+                  aria-label="Guardar cotización"
+                  title="Guardar como cotización"
+                >
+                  <Save size={16} />
+                </button>
+                <button 
+                  className="caja-mobile-clear-all-btn"
+                  onClick={() => {
+                    if (window.confirm('¿Estás seguro de que quieres vaciar todo el carrito?')) {
+                      setCart([]);
+                    }
+                  }}
+                  aria-label="Vaciar carrito"
+                >
+                  <Trash2 size={18} />
+                </button>
+              </div>
             )}
             {cart.length === 0 && (
               <div style={{ width: '36px' }}></div>
@@ -1207,6 +1444,14 @@ export default function Caja() {
                 <span className="caja-mobile-btn-text">Seguir</span>
               </button>
               <button 
+                className="caja-mobile-save-quote-footer-btn"
+                onClick={handleGuardarCotizacion}
+                disabled={cart.length === 0 || guardandoCotizacion}
+              >
+                <Save className="caja-mobile-save-icon" size={16} />
+                <span className="caja-mobile-btn-text">{guardandoCotizacion ? 'Guardando...' : 'Guardar'}</span>
+              </button>
+              <button 
                 className="caja-mobile-confirm-btn"
                 onClick={handleContinuar} 
                 disabled={cart.length === 0 || procesandoVenta}
@@ -1243,6 +1488,210 @@ export default function Caja() {
         onClose={handleCerrarConfirmacion}
         ventaData={datosVentaConfirmada}
       />
+
+      {/* Modal de selección de cliente */}
+      {mostrandoModalSeleccionCliente && (
+        <div className="caja-modal-overlay" onClick={() => setMostrandoModalSeleccionCliente(false)}>
+          <div className="caja-modal-content caja-modal-seleccion-cliente" onClick={(e) => e.stopPropagation()}>
+            <div className="caja-modal-header">
+              <h3>Seleccionar Cliente</h3>
+              <button 
+                className="caja-modal-close"
+                onClick={() => setMostrandoModalSeleccionCliente(false)}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="caja-modal-body">
+              <div className="caja-cliente-search-modal">
+                <Search size={18} className="caja-cliente-search-icon-modal" />
+                <input
+                  type="text"
+                  placeholder="Buscar cliente por nombre, documento, teléfono o email..."
+                  value={busquedaCliente}
+                  onChange={(e) => setBusquedaCliente(e.target.value)}
+                  className="caja-cliente-search-input-modal"
+                  autoFocus
+                />
+              </div>
+              
+              <div className="caja-cliente-list-modal">
+                <button
+                  className="caja-cliente-item-modal caja-cliente-item-nuevo"
+                  onClick={() => {
+                    setMostrandoModalSeleccionCliente(false);
+                    setMostrandoModalCliente(true);
+                  }}
+                >
+                  <Plus size={20} />
+                  <span>Crear Nuevo Cliente</span>
+                </button>
+                
+                {clientes
+                  .filter(cliente => {
+                    if (!busquedaCliente.trim()) return true;
+                    const query = busquedaCliente.toLowerCase();
+                    return (
+                      cliente.nombre?.toLowerCase().includes(query) ||
+                      cliente.documento?.toLowerCase().includes(query) ||
+                      cliente.telefono?.toLowerCase().includes(query) ||
+                      cliente.email?.toLowerCase().includes(query)
+                    );
+                  })
+                  .map(cliente => (
+                    <button
+                      key={cliente.id}
+                      className={`caja-cliente-item-modal ${clienteSeleccionado?.id === cliente.id ? 'selected' : ''}`}
+                      onClick={() => {
+                        setClienteSeleccionado(cliente);
+                        setMostrandoModalSeleccionCliente(false);
+                        setBusquedaCliente('');
+                      }}
+                    >
+                      <UserCircle size={20} />
+                      <div className="caja-cliente-item-info">
+                        <span className="caja-cliente-item-nombre">{cliente.nombre}</span>
+                        {cliente.documento && (
+                          <span className="caja-cliente-item-doc">{cliente.documento}</span>
+                        )}
+                      </div>
+                      {clienteSeleccionado?.id === cliente.id && (
+                        <CheckCircle size={18} className="caja-cliente-item-check" />
+                      )}
+                    </button>
+                  ))}
+                
+                {clientes.filter(cliente => {
+                  if (!busquedaCliente.trim()) return false;
+                  const query = busquedaCliente.toLowerCase();
+                  return (
+                    cliente.nombre?.toLowerCase().includes(query) ||
+                    cliente.documento?.toLowerCase().includes(query) ||
+                    cliente.telefono?.toLowerCase().includes(query) ||
+                    cliente.email?.toLowerCase().includes(query)
+                  );
+                }).length === 0 && busquedaCliente.trim() && (
+                  <div className="caja-cliente-no-results">
+                    <p>No se encontraron clientes</p>
+                    <button
+                      className="caja-cliente-btn-crear-desde-busqueda"
+                      onClick={() => {
+                        setMostrandoModalSeleccionCliente(false);
+                        setMostrandoModalCliente(true);
+                      }}
+                    >
+                      <Plus size={16} />
+                      Crear Nuevo Cliente
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para agregar cliente */}
+      {mostrandoModalCliente && (
+        <div className="caja-modal-overlay" onClick={() => setMostrandoModalCliente(false)}>
+          <div className="caja-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="caja-modal-header">
+              <h3>Agregar Nuevo Cliente</h3>
+              <button 
+                className="caja-modal-close"
+                onClick={() => setMostrandoModalCliente(false)}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="caja-modal-body">
+              <div className="caja-cliente-form-group">
+                <label>Nombre *</label>
+                <input
+                  type="text"
+                  value={nuevoCliente.nombre}
+                  onChange={(e) => setNuevoCliente({ ...nuevoCliente, nombre: e.target.value })}
+                  placeholder="Nombre completo"
+                  required
+                />
+              </div>
+              <div className="caja-cliente-form-group">
+                <label>Documento</label>
+                <input
+                  type="text"
+                  value={nuevoCliente.documento}
+                  onChange={(e) => setNuevoCliente({ ...nuevoCliente, documento: e.target.value })}
+                  placeholder="Cédula, NIT, etc."
+                />
+              </div>
+              <div className="caja-cliente-form-group">
+                <label>Teléfono</label>
+                <input
+                  type="tel"
+                  value={nuevoCliente.telefono}
+                  onChange={(e) => setNuevoCliente({ ...nuevoCliente, telefono: e.target.value })}
+                  placeholder="Teléfono de contacto"
+                />
+              </div>
+              <div className="caja-cliente-form-group">
+                <label>Email</label>
+                <input
+                  type="email"
+                  value={nuevoCliente.email}
+                  onChange={(e) => setNuevoCliente({ ...nuevoCliente, email: e.target.value })}
+                  placeholder="correo@ejemplo.com"
+                />
+              </div>
+              <div className="caja-cliente-form-group">
+                <label>Dirección</label>
+                <textarea
+                  value={nuevoCliente.direccion}
+                  onChange={(e) => setNuevoCliente({ ...nuevoCliente, direccion: e.target.value })}
+                  placeholder="Dirección"
+                  rows={3}
+                />
+              </div>
+            </div>
+            <div className="caja-modal-footer">
+              <button
+                className="caja-modal-btn-secondary"
+                onClick={() => {
+                  setMostrandoModalCliente(false);
+                  setNuevoCliente({ nombre: '', documento: '', telefono: '', email: '', direccion: '' });
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                className="caja-modal-btn-primary"
+                onClick={async () => {
+                  if (!nuevoCliente.nombre.trim()) {
+                    toast.error('El nombre es requerido');
+                    return;
+                  }
+                  
+                  try {
+                    const clienteData = {
+                      organization_id: organization.id,
+                      ...nuevoCliente
+                    };
+                    const nuevoClienteCreado = await crearClienteMutation.mutateAsync(clienteData);
+                    setClienteSeleccionado(nuevoClienteCreado);
+                    setMostrandoModalCliente(false);
+                    setMostrandoModalSeleccionCliente(false);
+                    setNuevoCliente({ nombre: '', documento: '', telefono: '', email: '', direccion: '' });
+                  } catch (error) {
+                    console.error('Error creando cliente:', error);
+                  }
+                }}
+                disabled={crearClienteMutation.isLoading}
+              >
+                {crearClienteMutation.isLoading ? 'Guardando...' : 'Guardar Cliente'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

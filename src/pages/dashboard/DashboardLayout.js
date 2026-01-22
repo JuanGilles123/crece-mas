@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Outlet } from 'react-router-dom';
 import { DashboardSkeleton } from '../../components/ui/SkeletonLoader';
-import { BarChart3, CreditCard, Package, User, TrendingUp, Users, Zap, Calculator, Activity, CreditCard as SubscriptionIcon, FileText, Circle, ChefHat, Settings, History } from 'lucide-react';
+import { BarChart3, CreditCard, Package, User, TrendingUp, Users, Zap, Calculator, Activity, CreditCard as SubscriptionIcon, FileText, Circle, ChefHat, Settings, History, UserCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSubscription } from '../../hooks/useSubscription';
 import UsageBanner from '../../components/UsageBanner';
@@ -76,6 +76,13 @@ const DashboardLayout = () => {
             icon: History,
             label: "Historial Cierres",
             title: "Historial de Cierres de Caja",
+            visible: hasPermission('sales') || true
+          },
+          {
+            to: "/dashboard/clientes",
+            icon: UserCircle,
+            label: "Clientes",
+            title: "Gestión de Clientes",
             visible: hasPermission('sales') || true
           }
         ].filter(item => item.visible),

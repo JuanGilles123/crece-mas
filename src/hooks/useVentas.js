@@ -10,20 +10,44 @@ export const useVentas = (organizationId, limit = 100) => {
       if (!organizationId) return [];
       
       try {
-        // Select todos los campos necesarios (usuario_nombre puede no existir)
-        const { data, error } = await supabase
+        // Primero cargar las ventas
+        const { data: ventasData, error: ventasError } = await supabase
           .from('ventas')
           .select('*')
           .eq('organization_id', organizationId)
           .order('created_at', { ascending: false })
           .limit(limit);
-
-        if (error) {
-          console.error('Error fetching ventas:', error);
+        
+        if (ventasError) {
+          console.error('Error fetching ventas:', ventasError);
           throw new Error('Error al cargar ventas');
         }
         
-        return data || [];
+        if (!ventasData || ventasData.length === 0) {
+          return [];
+        }
+        
+        // Cargar clientes para las ventas que tienen cliente_id
+        const ventasConCliente = ventasData.filter(v => v.cliente_id);
+        if (ventasConCliente.length > 0) {
+          const clienteIds = [...new Set(ventasConCliente.map(v => v.cliente_id).filter(Boolean))];
+          const { data: clientesData } = await supabase
+            .from('clientes')
+            .select('id, nombre, documento, telefono, email, direccion')
+            .in('id', clienteIds);
+          
+          // Mapear clientes a las ventas
+          const clientesMap = new Map((clientesData || []).map(c => [c.id, c]));
+          return ventasData.map(venta => ({
+            ...venta,
+            cliente: venta.cliente_id ? (clientesMap.get(venta.cliente_id) || null) : null
+          }));
+        }
+        
+        return ventasData.map(venta => ({
+          ...venta,
+          cliente: null
+        }));
       } catch (error) {
         console.error('Error en useVentas:', error);
         return [];

@@ -19,6 +19,7 @@ const ConfiguracionFacturacion = lazy(() => import('../../components/forms/Confi
 const PlatformAnalytics = lazy(() => import('../PlatformAnalytics'));
 const TomarPedido = lazy(() => import('../TomarPedido'));
 const PanelCocina = lazy(() => import('../PanelCocina'));
+const Clientes = lazy(() => import('./Clientes'));
 
 // Loading fallback optimizado
 const DashboardLoader = () => (
@@ -121,6 +122,11 @@ const Dashboard = () => (
         <Route path="panel-cocina" element={
           <Suspense fallback={<DashboardLoader />}>
             <PanelCocina />
+          </Suspense>
+        } />
+        <Route path="clientes" element={
+          <Suspense fallback={<DashboardLoader />}>
+            <Clientes />
           </Suspense>
         } />
         <Route path="*" element={<Navigate to="/dashboard" />} />

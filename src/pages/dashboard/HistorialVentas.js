@@ -2,6 +2,8 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { useVentas } from '../../hooks/useVentas';
+import { useCotizaciones } from '../../hooks/useCotizaciones';
+import { useNavigate } from 'react-router-dom';
 import { useProductos } from '../../hooks/useProductos';
 import { supabase } from '../../services/api/supabaseClient';
 import ReciboVenta from '../../components/business/ReciboVenta';
@@ -17,14 +19,27 @@ import {
   FileText,
   Banknote,
   CreditCard,
-  Smartphone
+  Smartphone,
+  ArrowRight
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import './HistorialVentas.css';
 
 const HistorialVentas = () => {
   const { userProfile, organization } = useAuth();
+  const navigate = useNavigate();
   const { data: ventas = [], isLoading, refetch } = useVentas(userProfile?.organization_id, 500);
+  const { data: cotizaciones = [] } = useCotizaciones(userProfile?.organization_id);
+  
+  // Combinar ventas y cotizaciones, ordenar por fecha
+  const todasLasVentas = useMemo(() => {
+    const combinadas = [...ventas, ...cotizaciones];
+    return combinadas.sort((a, b) => {
+      const fechaA = new Date(a.created_at || a.fecha);
+      const fechaB = new Date(b.created_at || b.fecha);
+      return fechaB - fechaA;
+    });
+  }, [ventas, cotizaciones]);
   const [busqueda, setBusqueda] = useState('');
   const [filtroFecha, setFiltroFecha] = useState('todos');
   const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
@@ -50,9 +65,19 @@ const HistorialVentas = () => {
           .eq('organization_id', organization.id)
           .order('fecha', { ascending: false });
         
-        if (error && error.code !== '42P01') {
-          console.warn('Error cargando cambios:', error);
-          return;
+        // Si la tabla no existe (PGRST205) o hay otro error relacionado, simplemente no cargar cambios
+        if (error) {
+          // Códigos de error cuando la tabla no existe: PGRST205, 42P01
+          if (error.code === 'PGRST205' || error.code === '42P01' || error.message?.includes('Could not find the table')) {
+            // Tabla no existe, simplemente no cargar cambios (no es crítico)
+            setVentasConCambios(new Map());
+            return;
+          } else {
+            // Otro tipo de error
+            console.warn('Error cargando cambios:', error);
+            setVentasConCambios(new Map());
+            return;
+          }
         }
         
         // Agrupar cambios por venta_id
@@ -68,16 +93,59 @@ const HistorialVentas = () => {
         }
         setVentasConCambios(cambiosMap);
       } catch (error) {
-        console.warn('Error al cargar cambios:', error);
+        // Si hay cualquier error, simplemente no cargar cambios
+        setVentasConCambios(new Map());
       }
     };
     
     cargarCambios();
   }, [organization?.id, ventas.length]);
 
+  // Función para retomar cotización
+  const handleRetomarCotizacion = (cotizacion) => {
+    // Guardar la cotización en localStorage para que Caja la cargue
+    localStorage.setItem('cotizacionRetomar', JSON.stringify({
+      id: cotizacion.id, // ID de la cotización existente
+      items: cotizacion.items || [],
+      total: cotizacion.total || 0,
+      subtotal: cotizacion.subtotal || cotizacion.total || 0,
+      impuestos: cotizacion.impuestos || 0,
+      incluir_iva: cotizacion.incluir_iva || false,
+      porcentaje_iva: cotizacion.porcentaje_iva || 19,
+      cliente_id: cotizacion.cliente_id || null
+    }));
+    
+    // Navegar a Caja
+    navigate('/dashboard/caja');
+    toast.success('Cotización cargada. Puedes continuar con la venta.');
+  };
+
+  // Función para imprimir cotización
+  const imprimirCotizacion = (cotizacion) => {
+    // Preparar datos de cotización para el recibo
+    const cotizacionRecibo = {
+      id: cotizacion.id,
+      date: new Date(cotizacion.created_at || cotizacion.fecha).toLocaleDateString("es-CO"),
+      time: new Date(cotizacion.created_at || cotizacion.fecha).toLocaleTimeString("es-CO"),
+      cashier: cotizacion.usuario_nombre || 'Usuario',
+      register: "Caja Principal",
+      items: cotizacion.items || [],
+      metodo_pago: 'COTIZACIÓN',
+      pagoCliente: 0,
+      total: cotizacion.total,
+      cantidadProductos: cotizacion.items?.length || 0,
+      esCotizacion: true,
+      cliente: cotizacion.cliente || null,
+      numero_venta: cotizacion.numero_venta || null
+    };
+    
+    setVentaSeleccionada(cotizacionRecibo);
+    setMostrandoRecibo(true);
+  };
+
   // Filtrar ventas
   const ventasFiltradas = useMemo(() => {
-    let filtradas = ventas;
+    let filtradas = todasLasVentas;
 
     // Filtro de búsqueda
     if (busqueda.trim()) {
@@ -123,7 +191,7 @@ const HistorialVentas = () => {
     }
 
     return filtradas;
-  }, [ventas, busqueda, filtroFecha]);
+  }, [todasLasVentas, busqueda, filtroFecha]);
 
   const formatCOP = (value) => {
     return new Intl.NumberFormat('es-CO', {
@@ -150,7 +218,7 @@ const HistorialVentas = () => {
     setMostrandoDetalles(true);
     setCargandoHistorial(true);
     
-    // Cargar historial de cambios desde la tabla devoluciones
+    // Cargar historial de cambios desde la tabla devoluciones (si existe)
     try {
       const { data: cambios, error } = await supabase
         .from('devoluciones')
@@ -158,15 +226,22 @@ const HistorialVentas = () => {
         .eq('venta_id', venta.id)
         .order('fecha', { ascending: false });
       
-      if (error && error.code !== '42P01') {
-        // Si el error no es "tabla no existe", loguear
-        console.warn('Error cargando historial de cambios:', error);
-        setHistorialCambios([]);
+      // Si la tabla no existe (PGRST205) o hay otro error, simplemente no cargar historial
+      if (error) {
+        // Códigos de error cuando la tabla no existe: PGRST205, 42P01
+        if (error.code === 'PGRST205' || error.code === '42P01' || error.message?.includes('Could not find the table')) {
+          // Tabla no existe, simplemente no mostrar historial
+          setHistorialCambios([]);
+        } else {
+          // Otro tipo de error
+          console.warn('Error cargando historial de cambios:', error);
+          setHistorialCambios([]);
+        }
       } else {
         setHistorialCambios(cambios || []);
       }
     } catch (error) {
-      console.warn('Error al cargar historial:', error);
+      // Si hay cualquier error, simplemente no mostrar historial
       setHistorialCambios([]);
     } finally {
       setCargandoHistorial(false);
@@ -175,6 +250,7 @@ const HistorialVentas = () => {
 
   const reimprimirRecibo = (venta) => {
     // Preparar datos de venta para el recibo
+    const esCotizacion = (venta.estado === 'cotizacion' || venta.metodo_pago === 'COTIZACION');
     const ventaRecibo = {
       id: venta.id,
       date: new Date(venta.created_at || venta.fecha).toLocaleDateString("es-CO"),
@@ -185,7 +261,10 @@ const HistorialVentas = () => {
       metodo_pago: venta.metodo_pago,
       pagoCliente: venta.pago_cliente || venta.total,
       total: venta.total,
-      cantidadProductos: venta.items?.length || 0
+      cantidadProductos: venta.items?.length || 0,
+      esCotizacion: esCotizacion,
+      cliente: venta.cliente || null,
+      numero_venta: venta.numero_venta || null
     };
     
     setVentaSeleccionada(ventaRecibo);
@@ -322,7 +401,16 @@ const HistorialVentas = () => {
       
       // Intentar guardar en tabla de auditoría (si existe, si no, solo loguear)
       try {
-        await supabase.from('devoluciones').insert([registroCambio]);
+        const { error: insertError } = await supabase.from('devoluciones').insert([registroCambio]);
+        if (insertError) {
+          // Si la tabla no existe (PGRST205) o hay otro error, solo loguear
+          if (insertError.code === 'PGRST205' || insertError.code === '42P01' || insertError.message?.includes('Could not find the table')) {
+            // Tabla no existe, solo loguear (no es crítico)
+            console.log('Registro de auditoría (tabla no existe):', registroCambio);
+          } else {
+            console.warn('Error registrando cambio:', insertError);
+          }
+        }
       } catch (auditError) {
         // Si la tabla no existe, solo loguear (no es crítico)
         console.log('Registro de auditoría:', registroCambio);
@@ -495,7 +583,16 @@ const HistorialVentas = () => {
       
       // Intentar guardar en tabla de auditoría (si existe, si no, solo loguear)
       try {
-        await supabase.from('devoluciones').insert([registroDevolucion]);
+        const { error: insertError } = await supabase.from('devoluciones').insert([registroDevolucion]);
+        if (insertError) {
+          // Si la tabla no existe (PGRST205) o hay otro error, solo loguear
+          if (insertError.code === 'PGRST205' || insertError.code === '42P01' || insertError.message?.includes('Could not find the table')) {
+            // Tabla no existe, solo loguear (no es crítico)
+            console.log('Registro de auditoría de devolución (tabla no existe):', registroDevolucion);
+          } else {
+            console.warn('Error registrando devolución:', insertError);
+          }
+        }
       } catch (auditError) {
         // Si la tabla no existe, solo loguear (no es crítico)
         console.log('Registro de auditoría de devolución:', registroDevolucion);
@@ -656,8 +753,11 @@ const HistorialVentas = () => {
               <div className="venta-header">
                 <div className="venta-info">
                   <div className="venta-id">
-                    <span className="label">Venta #</span>
-                    <span className="value">{venta.id?.slice(0, 8) || 'N/A'}</span>
+                    <span className="label">{(venta.estado === 'cotizacion' || venta.metodo_pago === 'COTIZACION') ? 'Cotización #' : 'Venta #'}</span>
+                    <span className="value">{venta.numero_venta || venta.id?.slice(0, 8) || 'N/A'}</span>
+                    {(venta.estado === 'cotizacion' || venta.metodo_pago === 'COTIZACION') && (
+                      <span className="venta-badge cotizacion" title="Cotización pendiente">Cotización</span>
+                    )}
                     {venta.total === 0 && (!venta.items || venta.items.length === 0) && (
                       <span className="venta-badge devuelta">Devuelta</span>
                     )}
@@ -674,6 +774,15 @@ const HistorialVentas = () => {
                   <div className="venta-metodo">
                     {venta.metodo_pago || 'N/A'}
                   </div>
+                  {venta.cliente && (
+                    <div className="venta-cliente">
+                      <span className="venta-cliente-label">Cliente:</span>
+                      <span className="venta-cliente-nombre">{venta.cliente.nombre}</span>
+                      {venta.cliente.documento && (
+                        <span className="venta-cliente-doc">({venta.cliente.documento})</span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className={`venta-total ${venta.total === 0 ? 'devuelta' : ''}`}>
                   {formatCOP(venta.total || 0)}
@@ -702,23 +811,54 @@ const HistorialVentas = () => {
               </div>
 
               <div className="venta-actions">
-                <button
-                  className="btn-action btn-view"
-                  onClick={() => verDetalles(venta)}
-                  title="Ver detalles"
-                >
-                  <Eye size={16} />
-                  Ver
-                </button>
-                <button
-                  className="btn-action btn-print"
-                  onClick={() => reimprimirRecibo(venta)}
-                  title="Reimprimir recibo"
-                >
-                  <Printer size={16} />
-                  Imprimir
-                </button>
-                {venta.total > 0 && (
+                {(venta.estado === 'cotizacion' || venta.metodo_pago === 'COTIZACION') ? (
+                  <>
+                    <button
+                      className="btn-action btn-view"
+                      onClick={() => verDetalles(venta)}
+                      title="Ver detalles"
+                    >
+                      <Eye size={16} />
+                      Ver
+                    </button>
+                    <button
+                      className="btn-action btn-retomar"
+                      onClick={() => handleRetomarCotizacion(venta)}
+                      title="Retomar cotización"
+                    >
+                      <ArrowRight size={16} />
+                      Retomar
+                    </button>
+                    <button
+                      className="btn-action btn-print"
+                      onClick={() => imprimirCotizacion(venta)}
+                      title="Imprimir cotización"
+                    >
+                      <Printer size={16} />
+                      Imprimir
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      className="btn-action btn-view"
+                      onClick={() => verDetalles(venta)}
+                      title="Ver detalles"
+                    >
+                      <Eye size={16} />
+                      Ver
+                    </button>
+                    <button
+                      className="btn-action btn-print"
+                      onClick={() => reimprimirRecibo(venta)}
+                      title="Reimprimir recibo"
+                    >
+                      <Printer size={16} />
+                      Imprimir
+                    </button>
+                  </>
+                )}
+                {venta.total > 0 && venta.estado !== 'cotizacion' && venta.metodo_pago !== 'COTIZACION' && (
                   <>
                     <button
                       className="btn-action btn-return"
