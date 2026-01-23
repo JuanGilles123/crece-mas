@@ -104,6 +104,19 @@
   border-radius: 6px;
 }
 
+.caja-pedido-items {
+  margin: 0.25rem 0;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.caja-pedido-total {
+  margin: 0.5rem 0 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--accent-primary);
+}
+
 .caja-pedido-items-count {
   margin: 0.25rem 0;
   font-size: 0.875rem;
@@ -130,10 +143,24 @@
   white-space: nowrap;
 }
 
-.caja-pedido-cargar-btn:hover {
+.caja-pedido-cargar-btn:hover:not(:disabled) {
   background: var(--accent-primary-hover);
   box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
   transform: translateY(-1px);
+}
+
+.caja-pedido-cargar-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.caja-pedidos-empty {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-secondary);
+  font-style: italic;
 }
 
 /* Panel de productos - iOS Card */
@@ -536,6 +563,37 @@
   letter-spacing: 0.3px;
 }
 
+.caja-cart-item-toppings,
+.caja-cart-item-notas,
+.caja-cart-item-variaciones {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.caja-cart-item-toppings-label,
+.caja-cart-item-notas-label,
+.caja-cart-item-variaciones-label {
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.caja-cart-item-toppings-list,
+.caja-cart-item-variaciones-list {
+  color: var(--text-primary);
+}
+
+.caja-cart-item-topping-tag,
+.caja-cart-item-variacion-tag {
+  display: inline;
+}
+
+.caja-cart-item-notas-text {
+  font-style: italic;
+  color: var(--text-primary);
+}
+
 .caja-cart-item-price {
   font-size: 0.75rem;
   color: var(--text-secondary);
@@ -669,6 +727,36 @@
 }
 
 /* Footer del carrito */
+.caja-factura-checkbox-container {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--border-primary);
+  border-bottom: 1px solid var(--border-primary);
+  background: var(--bg-secondary);
+  margin: 0.5rem 0;
+}
+
+.caja-factura-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+}
+
+.caja-factura-checkbox {
+  width: 1.1rem;
+  height: 1.1rem;
+  cursor: pointer;
+  accent-color: var(--accent-primary);
+}
+
+.caja-factura-checkbox-text {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
 .caja-cart-footer {
   border-top: 1px solid var(--border-primary);
   padding-top: 0.75rem;
@@ -1146,6 +1234,37 @@
   position: relative;
   transition: all 0.2s;
   padding: 0.125rem 0;
+}
+
+.caja-mobile-cart-item-toppings,
+.caja-mobile-cart-item-notas,
+.caja-mobile-cart-item-variaciones {
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.caja-mobile-cart-item-toppings-label,
+.caja-mobile-cart-item-notas-label,
+.caja-mobile-cart-item-variaciones-label {
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.caja-mobile-cart-item-toppings-list,
+.caja-mobile-cart-item-variaciones-list {
+  color: var(--text-primary);
+}
+
+.caja-mobile-cart-item-topping-tag,
+.caja-mobile-cart-item-variacion-tag {
+  display: inline;
+}
+
+.caja-mobile-cart-item-notas-text {
+  font-style: italic;
+  color: var(--text-primary);
 }
 
 .caja-mobile-cart-item-name:hover {

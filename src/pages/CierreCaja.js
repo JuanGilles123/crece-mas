@@ -10,6 +10,7 @@ const CierreCaja = () => {
   const { userProfile } = useAuth();
   const [cargando, setCargando] = useState(true);
   const [ventasHoy, setVentasHoy] = useState([]);
+  const [cotizacionesHoy, setCotizacionesHoy] = useState([]); // Cotizaciones informativas (no cuentan en totales)
   const [totalSistema, setTotalSistema] = useState(0);
   
   // Currency inputs optimizados
@@ -59,7 +60,9 @@ const CierreCaja = () => {
         .from('ventas')
         .select('*')
         .eq('organization_id', userProfile.organization_id)
-        .gte('created_at', inicioHoy.toISOString());
+        .gte('created_at', inicioHoy.toISOString())
+        // Excluir cotizaciones: no deben contar en el cierre de caja hasta que se conviertan en ventas
+        .neq('metodo_pago', 'COTIZACION');
 
       // 2. Si ya hay un cierre hoy, solo mostrar ventas posteriores al último cierre
       if (hayUltioCierre) {
@@ -71,12 +74,20 @@ const CierreCaja = () => {
 
       if (error) throw error;
 
-      setVentasHoy(data || []);
-      const total = data?.reduce((sum, venta) => sum + (venta.total || 0), 0) || 0;
+      // Separar ventas reales de cotizaciones (por si alguna se filtró)
+      const ventasReales = (data || []).filter(venta => {
+        const metodo = (venta.metodo_pago || '').toUpperCase();
+        const estado = (venta.estado || '').toLowerCase();
+        // Excluir cotizaciones: método COTIZACION o estado cotizacion
+        return metodo !== 'COTIZACION' && estado !== 'cotizacion';
+      });
+
+      setVentasHoy(ventasReales);
+      const total = ventasReales.reduce((sum, venta) => sum + (venta.total || 0), 0);
       setTotalSistema(total);
       
-      // Calcular desglose por método de pago - procesando pagos mixtos
-      const desglose = data?.reduce((acc, venta) => {
+      // Calcular desglose por método de pago - procesando pagos mixtos (solo ventas reales)
+      const desglose = ventasReales.reduce((acc, venta) => {
         const metodo = (venta.metodo_pago || '').toLowerCase();
         const montoTotal = venta.total || 0;
         let procesado = false;
@@ -186,6 +197,36 @@ const CierreCaja = () => {
       }, { efectivo: 0, transferencias: 0, tarjeta: 0, mixto: 0 });
       
       setDesgloseSistema(desglose || { efectivo: 0, transferencias: 0, tarjeta: 0, mixto: 0 });
+
+      // Cargar cotizaciones por separado (solo informativas, no cuentan en totales)
+      try {
+        const inicioHoy = new Date();
+        inicioHoy.setHours(0, 0, 0, 0);
+        
+        let cotizacionesQuery = supabase
+          .from('ventas')
+          .select('*')
+          .eq('organization_id', userProfile.organization_id)
+          .gte('created_at', inicioHoy.toISOString())
+          .eq('metodo_pago', 'COTIZACION');
+
+        // Si ya hay un cierre hoy, solo mostrar cotizaciones posteriores al último cierre
+        if (hayUltioCierre) {
+          const ultimoCierre = cierresHoy[0].created_at;
+          cotizacionesQuery = cotizacionesQuery.gt('created_at', ultimoCierre);
+        }
+
+        const { data: cotizacionesData, error: cotizacionesError } = await cotizacionesQuery
+          .order('created_at', { ascending: false });
+
+        if (!cotizacionesError) {
+          setCotizacionesHoy(cotizacionesData || []);
+        }
+      } catch (cotizError) {
+        console.warn('Error cargando cotizaciones (no crítico):', cotizError);
+        // No es crítico si falla, solo no se mostrarán las cotizaciones informativas
+        setCotizacionesHoy([]);
+      }
     } catch (error) {
       console.error('Error cargando ventas:', error);
       setMensaje({ tipo: 'error', texto: 'Error al cargar las ventas del día' });
@@ -523,6 +564,38 @@ Generado por Crece+ 🚀
               </div>
             )}
           </div>
+
+          {/* Sección informativa de cotizaciones (no cuentan en totales) */}
+          {cotizacionesHoy.length > 0 && (
+            <div className="cotizaciones-lista" style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #e5e7eb' }}>
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#6b7280', fontSize: '0.9rem', marginBottom: '0.75rem' }}>
+                <AlertCircle size={16} />
+                Cotizaciones Pendientes (Informativo)
+              </h3>
+              <p style={{ fontSize: '0.75rem', color: '#9ca3af', marginBottom: '0.75rem' }}>
+                Estas cotizaciones no se cuentan en el cierre de caja hasta que se conviertan en ventas efectivas.
+              </p>
+              <div className="ventas-scroll" style={{ maxHeight: '200px' }}>
+                {cotizacionesHoy.map((cotizacion, index) => (
+                  <motion.div
+                    key={cotizacion.id}
+                    className="venta-item"
+                    style={{ opacity: 0.7, backgroundColor: '#f9fafb' }}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 0.7, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                  >
+                    <div className="venta-hora">{formatHora(cotizacion.created_at)}</div>
+                    <div className="venta-metodo">
+                      <AlertCircle size={16} />
+                      <span>Cotización</span>
+                    </div>
+                    <div className="venta-total" style={{ color: '#6b7280' }}>{formatCOP(cotizacion.total)}</div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          )}
         </motion.div>
 
         {/* Panel de cierre */}

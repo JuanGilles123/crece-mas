@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Outlet } from 'react-router-dom';
 import { DashboardSkeleton } from '../../components/ui/SkeletonLoader';
-import { BarChart3, CreditCard, Package, User, TrendingUp, Users, Zap, Calculator, Activity, CreditCard as SubscriptionIcon, FileText, Circle, ChefHat, Settings, History, UserCircle } from 'lucide-react';
+import { BarChart3, CreditCard, Package, User, TrendingUp, Users, Zap, Calculator, Activity, CreditCard as SubscriptionIcon, FileText, Circle, ChefHat, Settings, History, UserCircle, Table, Utensils, ListChecks } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSubscription } from '../../hooks/useSubscription';
 import UsageBanner from '../../components/UsageBanner';
@@ -100,6 +100,20 @@ const DashboardLayout = () => {
             label: "Productos",
             title: "Gestión de Inventario",
             visible: hasPermission('inventory') || true
+          },
+          {
+            to: "/dashboard/toppings",
+            icon: Utensils,
+            label: "Toppings",
+            title: "Gestión de Toppings e Ingredientes",
+            visible: organization?.business_type === 'food' && (hasPermission('inventory') || true)
+          },
+          {
+            to: "/dashboard/variaciones",
+            icon: ListChecks,
+            label: "Variaciones",
+            title: "Gestión de Variaciones de Productos",
+            visible: organization?.business_type === 'food' && (hasPermission('inventory') || true)
           }
         ].filter(item => item.visible),
         visible: hasPermission('inventory') || true
@@ -116,6 +130,13 @@ const DashboardLayout = () => {
             label: "Tomar Pedido",
             title: "Tomar Pedido por Mesa",
             visible: organization?.business_type === 'food' && organization?.pedidos_habilitados && hasFeature('pedidos')
+          },
+          {
+            to: "/dashboard/mesas",
+            icon: Table,
+            label: "Gestión de Mesas",
+            title: "Gestionar Mesas y Mapa del Local",
+            visible: (organization?.mesas_habilitadas || organization?.enabled_features?.includes('mesas')) && hasFeature('mesas')
           },
           {
             to: "/dashboard/panel-cocina",

@@ -45,7 +45,113 @@
   flex-shrink: 0;
 }
 
+/* Toolbar de agregar */
+.vista-planta-toolbar {
+  background: white;
+  border-radius: 16px;
+  padding: 1rem 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.vista-planta-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.vista-planta-btn-agregar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--accent-primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.vista-planta-btn-agregar:hover {
+  background: var(--accent-primary-hover);
+}
+
+.vista-planta-btn-agregar.active {
+  background: #ef4444;
+}
+
+.vista-planta-btn-agregar.active:hover {
+  background: #dc2626;
+}
+
+.vista-planta-selector-tipo {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tipo-elemento-btn {
+  padding: 0.5rem 1rem;
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  background: white;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tipo-elemento-btn:hover {
+  border-color: var(--accent-primary);
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.tipo-elemento-btn.active {
+  background: var(--accent-primary);
+  color: white;
+  border-color: var(--accent-primary);
+}
+
+.vista-planta-hint {
+  padding: 0.5rem 1rem;
+  background: rgba(59, 130, 246, 0.1);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: var(--accent-primary);
+}
+
+.vista-planta-hint p {
+  margin: 0;
+}
+
 /* Área de Planta */
+.vista-planta-area.modo-agregar {
+  cursor: crosshair;
+}
+
+.vista-planta-area.modo-agregar::before {
+  content: 'Haz clic para agregar elemento';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  pointer-events: none;
+  z-index: 10;
+}
+
 .vista-planta-area {
   flex: 1;
   background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
@@ -87,6 +193,54 @@
 
 .mesa-planta.cuadrada {
   border-radius: 12px;
+}
+
+.mesa-planta.resizable {
+  position: relative;
+  min-width: 60px;
+  min-height: 60px;
+}
+
+/* Handles de redimensionamiento */
+.resize-handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: var(--accent-primary);
+  border: 2px solid white;
+  border-radius: 50%;
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+
+.resize-handle:hover {
+  background: var(--accent-primary-hover);
+  transform: scale(1.2);
+}
+
+.resize-handle-se {
+  bottom: -6px;
+  right: -6px;
+  cursor: nwse-resize;
+}
+
+.resize-handle-sw {
+  bottom: -6px;
+  left: -6px;
+  cursor: nesw-resize;
+}
+
+.resize-handle-ne {
+  top: -6px;
+  right: -6px;
+  cursor: nesw-resize;
+}
+
+.resize-handle-nw {
+  top: -6px;
+  left: -6px;
+  cursor: nwse-resize;
 }
 
 .mesa-planta:hover {

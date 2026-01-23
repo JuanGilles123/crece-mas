@@ -20,6 +20,9 @@ const PlatformAnalytics = lazy(() => import('../PlatformAnalytics'));
 const TomarPedido = lazy(() => import('../TomarPedido'));
 const PanelCocina = lazy(() => import('../PanelCocina'));
 const Clientes = lazy(() => import('./Clientes'));
+const GestionMesas = lazy(() => import('../../components/GestionMesas'));
+const GestionToppings = lazy(() => import('../../components/GestionToppings'));
+const GestionVariaciones = lazy(() => import('../../components/GestionVariaciones'));
 
 // Loading fallback optimizado
 const DashboardLoader = () => (
@@ -127,6 +130,21 @@ const Dashboard = () => (
         <Route path="clientes" element={
           <Suspense fallback={<DashboardLoader />}>
             <Clientes />
+          </Suspense>
+        } />
+        <Route path="mesas" element={
+          <Suspense fallback={<DashboardLoader />}>
+            <GestionMesas />
+          </Suspense>
+        } />
+        <Route path="toppings" element={
+          <Suspense fallback={<DashboardLoader />}>
+            <GestionToppings />
+          </Suspense>
+        } />
+        <Route path="variaciones" element={
+          <Suspense fallback={<DashboardLoader />}>
+            <GestionVariaciones />
           </Suspense>
         } />
         <Route path="*" element={<Navigate to="/dashboard" />} />

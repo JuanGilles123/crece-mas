@@ -192,13 +192,18 @@
   position: absolute !important;
   left: 1rem !important;
   color: #9ca3af !important;
-  z-index: 2 !important;
+  z-index: 1 !important;
   transition: color 0.3s ease !important;
+  pointer-events: none !important;
+  flex-shrink: 0 !important;
 }
 
-.input {
+.inputWrapper .input {
   width: 100% !important;
-  padding: var(--pwa-space-5) var(--pwa-space-5) var(--pwa-space-5) 3.5rem !important;
+  padding-left: 3.5rem !important;
+  padding-right: 3rem !important;
+  padding-top: var(--pwa-space-5) !important;
+  padding-bottom: var(--pwa-space-5) !important;
   border: 2px solid #e5e7eb !important;
   border-radius: var(--pwa-radius-xl) !important;
   font-size: var(--pwa-font-size-xl) !important;
@@ -207,6 +212,7 @@
   transition: var(--pwa-transition-normal) !important;
   box-sizing: border-box !important;
   min-height: var(--pwa-input-height-xl) !important;
+  text-indent: 0 !important;
 }
 
 .input:focus {
@@ -235,6 +241,11 @@
   transition: color 0.3s ease;
   padding: 0.25rem;
   border-radius: 0.25rem;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .eyeButton:hover {
@@ -579,16 +590,29 @@
     font-size: 1.5rem !important;
   }
   
-  .input {
-    padding: 0.875rem 0.875rem 0.875rem 2.5rem !important;
+  .inputWrapper .input {
+    padding-left: 3.5rem !important;
+    padding-right: 2.75rem !important;
+    padding-top: 0.875rem !important;
+    padding-bottom: 0.875rem !important;
+    font-size: 16px !important; /* Evita zoom en iOS */
   }
-  
-  .inputIcon {
-    left: 0.75rem !important;
+
+  .inputWrapper .inputIcon {
+    left: 0.875rem !important;
+    width: 18px !important;
+    height: 18px !important;
+    pointer-events: none !important;
   }
-  
+
   .eyeButton {
-    right: 0.75rem !important;
+    right: 0.875rem !important;
+    padding: 0.25rem !important;
+  }
+
+  .eyeButton svg {
+    width: 18px !important;
+    height: 18px !important;
   }
 
   /* Toggle buttons en móvil */

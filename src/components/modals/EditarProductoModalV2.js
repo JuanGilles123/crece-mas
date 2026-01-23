@@ -14,6 +14,7 @@ import { Plus, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PRODUCT_TYPES, ADDITIONAL_FIELDS, getProductTypeFields } from '../../utils/productTypes';
 import OptimizedProductImage from '../../components/business/OptimizedProductImage';
+import VariacionesConfig from '../VariacionesConfig';
 import './AgregarProductoModalV2.css';
 
 // Función para crear esquema de validación dinámico (igual que en AgregarProductoModalV2)
@@ -115,6 +116,7 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
   const [subiendo, setSubiendo] = useState(false);
   const [comprimiendo, setComprimiendo] = useState(false);
   const [additionalFields, setAdditionalFields] = useState([]);
+  const [variacionesConfig, setVariacionesConfig] = useState([]);
   const fileInputRef = useRef();
 
   const puedeSubirImagenes = hasFeature('productImages');
@@ -171,9 +173,13 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
     }
   });
 
-  // Cargar valores cuando cambia el producto
+  // Ref para rastrear el último producto cargado y evitar re-cargas durante la edición
+  const ultimoProductoIdRef = useRef(null);
+
+  // Cargar valores cuando cambia el producto (solo cuando cambia el ID del producto)
   useEffect(() => {
-    if (producto) {
+    if (producto && producto.id !== ultimoProductoIdRef.current) {
+      ultimoProductoIdRef.current = producto.id;
       const metadata = producto.metadata || {};
       
       setValue('codigo', producto.codigo || '');
@@ -183,6 +189,13 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
       setValue('stock', producto.stock?.toString() || '');
       setValue('tipo', producto.tipo || 'fisico');
       setValue('fecha_vencimiento', producto.fecha_vencimiento || '');
+      
+      // Cargar variaciones_config si existe
+      if (metadata.variaciones_config && Array.isArray(metadata.variaciones_config)) {
+        setVariacionesConfig(metadata.variaciones_config);
+      } else {
+        setVariacionesConfig([]);
+      }
       
       // Cargar campos de metadata
       Object.keys(ADDITIONAL_FIELDS).forEach(fieldId => {
@@ -201,7 +214,7 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
         }
       });
 
-      // Actualizar currency inputs
+      // Actualizar currency inputs solo cuando cambia el producto (por ID)
       precioCompraInput.setValue(producto.precio_compra || '');
       precioVentaInput.setValue(producto.precio_venta || '');
       stockInput.setValue(producto.stock || '');
@@ -337,6 +350,11 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
           newMetadata[fieldId] = data[fieldId];
         }
       });
+      
+      // Agregar variaciones_config si hay variaciones configuradas
+      if (variacionesConfig && variacionesConfig.length > 0) {
+        newMetadata.variaciones_config = variacionesConfig;
+      }
 
       // Agregar metadata solo si tiene datos
       if (Object.keys(newMetadata).length > 0) {
@@ -540,18 +558,26 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
                           {fieldConfig.options.map(opt => (
                             <option key={opt} value={opt}>{opt}</option>
                           ))}
-                        </select>
-                      ) : (
-                        <input
-                          {...register(fieldId)}
-                          type={fieldConfig.type}
-                          className="input-form"
-                          placeholder={fieldConfig.placeholder}
-                        />
-                      )}
-                    </div>
-                  );
-                })}
+                    </select>
+                  ) : (
+                    <input
+                      {...register(fieldId)}
+                      type={fieldConfig.type}
+                      className="input-form"
+                      placeholder={fieldConfig.placeholder}
+                    />
+                  )}
+                </div>
+              );
+            })}
+              
+              {/* Configuración de variaciones (solo para productos de comida) */}
+              {selectedType === 'comida' && (
+                <VariacionesConfig
+                  variaciones={variacionesConfig}
+                  onChange={setVariacionesConfig}
+                />
+              )}
               </div>
             )}
 
