@@ -10,12 +10,36 @@
 /* Header */
 .pedido-header {
   margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .pedido-header-content {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+
+.pedido-btn-mapa {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--accent-primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pedido-btn-mapa:hover {
+  background: var(--accent-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 .pedido-header-content h1 {
@@ -78,6 +102,150 @@
   font-size: 1.25rem;
   font-weight: 700;
   color: var(--text-primary);
+}
+
+/* Selector de tipo de pedido */
+.tipo-pedido-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.tipo-pedido-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 2rem 1.5rem;
+  background: white;
+  border: 2px solid var(--border-color);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.tipo-pedido-card:hover {
+  border-color: var(--accent-primary);
+  background: rgba(59, 130, 246, 0.03);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.tipo-pedido-icon {
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(147, 51, 234, 0.1) 100%);
+  border-radius: 16px;
+  color: var(--accent-primary);
+}
+
+.tipo-pedido-card h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.tipo-pedido-card p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+/* Tipo de pedido seleccionado */
+.tipo-pedido-seleccionado {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(147, 51, 234, 0.1) 100%);
+  border: 2px solid var(--accent-primary);
+  border-radius: 12px;
+}
+
+.tipo-pedido-seleccionado-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.btn-cambiar-tipo {
+  padding: 0.375rem 0.75rem;
+  background: white;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-cambiar-tipo:hover {
+  background: var(--bg-secondary);
+  border-color: var(--accent-primary);
+}
+
+/* Campos del formulario */
+.pedido-campos-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.pedido-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pedido-campo label {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+}
+
+.pedido-campo label .required {
+  color: #ef4444;
+}
+
+.pedido-campo input,
+.pedido-campo textarea {
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.pedido-campo input:focus,
+.pedido-campo textarea:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.pedido-campo textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+/* Mesa "Mostrador" */
+.mesa-selector-card.mostrador {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(245, 158, 11, 0.1) 100%);
+  border-color: #f59e0b;
+}
+
+.mesa-selector-card.mostrador:hover {
+  border-color: #d97706;
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(245, 158, 11, 0.15) 100%);
 }
 
 /* Mesa seleccionada */
@@ -144,14 +312,52 @@
   gap: 0.5rem;
   padding: 1.25rem;
   background: white;
-  border: 2px solid;
+  border: 3px solid;
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s ease;
+  position: relative;
 }
 
 .mesa-selector-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+/* Mesas disponibles - verde #10B981 */
+.mesa-selector-card:not(.mesa-ocupada):not(.mesa-reservada):not(.mostrador) {
+  border-color: #10B981;
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.mesa-selector-card:not(.mesa-ocupada):not(.mesa-reservada):not(.mostrador):hover {
+  border-color: #059669;
+  background: rgba(16, 185, 129, 0.2);
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.25);
+}
+
+/* Mesas ocupadas - rojo #EF4444 */
+.mesa-selector-card.mesa-ocupada {
+  border-color: #EF4444;
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.mesa-selector-card.mesa-ocupada:hover {
+  border-color: #DC2626;
+  background: rgba(239, 68, 68, 0.2);
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.25);
+}
+
+/* Mesas reservadas - amarillo/naranja #F59E0B */
+.mesa-selector-card.mesa-reservada {
+  border-color: #F59E0B;
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.mesa-selector-card.mesa-reservada:hover {
+  border-color: #D97706;
+  background: rgba(245, 158, 11, 0.2);
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.25);
 }
 
 .mesa-numero {
@@ -166,6 +372,15 @@
   display: flex;
   align-items: center;
   gap: 0.25rem;
+}
+
+.mesa-estado-indicator {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .no-mesas {
@@ -303,11 +518,17 @@
 
 .pedido-item {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  flex-direction: column;
   padding: 1rem;
   background: var(--bg-secondary);
   border-radius: 12px;
+  gap: 0.75rem;
+}
+
+.pedido-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
   gap: 1rem;
 }
 
@@ -322,7 +543,8 @@
   color: var(--text-primary);
 }
 
-.pedido-item-toppings {
+.pedido-item-toppings,
+.pedido-item-variaciones {
   margin: 0.25rem 0;
   font-size: 0.75rem;
   color: var(--text-secondary);
@@ -336,57 +558,218 @@
   color: var(--accent-primary);
 }
 
+.pedido-item-notas {
+  width: 100%;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.pedido-item-notas-input {
+  width: 100%;
+  padding: 0.5rem;
+  font-size: 0.75rem;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  background: white;
+  color: var(--text-primary);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.pedido-item-notas-input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.pedido-item-notas-input::placeholder {
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
 .pedido-item-actions {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex-shrink: 0;
 }
 
 .btn-cantidad {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  background: white;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  width: 36px;
+  height: 36px;
+  background: var(--accent-primary);
+  border: 2px solid var(--accent-primary);
   border-radius: 8px;
-  color: var(--text-primary);
+  color: white !important;
   cursor: pointer;
   transition: all 0.2s ease;
+  flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: relative;
+  z-index: 1;
 }
 
 .btn-cantidad:hover {
-  background: var(--bg-tertiary);
-  border-color: var(--accent-primary);
+  background: #2563eb;
+  border-color: #2563eb;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
-.cantidad {
-  min-width: 24px;
+.btn-cantidad:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.btn-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  z-index: 2;
+}
+
+.btn-cantidad svg,
+.btn-cantidad .btn-icon-wrapper svg,
+.btn-cantidad > svg,
+.btn-cantidad .btn-icon-wrapper > svg {
+  pointer-events: none;
+  color: white !important;
+  stroke: white !important;
+  fill: none !important;
+  stroke-width: 2.5 !important;
+  z-index: 3 !important;
+  position: relative;
+  display: block !important;
+  width: 20px !important;
+  height: 20px !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Forzar color en todos los paths del SVG */
+.btn-cantidad svg path,
+.btn-cantidad .btn-icon-wrapper svg path {
+  stroke: white !important;
+  fill: none !important;
+  stroke-width: 2.5 !important;
+}
+
+.cantidad-display {
+  min-width: 32px;
   text-align: center;
-  font-weight: 600;
-  font-size: 0.875rem;
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--text-primary);
+  padding: 0 0.5rem;
 }
 
 .btn-eliminar {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  background: rgba(239, 68, 68, 0.1);
-  border: none;
+  width: 36px;
+  height: 36px;
+  background: #EF4444;
+  border: 2px solid #EF4444;
   border-radius: 8px;
-  color: #EF4444;
+  color: white !important;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+  position: relative;
+  z-index: 1;
+}
+
+.btn-eliminar:hover {
+  background: #DC2626;
+  border-color: #DC2626;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(239, 68, 68, 0.4);
+}
+
+.btn-eliminar:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(239, 68, 68, 0.3);
+}
+
+.btn-eliminar svg,
+.btn-eliminar .btn-icon-wrapper svg,
+.btn-eliminar > svg,
+.btn-eliminar .btn-icon-wrapper > svg {
+  pointer-events: none;
+  color: white !important;
+  stroke: white !important;
+  fill: none !important;
+  stroke-width: 2.5 !important;
+  z-index: 3 !important;
+  position: relative;
+  display: block !important;
+  width: 20px !important;
+  height: 20px !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Forzar color en todos los paths del SVG */
+.btn-eliminar svg path,
+.btn-eliminar .btn-icon-wrapper svg path {
+  stroke: white !important;
+  fill: none !important;
+  stroke-width: 2.5 !important;
+}
+
+/* Notas */
+.pedido-pago-option {
+  margin-bottom: 1.5rem;
+}
+
+.pedido-pago-option label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.pedido-pago-options {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.pedido-pago-btn {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  background: white;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.btn-eliminar:hover {
-  background: rgba(239, 68, 68, 0.2);
+.pedido-pago-btn:hover {
+  border-color: var(--accent-primary);
+  background: rgba(59, 130, 246, 0.05);
 }
 
-/* Notas */
+.pedido-pago-btn.active {
+  background: var(--accent-primary);
+  color: white;
+  border-color: var(--accent-primary);
+}
+
+.pedido-pago-btn.active:hover {
+  background: var(--accent-primary-hover);
+}
+
 .pedido-notas {
   margin-bottom: 1.5rem;
 }
@@ -428,12 +811,28 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 0.5rem 0;
+}
+
+.pedido-total-line:not(:last-child) {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.pedido-total-line.total {
+  border-top: 2px solid var(--accent-primary);
+  margin-top: 0.5rem;
+  padding-top: 1rem;
+  padding-bottom: 0.5rem;
 }
 
 .pedido-total-line span:first-child {
   font-weight: 600;
   font-size: 1rem;
   color: var(--text-primary);
+}
+
+.pedido-total-line.total span:first-child {
+  font-size: 1.125rem;
 }
 
 .pedido-total-amount {
@@ -975,6 +1374,28 @@
   background: #3C3C3E;
 }
 
+.dark .btn-cantidad {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: white;
+}
+
+.dark .btn-cantidad:hover {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.dark .btn-eliminar {
+  background: #EF4444;
+  border-color: #EF4444;
+  color: white;
+}
+
+.dark .btn-eliminar:hover {
+  background: #DC2626;
+  border-color: #DC2626;
+}
+
 .dark .pedido-search {
   background: #2C2C2E;
 }
@@ -983,10 +1404,38 @@
   background: #2C2C2E;
 }
 
+.dark .pedido-item-notas-input {
+  background: #1C1C1E;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.dark .pedido-item-notas-input:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
 .dark .btn-cantidad {
   background: #2C2C2E;
   border-color: rgba(255, 255, 255, 0.15);
   color: white;
+}
+
+.dark .pedido-pago-btn {
+  background: #2C2C2E;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: white;
+}
+
+.dark .pedido-pago-btn:hover {
+  border-color: var(--accent-primary);
+  background: rgba(59, 130, 246, 0.15);
+}
+
+.dark .pedido-pago-btn.active {
+  background: var(--accent-primary);
+  color: white;
+  border-color: var(--accent-primary);
 }
 
 .dark .pedido-notas textarea {
@@ -995,3 +1444,145 @@
   color: white;
 }
 
+/* Modal de método de pago */
+.pedido-metodo-pago-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pedido-metodo-pago-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+}
+
+.pedido-metodo-pago-content {
+  position: relative;
+  background: white;
+  border-radius: 16px;
+  padding: 2rem;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  z-index: 1001;
+}
+
+.pedido-metodo-pago-content h3 {
+  margin: 0 0 1.5rem 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.pedido-metodo-pago-options {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.pedido-metodo-pago-btn {
+  padding: 1rem;
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  background: white;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pedido-metodo-pago-btn:hover {
+  border-color: var(--accent-primary);
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.pedido-metodo-pago-btn.active {
+  background: var(--accent-primary);
+  color: white;
+  border-color: var(--accent-primary);
+}
+
+.pedido-metodo-pago-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.pedido-metodo-pago-cancelar,
+.pedido-metodo-pago-confirmar {
+  flex: 1;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pedido-metodo-pago-cancelar {
+  background: #f3f4f6;
+  color: var(--text-primary);
+}
+
+.pedido-metodo-pago-cancelar:hover {
+  background: #e5e7eb;
+}
+
+.pedido-metodo-pago-confirmar {
+  background: var(--accent-primary);
+  color: white;
+}
+
+.pedido-metodo-pago-confirmar:hover:not(:disabled) {
+  background: var(--accent-primary-hover);
+}
+
+.pedido-metodo-pago-confirmar:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Dark mode */
+.dark .pedido-metodo-pago-content {
+  background: #1C1C1E;
+  color: white;
+}
+
+.dark .pedido-metodo-pago-btn {
+  background: #2C2C2E;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: white;
+}
+
+.dark .pedido-metodo-pago-btn:hover {
+  border-color: var(--accent-primary);
+  background: rgba(59, 130, 246, 0.15);
+}
+
+.dark .pedido-metodo-pago-btn.active {
+  background: var(--accent-primary);
+  color: white;
+  border-color: var(--accent-primary);
+}
+
+.dark .pedido-metodo-pago-cancelar {
+  background: #2C2C2E;
+  color: white;
+}
+
+.dark .pedido-metodo-pago-cancelar:hover {
+  background: #3A3A3C;
+}
