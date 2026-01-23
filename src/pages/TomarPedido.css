@@ -1,10 +1,19 @@
 /* 🍽️ Estilos para Tomar Pedido - Diseño Minimalista y Elegante */
 
 .tomar-pedido {
-  padding: 2rem;
-  max-width: 1600px;
-  margin: 0 auto;
+  padding: 1.5rem;
+  max-width: 100%;
+  width: 100%;
+  margin: 0;
   min-height: 100vh;
+  box-sizing: border-box;
+}
+
+/* Desktop: Ajustar padding para usar más espacio */
+@media (min-width: 769px) {
+  .tomar-pedido {
+    padding: 1.5rem 2rem;
+  }
 }
 
 /* Header */
@@ -85,6 +94,21 @@
   display: grid;
   grid-template-columns: 1fr 400px;
   gap: 2rem;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Desktop: Ajustar columnas para usar más espacio */
+@media (min-width: 1200px) {
+  .pedido-container {
+    grid-template-columns: 1fr 450px;
+  }
+}
+
+@media (min-width: 1600px) {
+  .pedido-container {
+    grid-template-columns: 1fr 500px;
+  }
 }
 
 /* Secciones */
@@ -923,7 +947,7 @@
   background: white;
   border-radius: 24px;
   width: 100%;
-  max-width: 1200px;
+  max-width: 95vw;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
@@ -1213,7 +1237,7 @@
   background: white;
   border-radius: 20px;
   padding: 2rem;
-  max-width: 400px;
+  max-width: 100%;
   width: 100%;
   box-shadow: 0 25px 80px rgba(0, 0, 0, 0.4);
 }

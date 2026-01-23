@@ -4,14 +4,18 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../services/api/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import { useProductos } from '../../hooks/useProductos';
+import { useToppings } from '../../hooks/useToppings';
 import { useGuardarCotizacion, useActualizarCotizacion } from '../../hooks/useCotizaciones';
 import { generarCodigoVenta } from '../../utils/generarCodigoVenta';
 import { useClientes, useCrearCliente } from '../../hooks/useClientes';
 import { usePedidos, useActualizarPedido } from '../../hooks/usePedidos';
+import { useAperturaCajaActiva } from '../../hooks/useAperturasCaja';
 import OptimizedProductImage from '../../components/business/OptimizedProductImage';
 import ReciboVenta from '../../components/business/ReciboVenta';
 import ConfirmacionVenta from '../../components/business/ConfirmacionVenta';
-import { ShoppingCart, Trash2, Search, CheckCircle, CreditCard, Banknote, Smartphone, Wallet, ArrowLeft, Save, Plus, X, UserCircle } from 'lucide-react';
+import AperturaCajaModal from '../../components/modals/AperturaCajaModal';
+import DescuentoModal from '../../components/modals/DescuentoModal';
+import { ShoppingCart, Trash2, Search, CheckCircle, CreditCard, Banknote, Smartphone, Wallet, ArrowLeft, Save, Plus, X, UserCircle, Lock, Percent } from 'lucide-react';
 import toast from 'react-hot-toast';
 import './Caja.css';
 
@@ -32,7 +36,7 @@ function formatCOP(value) {
 
 // Total carrito
 function calcTotal(cart) {
-  return cart.reduce((sum, item) => sum + item.qty * item.price, 0);
+  return cart.reduce((sum, item) => sum + (typeof item.qty === 'number' ? item.qty : 0) * item.price, 0);
 }
 
 export default function Caja() {
@@ -73,9 +77,31 @@ export default function Caja() {
     email: '',
     direccion: ''
   });
-  const [mostrarFacturaPantalla, setMostrarFacturaPantalla] = useState(false);
+  // Leer preferencia de mostrar factura desde user_metadata
+  const mostrarFacturaPantalla = user?.user_metadata?.mostrarFacturaPantalla === true;
   const [mostrarModalRegresarPedidos, setMostrarModalRegresarPedidos] = useState(false);
   const [vieneDePedidos, setVieneDePedidos] = useState(false);
+  const [mostrarModalApertura, setMostrarModalApertura] = useState(false);
+  const [mostrarModalDescuento, setMostrarModalDescuento] = useState(false);
+  const [descuento, setDescuento] = useState({
+    tipo: 'porcentaje', // 'porcentaje' o 'fijo'
+    valor: 0,
+    alcance: 'total', // 'total' o 'productos'
+    productosIds: [] // IDs de productos con descuento
+  });
+  
+  // Verificar si hay una apertura de caja activa
+  const { data: aperturaActiva, isLoading: cargandoApertura, refetch: refetchApertura } = useAperturaCajaActiva(organization?.id);
+  
+  // Mostrar modal de apertura automáticamente solo una vez al cargar si no hay apertura activa
+  const [modalMostradoInicialmente, setModalMostradoInicialmente] = useState(false);
+  
+  useEffect(() => {
+    if (!cargandoApertura && !aperturaActiva && organization?.id && !modalMostradoInicialmente) {
+      setMostrarModalApertura(true);
+      setModalMostradoInicialmente(true);
+    }
+  }, [cargandoApertura, aperturaActiva, organization?.id, modalMostradoInicialmente]);
   
   // Hooks para clientes
   // eslint-disable-next-line no-unused-vars
@@ -107,6 +133,9 @@ export default function Caja() {
 
   // Cargar productos usando React Query (optimizado con cache)
   const { data: productosData = [], isLoading: productosLoading } = useProductos(organization?.id);
+  
+  // Cargar toppings para mostrarlos como productos individuales
+  const { data: toppingsData = [], isLoading: toppingsLoading } = useToppings(organization?.id);
   
   // Precargar imágenes cuando se cargan los productos (similar a Inventario)
   useEffect(() => {
@@ -175,11 +204,47 @@ export default function Caja() {
   }, [productosData, organization?.id]);
   
   useEffect(() => {
+    // Combinar productos y toppings
+    let productosCombinados = [];
+    
+    // Agregar productos
     if (productosData.length > 0) {
-      setProductos(productosData);
+      // El hook useProductos ya filtra por organization_id en la consulta
+      // Agregamos un filtro adicional de seguridad para asegurar que solo se muestren
+      // productos de la organización actual (por si algún producto tiene organization_id incorrecto)
+      if (organization?.id) {
+        const productosFiltrados = productosData.filter(
+          p => p.organization_id && String(p.organization_id) === String(organization.id)
+        );
+        // Si después del filtro no quedan productos, usar los originales (el hook ya filtró)
+        // Esto previene que se eliminen todos los productos si hay un problema con el filtro
+        productosCombinados = productosFiltrados.length > 0 ? productosFiltrados : productosData;
+      } else {
+        productosCombinados = productosData;
+      }
     }
-    setCargando(productosLoading);
-  }, [productosData, productosLoading]);
+    
+    // Agregar toppings como productos individuales
+    if (toppingsData.length > 0) {
+      const toppingsComoProductos = toppingsData.map(topping => ({
+        id: `topping_${topping.id}`, // Prefijo para identificar que es un topping
+        nombre: topping.nombre,
+        precio_venta: topping.precio || 0,
+        precio_compra: topping.precio_compra || 0,
+        stock: topping.stock,
+        imagen: topping.imagen_url || null,
+        organization_id: topping.organization_id,
+        es_topping: true, // Flag para identificar que es un topping
+        topping_id: topping.id, // ID original del topping
+        categoria: topping.categoria || 'general',
+        tipo: topping.tipo || 'comida'
+      }));
+      productosCombinados = [...productosCombinados, ...toppingsComoProductos];
+    }
+    
+    setProductos(productosCombinados);
+    setCargando(productosLoading || toppingsLoading);
+  }, [productosData, productosLoading, toppingsData, toppingsLoading, organization?.id]);
 
   // Estado para trackear si estamos editando una cotización existente
   const [cotizacionId, setCotizacionId] = useState(null);
@@ -316,7 +381,39 @@ export default function Caja() {
   }, [query, productos]);
 
   const subtotal = useMemo(() => calcTotal(cart.map((c) => ({ id: c.id, price: c.precio_venta, qty: c.qty }))), [cart]);
-  const total = useMemo(() => subtotal, [subtotal]);
+  
+  // Calcular descuento
+  const montoDescuento = useMemo(() => {
+    if (!descuento.valor || descuento.valor <= 0) return 0;
+    
+    if (descuento.alcance === 'total') {
+      // Descuento sobre el total
+      if (descuento.tipo === 'porcentaje') {
+        return (subtotal * descuento.valor) / 100;
+      } else {
+        // Descuento fijo
+        return Math.min(descuento.valor, subtotal);
+      }
+    } else {
+      // Descuento sobre productos específicos
+      let descuentoProductos = 0;
+      cart.forEach(item => {
+        if (descuento.productosIds.includes(item.id)) {
+          const itemSubtotal = (typeof item.qty === 'number' ? item.qty : 0) * item.precio_venta;
+          if (descuento.tipo === 'porcentaje') {
+            descuentoProductos += (itemSubtotal * descuento.valor) / 100;
+          } else {
+            // Descuento fijo por producto (se divide entre la cantidad de productos con descuento)
+            const descuentoPorItem = descuento.valor / descuento.productosIds.length;
+            descuentoProductos += Math.min(descuentoPorItem, itemSubtotal);
+          }
+        }
+      });
+      return descuentoProductos;
+    }
+  }, [subtotal, descuento, cart]);
+  
+  const total = useMemo(() => Math.max(0, subtotal - montoDescuento), [subtotal, montoDescuento]);
 
   function addToCart(producto) {
     // Verificar stock disponible
@@ -370,6 +467,34 @@ export default function Caja() {
       return updated.filter((i) => i.qty > 0);
     });
   };
+
+  const updateQty = (id, newQty) => {
+    const producto = productos.find(p => p.id === id);
+    const qty = parseInt(newQty, 10);
+    
+    if (isNaN(qty) || qty < 1) {
+      // Si no es un número válido o es menor a 1, eliminar del carrito
+      setCart((prev) => prev.filter((i) => i.id !== id));
+      return;
+    }
+    
+    if (producto && qty > producto.stock) {
+      toast.error(`No hay suficiente stock. Disponible: ${producto.stock}`);
+      // Mantener la cantidad anterior si excede el stock
+      const itemEnCarrito = cart.find(item => item.id === id);
+      if (itemEnCarrito) {
+        setCart((prev) => prev.map((i) => 
+          i.id === id ? { ...i, qty: itemEnCarrito.qty } : i
+        ));
+      }
+      return;
+    }
+    
+    setCart((prev) => prev.map((i) => 
+      i.id === id ? { ...i, qty: qty } : i
+    ));
+  };
+
   const removeItem = (id) => setCart((prev) => prev.filter((i) => i.id !== id));
 
   const handleNuevaVenta = () => {
@@ -378,7 +503,6 @@ export default function Caja() {
     setVentaCompletada(null);
     setClienteNombrePedido(null); // Limpiar nombre del cliente del pedido
     setMostrandoMetodosPago(false);
-    setMostrarFacturaPantalla(false); // Resetear checkbox
   };
 
   const handleContinuar = () => {
@@ -1071,6 +1195,14 @@ export default function Caja() {
       setProcesandoVenta(false);
       return;
     }
+
+    // Verificar si hay una apertura de caja activa
+    if (!aperturaActiva) {
+      toast.error('Debes abrir la caja antes de realizar ventas');
+      setMostrarModalApertura(true);
+      setProcesandoVenta(false);
+      return;
+    }
     
     if (cart.length === 0) {
       toast.error('El carrito está vacío');
@@ -1142,6 +1274,14 @@ export default function Caja() {
           organization_id: organization.id,
           user_id: user.id,
           total: total,
+          subtotal: subtotal,
+          descuento: montoDescuento > 0 ? {
+            tipo: descuento.tipo,
+            valor: descuento.valor,
+            monto: montoDescuento,
+            alcance: descuento.alcance,
+            productosIds: descuento.productosIds
+          } : null,
           metodo_pago: metodoPagoFinal,
           items: cart,
           fecha: new Date().toISOString(),
@@ -1311,6 +1451,14 @@ export default function Caja() {
         date: new Date().toLocaleDateString("es-CO"),
         time: new Date().toLocaleTimeString("es-CO"),
         cashier: user.user_metadata?.full_name || user.email || "Usuario",
+        subtotal: subtotal,
+        descuento: montoDescuento > 0 ? {
+          tipo: descuento.tipo,
+          valor: descuento.valor,
+          monto: montoDescuento,
+          alcance: descuento.alcance,
+          productosIds: descuento.productosIds
+        } : null,
         register: "Caja Principal",
         items: cart,
         metodo_pago: metodoPagoFinal,
@@ -1341,7 +1489,6 @@ export default function Caja() {
           setPedidoIdActual(null); // Limpiar pedido actual
           setPedidosConsolidados([]); // Limpiar pedidos consolidados
           setClienteNombrePedido(null); // Limpiar nombre del cliente del pedido
-          setMostrarFacturaPantalla(false); // Resetear checkbox
           
           // Si viene de pedidos, mostrar modal de regreso
           if (vieneDePedidos) {
@@ -1461,7 +1608,7 @@ export default function Caja() {
     }
   };
 
-  if (cargando) {
+  if (cargando || cargandoApertura) {
     return (
       <div className="caja-loading">
         <div className="caja-skeleton">
@@ -1476,8 +1623,30 @@ export default function Caja() {
 );
   }
 
+  // No bloquear toda la página, solo la funcionalidad de ventas
+
   return (
     <div className="caja-container">
+      {/* Overlay de bloqueo si no hay apertura activa */}
+      {!aperturaActiva && organization?.id && !cargandoApertura && (
+        <div className="caja-bloqueo-overlay">
+          <div className="caja-bloqueo-mensaje">
+            <Lock size={48} />
+            <h3>Caja Cerrada</h3>
+            <p>Debes abrir la caja antes de realizar ventas</p>
+            <button
+              className="caja-btn-abrir-caja"
+              onClick={() => {
+                setMostrarModalApertura(true);
+                setModalMostradoInicialmente(false); // Permitir mostrar el modal de nuevo
+              }}
+            >
+              Abrir Caja
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Sección de pedidos pendientes de pago */}
       {pedidosPendientesPago.length > 0 && (
         <div className="caja-pedidos-section">
@@ -1590,58 +1759,120 @@ export default function Caja() {
           {cart.length > 0 && (
             <div className="caja-cart-header-actions">
               <button 
-                className="caja-save-quote-btn"
+                className={`caja-header-icon-btn caja-icon-cliente ${clienteSeleccionado ? 'caja-icon-cliente-selected' : ''}`}
+                onClick={() => setMostrandoModalSeleccionCliente(true)}
+                title={clienteSeleccionado ? `Cliente: ${clienteSeleccionado.nombre}` : 'Seleccionar cliente'}
+                style={{ position: 'relative', zIndex: 1 }}
+              >
+                {clienteSeleccionado ? (
+                  <>
+                    <UserCircle 
+                      size={16} 
+                      strokeWidth={2.5} 
+                      color="#3b82f6"
+                      style={{ 
+                        display: 'block',
+                        position: 'relative',
+                        zIndex: 2,
+                        opacity: 1,
+                        visibility: 'visible',
+                        flexShrink: 0
+                      }}
+                    />
+                    <span className="caja-cliente-nombre-text">
+                      {clienteSeleccionado.nombre.length > 8 
+                        ? `${clienteSeleccionado.nombre.substring(0, 8)}...` 
+                        : clienteSeleccionado.nombre}
+                    </span>
+                  </>
+                ) : (
+                  <UserCircle 
+                    size={20} 
+                    strokeWidth={2.5} 
+                    color="#3b82f6"
+                    style={{ 
+                      display: 'block',
+                      position: 'relative',
+                      zIndex: 2,
+                      opacity: 1,
+                      visibility: 'visible'
+                    }}
+                  />
+                )}
+                {clienteSeleccionado && (
+                  <span className="caja-header-icon-badge"></span>
+                )}
+              </button>
+              <button 
+                className="caja-header-icon-btn caja-icon-cotizacion"
                 onClick={handleGuardarCotizacion}
                 disabled={guardandoCotizacion}
                 title="Guardar como cotización"
+                style={{ position: 'relative', zIndex: 1 }}
               >
-                <Save size={16} />
-                {guardandoCotizacion ? 'Guardando...' : 'Guardar Cotización'}
+                <Save 
+                  size={20} 
+                  strokeWidth={2.5} 
+                  color="#10b981"
+                  style={{ 
+                    display: 'block',
+                    position: 'relative',
+                    zIndex: 2,
+                    opacity: 1,
+                    visibility: 'visible'
+                  }}
+                />
               </button>
               <button 
-                className="caja-clear-btn"
+                className="caja-header-icon-btn caja-icon-descuento"
+                onClick={() => setMostrarModalDescuento(true)}
+                title={montoDescuento > 0 ? `Descuento: ${descuento.tipo === 'porcentaje' ? `${descuento.valor}%` : formatCOP(descuento.valor)}` : 'Aplicar descuento'}
+                style={{ position: 'relative', zIndex: 1 }}
+              >
+                <Percent 
+                  size={20} 
+                  strokeWidth={2.5} 
+                  color="#f59e0b"
+                  style={{ 
+                    display: 'block',
+                    position: 'relative',
+                    zIndex: 2,
+                    opacity: 1,
+                    visibility: 'visible'
+                  }}
+                />
+                {montoDescuento > 0 && (
+                  <span className="caja-header-icon-badge"></span>
+                )}
+              </button>
+              <button 
+                className="caja-header-icon-btn caja-icon-vaciar"
                 onClick={() => {
                   setCart([]);
                   setPedidoIdActual(null);
                   setPedidosConsolidados([]);
                   setClienteNombrePedido(null); // Limpiar nombre del cliente del pedido
-                  setMostrarFacturaPantalla(false); // Resetear checkbox
+                  setDescuento({ tipo: 'porcentaje', valor: 0, alcance: 'total', productosIds: [] }); // Limpiar descuento
                 }}
+                title="Vaciar carrito"
+                style={{ position: 'relative', zIndex: 1 }}
               >
-                Vaciar
+                <Trash2 
+                  size={20} 
+                  strokeWidth={2.5} 
+                  color="#ef4444"
+                  style={{ 
+                    display: 'block',
+                    position: 'relative',
+                    zIndex: 2,
+                    opacity: 1,
+                    visibility: 'visible'
+                  }}
+                />
               </button>
             </div>
           )}
         </div>
-
-        {/* Botón de Cliente */}
-        {cart.length > 0 && (
-          <div className="caja-cliente-btn-container">
-            <button
-              className="caja-cliente-btn"
-              onClick={() => setMostrandoModalSeleccionCliente(true)}
-              title={clienteSeleccionado ? `Cliente: ${clienteSeleccionado.nombre}` : 'Seleccionar cliente'}
-            >
-              <UserCircle size={18} />
-              <span>
-                {clienteSeleccionado 
-                  ? clienteSeleccionado.nombre.length > 20 
-                    ? `${clienteSeleccionado.nombre.substring(0, 20)}...` 
-                    : clienteSeleccionado.nombre
-                  : 'Cliente (opcional)'}
-              </span>
-            </button>
-            {clienteSeleccionado && (
-              <button
-                className="caja-cliente-remove-btn"
-                onClick={() => setClienteSeleccionado(null)}
-                title="Quitar cliente"
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
-        )}
 
 
         <div className="caja-cart-items">
@@ -1703,28 +1934,85 @@ export default function Caja() {
                         </div>
                       )}
                     </div>
-                    <div className="caja-cart-item-controls">
-                      <button 
-                        className="caja-qty-btn caja-qty-btn-minus"
-                        onClick={() => dec(item.id)}
-                        aria-label="Disminuir cantidad"
-                      >
-                        <span className="caja-qty-icon">−</span>
-                      </button>
-                      <span className="caja-qty-display">{item.qty}</span>
-                      <button 
-                        className="caja-qty-btn caja-qty-btn-plus"
-                        onClick={() => inc(item.id)}
-                        aria-label="Aumentar cantidad"
-                      >
-                        <span className="caja-qty-icon">+</span>
-                      </button>
-                    </div>
-                    <div className="caja-cart-item-price-unit">
-                      {formatCOP(item.precio_venta)} c/u
-                    </div>
-                    <div className="caja-cart-item-total">
-                      {formatCOP(item.qty * item.precio_venta)}
+                    <div className="caja-cart-item-right-section">
+                      <div className="caja-cart-item-controls">
+                        <button 
+                          className="caja-qty-btn caja-qty-btn-minus"
+                          onClick={() => dec(item.id)}
+                          aria-label="Disminuir cantidad"
+                        >
+                          <span className="caja-qty-icon">−</span>
+                        </button>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          className="caja-qty-display"
+                          value={typeof item.qty === 'number' ? item.qty : (item.qty || '')}
+                          style={{
+                            color: '#1a1a1a',
+                            backgroundColor: '#ffffff',
+                            border: '2px solid #4b5563',
+                            fontWeight: '700',
+                            fontSize: '0.9rem'
+                          }}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            
+                            // Permitir campo vacío temporalmente mientras se escribe
+                            if (value === '') {
+                              setCart((prev) => prev.map((i) => 
+                                i.id === item.id ? { ...i, qty: '' } : i
+                              ));
+                              return;
+                            }
+                            
+                            const numValue = parseInt(value, 10);
+                            
+                            if (!isNaN(numValue) && numValue >= 1) {
+                              updateQty(item.id, numValue);
+                            }
+                          }}
+                          onBlur={(e) => {
+                            const value = e.target.value;
+                            const numValue = parseInt(value, 10);
+                            
+                            if (value === '' || isNaN(numValue) || numValue < 1) {
+                              // Si está vacío o es inválido, restaurar cantidad anterior o eliminar
+                              const itemEnCarrito = cart.find(i => i.id === item.id);
+                              if (itemEnCarrito && typeof itemEnCarrito.qty === 'number' && itemEnCarrito.qty >= 1) {
+                                setCart((prev) => prev.map((i) => 
+                                  i.id === item.id ? { ...i, qty: itemEnCarrito.qty } : i
+                                ));
+                              } else {
+                                removeItem(item.id);
+                              }
+                            } else {
+                              updateQty(item.id, numValue);
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.target.blur();
+                            }
+                          }}
+                          min="1"
+                          aria-label="Cantidad"
+                        />
+                        <button 
+                          className="caja-qty-btn caja-qty-btn-plus"
+                          onClick={() => inc(item.id)}
+                          aria-label="Aumentar cantidad"
+                        >
+                          <span className="caja-qty-icon">+</span>
+                        </button>
+                      </div>
+                      <div className="caja-cart-item-price-unit">
+                        {formatCOP(item.precio_venta)} c/u
+                      </div>
+                      <div className="caja-cart-item-total">
+                        {formatCOP((typeof item.qty === 'number' ? item.qty : 0) * item.precio_venta)}
+                      </div>
                     </div>
                     <button 
                       className="caja-remove-btn"
@@ -1742,24 +2030,26 @@ export default function Caja() {
 
         <div className="caja-cart-footer">
           <div className="caja-total-breakdown">
+            <div className="caja-total-row">
+              <span className="caja-total-label">Subtotal</span>
+              <span className="caja-total-amount">{formatCOP(subtotal)}</span>
+            </div>
+            {montoDescuento > 0 && (
+              <div className="caja-total-row caja-descuento-row">
+                <span className="caja-total-label">
+                  Descuento 
+                  {descuento.tipo === 'porcentaje' && ` (${descuento.valor}%)`}
+                  {descuento.alcance === 'productos' && ' en productos'}
+                </span>
+                <span className="caja-total-amount caja-descuento-amount">-{formatCOP(montoDescuento)}</span>
+              </div>
+            )}
             <div className="caja-total-row caja-total-final">
               <span className="caja-total-label">Total</span>
               <span className="caja-total-amount">{formatCOP(total)}</span>
             </div>
           </div>
           
-          {/* Checkbox para mostrar factura en pantalla */}
-          <div className="caja-factura-checkbox-container">
-            <label className="caja-factura-checkbox-label">
-              <input
-                type="checkbox"
-                className="caja-factura-checkbox"
-                checked={mostrarFacturaPantalla}
-                onChange={(e) => setMostrarFacturaPantalla(e.target.checked)}
-              />
-              <span className="caja-factura-checkbox-text">Mostrar factura en pantalla</span>
-            </label>
-          </div>
           
             <motion.button 
               className="caja-confirm-btn"
@@ -1791,7 +2081,7 @@ export default function Caja() {
               onClick={() => setShowCartMobile(true)}
             >
               <ShoppingCart className="caja-mobile-cart-icon" size={18} /> 
-              <span className="caja-mobile-cart-text">Carrito ({cart.reduce((n, i) => n + i.qty, 0)})</span>
+              <span className="caja-mobile-cart-text">Carrito ({cart.reduce((n, i) => n + (typeof i.qty === 'number' ? i.qty : 0), 0)})</span>
             </button>
             <button 
               className="caja-mobile-pay-btn"
@@ -1836,7 +2126,6 @@ export default function Caja() {
                       setPedidoIdActual(null);
                       setPedidosConsolidados([]);
                       setClienteNombrePedido(null); // Limpiar nombre del cliente del pedido
-                      setMostrarFacturaPantalla(false); // Resetear checkbox
                     }
                   }}
                   aria-label="Vaciar carrito"
@@ -1977,7 +2266,7 @@ export default function Caja() {
                       </div>
                       <div className="caja-mobile-cart-item-price-section">
                         <p className="caja-mobile-cart-item-unit-price">{formatCOP(item.precio_venta)} c/u</p>
-                        <p className="caja-mobile-cart-item-total">{formatCOP(item.qty * item.precio_venta)}</p>
+                        <p className="caja-mobile-cart-item-total">{formatCOP((typeof item.qty === 'number' ? item.qty : 0) * item.precio_venta)}</p>
                       </div>
                     </li>
                   );
@@ -2054,7 +2343,7 @@ export default function Caja() {
         }}>
           <div className="caja-modal-content" style={{ maxWidth: '320px', padding: '1.5rem' }} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem' }}>¿Regresar al menú de pedidos?</h3>
-            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
               <button
                 className="caja-btn caja-btn-secondary"
                 onClick={() => {
@@ -2284,6 +2573,33 @@ export default function Caja() {
           </div>
         </div>
       )}
+
+      {/* Modal de descuento */}
+      <DescuentoModal
+        isOpen={mostrarModalDescuento}
+        onClose={() => setMostrarModalDescuento(false)}
+        onAplicar={(nuevoDescuento) => {
+          setDescuento(nuevoDescuento);
+          setMostrarModalDescuento(false);
+        }}
+        cart={cart}
+        descuentoActual={descuento}
+      />
+
+      {/* Modal de apertura de caja */}
+      <AperturaCajaModal
+        isOpen={mostrarModalApertura}
+        onClose={() => {
+          // Permitir cerrar el modal (el usuario puede cancelar)
+          setMostrarModalApertura(false);
+        }}
+        onAperturaExitosa={(apertura) => {
+          setMostrarModalApertura(false);
+          setModalMostradoInicialmente(false); // Resetear para que se pueda mostrar de nuevo si es necesario
+          refetchApertura();
+          toast.success('Caja abierta exitosamente');
+        }}
+      />
     </div>
   );
 }

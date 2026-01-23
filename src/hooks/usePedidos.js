@@ -131,23 +131,46 @@ export const useCrearPedido = () => {
         throw new Error(pedidoError.message || 'Error al crear pedido');
       }
 
-      // Crear items del pedido
+      // Crear items del pedido - limpiar datos para evitar errores de serialización
       const itemsData = items.map(item => {
+        // Limpiar toppings: solo incluir propiedades serializables
+        const toppingsLimpios = (item.toppings || []).map(t => {
+          if (typeof t === 'object' && t !== null) {
+            return {
+              id: t.id,
+              nombre: t.nombre,
+              precio: t.precio,
+            };
+          }
+          return t;
+        });
+        
+        // Limpiar variaciones: solo incluir valores primitivos
+        const variacionesLimpias = {};
+        const variaciones = item.variaciones || item.variaciones_seleccionadas;
+        if (variaciones && typeof variaciones === 'object' && Object.keys(variaciones).length > 0) {
+          Object.keys(variaciones).forEach(key => {
+            const value = variaciones[key];
+            // Solo incluir valores primitivos (string, number, boolean)
+            if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+              variacionesLimpias[key] = value;
+            }
+          });
+        }
+        
         const itemData = {
           pedido_id: pedidoResult.id,
           producto_id: item.producto_id,
           cantidad: item.cantidad,
           precio_unitario: item.precio_unitario,
           precio_total: item.precio_total,
-          toppings: item.toppings || [],
+          toppings: toppingsLimpios,
           notas_item: item.notas || null
         };
         
-        // Solo incluir variaciones_seleccionadas si hay variaciones
-        // Si la columna no existe en la BD, esto fallará, pero al menos intentamos
-        const variaciones = item.variaciones || item.variaciones_seleccionadas;
-        if (variaciones && Object.keys(variaciones).length > 0) {
-          itemData.variaciones_seleccionadas = variaciones;
+        // Solo incluir variaciones_seleccionadas si hay variaciones limpias
+        if (Object.keys(variacionesLimpias).length > 0) {
+          itemData.variaciones_seleccionadas = variacionesLimpias;
         }
         
         return itemData;

@@ -1,0 +1,238 @@
+.apertura-caja-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 1rem;
+}
+
+.apertura-caja-modal {
+  background: var(--bg-card);
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-primary);
+}
+
+.apertura-caja-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.apertura-caja-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.apertura-caja-modal-title h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.apertura-caja-modal-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.apertura-caja-modal-close:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.apertura-caja-modal-close:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.apertura-caja-modal-content {
+  padding: 1.5rem;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.apertura-caja-info {
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.apertura-caja-info-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.apertura-caja-info-item strong {
+  color: var(--text-primary);
+  margin-right: 0.25rem;
+}
+
+.apertura-caja-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.apertura-caja-form label {
+  font-weight: 500;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+}
+
+.required {
+  color: var(--error);
+}
+
+.apertura-caja-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.apertura-caja-input-icon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  pointer-events: none;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.apertura-caja-input {
+  width: 100%;
+  padding: 0.875rem 1rem 0.875rem 5rem;
+  border: 2px solid var(--border-primary);
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  transition: all 0.2s;
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+}
+
+.apertura-caja-input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(var(--accent-primary-rgb), 0.1);
+}
+
+.apertura-caja-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.apertura-caja-hint {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.apertura-caja-error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: rgba(var(--error-rgb), 0.1);
+  border: 1px solid var(--error);
+  border-radius: 8px;
+  color: var(--error);
+  font-size: 0.9rem;
+  margin-top: 1rem;
+}
+
+.apertura-caja-modal-footer {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  border-top: 1px solid var(--border-primary);
+}
+
+.apertura-caja-btn-cancelar,
+.apertura-caja-btn-abrir {
+  flex: 1;
+  padding: 0.875rem 1.5rem;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 1rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.apertura-caja-btn-cancelar {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.apertura-caja-btn-cancelar:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+.apertura-caja-btn-abrir {
+  background: var(--accent-primary);
+  color: white;
+}
+
+.apertura-caja-btn-abrir:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.apertura-caja-btn-cancelar:disabled,
+.apertura-caja-btn-abrir:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+}

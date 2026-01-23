@@ -1,5 +1,5 @@
 // 🍽️ Panel de Cocina para Chefs
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, CheckCircle, ChefHat, Circle, Users, X, Eye, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -28,6 +28,56 @@ const formatTime = (dateString) => {
   return `Hace ${horas} ${horas === 1 ? 'hora' : 'horas'}`;
 };
 
+// Función para reproducir sonido de notificación
+const playNotificationSound = () => {
+  try {
+    // Crear contexto de audio
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    
+    // Crear oscilador para generar un tono
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    // Conectar nodos
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    // Configurar el sonido (tono de notificación)
+    oscillator.frequency.setValueAtTime(800, audioContext.currentTime); // Frecuencia inicial
+    oscillator.frequency.exponentialRampToValueAtTime(600, audioContext.currentTime + 0.1);
+    
+    // Configurar volumen (fade in/out)
+    gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01);
+    gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.2);
+    
+    // Reproducir dos veces (bip-bip)
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.2);
+    
+    // Segundo bip después de una pausa corta
+    setTimeout(() => {
+      const oscillator2 = audioContext.createOscillator();
+      const gainNode2 = audioContext.createGain();
+      
+      oscillator2.connect(gainNode2);
+      gainNode2.connect(audioContext.destination);
+      
+      oscillator2.frequency.setValueAtTime(800, audioContext.currentTime);
+      oscillator2.frequency.exponentialRampToValueAtTime(600, audioContext.currentTime + 0.1);
+      
+      gainNode2.gain.setValueAtTime(0, audioContext.currentTime);
+      gainNode2.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01);
+      gainNode2.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.2);
+      
+      oscillator2.start(audioContext.currentTime);
+      oscillator2.stop(audioContext.currentTime + 0.2);
+    }, 250);
+  } catch (error) {
+    // Error silencioso si no se puede reproducir el sonido
+  }
+};
+
 const PanelCocina = () => {
   const { user, organization } = useAuth();
   const { hasFeature } = useSubscription();
@@ -35,6 +85,7 @@ const PanelCocina = () => {
   const { data: todosPedidos = [], isLoading, refetch: refetchPedidos } = usePedidos(organization?.id);
   const actualizarPedido = useActualizarPedido();
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState(null);
+  const pedidosPendientesAnteriores = useRef(new Set());
 
   // Verificar acceso
   const acceso = canUsePedidos(organization, hasFeature);
@@ -43,6 +94,34 @@ const PanelCocina = () => {
   const pedidosActivos = useMemo(() => {
     return todosPedidos.filter(p => p.estado === 'pendiente' || p.estado === 'en_preparacion');
   }, [todosPedidos]);
+
+  // Detectar nuevos pedidos pendientes y reproducir sonido
+  useEffect(() => {
+    if (isLoading || todosPedidos.length === 0) return;
+    
+    // Obtener IDs de pedidos pendientes actuales
+    const pedidosPendientesActuales = todosPedidos
+      .filter(p => p.estado === 'pendiente')
+      .map(p => p.id);
+    
+    const pedidosPendientesSet = new Set(pedidosPendientesActuales);
+    
+    // Si hay pedidos pendientes anteriores, comparar
+    if (pedidosPendientesAnteriores.current.size > 0) {
+      // Encontrar nuevos pedidos (están en actuales pero no en anteriores)
+      const nuevosPedidos = pedidosPendientesActuales.filter(
+        id => !pedidosPendientesAnteriores.current.has(id)
+      );
+      
+      // Si hay nuevos pedidos, reproducir sonido
+      if (nuevosPedidos.length > 0) {
+        playNotificationSound();
+      }
+    }
+    
+    // Actualizar la referencia con los pedidos actuales
+    pedidosPendientesAnteriores.current = pedidosPendientesSet;
+  }, [todosPedidos, isLoading]);
 
   // Identificar pedidos que podrían estar "pegados" (más de 2 horas sin cambios)
   const pedidosPegados = useMemo(() => {

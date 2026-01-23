@@ -88,7 +88,13 @@
 
 .ios-modal-large {
   width: 100%;
-  max-width: 900px;
+  max-width: 95vw; /* Usar casi todo el ancho disponible en desktop */
+}
+
+@media (min-width: 769px) {
+  .ios-modal-large {
+    max-width: calc(95vw - 70px); /* Considerar el sidebar */
+  }
 }
 
 .ios-modal-full {

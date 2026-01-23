@@ -673,12 +673,12 @@
 }
 
 .recibo-btn-primary {
-  background: #ef4444;
+  background: #10b981;
   color: white;
 }
 
 .recibo-btn-primary:hover {
-  background: #dc2626;
+  background: #059669;
   transform: translateY(-1px);
 }
 
@@ -965,7 +965,7 @@
 }
 
 .recibo-btn-primary:hover {
-  box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
 }
 
 /* Mejoras de accesibilidad */

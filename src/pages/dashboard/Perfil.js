@@ -8,6 +8,7 @@ import ThemeToggle from '../../components/ui/ThemeToggle';
 import { supabase } from '../../services/api/supabaseClient';
 import { useUpdateEmployeeCode } from '../../hooks/useTeam';
 import EditarCodigoEmpleadoModal from '../../components/EditarCodigoEmpleadoModal';
+import PreferenciasAplicacion from '../../components/PreferenciasAplicacion';
 import './Perfil.css';
 
 const Perfil = () => {
@@ -534,10 +535,7 @@ const Perfil = () => {
                   >
                     ← Volver a Configuración
                   </button>
-                  <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                    <p>Sección en desarrollo</p>
-                  </div>
-                  {/* <PreferenciasAplicacion /> */}
+                  <PreferenciasAplicacion />
                 </motion.div>
               )}
 

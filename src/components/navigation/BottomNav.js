@@ -44,8 +44,14 @@ const BottomNav = ({ menuGroups, onItemClick }) => {
   };
 
   const handleItemClick = (e) => {
-    if (onItemClick) {
-      onItemClick(e);
+    // Prevenir que el evento se propague y cause errores de serialización
+    try {
+      if (onItemClick) {
+        // No pasar el evento completo para evitar errores de serialización circular
+        onItemClick();
+      }
+    } catch (error) {
+      // Error silencioso
     }
     setIsVisible(false);
   };

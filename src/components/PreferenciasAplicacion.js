@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Globe, Calendar, DollarSign, Save } from 'lucide-react';
+import { Globe, Calendar, DollarSign, Save, Receipt } from 'lucide-react';
 import { supabase } from '../services/api/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -14,7 +14,8 @@ const PreferenciasAplicacion = () => {
     formatoFecha: 'DD/MM/YYYY',
     idioma: 'es',
     mostrarStockBajo: true,
-    umbralStockBajo: 10
+    umbralStockBajo: 10,
+    mostrarFacturaPantalla: false
   });
 
   const cargarPreferencias = useCallback(async () => {
@@ -30,7 +31,8 @@ const PreferenciasAplicacion = () => {
         formatoFecha: userMetadata.formatoFecha || 'DD/MM/YYYY',
         idioma: userMetadata.idioma || 'es',
         mostrarStockBajo: userMetadata.mostrarStockBajo !== false,
-        umbralStockBajo: userMetadata.umbralStockBajo || 10
+        umbralStockBajo: userMetadata.umbralStockBajo || 10,
+        mostrarFacturaPantalla: userMetadata.mostrarFacturaPantalla === true
       });
     } catch (error) {
       console.error('Error cargando preferencias:', error);
@@ -173,6 +175,25 @@ const PreferenciasAplicacion = () => {
             />
           </div>
         )}
+
+        {/* Mostrar Factura en Pantalla */}
+        <div className="preferencia-item">
+          <div className="preferencia-header">
+            <Receipt size={20} />
+            <div>
+              <h3>Mostrar Factura en Pantalla</h3>
+              <p>Mostrar automáticamente la factura después de cada venta</p>
+            </div>
+          </div>
+          <label className="toggle-switch">
+            <input
+              type="checkbox"
+              checked={preferencias.mostrarFacturaPantalla}
+              onChange={(e) => handleChange('mostrarFacturaPantalla', e.target.checked)}
+            />
+            <span className="toggle-slider"></span>
+          </label>
+        </div>
       </div>
 
       <button

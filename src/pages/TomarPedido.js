@@ -488,15 +488,43 @@ const TomarPedido = () => {
 
     try {
       // 1. Crear el pedido
-      const itemsData = items.map(item => ({
-        producto_id: item.producto_id,
-        cantidad: item.cantidad,
-        precio_unitario: item.precio_unitario,
-        precio_total: item.precio_total,
-        toppings: item.toppings || [],
-        variaciones: item.variaciones || {}, // Incluir variaciones
-        notas: item.notas?.trim() || null
-      }));
+      // Limpiar items para asegurar que solo contengan datos serializables
+      const itemsData = items.map(item => {
+        // Limpiar toppings: solo incluir propiedades serializables
+        const toppingsLimpios = (item.toppings || []).map(t => {
+          if (typeof t === 'object' && t !== null) {
+            return {
+              id: t.id,
+              nombre: t.nombre,
+              precio: t.precio,
+              // Solo incluir propiedades básicas, no referencias a DOM
+            };
+          }
+          return t;
+        });
+        
+        // Limpiar variaciones: solo incluir valores primitivos
+        const variacionesLimpias = {};
+        if (item.variaciones && typeof item.variaciones === 'object') {
+          Object.keys(item.variaciones).forEach(key => {
+            const value = item.variaciones[key];
+            // Solo incluir valores primitivos (string, number, boolean)
+            if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+              variacionesLimpias[key] = value;
+            }
+          });
+        }
+        
+        return {
+          producto_id: item.producto_id,
+          cantidad: item.cantidad,
+          precio_unitario: item.precio_unitario,
+          precio_total: item.precio_total,
+          toppings: toppingsLimpios,
+          variaciones: variacionesLimpias,
+          notas: item.notas?.trim() || null
+        };
+      });
 
       const prioridad = tipoPedido === 'express' ? 'alta' : 'normal';
 
@@ -569,6 +597,11 @@ const TomarPedido = () => {
 
   // Validar y guardar pedido
   const handleGuardarPedido = async (forzarPagoInmediato = false) => {
+    // Si se pasa un evento (desde onClick), ignorarlo
+    if (forzarPagoInmediato && typeof forzarPagoInmediato === 'object' && forzarPagoInmediato.target) {
+      forzarPagoInmediato = false;
+    }
+    
     // Usar el parámetro si se pasa, sino usar el estado
     const esPagoInmediato = forzarPagoInmediato || pagoInmediato;
     
@@ -613,15 +646,43 @@ const TomarPedido = () => {
     }
 
     try {
-      const itemsData = items.map(item => ({
-        producto_id: item.producto_id,
-        cantidad: item.cantidad,
-        precio_unitario: item.precio_unitario,
-        precio_total: item.precio_total,
-        toppings: item.toppings || [],
-        variaciones: item.variaciones || {}, // Incluir variaciones
-        notas: item.notas?.trim() || null
-      }));
+      // Limpiar items para asegurar que solo contengan datos serializables
+      const itemsData = items.map(item => {
+        // Limpiar toppings: solo incluir propiedades serializables
+        const toppingsLimpios = (item.toppings || []).map(t => {
+          if (typeof t === 'object' && t !== null) {
+            return {
+              id: t.id,
+              nombre: t.nombre,
+              precio: t.precio,
+              // Solo incluir propiedades básicas, no referencias a DOM
+            };
+          }
+          return t;
+        });
+        
+        // Limpiar variaciones: solo incluir valores primitivos
+        const variacionesLimpias = {};
+        if (item.variaciones && typeof item.variaciones === 'object') {
+          Object.keys(item.variaciones).forEach(key => {
+            const value = item.variaciones[key];
+            // Solo incluir valores primitivos (string, number, boolean)
+            if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+              variacionesLimpias[key] = value;
+            }
+          });
+        }
+        
+        return {
+          producto_id: item.producto_id,
+          cantidad: item.cantidad,
+          precio_unitario: item.precio_unitario,
+          precio_total: item.precio_total,
+          toppings: toppingsLimpios,
+          variaciones: variacionesLimpias,
+          notas: item.notas?.trim() || null
+        };
+      });
 
       // Determinar prioridad
       const prioridad = tipoPedido === 'express' ? 'alta' : 'normal';
@@ -646,17 +707,45 @@ const TomarPedido = () => {
       // Si se seleccionó "Pagar ahora", redirigir a la caja con el pedido
       if (esPagoInmediato && pedidoCreado && pedidoCreado.id) {
         // Guardar el pedido en localStorage para que la caja lo cargue
-        const pedidoParaCaja = {
-          pedidoId: pedidoCreado.id,
-          items: items.map(item => ({
+        // Limpiar items antes de guardar en localStorage
+        const itemsLimpios = items.map(item => {
+          // Limpiar toppings
+          const toppingsLimpios = (item.toppings || []).map(t => {
+            if (typeof t === 'object' && t !== null) {
+              return {
+                id: t.id,
+                nombre: t.nombre,
+                precio: t.precio,
+              };
+            }
+            return t;
+          });
+          
+          // Limpiar variaciones
+          const variacionesLimpias = {};
+          if (item.variaciones && typeof item.variaciones === 'object') {
+            Object.keys(item.variaciones).forEach(key => {
+              const value = item.variaciones[key];
+              if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+                variacionesLimpias[key] = value;
+              }
+            });
+          }
+          
+          return {
             id: item.producto_id,
             nombre: item.producto_nombre,
-            precio_venta: item.precio_total / item.cantidad, // Precio unitario con toppings
+            precio_venta: item.precio_total / item.cantidad,
             qty: item.cantidad,
-            toppings: item.toppings || [], // Incluir toppings
-            variaciones: item.variaciones || {}, // Incluir variaciones
-            notas: item.notas || null // Incluir notas
-          })),
+            toppings: toppingsLimpios,
+            variaciones: variacionesLimpias,
+            notas: item.notas || null
+          };
+        });
+        
+        const pedidoParaCaja = {
+          pedidoId: pedidoCreado.id,
+          items: itemsLimpios,
           total: total,
           tipoPedido: tipoPedido,
           clienteNombre: clienteNombre.trim() || null,
@@ -1259,7 +1348,11 @@ const TomarPedido = () => {
 
                 <button
                   className="btn-guardar-pedido"
-                  onClick={handleGuardarPedido}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleGuardarPedido(false);
+                  }}
                   disabled={crearPedido.isLoading}
                 >
                   <Save size={18} />
