@@ -7,21 +7,35 @@ import {
   Package, 
   User, 
   TrendingUp,
+  ClipboardList,
   Menu,
   X
 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { useSubscription } from '../../hooks/useSubscription';
 import './BottomNav.css';
 
 const BottomNav = ({ menuGroups, onItemClick }) => {
   const location = useLocation();
   const [isVisible, setIsVisible] = useState(false);
+  const { organization } = useAuth();
+  const { hasFeature } = useSubscription();
+  
+  // Verificar si los pedidos están habilitados
+  const pedidosHabilitados = organization?.business_type === 'food' && 
+                             organization?.pedidos_habilitados && 
+                             hasFeature('pedidos');
   
   // Obtener los 5 menús principales para la barra inferior
   const mainItems = [
     { to: '/dashboard', icon: BarChart3, label: 'Inicio' },
     { to: '/dashboard/caja', icon: CreditCard, label: 'Caja' },
     { to: '/dashboard/inventario', icon: Package, label: 'Inventario' },
-    { to: '/dashboard/resumen-ventas', icon: TrendingUp, label: 'Reportes' },
+    // Mostrar Pedidos si está habilitado, sino mostrar Reportes
+    ...(pedidosHabilitados 
+      ? [{ to: '/dashboard/tomar-pedido', icon: ClipboardList, label: 'Pedidos' }]
+      : [{ to: '/dashboard/resumen-ventas', icon: TrendingUp, label: 'Reportes' }]
+    ),
     { to: '/dashboard/perfil', icon: User, label: 'Perfil' },
   ];
 

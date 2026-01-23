@@ -53,7 +53,6 @@ export const useSubscription = () => {
 
       if (subError || !subscriptionData) {
         // Si no tiene suscripción activa, usar plan gratis por defecto
-        console.log('No active subscription found, using free plan');
         setSubscription({
           plan: { slug: 'free', name: 'Gratis' },
           status: 'active'
@@ -67,7 +66,6 @@ export const useSubscription = () => {
           .maybeSingle();
 
         if (planError || !planData) {
-          console.error('Error loading plan:', planError);
           setSubscription({
             plan: { slug: 'free', name: 'Gratis' },
             status: 'active'
@@ -79,14 +77,10 @@ export const useSubscription = () => {
             plan: planData
           };
           
-          console.log(`✅ Organization subscription loaded: ${mappedData.plan.name} (${mappedData.plan.slug})`);
-          console.log(`   Organization: "${organization.name}"`);
-          console.log(`   All members have ${mappedData.plan.name} access`);
           setSubscription(mappedData);
         }
       }
     } catch (err) {
-      console.error('Error loading subscription:', err);
       // Fallback al plan gratis
       setSubscription({
         plan: { slug: 'free', name: 'Gratis' },
@@ -211,7 +205,6 @@ export const useSubscription = () => {
       };
 
     } catch (error) {
-      console.error('Error in checkLimit:', error);
       return { canPerform: false, current: 0, limit, error: error.message };
     }
   }, [getLimit, organization, user]);

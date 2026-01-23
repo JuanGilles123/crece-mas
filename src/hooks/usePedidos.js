@@ -45,7 +45,6 @@ export const usePedidos = (organizationId, filters = {}) => {
       const { data, error } = await query;
 
       if (error) {
-        console.error('Error fetching pedidos:', error);
         throw new Error('Error al cargar pedidos');
       }
       return data || [];
@@ -129,7 +128,6 @@ export const useCrearPedido = () => {
         .single();
 
       if (pedidoError) {
-        console.error('Error creating pedido:', pedidoError);
         throw new Error(pedidoError.message || 'Error al crear pedido');
       }
 
@@ -160,8 +158,6 @@ export const useCrearPedido = () => {
         .insert(itemsData);
 
       if (itemsError) {
-        console.error('Error creating pedido items:', itemsError);
-        
         // Si el error es porque falta la columna variaciones_seleccionadas, dar un mensaje más claro
         if (itemsError.message && itemsError.message.includes('variaciones_seleccionadas')) {
           // Eliminar pedido si falla la creación de items
@@ -190,7 +186,6 @@ export const useCrearPedido = () => {
       toast.success('Pedido creado correctamente');
     },
     onError: (error) => {
-      console.error('Error creating pedido:', error);
       toast.error(error.message || 'Error al crear pedido');
     },
   });
@@ -235,28 +230,23 @@ export const useActualizarPedido = () => {
         .single();
 
       if (error) {
-        console.error('Error updating pedido:', error);
         throw new Error(error.message || 'Error al actualizar pedido');
       }
 
       // Si el pedido se completó y tiene una mesa asociada, liberar la mesa
       if (estado === 'completado' && mesaIdParaLiberar) {
         try {
-          console.log('Liberando mesa después de completar pedido:', mesaIdParaLiberar);
           const { error: mesaError } = await supabase
             .from('mesas')
             .update({ estado: 'disponible' })
             .eq('id', mesaIdParaLiberar);
           
+          // Error silencioso para no fallar la actualización del pedido
           if (mesaError) {
-            console.error('Error liberando mesa:', mesaError);
-            // No lanzar error para no fallar la actualización del pedido
-          } else {
-            console.log('Mesa liberada exitosamente');
+            // No hacer nada
           }
         } catch (error) {
-          console.error('Error al liberar mesa:', error);
-          // No lanzar error para no fallar la actualización del pedido
+          // Error silencioso para no fallar la actualización del pedido
         }
       }
 
@@ -267,7 +257,6 @@ export const useActualizarPedido = () => {
       toast.success('Pedido actualizado correctamente');
     },
     onError: (error) => {
-      console.error('Error updating pedido:', error);
       toast.error(error.message || 'Error al actualizar pedido');
     },
   });
@@ -287,7 +276,6 @@ export const useEliminarPedido = () => {
         .eq('id', id);
 
       if (error) {
-        console.error('Error deleting pedido:', error);
         throw new Error(error.message || 'Error al eliminar pedido');
       }
 
@@ -307,7 +295,6 @@ export const useEliminarPedido = () => {
       toast.success('Pedido eliminado correctamente');
     },
     onError: (error) => {
-      console.error('Error deleting pedido:', error);
       toast.error(error.message || 'Error al eliminar pedido');
     },
   });
