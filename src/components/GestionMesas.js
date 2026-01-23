@@ -1,7 +1,7 @@
 // 🍽️ Componente para gestionar mesas
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Edit2, Trash2, Users, Circle, RotateCcw, Grid, List, Square, Circle as CircleIcon } from 'lucide-react';
+import { X, Plus, Circle, Grid, List, Square, Circle as CircleIcon, Edit2, Trash2, Users, RotateCcw } from 'lucide-react';
 import { useMesas, useCrearMesa, useActualizarMesa, useEliminarMesa } from '../hooks/useMesas';
 import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
@@ -16,6 +16,7 @@ const MesaModal = ({ open, onClose, mesa, onSave }) => {
   const [capacidad, setCapacidad] = useState('4');
   const [estado, setEstado] = useState('disponible');
   const [forma, setForma] = useState('redonda');
+  const [tipo, setTipo] = useState('mesa');
 
   React.useEffect(() => {
     if (mesa) {
@@ -23,11 +24,20 @@ const MesaModal = ({ open, onClose, mesa, onSave }) => {
       setCapacidad(mesa.capacidad?.toString() || '4');
       setEstado(mesa.estado || 'disponible');
       setForma(mesa.forma || 'redonda');
+      // Detectar tipo basado en el número
+      if (mesa.numero?.toLowerCase().includes('barra')) {
+        setTipo('barra');
+      } else if (mesa.numero?.toLowerCase().includes('mostrador')) {
+        setTipo('mostrador');
+      } else {
+        setTipo('mesa');
+      }
     } else {
       setNumero('');
       setCapacidad('4');
       setEstado('disponible');
       setForma('redonda');
+      setTipo('mesa');
     }
   }, [mesa, open]);
 
@@ -90,6 +100,45 @@ const MesaModal = ({ open, onClose, mesa, onSave }) => {
               max="20"
               required
             />
+          </div>
+
+          <div className="mesa-form-group">
+            <label>Tipo de Elemento</label>
+            <div className="mesa-tipo-selector">
+              <button
+                type="button"
+                className={`mesa-tipo-btn ${tipo === 'mesa' ? 'active' : ''}`}
+                onClick={() => {
+                  setTipo('mesa');
+                  setForma('redonda');
+                  if (!mesa) setCapacidad('4');
+                }}
+              >
+                Mesa
+              </button>
+              <button
+                type="button"
+                className={`mesa-tipo-btn ${tipo === 'barra' ? 'active' : ''}`}
+                onClick={() => {
+                  setTipo('barra');
+                  setForma('cuadrada');
+                  if (!mesa) setCapacidad('6');
+                }}
+              >
+                Barra
+              </button>
+              <button
+                type="button"
+                className={`mesa-tipo-btn ${tipo === 'mostrador' ? 'active' : ''}`}
+                onClick={() => {
+                  setTipo('mostrador');
+                  setForma('cuadrada');
+                  if (!mesa) setCapacidad('4');
+                }}
+              >
+                Mostrador
+              </button>
+            </div>
           </div>
 
           <div className="mesa-form-group">
@@ -225,10 +274,20 @@ const GestionMesas = () => {
     }
   };
 
-  const getSiguienteEstado = (estadoActual) => {
-    const estados = ['disponible', 'ocupada', 'reservada', 'mantenimiento'];
-    const indiceActual = estados.indexOf(estadoActual);
-    return estados[(indiceActual + 1) % estados.length];
+  const handleResize = async (mesaId, ancho, alto) => {
+    try {
+      const mesa = mesas.find(m => m.id === mesaId);
+      if (!mesa) return;
+      
+      await actualizarMesa.mutateAsync({
+        id: mesa.id,
+        organizationId: organization.id,
+        ancho: ancho,
+        alto: alto
+      });
+    } catch (error) {
+      console.error('Error redimensionando mesa:', error);
+    }
   };
 
   // Agrupar mesas por estado
@@ -247,6 +306,12 @@ const GestionMesas = () => {
     mantenimiento: 'Mantenimiento'
   };
 
+  const getSiguienteEstado = (estadoActual) => {
+    const estados = ['disponible', 'ocupada', 'reservada', 'mantenimiento'];
+    const indiceActual = estados.indexOf(estadoActual);
+    return estados[(indiceActual + 1) % estados.length];
+  };
+
   return (
     <div className="gestion-mesas">
       <div className="mesas-header">
@@ -255,24 +320,23 @@ const GestionMesas = () => {
           <h2>Gestión de Mesas</h2>
         </div>
         <div className="mesas-header-actions">
-          {mesas.length > 0 && (
-            <div className="mesas-vista-toggle">
-              <button
-                className={`vista-toggle-btn ${vistaModo === 'planta' ? 'active' : ''}`}
-                onClick={() => setVistaModo('planta')}
-                title="Vista de Planta"
-              >
-                <Grid size={18} />
-              </button>
-              <button
-                className={`vista-toggle-btn ${vistaModo === 'lista' ? 'active' : ''}`}
-                onClick={() => setVistaModo('lista')}
-                title="Vista de Lista"
-              >
-                <List size={18} />
-              </button>
-            </div>
-          )}
+          <div className="mesas-vista-toggle">
+            <button
+              className={`vista-toggle-btn ${vistaModo === 'planta' ? 'active' : ''}`}
+              onClick={() => setVistaModo('planta')}
+              title="Vista de Planta"
+            >
+              <Grid size={20} className="vista-toggle-icon" />
+            </button>
+            <button
+              className={`vista-toggle-btn ${vistaModo === 'lista' ? 'active' : ''}`}
+              onClick={() => setVistaModo('lista')}
+              title="Vista de Lista"
+            >
+              <List size={20} className="vista-toggle-icon" />
+            </button>
+          </div>
+          {/* Mostrar "Nueva Mesa" en ambas vistas para consistencia */}
           <button className="mesa-btn-primary" onClick={handleCrear}>
             <Plus size={18} />
             Nueva Mesa
@@ -302,6 +366,7 @@ const GestionMesas = () => {
           onCambiarEstado={handleCambiarEstado}
           actualizarMesa={actualizarMesa}
           organizationId={organization.id}
+          onResize={handleResize}
         />
       ) : (
         <div className="mesas-container">
@@ -369,14 +434,32 @@ const GestionMesas = () => {
                           <Users size={16} />
                           <span>{mesa.capacidad} {mesa.capacidad === 1 ? 'persona' : 'personas'}</span>
                         </div>
-                        <button
-                          className="mesa-btn-cambiar-estado"
-                          onClick={() => handleCambiarEstado(mesa, getSiguienteEstado(mesa.estado))}
-                          title={`Cambiar a ${getSiguienteEstado(mesa.estado)}`}
-                        >
-                          <RotateCcw size={14} />
-                          Cambiar Estado
-                        </button>
+                        <div className="mesa-card-body-actions">
+                          <button
+                            className="mesa-btn-cambiar-estado"
+                            onClick={() => handleEditar(mesa)}
+                            title="Editar mesa"
+                          >
+                            <Edit2 size={14} />
+                            Editar
+                          </button>
+                          <button
+                            className="mesa-btn-cambiar-estado"
+                            onClick={() => handleCambiarEstado(mesa, getSiguienteEstado(mesa.estado))}
+                            title={`Cambiar a ${getSiguienteEstado(mesa.estado)}`}
+                          >
+                            <RotateCcw size={14} />
+                            Cambiar Estado
+                          </button>
+                          <button
+                            className="mesa-btn-cambiar-estado mesa-btn-eliminar"
+                            onClick={() => setMesaEliminando(mesa)}
+                            title="Eliminar mesa"
+                          >
+                            <Trash2 size={14} />
+                            Eliminar
+                          </button>
+                        </div>
                       </div>
                     </motion.div>
                   ))}

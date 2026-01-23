@@ -14,9 +14,10 @@ export const useToppings = (organizationId) => {
 
       const { data, error } = await supabase
         .from('toppings')
-        .select('id, nombre, precio, stock, imagen_url, activo, created_at, updated_at, organization_id, tipo')
+        .select('id, nombre, precio, precio_compra, stock, imagen_url, activo, created_at, updated_at, organization_id, tipo, categoria')
         .eq('organization_id', organizationId)
         .eq('activo', true)
+        .order('categoria', { ascending: true })
         .order('nombre', { ascending: true });
 
       if (error) {
@@ -38,18 +39,27 @@ export const useCrearTopping = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ organizationId, nombre, precio, stock, imagen_url, tipo }) => {
+    mutationFn: async ({ organizationId, nombre, precio, precio_compra, stock, imagen_url, tipo, categoria }) => {
+      // Construir objeto de datos dinámicamente
+      const toppingData = {
+        organization_id: organizationId,
+        nombre,
+        precio: parseFloat(precio) || 0,
+        stock: stock !== null && stock !== '' ? parseInt(stock) : null,
+        activo: true,
+        imagen_url: imagen_url || null,
+        tipo: tipo || 'comida',
+        categoria: categoria || 'general'
+      };
+
+      // Solo agregar precio_compra si se proporciona (la columna puede no existir aún)
+      if (precio_compra !== null && precio_compra !== '' && precio_compra !== undefined) {
+        toppingData.precio_compra = parseFloat(precio_compra) || 0;
+      }
+
       const { data, error } = await supabase
         .from('toppings')
-        .insert([{
-          organization_id: organizationId,
-          nombre,
-          precio: parseFloat(precio) || 0,
-          stock: stock !== null && stock !== '' ? parseInt(stock) : null,
-          activo: true,
-          imagen_url: imagen_url || null,
-          tipo: tipo || 'comida'
-        }])
+        .insert([toppingData])
         .select();
 
       if (error) {
@@ -77,14 +87,19 @@ export const useActualizarTopping = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, organizationId, nombre, precio, stock, activo, imagen_url, tipo }) => {
+    mutationFn: async ({ id, organizationId, nombre, precio, precio_compra, stock, activo, imagen_url, tipo, categoria }) => {
       const updateData = {};
       if (nombre !== undefined) updateData.nombre = nombre;
       if (precio !== undefined) updateData.precio = parseFloat(precio) || 0;
+      // Solo actualizar precio_compra si se proporciona (la columna puede no existir aún)
+      if (precio_compra !== undefined && precio_compra !== null && precio_compra !== '') {
+        updateData.precio_compra = parseFloat(precio_compra) || 0;
+      }
       if (stock !== undefined) updateData.stock = stock !== null && stock !== '' ? parseInt(stock) : null;
       if (activo !== undefined) updateData.activo = activo;
       if (imagen_url !== undefined) updateData.imagen_url = imagen_url;
       if (tipo !== undefined) updateData.tipo = tipo;
+      if (categoria !== undefined) updateData.categoria = categoria || 'general';
 
       const { data, error } = await supabase
         .from('toppings')

@@ -17,13 +17,16 @@ export const usePedidos = (organizationId, filters = {}) => {
         .select(`
           *,
           mesa:mesas(numero, capacidad),
-          items:pedido_items(
-            *,
-            producto:productos(id, nombre, precio_venta, imagen, tipo)
-          )
+                items:pedido_items(
+                  *,
+                  producto:productos(id, nombre, precio_venta, imagen, tipo, metadata)
+                )
         `)
         .eq('organization_id', organizationId)
         .order('created_at', { ascending: false });
+      
+      // Asegurar que siempre se obtenga cliente_nombre
+      // (ya está incluido en el *)
 
       // Aplicar filtros
       if (filters.estado) {
@@ -61,11 +64,28 @@ export const useCrearPedido = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ organizationId, mesaId, items, notas, meseroId }) => {
-      // Calcular total
-      const total = items.reduce((sum, item) => {
+    mutationFn: async ({ 
+      organizationId, 
+      mesaId, 
+      items, 
+      notas, 
+      meseroId,
+      // Nuevos campos
+      tipoPedido = 'dine_in',
+      clienteNombre = null,
+      clienteTelefono = null,
+      direccionEntrega = null,
+      costoEnvio = 0,
+      horaEstimada = null,
+      numeroPersonas = 1,
+      prioridad = 'normal',
+      pagoInmediato = false
+    }) => {
+      // Calcular total (incluyendo costo de envío)
+      const subtotal = items.reduce((sum, item) => {
         return sum + (item.precio_total || 0);
       }, 0);
+      const total = subtotal + (parseFloat(costoEnvio) || 0);
 
       // Generar número de pedido
       const { data: ultimoPedido } = await supabase
@@ -82,18 +102,29 @@ export const useCrearPedido = () => {
         nuevoNumero = `PED-${String(ultimoNum + 1).padStart(3, '0')}`;
       }
 
-      // Crear pedido
-      const { data: pedidoData, error: pedidoError } = await supabase
+      // Crear pedido con todos los campos
+      const pedidoData = {
+        organization_id: organizationId,
+        mesa_id: mesaId || null,
+        numero_pedido: nuevoNumero,
+        estado: 'pendiente',
+        total,
+        notas: notas || null,
+        mesero_id: meseroId,
+        tipo_pedido: tipoPedido,
+        cliente_nombre: clienteNombre || null,
+        cliente_telefono: clienteTelefono || null,
+        direccion_entrega: direccionEntrega || null,
+        costo_envio: parseFloat(costoEnvio) || 0,
+        hora_estimada: horaEstimada || null,
+        numero_personas: numeroPersonas || 1,
+        prioridad: prioridad,
+        pago_inmediato: pagoInmediato
+      };
+
+      const { data: pedidoResult, error: pedidoError } = await supabase
         .from('pedidos')
-        .insert([{
-          organization_id: organizationId,
-          mesa_id: mesaId,
-          numero_pedido: nuevoNumero,
-          estado: 'pendiente',
-          total,
-          notas: notas || null,
-          mesero_id: meseroId
-        }])
+        .insert([pedidoData])
         .select()
         .single();
 
@@ -103,15 +134,26 @@ export const useCrearPedido = () => {
       }
 
       // Crear items del pedido
-      const itemsData = items.map(item => ({
-        pedido_id: pedidoData.id,
-        producto_id: item.producto_id,
-        cantidad: item.cantidad,
-        precio_unitario: item.precio_unitario,
-        precio_total: item.precio_total,
-        toppings: item.toppings || [],
-        notas_item: item.notas || null
-      }));
+      const itemsData = items.map(item => {
+        const itemData = {
+          pedido_id: pedidoResult.id,
+          producto_id: item.producto_id,
+          cantidad: item.cantidad,
+          precio_unitario: item.precio_unitario,
+          precio_total: item.precio_total,
+          toppings: item.toppings || [],
+          notas_item: item.notas || null
+        };
+        
+        // Solo incluir variaciones_seleccionadas si hay variaciones
+        // Si la columna no existe en la BD, esto fallará, pero al menos intentamos
+        const variaciones = item.variaciones || item.variaciones_seleccionadas;
+        if (variaciones && Object.keys(variaciones).length > 0) {
+          itemData.variaciones_seleccionadas = variaciones;
+        }
+        
+        return itemData;
+      });
 
       const { error: itemsError } = await supabase
         .from('pedido_items')
@@ -119,12 +161,20 @@ export const useCrearPedido = () => {
 
       if (itemsError) {
         console.error('Error creating pedido items:', itemsError);
+        
+        // Si el error es porque falta la columna variaciones_seleccionadas, dar un mensaje más claro
+        if (itemsError.message && itemsError.message.includes('variaciones_seleccionadas')) {
+          // Eliminar pedido si falla la creación de items
+          await supabase.from('pedidos').delete().eq('id', pedidoResult.id);
+          throw new Error('La columna variaciones_seleccionadas no existe en la base de datos. Por favor ejecuta el script SQL: docs/ADD_VARIACIONES_TO_PEDIDO_ITEMS.sql en Supabase');
+        }
+        
         // Eliminar pedido si falla la creación de items
-        await supabase.from('pedidos').delete().eq('id', pedidoData.id);
+        await supabase.from('pedidos').delete().eq('id', pedidoResult.id);
         throw new Error(itemsError.message || 'Error al crear items del pedido');
       }
 
-      // Actualizar estado de la mesa a ocupada
+      // Actualizar estado de la mesa a ocupada (solo si hay mesa)
       if (mesaId) {
         await supabase
           .from('mesas')
@@ -132,7 +182,7 @@ export const useCrearPedido = () => {
           .eq('id', mesaId);
       }
 
-      return pedidoData;
+      return pedidoResult;
     },
     onSuccess: (newPedido) => {
       queryClient.invalidateQueries(['pedidos', newPedido.organization_id]);
@@ -154,6 +204,20 @@ export const useActualizarPedido = () => {
 
   return useMutation({
     mutationFn: async ({ id, organizationId, estado, chefId, notas, total }) => {
+      // Si el estado es "completado", obtener el mesa_id antes de actualizar para liberar la mesa
+      let mesaIdParaLiberar = null;
+      if (estado === 'completado') {
+        const { data: pedidoActual, error: pedidoError } = await supabase
+          .from('pedidos')
+          .select('mesa_id')
+          .eq('id', id)
+          .single();
+        
+        if (!pedidoError && pedidoActual?.mesa_id) {
+          mesaIdParaLiberar = pedidoActual.mesa_id;
+        }
+      }
+
       const updateData = {};
       if (estado !== undefined) updateData.estado = estado;
       if (chefId !== undefined) updateData.chef_id = chefId;
@@ -173,6 +237,27 @@ export const useActualizarPedido = () => {
       if (error) {
         console.error('Error updating pedido:', error);
         throw new Error(error.message || 'Error al actualizar pedido');
+      }
+
+      // Si el pedido se completó y tiene una mesa asociada, liberar la mesa
+      if (estado === 'completado' && mesaIdParaLiberar) {
+        try {
+          console.log('Liberando mesa después de completar pedido:', mesaIdParaLiberar);
+          const { error: mesaError } = await supabase
+            .from('mesas')
+            .update({ estado: 'disponible' })
+            .eq('id', mesaIdParaLiberar);
+          
+          if (mesaError) {
+            console.error('Error liberando mesa:', mesaError);
+            // No lanzar error para no fallar la actualización del pedido
+          } else {
+            console.log('Mesa liberada exitosamente');
+          }
+        } catch (error) {
+          console.error('Error al liberar mesa:', error);
+          // No lanzar error para no fallar la actualización del pedido
+        }
       }
 
       return data;

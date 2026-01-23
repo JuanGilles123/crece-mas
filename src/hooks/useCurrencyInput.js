@@ -23,6 +23,14 @@ export const useCurrencyInput = (initialValue = '') => {
   // Manejar cambio en el input - OPTIMIZADO
   const handleChange = useCallback((e) => {
     const newValue = e.target.value;
+    
+    // Permitir campo completamente vacío para poder borrar
+    if (newValue === '' || newValue === null || newValue === undefined) {
+      numericValueRef.current = 0;
+      setDisplayValue('');
+      return '';
+    }
+    
     const numero = newValue.replace(/\D/g, '');
     
     if (numero) {
@@ -31,6 +39,7 @@ export const useCurrencyInput = (initialValue = '') => {
       setDisplayValue(formatted);
       return formatted;
     } else {
+      // Si solo quedan caracteres no numéricos, permitir campo vacío
       numericValueRef.current = 0;
       setDisplayValue('');
       return '';

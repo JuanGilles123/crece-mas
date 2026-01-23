@@ -12,7 +12,8 @@ import { ProductCardSkeleton, ProductListSkeleton, InventoryHeaderSkeleton } fro
 import LottieLoader from '../../components/ui/LottieLoader';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../services/api/supabaseClient';
-import { Search, List, Grid3X3, Plus, Upload, Filter } from 'lucide-react';
+import { Search, List, Grid3X3, Plus, Upload, Filter, Utensils, ListChecks } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { 
   useProductosPaginados, 
   useProductosInfinite,
@@ -40,7 +41,8 @@ const deleteImageFromStorage = async (imagePath) => {
 };
 
 const InventarioOptimizado = () => {
-  const { user } = useAuth();
+  const { user, organization } = useAuth();
+  const navigate = useNavigate();
   const [modalOpen, setModalOpen] = useState(false);
   const [editarModalOpen, setEditarModalOpen] = useState(false);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
@@ -187,6 +189,26 @@ const InventarioOptimizado = () => {
         </div>
         
         <div className="inventario-header-actions">
+          {organization?.business_type === 'food' && (
+            <>
+              <button
+                onClick={() => navigate('/dashboard/toppings')}
+                className="inventario-action-button"
+                title="Gestión de Toppings e Ingredientes"
+              >
+                <Utensils className="w-5 h-5" />
+                Toppings
+              </button>
+              <button
+                onClick={() => navigate('/dashboard/variaciones')}
+                className="inventario-action-button"
+                title="Gestión de Variaciones de Productos"
+              >
+                <ListChecks className="w-5 h-5" />
+                Variaciones
+              </button>
+            </>
+          )}
           <button
             onClick={() => setCsvModalOpen(true)}
             className="inventario-action-button"

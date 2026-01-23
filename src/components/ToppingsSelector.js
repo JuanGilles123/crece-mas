@@ -1,5 +1,5 @@
-// 🍔 Componente para seleccionar toppings al agregar producto al carrito
-import React, { useState, useEffect } from 'react';
+// 🍔 Componente para seleccionar toppings al agregar producto al carrito (mejorado con categorías)
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { X, Check, Package } from 'lucide-react';
 import { useToppings } from '../hooks/useToppings';
@@ -86,6 +86,7 @@ const ToppingsSelector = ({
 }) => {
   const { data: toppings = [], isLoading } = useToppings(organizationId);
   const [toppingsSeleccionados, setToppingsSeleccionados] = useState([]);
+  const [categoriaActiva, setCategoriaActiva] = useState(null);
 
   // Filtrar toppings por tipo y stock (si aplica)
   // Para servicios, el stock puede ser null, así que permitimos null o > 0
@@ -99,6 +100,28 @@ const ToppingsSelector = ({
     // Si es comida, requiere stock > 0
     return t.stock > 0;
   });
+
+  // Agrupar toppings por categoría
+  const toppingsPorCategoria = useMemo(() => {
+    const grupos = {};
+    toppingsDisponibles.forEach(topping => {
+      const cat = topping.categoria || 'general';
+      if (!grupos[cat]) {
+        grupos[cat] = [];
+      }
+      grupos[cat].push(topping);
+    });
+    return grupos;
+  }, [toppingsDisponibles]);
+
+  const categorias = Object.keys(toppingsPorCategoria).sort();
+
+  // Establecer primera categoría como activa por defecto
+  useEffect(() => {
+    if (categorias.length > 0 && !categoriaActiva) {
+      setCategoriaActiva(categorias[0]);
+    }
+  }, [categorias, categoriaActiva]);
 
   const isService = tipo === 'servicio';
   const title = titulo || (isService ? '¿Desea agregar adicionales?' : '¿Lleva toppings?');
@@ -202,19 +225,54 @@ const ToppingsSelector = ({
           </div>
         ) : (
           <>
+            {/* Tabs de categorías (si hay más de una) */}
+            {categorias.length > 1 && (
+              <div className="toppings-categorias-tabs">
+                {categorias.map(cat => (
+                  <button
+                    key={cat}
+                    className={`topping-categoria-tab ${categoriaActiva === cat ? 'active' : ''}`}
+                    onClick={() => setCategoriaActiva(cat)}
+                  >
+                    {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                    <span className="topping-categoria-count">
+                      {toppingsPorCategoria[cat].length}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Lista de toppings agrupada por categoría */}
             <div className="toppings-selector-list">
-              {toppingsDisponibles.map((topping) => {
-                const seleccionado = toppingsSeleccionados.find(t => t.id === topping.id);
-                return (
-                  <ToppingItem
-                    key={topping.id}
-                    topping={topping}
-                    seleccionado={seleccionado}
-                    onToggle={() => toggleTopping(topping)}
-                    onChangeCantidad={(delta) => cambiarCantidad(topping.id, delta)}
-                  />
-                );
-              })}
+              {categoriaActiva && toppingsPorCategoria[categoriaActiva] ? (
+                toppingsPorCategoria[categoriaActiva].map((topping) => {
+                  const seleccionado = toppingsSeleccionados.find(t => t.id === topping.id);
+                  return (
+                    <ToppingItem
+                      key={topping.id}
+                      topping={topping}
+                      seleccionado={seleccionado}
+                      onToggle={() => toggleTopping(topping)}
+                      onChangeCantidad={(delta) => cambiarCantidad(topping.id, delta)}
+                    />
+                  );
+                })
+              ) : (
+                // Si no hay categoría activa, mostrar todos (fallback)
+                toppingsDisponibles.map((topping) => {
+                  const seleccionado = toppingsSeleccionados.find(t => t.id === topping.id);
+                  return (
+                    <ToppingItem
+                      key={topping.id}
+                      topping={topping}
+                      seleccionado={seleccionado}
+                      onToggle={() => toggleTopping(topping)}
+                      onChangeCantidad={(delta) => cambiarCantidad(topping.id, delta)}
+                    />
+                  );
+                })
+              )}
             </div>
 
             {toppingsSeleccionados.length > 0 && (

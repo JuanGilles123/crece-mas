@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -12,6 +12,7 @@ import { compressProductImage } from '../../services/storage/imageCompression';
 import { useAgregarProducto } from '../../hooks/useProductos';
 import { useCurrencyInput } from '../../hooks/useCurrencyInput';
 import { Package, Scissors } from 'lucide-react';
+import { getDefaultProductType, shouldSkipProductTypeSelector } from '../../constants/businessTypes';
 import toast from 'react-hot-toast';
 
 // Esquema de validación con Zod
@@ -65,11 +66,26 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
   const [tipoProducto, setTipoProducto] = useState('fisico'); // 'fisico' | 'servicio'
   const fileInputRef = useRef();
 
+  // Obtener tipo de producto por defecto según tipo de negocio
+  const defaultProductType = organization?.business_type 
+    ? getDefaultProductType(organization.business_type) 
+    : 'fisico';
+  
+  const skipTypeSelector = shouldSkipProductTypeSelector(organization?.business_type);
+  
   // Verificar si el negocio es de servicios
   const isServiceBusiness = organization?.business_type === 'service';
 
   // Verificar si tiene acceso a imágenes
   const puedeSubirImagenes = hasFeature('productImages');
+  
+  // Inicializar tipo de producto según configuración del negocio
+  useEffect(() => {
+    if (skipTypeSelector && defaultProductType) {
+      setTipoProducto(defaultProductType);
+      setValue('tipo', defaultProductType);
+    }
+  }, [skipTypeSelector, defaultProductType, setValue]);
 
   // Currency inputs
   const precioCompraInput = useCurrencyInput();
@@ -220,7 +236,7 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
           </div>
         ) : (
           <form className="form-producto form-producto-centro" onSubmit={handleSubmit(onSubmit)}>
-            {isServiceBusiness && (
+            {isServiceBusiness && !skipTypeSelector && (
               <div className="tipo-producto-selector" style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', justifyContent: 'center' }}>
                 <button
                   type="button"
@@ -240,6 +256,11 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
                   <Scissors size={18} />
                   Servicio
                 </button>
+              </div>
+            )}
+            {skipTypeSelector && (
+              <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--bg-secondary)', borderRadius: '8px', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                Tipo de producto: <strong>{tipoProducto === 'servicio' ? 'Servicio' : tipoProducto === 'comida' ? 'Comida' : tipoProducto === 'accesorio' ? 'Accesorio' : 'Producto Físico'}</strong> (inferido del tipo de negocio)
               </div>
             )}
 

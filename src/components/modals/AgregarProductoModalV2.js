@@ -13,6 +13,8 @@ import { useCurrencyInput } from '../../hooks/useCurrencyInput';
 import { Package, Scissors, UtensilsCrossed, Scale, ChevronRight, Plus, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PRODUCT_TYPES, ADDITIONAL_FIELDS, getProductTypeFields } from '../../utils/productTypes';
+import { getBusinessTypeConfig, getDefaultProductType, getAvailableProductTypes, shouldSkipProductTypeSelector } from '../../constants/businessTypes';
+import VariacionesConfig from '../VariacionesConfig';
 import './AgregarProductoModalV2.css';
 
 // Función para crear esquema de validación dinámico
@@ -93,18 +95,50 @@ const createProductSchema = (productType) => {
 };
 
 const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) => {
-  const { user, userProfile } = useAuth();
+  const { user, userProfile, organization } = useAuth();
   const { hasFeature } = useSubscription();
-  const [step, setStep] = useState('selectType'); // 'selectType' | 'basic' | 'optional' | 'additional' | 'image'
+  
+  // Obtener configuración del tipo de negocio
+  const businessTypeConfig = organization?.business_type 
+    ? getBusinessTypeConfig(organization.business_type) 
+    : null;
+  
+  // Determinar si debe saltarse el selector de tipo
+  const skipTypeSelector = shouldSkipProductTypeSelector(organization?.business_type);
+  
+  // Tipo de producto por defecto basado en tipo de negocio
+  const defaultProductType = businessTypeConfig 
+    ? getDefaultProductType(organization.business_type) 
+    : null;
+  
+  // Tipos de producto disponibles según el tipo de negocio
+  const availableProductTypes = businessTypeConfig 
+    ? getAvailableProductTypes(organization.business_type) 
+    : Object.keys(PRODUCT_TYPES);
+  
+  const [step, setStep] = useState(skipTypeSelector ? 'basic' : 'selectType'); // 'selectType' | 'basic' | 'optional' | 'additional' | 'image'
   const [formStep, setFormStep] = useState(1); // 1: básico, 2: opcionales del tipo, 3: adicionales, 4: imagen
-  const [selectedType, setSelectedType] = useState(null);
+  const [selectedType, setSelectedType] = useState(skipTypeSelector ? defaultProductType : null);
   const [imagen, setImagen] = useState(null);
   const [subiendo, setSubiendo] = useState(false);
   const [comprimiendo, setComprimiendo] = useState(false);
   const [additionalFields, setAdditionalFields] = useState([]);
+  const [variacionesConfig, setVariacionesConfig] = useState([]);
   const fileInputRef = useRef();
 
   const puedeSubirImagenes = hasFeature('productImages');
+  
+  // Efecto para establecer el tipo por defecto cuando se abre el modal
+  useEffect(() => {
+    if (open && skipTypeSelector && defaultProductType && !selectedType) {
+      setSelectedType(defaultProductType);
+      setStep('basic');
+    } else if (open && !skipTypeSelector && selectedType) {
+      // Si no debe saltarse, resetear
+      setSelectedType(null);
+      setStep('selectType');
+    }
+  }, [open, skipTypeSelector, defaultProductType, selectedType]);
 
   // Currency inputs
   const precioCompraInput = useCurrencyInput();
@@ -183,11 +217,16 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
 
   const handleBack = () => {
     if (formStep === 1) {
-      setStep('selectType');
-      setSelectedType(null);
-      reset();
-      setImagen(null);
-      setAdditionalFields([]);
+      if (skipTypeSelector) {
+        // Si se salta el selector, cerrar el modal
+        onClose();
+      } else {
+        setStep('selectType');
+        setSelectedType(null);
+        reset();
+        setImagen(null);
+        setAdditionalFields([]);
+      }
     } else {
       setFormStep(formStep - 1);
     }
@@ -338,6 +377,11 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
       if (data.calorias) metadata.calorias = data.calorias;
       if (data.porcion) metadata.porcion = data.porcion;
       if (data.variaciones) metadata.variaciones = data.variaciones;
+      
+      // Agregar variaciones_config si hay variaciones configuradas
+      if (variacionesConfig && variacionesConfig.length > 0) {
+        metadata.variaciones_config = variacionesConfig;
+      }
 
       // Agregar metadata solo si tiene datos
       if (Object.keys(metadata).length > 0) {
@@ -348,9 +392,16 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
         onSuccess: () => {
           reset();
           setImagen(null);
-          setSelectedType(null);
-          setStep('selectType');
+          // Resetear al tipo por defecto si aplica, o a null si debe mostrar selector
+          if (skipTypeSelector && defaultProductType) {
+            setSelectedType(defaultProductType);
+            setStep('basic');
+          } else {
+            setSelectedType(null);
+            setStep('selectType');
+          }
           setAdditionalFields([]);
+          setVariacionesConfig([]);
           precioCompraInput.reset();
           precioVentaInput.reset();
           stockInput.reset();
@@ -381,25 +432,27 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
             Selecciona el tipo de producto para mostrar los campos adecuados
           </p>
           <div className="type-selector-grid">
-            {Object.values(PRODUCT_TYPES).map((type) => {
-              const Icon = getTypeIcon(type.id);
-              return (
-                <button
-                  key={type.id}
-                  type="button"
-                  className="type-selector-card"
-                  onClick={() => handleTypeSelect(type.id)}
-                >
-                  <div className="type-selector-icon">
-                    <span className="type-emoji">{type.icon}</span>
-                    <Icon size={24} className="type-icon" />
-                  </div>
-                  <h3>{type.label}</h3>
-                  <p>{type.description}</p>
-                  <ChevronRight size={20} className="type-arrow" />
-                </button>
-              );
-            })}
+            {Object.values(PRODUCT_TYPES)
+              .filter(type => availableProductTypes.includes(type.id))
+              .map((type) => {
+                const Icon = getTypeIcon(type.id);
+                return (
+                  <button
+                    key={type.id}
+                    type="button"
+                    className="type-selector-card"
+                    onClick={() => handleTypeSelect(type.id)}
+                  >
+                    <div className="type-selector-icon">
+                      <span className="type-emoji">{type.icon}</span>
+                      <Icon size={24} className="type-icon" />
+                    </div>
+                    <h3>{type.label}</h3>
+                    <p>{type.description}</p>
+                    <ChevronRight size={20} className="type-arrow" />
+                  </button>
+                );
+              })}
           </div>
           <div className="form-actions form-actions-centro">
             <button type="button" className="inventario-btn inventario-btn-secondary" onClick={onClose}>
@@ -426,9 +479,16 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
       <div className="modal-card">
         <div className="modal-header-with-back">
           <button type="button" className="back-button" onClick={handleBack}>
-            ← {formStep === 1 ? 'Volver' : 'Atrás'}
+            ← {formStep === 1 ? (skipTypeSelector ? 'Cancelar' : 'Volver') : 'Atrás'}
           </button>
-          <h2>Agregar {productType?.label.toLowerCase()}</h2>
+          <div>
+            <h2>Agregar {productType?.label.toLowerCase()}</h2>
+            {skipTypeSelector && businessTypeConfig && (
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                Tipo inferido de: <strong>{businessTypeConfig.label}</strong>
+              </p>
+            )}
+          </div>
         </div>
         
         {/* Indicador de pasos */}
@@ -590,6 +650,14 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
                 </div>
               );
             })}
+              
+              {/* Configuración de variaciones (solo para productos de comida) */}
+              {selectedType === 'comida' && (
+                <VariacionesConfig
+                  variaciones={variacionesConfig}
+                  onChange={setVariacionesConfig}
+                />
+              )}
               </div>
             )}
 

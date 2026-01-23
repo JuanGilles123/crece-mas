@@ -6,6 +6,7 @@ import { useProductos } from '../../hooks/useProductos';
 import { useGuardarCotizacion, useActualizarCotizacion } from '../../hooks/useCotizaciones';
 import { generarCodigoVenta } from '../../utils/generarCodigoVenta';
 import { useClientes, useCrearCliente } from '../../hooks/useClientes';
+import { usePedidos, useActualizarPedido } from '../../hooks/usePedidos';
 import OptimizedProductImage from '../../components/business/OptimizedProductImage';
 import ReciboVenta from '../../components/business/ReciboVenta';
 import ConfirmacionVenta from '../../components/business/ConfirmacionVenta';
@@ -70,6 +71,7 @@ export default function Caja() {
     email: '',
     direccion: ''
   });
+  const [mostrarFacturaPantalla, setMostrarFacturaPantalla] = useState(false);
   
   // Hooks para clientes
   // eslint-disable-next-line no-unused-vars
@@ -79,6 +81,25 @@ export default function Caja() {
   // Hook para guardar y actualizar cotización
   const guardarCotizacionMutation = useGuardarCotizacion();
   const actualizarCotizacionMutation = useActualizarCotizacion();
+
+  // Hook para pedidos pendientes de pago
+  const { data: todosPedidos = [] } = usePedidos(organization?.id);
+  const actualizarPedido = useActualizarPedido();
+  
+  // Filtrar pedidos listos para pago (solo estado "listo", excluir "completado", excluir sin items)
+  const pedidosPendientesPago = useMemo(() => {
+    return todosPedidos.filter(p => 
+      p.estado === 'listo' && 
+      !p.pago_inmediato &&
+      p.items && 
+      Array.isArray(p.items) && 
+      p.items.length > 0
+    );
+  }, [todosPedidos]);
+  
+  const [mostrandoPedidosPendientes, setMostrandoPedidosPendientes] = useState(false);
+  const [pedidoIdActual, setPedidoIdActual] = useState(null);
+  const [pedidosConsolidados, setPedidosConsolidados] = useState([]); // IDs de todos los pedidos consolidados
 
   // Cargar productos usando React Query (optimizado con cache)
   const { data: productosData = [], isLoading: productosLoading } = useProductos(organization?.id);
@@ -158,6 +179,58 @@ export default function Caja() {
 
   // Estado para trackear si estamos editando una cotización existente
   const [cotizacionId, setCotizacionId] = useState(null);
+
+  // Estado para guardar el nombre del cliente del pedido
+  const [clienteNombrePedido, setClienteNombrePedido] = useState(null);
+
+  // Cargar pedido desde localStorage si viene de "Pagar ahora"
+  useEffect(() => {
+    const pedidoData = localStorage.getItem('pedidoParaPagar');
+    if (pedidoData && productos.length > 0) {
+      try {
+        const pedido = JSON.parse(pedidoData);
+        if (pedido.items && pedido.items.length > 0) {
+          // Guardar el ID del pedido
+          if (pedido.pedidoId) {
+            setPedidoIdActual(pedido.pedidoId);
+          }
+          
+          // Guardar el nombre del cliente del pedido si existe
+          if (pedido.clienteNombre || pedido.cliente_nombre) {
+            setClienteNombrePedido(pedido.clienteNombre || pedido.cliente_nombre);
+          }
+          
+          // Mapear los items del pedido al formato del carrito
+          const itemsCarrito = pedido.items.map(item => {
+            const productoCompleto = productos.find(p => p.id === item.id);
+            if (productoCompleto) {
+              return {
+                id: item.id,
+                nombre: item.nombre || productoCompleto.nombre,
+                precio_venta: item.precio_venta || productoCompleto.precio_venta,
+                qty: item.qty || 1,
+                toppings: item.toppings || [], // Incluir toppings si existen
+                variaciones: item.variaciones || item.variaciones_seleccionadas || {}, // Incluir variaciones si existen
+                notas: item.notas || null // Incluir notas si existen
+              };
+            }
+            return null;
+          }).filter(item => item !== null);
+
+          if (itemsCarrito.length > 0) {
+            setCart(itemsCarrito);
+            toast.success('Pedido cargado. Procede con el pago.');
+          }
+          
+          // Limpiar localStorage
+          localStorage.removeItem('pedidoParaPagar');
+        }
+      } catch (error) {
+        console.error('Error cargando pedido:', error);
+        localStorage.removeItem('pedidoParaPagar');
+      }
+    }
+  }, [productos]);
 
   // Cargar cotización desde localStorage si existe
   useEffect(() => {
@@ -295,8 +368,12 @@ export default function Caja() {
   const removeItem = (id) => setCart((prev) => prev.filter((i) => i.id !== id));
 
   const handleNuevaVenta = () => {
+    setPedidoIdActual(null);
+    setPedidosConsolidados([]);
     setVentaCompletada(null);
+    setClienteNombrePedido(null); // Limpiar nombre del cliente del pedido
     setMostrandoMetodosPago(false);
+    setMostrarFacturaPantalla(false); // Resetear checkbox
   };
 
   const handleContinuar = () => {
@@ -349,7 +426,7 @@ export default function Caja() {
             
             // Si no hay cambios, no hacer nada
             if (itemsIguales && totalIgual) {
-              toast.info('No hay cambios en la cotización');
+              toast('No hay cambios en la cotización', { icon: 'ℹ️' });
               setGuardandoCotizacion(false);
               return;
             }
@@ -447,19 +524,28 @@ export default function Caja() {
     const monto1 = parseFloat(montoMixto1.replace(/[^\d]/g, '')) || 0;
     const monto2 = parseFloat(montoMixto2.replace(/[^\d]/g, '')) || 0;
     const sumaMontos = monto1 + monto2;
+    const diferencia = total - sumaMontos;
+    const hayEfectivo = metodoMixto1 === 'Efectivo' || metodoMixto2 === 'Efectivo';
 
     if (monto1 <= 0 || monto2 <= 0) {
       toast.error('Ambos montos deben ser mayores a cero');
       return;
     }
 
-    if (Math.abs(sumaMontos - total) > 1) { // Permitir diferencia de 1 peso por redondeo
+    if (metodoMixto1 === metodoMixto2) {
+      toast.error('Debes seleccionar dos métodos de pago diferentes');
+      return;
+    }
+
+    // Si hay efectivo, permitir que el monto sea mayor o igual (puede haber cambio)
+    // Si no hay efectivo, los valores deben ser exactos
+    if (!hayEfectivo && Math.abs(diferencia) > 1) {
       toast.error(`La suma de los montos (${formatCOP(sumaMontos)}) debe ser igual al total (${formatCOP(total)})`);
       return;
     }
 
-    if (metodoMixto1 === metodoMixto2) {
-      toast.error('Debes seleccionar dos métodos de pago diferentes');
+    if (hayEfectivo && diferencia > 1) {
+      toast.error(`El monto entregado (${formatCOP(sumaMontos)}) debe ser mayor o igual al total (${formatCOP(total)})`);
       return;
     }
 
@@ -711,11 +797,63 @@ export default function Caja() {
 
   // Componente para pago mixto
   const PagoMixto = () => {
-    const monto1 = parseFloat(montoMixto1.replace(/[^\d]/g, '')) || 0;
-    const monto2 = parseFloat(montoMixto2.replace(/[^\d]/g, '')) || 0;
+    // Estados locales para los inputs con debounce
+    const [inputValue1, setInputValue1] = useState(montoMixto1);
+    const [inputValue2, setInputValue2] = useState(montoMixto2);
+    const [montoCalculado1, setMontoCalculado1] = useState(montoMixto1);
+    const [montoCalculado2, setMontoCalculado2] = useState(montoMixto2);
+    const montoMixto1Ref = useRef(montoMixto1);
+    const montoMixto2Ref = useRef(montoMixto2);
+    const valoresComunes = [10000, 20000, 50000, 100000];
+
+    // Actualizar refs cuando los montos cambian externamente
+    useEffect(() => {
+      montoMixto1Ref.current = montoMixto1;
+      montoMixto2Ref.current = montoMixto2;
+      setInputValue1(montoMixto1);
+      setInputValue2(montoMixto2);
+      setMontoCalculado1(montoMixto1);
+      setMontoCalculado2(montoMixto2);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [montoMixto1, montoMixto2]);
+
+    // Debounce para monto1 - aumentar tiempo a 1000ms
+    useEffect(() => {
+      if (inputValue1 === montoMixto1Ref.current) {
+        return;
+      }
+      const timer = setTimeout(() => {
+        if (inputValue1 !== montoMixto1Ref.current) {
+          setMontoMixto1(inputValue1);
+          setMontoCalculado1(inputValue1);
+        }
+      }, 1000); // Aumentado a 1000ms
+      return () => clearTimeout(timer);
+    }, [inputValue1]);
+
+    // Debounce para monto2 - aumentar tiempo a 1000ms
+    useEffect(() => {
+      if (inputValue2 === montoMixto2Ref.current) {
+        return;
+      }
+      const timer = setTimeout(() => {
+        if (inputValue2 !== montoMixto2Ref.current) {
+          setMontoMixto2(inputValue2);
+          setMontoCalculado2(inputValue2);
+        }
+      }, 1000); // Aumentado a 1000ms
+      return () => clearTimeout(timer);
+    }, [inputValue2]);
+
+    // Calcular montos usando los valores calculados (sin parpadeo)
+    const monto1 = parseFloat(montoCalculado1.replace(/[^\d]/g, '')) || 0;
+    const monto2 = parseFloat(montoCalculado2.replace(/[^\d]/g, '')) || 0;
     const sumaMontos = monto1 + monto2;
     const diferencia = total - sumaMontos;
-    const valoresComunes = [10000, 20000, 50000, 100000];
+    
+    // Calcular cambio si hay efectivo
+    const hayEfectivo = metodoMixto1 === 'Efectivo' || metodoMixto2 === 'Efectivo';
+    const cambio = hayEfectivo && sumaMontos > total ? sumaMontos - total : 0;
 
 
     return (
@@ -753,14 +891,26 @@ export default function Caja() {
               <label className="pago-efectivo-label">Monto del primer método:</label>
               <input
                 type="text"
-                value={montoMixto1}
+                value={inputValue1}
                 onChange={(e) => {
                   const value = e.target.value;
                   const cleanValue = value.replace(/[^\d,.]/g, '');
-                  setMontoMixto1(cleanValue);
+                  setInputValue1(cleanValue);
+                }}
+                onBlur={() => {
+                  setMontoMixto1(inputValue1);
+                  setMontoCalculado1(inputValue1);
                 }}
                 className="pago-efectivo-input"
                 placeholder="Ingresa el monto"
+                style={{ 
+                  transition: 'none',
+                  willChange: 'auto',
+                  backfaceVisibility: 'hidden',
+                  transform: 'translateZ(0)',
+                  WebkitBackfaceVisibility: 'hidden',
+                  WebkitTransform: 'translateZ(0)'
+                }}
               />
               
               <div className="pago-efectivo-botones">
@@ -802,14 +952,26 @@ export default function Caja() {
               <label className="pago-efectivo-label">Monto del segundo método:</label>
               <input
                 type="text"
-                value={montoMixto2}
+                value={inputValue2}
                 onChange={(e) => {
                   const value = e.target.value;
                   const cleanValue = value.replace(/[^\d,.]/g, '');
-                  setMontoMixto2(cleanValue);
+                  setInputValue2(cleanValue);
+                }}
+                onBlur={() => {
+                  setMontoMixto2(inputValue2);
+                  setMontoCalculado2(inputValue2);
                 }}
                 className="pago-efectivo-input"
                 placeholder="Ingresa el monto"
+                style={{ 
+                  transition: 'none',
+                  willChange: 'auto',
+                  backfaceVisibility: 'hidden',
+                  transform: 'translateZ(0)',
+                  WebkitBackfaceVisibility: 'hidden',
+                  WebkitTransform: 'translateZ(0)'
+                }}
               />
               
               <div className="pago-efectivo-botones">
@@ -825,7 +987,7 @@ export default function Caja() {
               </div>
             </div>
 
-            {/* Resumen */}
+            {/* Resumen - Mostrar siempre que haya valores */}
             {monto1 > 0 && monto2 > 0 && (
               <div className="pago-efectivo-cambio" style={{ marginTop: '1rem' }}>
                 <div className="pago-efectivo-cambio-item">
@@ -841,18 +1003,34 @@ export default function Caja() {
                   <span>{formatCOP(sumaMontos)}</span>
                 </div>
                 <div className="pago-efectivo-cambio-item">
-                  <span>Total:</span>
+                  <span>Total a pagar:</span>
                   <span>{formatCOP(total)}</span>
                 </div>
-                <div className={`pago-efectivo-cambio-item pago-efectivo-cambio-total ${Math.abs(diferencia) > 1 ? 'negativo' : 'positivo'}`}>
-                  <span>Diferencia:</span>
-                  <span>
-                    {Math.abs(diferencia) > 1 
-                      ? `Faltan ${formatCOP(Math.abs(diferencia))}` 
-                      : 'Correcto ✓'
-                    }
-                  </span>
-                </div>
+                {hayEfectivo && cambio > 0 && (
+                  <div className="pago-efectivo-cambio-item pago-efectivo-cambio-total positivo">
+                    <span>Cambio a devolver:</span>
+                    <span>{formatCOP(cambio)}</span>
+                  </div>
+                )}
+                {!hayEfectivo && (
+                  <div className={`pago-efectivo-cambio-item pago-efectivo-cambio-total ${diferencia < -1 ? 'negativo' : diferencia > 1 ? 'negativo' : 'positivo'}`}>
+                    <span>Diferencia:</span>
+                    <span>
+                      {diferencia < -1 
+                        ? `Sobran ${formatCOP(Math.abs(diferencia))}` 
+                        : diferencia > 1
+                        ? `Faltan ${formatCOP(diferencia)}`
+                        : 'Correcto ✓'
+                      }
+                    </span>
+                  </div>
+                )}
+                {hayEfectivo && diferencia > 1 && (
+                  <div className="pago-efectivo-cambio-item pago-efectivo-cambio-total negativo">
+                    <span>Faltan:</span>
+                    <span>{formatCOP(diferencia)}</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -867,7 +1045,13 @@ export default function Caja() {
             <button 
               className="pago-efectivo-btn pago-efectivo-confirmar"
               onClick={handleConfirmarPagoMixto}
-              disabled={Math.abs(diferencia) > 1 || monto1 <= 0 || monto2 <= 0 || metodoMixto1 === metodoMixto2}
+              disabled={
+                monto1 <= 0 || 
+                monto2 <= 0 || 
+                metodoMixto1 === metodoMixto2 ||
+                (!hayEfectivo && Math.abs(diferencia) > 1) ||
+                (hayEfectivo && diferencia > 1)
+              }
             >
               Confirmar Pago Mixto
             </button>
@@ -985,6 +1169,75 @@ export default function Caja() {
       
       console.log("Venta guardada exitosamente:", ventaResult);
       
+      // Si hay pedidos asociados (viene de "Pagar ahora" o pedidos consolidados), actualizar su estado según el tipo de pago
+      const pedidosAActualizar = pedidosConsolidados.length > 0 ? pedidosConsolidados : (pedidoIdActual ? [pedidoIdActual] : []);
+      
+      if (pedidosAActualizar.length > 0) {
+        try {
+          console.log('Actualizando pedidos después del pago:', pedidosAActualizar);
+          
+          // Obtener todos los pedidos para verificar su estado actual
+          const { data: pedidosData, error: pedidosError } = await supabase
+            .from('pedidos')
+            .select('id, estado, mesa_id, pago_inmediato')
+            .in('id', pedidosAActualizar);
+          
+          if (pedidosError) {
+            console.error('Error obteniendo pedidos:', pedidosError);
+          }
+          
+          // Actualizar cada pedido según su estado actual y tipo de pago
+          for (const pedido of pedidosData || []) {
+            try {
+              let nuevoEstado;
+              
+              // Si el pedido ya está "listo", al pagarlo debe ir a "completado"
+              if (pedido.estado === 'listo') {
+                nuevoEstado = 'completado';
+              } 
+              // Si el pago es anticipado (pago_inmediato = true), el pedido debe ir a "pendiente"
+              else if (pedido.pago_inmediato) {
+                nuevoEstado = 'pendiente';
+              } 
+              // Si no es pago anticipado y el pedido está en "pendiente", va a "en_preparacion"
+              else if (pedido.estado === 'pendiente') {
+                nuevoEstado = 'en_preparacion';
+              }
+              // Si ya está en "en_preparacion", mantenerlo o avanzar según corresponda
+              else if (pedido.estado === 'en_preparacion') {
+                // Si ya está en preparación, no cambiar el estado (ya fue tomado por el chef)
+                console.log(`Pedido ${pedido.id} ya está en preparación, no se cambia el estado`);
+                continue;
+              }
+              // Para cualquier otro caso, no cambiar el estado
+              else {
+                console.log(`Pedido ${pedido.id} tiene estado ${pedido.estado}, no se cambia`);
+                continue;
+              }
+              
+              console.log(`Actualizando pedido ${pedido.id} de ${pedido.estado} a ${nuevoEstado}`);
+              
+              await actualizarPedido.mutateAsync({
+                id: pedido.id,
+                organizationId: organization.id,
+                estado: nuevoEstado
+              });
+            } catch (error) {
+              console.error(`Error actualizando pedido ${pedido.id}:`, error);
+              // Continuar con los demás pedidos aunque uno falle
+            }
+          }
+          
+          console.log(`${pedidosAActualizar.length} pedido(s) procesado(s) exitosamente`);
+          setPedidoIdActual(null);
+          setPedidosConsolidados([]);
+        } catch (error) {
+          console.error('Error actualizando pedidos:', error);
+          toast.error('La venta se completó pero hubo un error al actualizar los pedidos');
+          // No fallar la venta si falla la actualización del pedido
+        }
+      }
+      
       // Actualizar stock de productos
       console.log('Actualizando stock de productos...');
       for (const item of cart) {
@@ -1006,6 +1259,7 @@ export default function Caja() {
       }
       
       // Obtener información del cliente si existe
+      // Priorizar cliente seleccionado en caja, si no hay, usar el nombre del pedido
       let clienteInfo = null;
       if (clienteSeleccionado) {
         clienteInfo = {
@@ -1015,6 +1269,11 @@ export default function Caja() {
           telefono: clienteSeleccionado.telefono,
           email: clienteSeleccionado.email,
           direccion: clienteSeleccionado.direccion
+        };
+      } else if (clienteNombrePedido) {
+        // Si no hay cliente seleccionado pero hay nombre del pedido, incluirlo en el recibo
+        clienteInfo = {
+          nombre: clienteNombrePedido
         };
       }
       
@@ -1053,6 +1312,10 @@ export default function Caja() {
           setVentaCompletada(ventaRecibo);
           setCart([]);
           setShowCartMobile(false);
+          setPedidoIdActual(null); // Limpiar pedido actual
+          setPedidosConsolidados([]); // Limpiar pedidos consolidados
+          setClienteNombrePedido(null); // Limpiar nombre del cliente del pedido
+          setMostrarFacturaPantalla(false); // Resetear checkbox
         }, 2000);
       }, 1500);
       
@@ -1081,6 +1344,97 @@ export default function Caja() {
     }
   }
 
+  // Función para cargar un pedido pendiente en el carrito (consolidando pedidos de la misma mesa y estado)
+  const cargarPedidoEnCarrito = (pedido) => {
+    if (!pedido.items || pedido.items.length === 0) {
+      toast.error('El pedido no tiene items');
+      return;
+    }
+
+    // Solo consolidar si el pedido tiene una mesa real (no mostrador)
+    // Los pedidos del mostrador no deben consolidarse
+    let pedidosAConsolidar = [pedido];
+    
+    const mesaId = pedido.mesa_id || pedido.mesa?.id;
+    const numeroMesa = pedido.mesa?.numero?.toLowerCase() || '';
+    
+    // Solo consolidar si tiene mesa_id Y no es un mostrador
+    if (mesaId && !numeroMesa.includes('mostrador')) {
+      const estadoPedido = pedido.estado;
+      
+      // Buscar todos los pedidos de la misma mesa con el mismo estado
+      const pedidosMismaMesa = pedidosPendientesPago.filter(p => {
+        const pMesaId = p.mesa_id || p.mesa?.id;
+        const pNumeroMesa = p.mesa?.numero?.toLowerCase() || '';
+        // Solo incluir si tiene mesa_id, no es mostrador, y coincide con la mesa y estado
+        return pMesaId && 
+               !pNumeroMesa.includes('mostrador') &&
+               pMesaId === mesaId && 
+               p.estado === estadoPedido && 
+               p.id !== pedido.id;
+      });
+      
+      if (pedidosMismaMesa.length > 0) {
+        pedidosAConsolidar = [pedido, ...pedidosMismaMesa];
+        toast(`Consolidando ${pedidosAConsolidar.length} pedidos de la misma mesa`, { icon: 'ℹ️' });
+      }
+    }
+
+    // Consolidar todos los items de los pedidos
+    const todosItems = [];
+    pedidosAConsolidar.forEach(p => {
+      if (p.items && Array.isArray(p.items)) {
+        p.items.forEach(item => {
+          const productoCompleto = productos.find(prod => prod.id === item.producto_id);
+          if (productoCompleto) {
+            const precioUnitarioConToppings = item.precio_total / (item.cantidad || 1);
+            todosItems.push({
+              id: item.producto_id,
+              nombre: item.producto?.nombre || productoCompleto.nombre,
+              precio_venta: precioUnitarioConToppings,
+              qty: item.cantidad || 1,
+              toppings: item.toppings || [],
+              variaciones: item.variaciones_seleccionadas || item.variaciones || {},
+              notas: item.notas_item || null
+            });
+          }
+        });
+      }
+    });
+
+    if (todosItems.length > 0) {
+      // Consolidar items duplicados (mismo producto, mismo precio, mismos toppings, mismas variaciones)
+      const itemsConsolidados = todosItems.reduce((acc, item) => {
+        const variacionesKey = JSON.stringify(item.variaciones || {});
+        const key = `${item.id}-${item.precio_venta}-${JSON.stringify(item.toppings)}-${variacionesKey}-${item.notas || ''}`;
+        const existente = acc.find(i => {
+          const iVariacionesKey = JSON.stringify(i.variaciones || {});
+          const iKey = `${i.id}-${i.precio_venta}-${JSON.stringify(i.toppings)}-${iVariacionesKey}-${i.notas || ''}`;
+          return iKey === key;
+        });
+        
+        if (existente) {
+          existente.qty += item.qty;
+        } else {
+          acc.push({ ...item });
+        }
+        return acc;
+      }, []);
+
+      setCart(itemsConsolidados);
+      setPedidoIdActual(pedido.id); // Mantener el ID del pedido principal para compatibilidad
+      setPedidosConsolidados(pedidosAConsolidar.map(p => p.id)); // Guardar todos los IDs consolidados
+      setMostrandoPedidosPendientes(false);
+      toast.success(
+        pedidosAConsolidar.length > 1 
+          ? `${pedidosAConsolidar.length} pedidos consolidados cargados en el carrito`
+          : 'Pedido cargado en el carrito'
+      );
+    } else {
+      toast.error('No se pudieron cargar los productos del pedido');
+    }
+  };
+
   if (cargando) {
     return (
       <div className="caja-loading">
@@ -1098,6 +1452,56 @@ export default function Caja() {
 
   return (
     <div className="caja-container">
+      {/* Sección de pedidos pendientes de pago */}
+      {pedidosPendientesPago.length > 0 && (
+        <div className="caja-pedidos-section">
+          <div className="caja-pedidos-header">
+            <div className="caja-pedidos-title">
+              <CheckCircle size={20} color="#10B981" />
+              <h3>Pedidos Listos para Pagar ({pedidosPendientesPago.length})</h3>
+            </div>
+            <button
+              className="caja-pedidos-toggle"
+              onClick={() => setMostrandoPedidosPendientes(!mostrandoPedidosPendientes)}
+            >
+              {mostrandoPedidosPendientes ? 'Ocultar' : 'Mostrar'}
+            </button>
+          </div>
+          
+          {mostrandoPedidosPendientes && (
+            <div className="caja-pedidos-list">
+              {pedidosPendientesPago.length === 0 ? (
+                <p className="caja-pedidos-empty">No hay pedidos listos para pagar</p>
+              ) : (
+                pedidosPendientesPago.map((pedido) => (
+                  <div key={pedido.id} className="caja-pedido-card">
+                    <div className="caja-pedido-info">
+                      <div className="caja-pedido-header-info">
+                        <h4>{pedido.numero_pedido}</h4>
+                        {pedido.mesa && (
+                          <span className="caja-pedido-mesa">Mesa {pedido.mesa.numero}</span>
+                        )}
+                      </div>
+                      <p className="caja-pedido-items">
+                        {pedido.items?.length || 0} {pedido.items?.length === 1 ? 'item' : 'items'}
+                      </p>
+                      <p className="caja-pedido-total">Total: {formatCOP(pedido.total || 0)}</p>
+                    </div>
+                    <button
+                      className="caja-pedido-cargar-btn"
+                      onClick={() => cargarPedidoEnCarrito(pedido)}
+                      disabled={!pedido.items || pedido.items.length === 0}
+                    >
+                      Cargar
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Panel de productos */}
       <div className="caja-products-panel">
         <div className="caja-search-container">
@@ -1170,7 +1574,13 @@ export default function Caja() {
               </button>
               <button 
                 className="caja-clear-btn"
-                onClick={() => setCart([])}
+                onClick={() => {
+                  setCart([]);
+                  setPedidoIdActual(null);
+                  setPedidosConsolidados([]);
+                  setClienteNombrePedido(null); // Limpiar nombre del cliente del pedido
+                  setMostrarFacturaPantalla(false); // Resetear checkbox
+                }}
               >
                 Vaciar
               </button>
@@ -1227,6 +1637,45 @@ export default function Caja() {
                     </div>
                     <div className="caja-cart-item-info">
                       <p className="caja-cart-item-name">{item.nombre}</p>
+                      {item.toppings && Array.isArray(item.toppings) && item.toppings.length > 0 && (
+                        <div className="caja-cart-item-toppings">
+                          <span className="caja-cart-item-toppings-label">Extras: </span>
+                          <span className="caja-cart-item-toppings-list">
+                            {item.toppings.map((topping, idx) => (
+                              <span key={idx} className="caja-cart-item-topping-tag">
+                                {topping.nombre || topping}
+                                {idx < item.toppings.length - 1 && ', '}
+                              </span>
+                            ))}
+                          </span>
+                        </div>
+                      )}
+                      {item.variaciones && Object.keys(item.variaciones).length > 0 && (
+                        <div className="caja-cart-item-variaciones">
+                          <span className="caja-cart-item-variaciones-label">Variaciones: </span>
+                          <span className="caja-cart-item-variaciones-list">
+                            {Object.entries(item.variaciones).map(([key, value], idx) => {
+                              // Formatear la variación para mostrar
+                              const variacionNombre = key;
+                              const opcionLabel = typeof value === 'boolean' 
+                                ? (value ? 'Sí' : 'No') 
+                                : String(value);
+                              return (
+                                <span key={idx} className="caja-cart-item-variacion-tag">
+                                  {variacionNombre}: {opcionLabel}
+                                  {idx < Object.keys(item.variaciones).length - 1 && ', '}
+                                </span>
+                              );
+                            })}
+                          </span>
+                        </div>
+                      )}
+                      {item.notas && (
+                        <div className="caja-cart-item-notas">
+                          <span className="caja-cart-item-notas-label">Nota: </span>
+                          <span className="caja-cart-item-notas-text">{item.notas}</span>
+                        </div>
+                      )}
                     </div>
                     <div className="caja-cart-item-controls">
                       <button 
@@ -1273,6 +1722,18 @@ export default function Caja() {
             </div>
           </div>
           
+          {/* Checkbox para mostrar factura en pantalla */}
+          <div className="caja-factura-checkbox-container">
+            <label className="caja-factura-checkbox-label">
+              <input
+                type="checkbox"
+                className="caja-factura-checkbox"
+                checked={mostrarFacturaPantalla}
+                onChange={(e) => setMostrarFacturaPantalla(e.target.checked)}
+              />
+              <span className="caja-factura-checkbox-text">Mostrar factura en pantalla</span>
+            </label>
+          </div>
           
             <motion.button 
               className="caja-confirm-btn"
@@ -1346,6 +1807,10 @@ export default function Caja() {
                   onClick={() => {
                     if (window.confirm('¿Estás seguro de que quieres vaciar todo el carrito?')) {
                       setCart([]);
+                      setPedidoIdActual(null);
+                      setPedidosConsolidados([]);
+                      setClienteNombrePedido(null); // Limpiar nombre del cliente del pedido
+                      setMostrarFacturaPantalla(false); // Resetear checkbox
                     }
                   }}
                   aria-label="Vaciar carrito"
@@ -1427,6 +1892,45 @@ export default function Caja() {
                         >
                           {item.nombre}
                         </p>
+                        {item.toppings && Array.isArray(item.toppings) && item.toppings.length > 0 && (
+                          <div className="caja-mobile-cart-item-toppings">
+                            <span className="caja-mobile-cart-item-toppings-label">Extras: </span>
+                            <span className="caja-mobile-cart-item-toppings-list">
+                              {item.toppings.map((topping, idx) => (
+                                <span key={idx} className="caja-mobile-cart-item-topping-tag">
+                                  {topping.nombre || topping}
+                                  {idx < item.toppings.length - 1 && ', '}
+                                </span>
+                              ))}
+                            </span>
+                          </div>
+                        )}
+                        {item.variaciones && Object.keys(item.variaciones).length > 0 && (
+                          <div className="caja-mobile-cart-item-variaciones">
+                            <span className="caja-mobile-cart-item-variaciones-label">Variaciones: </span>
+                            <span className="caja-mobile-cart-item-variaciones-list">
+                              {Object.entries(item.variaciones).map(([key, value], idx) => {
+                                // Formatear la variación para mostrar
+                                const variacionNombre = key;
+                                const opcionLabel = typeof value === 'boolean' 
+                                  ? (value ? 'Sí' : 'No') 
+                                  : String(value);
+                                return (
+                                  <span key={idx} className="caja-mobile-cart-item-variacion-tag">
+                                    {variacionNombre}: {opcionLabel}
+                                    {idx < Object.keys(item.variaciones).length - 1 && ', '}
+                                  </span>
+                                );
+                              })}
+                            </span>
+                          </div>
+                        )}
+                        {item.notas && (
+                          <div className="caja-mobile-cart-item-notas">
+                            <span className="caja-mobile-cart-item-notas-label">Nota: </span>
+                            <span className="caja-mobile-cart-item-notas-text">{item.notas}</span>
+                          </div>
+                        )}
                         <div className="caja-mobile-cart-item-controls">
                           <button 
                             className="caja-mobile-qty-btn caja-mobile-qty-btn-minus"
@@ -1500,7 +2004,7 @@ export default function Caja() {
       {mostrandoPagoMixto && <PagoMixto />}
 
       {/* Recibo de venta */}
-      {ventaCompletada && (
+      {ventaCompletada && mostrarFacturaPantalla && (
         <ReciboVenta 
           venta={ventaCompletada} 
           onNuevaVenta={handleNuevaVenta}

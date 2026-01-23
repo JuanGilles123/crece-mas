@@ -1,13 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../services/api/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import { useSubscription } from '../../hooks/useSubscription';
 import UpgradePrompt from '../UpgradePrompt';
-import { Save, Building2, MapPin, Phone, Hash, Mail, AlertCircle, FileText, CreditCard, ShieldAlert, Store, UtensilsCrossed, Scissors, Shirt, ShoppingBag, Package, Check, Circle } from 'lucide-react';
+import { Save, Building2, MapPin, Phone, Hash, Mail, AlertCircle, FileText, CreditCard, ShieldAlert, Store, Check, Settings, Plus } from 'lucide-react';
+import { BUSINESS_TYPES } from '../../constants/businessTypes';
+import { BUSINESS_FEATURES, getCompatibleFeatures, getDefaultFeatures, checkFeatureDependencies } from '../../constants/businessFeatures';
 import toast from 'react-hot-toast';
 import './ConfiguracionFacturacion.css';
 
 export default function ConfiguracionFacturacion() {
+  const navigate = useNavigate();
   const { organization, hasRoleOwner } = useAuth();
   const { hasFeature, planSlug, loading: subscriptionLoading } = useSubscription();
   const [datosEmpresa, setDatosEmpresa] = useState({
@@ -22,7 +26,8 @@ export default function ConfiguracionFacturacion() {
     mensaje_factura: 'Gracias por su compra',
     business_type: 'other',
     mesas_habilitadas: false,
-    pedidos_habilitados: false
+    pedidos_habilitados: false,
+    enabled_features: [] // Array de funciones habilitadas
   });
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
@@ -47,8 +52,27 @@ export default function ConfiguracionFacturacion() {
         mensaje_factura: organization.mensaje_factura || 'Gracias por su compra',
         business_type: organization.business_type || 'other',
         mesas_habilitadas: organization.mesas_habilitadas || false,
-        pedidos_habilitados: organization.pedidos_habilitados || false
+        pedidos_habilitados: organization.pedidos_habilitados || false,
+        enabled_features: organization.enabled_features || []
       });
+      
+      // Si no hay funciones habilitadas pero hay mesas/pedidos, migrar a nuevo sistema
+      if ((organization.mesas_habilitadas || organization.pedidos_habilitados) && !organization.enabled_features) {
+        const features = [];
+        if (organization.mesas_habilitadas) features.push('mesas');
+        if (organization.pedidos_habilitadas) features.push('pedidos');
+        setDatosEmpresa(prev => ({ ...prev, enabled_features: features }));
+      }
+      
+      // Si cambia el tipo de negocio, sugerir funciones por defecto
+      if (organization.business_type) {
+        const defaultFeatures = getDefaultFeatures(organization.business_type);
+        const currentFeatures = organization.enabled_features || [];
+        // Agregar funciones por defecto si no están ya habilitadas y no hay funciones configuradas
+        if (currentFeatures.length === 0 && defaultFeatures.length > 0) {
+          setDatosEmpresa(prev => ({ ...prev, enabled_features: defaultFeatures }));
+        }
+      }
     } catch (error) {
       console.error('Error:', error);
       toast.error('Error al cargar los datos');
@@ -63,11 +87,87 @@ export default function ConfiguracionFacturacion() {
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
+    
+    // Si cambia el tipo de negocio, actualizar funciones compatibles
+    if (name === 'business_type') {
+      const defaultFeatures = getDefaultFeatures(value);
+      setDatosEmpresa(prev => ({
+        ...prev,
+        [name]: value,
+        enabled_features: prev.enabled_features.length === 0 ? defaultFeatures : prev.enabled_features
+      }));
+      return;
+    }
+    
     setDatosEmpresa(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
   };
+  
+  // Manejar toggle de funciones
+  const handleFeatureToggle = (featureId) => {
+    if (!hasRoleOwner) return;
+    
+    const feature = BUSINESS_FEATURES[featureId];
+    if (!feature) return;
+    
+    // Verificar compatibilidad con tipo de negocio
+    if (!feature.compatibleWith.includes(datosEmpresa.business_type)) {
+      toast.error(`Esta función no es compatible con el tipo de negocio seleccionado`);
+      return;
+    }
+    
+    // Verificar si requiere premium
+    if (feature.requiresPremium) {
+      // Para mesas y pedidos, verificar features específicas
+      if (featureId === 'mesas' && !hasFeature('mesas')) {
+        toast.error(`Esta función requiere una suscripción premium`);
+        return;
+      }
+      if (featureId === 'pedidos' && !hasFeature('pedidos')) {
+        toast.error(`Esta función requiere una suscripción premium`);
+        return;
+      }
+      // Para otras funciones premium, verificar según el plan (si aplica)
+      // Por ahora, solo mesas y pedidos requieren premium explícito
+    }
+    
+    const currentFeatures = datosEmpresa.enabled_features || [];
+    const isEnabled = currentFeatures.includes(featureId);
+    
+    if (isEnabled) {
+      // Desactivar función
+      let newFeatures = currentFeatures.filter(id => id !== featureId);
+      
+      // Si se desactiva una función requerida, desactivar dependientes
+      Object.values(BUSINESS_FEATURES).forEach(f => {
+        if (f.requires && f.requires.includes(featureId) && newFeatures.includes(f.id)) {
+          newFeatures = newFeatures.filter(id => id !== f.id);
+        }
+      });
+      
+      setDatosEmpresa(prev => ({
+        ...prev,
+        enabled_features: newFeatures
+      }));
+    } else {
+      // Activar función - verificar dependencias
+      const dependencyCheck = checkFeatureDependencies(featureId, currentFeatures);
+      if (!dependencyCheck.valid) {
+        toast.error(dependencyCheck.message);
+        return;
+      }
+      
+      setDatosEmpresa(prev => ({
+        ...prev,
+        enabled_features: [...currentFeatures, featureId]
+      }));
+    }
+  };
+  
+  // Obtener funciones compatibles con el tipo de negocio actual
+  const compatibleFeatures = getCompatibleFeatures(datosEmpresa.business_type);
 
   const guardarDatos = async () => {
     if (!organization || !hasRoleOwner) {
@@ -82,9 +182,17 @@ export default function ConfiguracionFacturacion() {
 
     setGuardando(true);
     try {
+      // Sincronizar enabled_features con mesas_habilitadas y pedidos_habilitados para compatibilidad
+      const updateData = { ...datosEmpresa };
+      const enabledFeatures = updateData.enabled_features || [];
+      
+      // Mantener compatibilidad con sistema antiguo
+      updateData.mesas_habilitadas = enabledFeatures.includes('mesas');
+      updateData.pedidos_habilitados = enabledFeatures.includes('pedidos');
+      
       const { error } = await supabase
         .from('organizations')
-        .update(datosEmpresa)
+        .update(updateData)
         .eq('id', organization.id);
 
       if (error) throw error;
@@ -290,20 +398,14 @@ export default function ConfiguracionFacturacion() {
                 <Store size={16} /> Tipo de Negocio
               </label>
               <div className="business-type-selector">
-                {[
-                  { value: 'food', Icon: UtensilsCrossed, label: 'Comida', desc: 'Restaurantes, cafeterías, comida rápida' },
-                  { value: 'service', Icon: Scissors, label: 'Servicios', desc: 'Barbería, Spa, Consultoría' },
-                  { value: 'clothing', Icon: Shirt, label: 'Ropa', desc: 'Tiendas de ropa y accesorios' },
-                  { value: 'retail', Icon: ShoppingBag, label: 'Retail', desc: 'Tiendas generales, supermercados' },
-                  { value: 'other', Icon: Package, label: 'Otro', desc: 'Otros tipos de negocio' }
-                ].map((type) => {
+                {Object.values(BUSINESS_TYPES).map((type) => {
                   const IconComponent = type.Icon;
                   return (
                     <button
-                      key={type.value}
+                      key={type.id}
                       type="button"
-                      className={`business-type-option ${datosEmpresa.business_type === type.value ? 'selected' : ''}`}
-                      onClick={() => hasRoleOwner && handleInputChange({ target: { name: 'business_type', value: type.value } })}
+                      className={`business-type-option ${datosEmpresa.business_type === type.id ? 'selected' : ''}`}
+                      onClick={() => hasRoleOwner && handleInputChange({ target: { name: 'business_type', value: type.id } })}
                       disabled={!hasRoleOwner}
                     >
                       <span className="business-type-icon">
@@ -311,9 +413,14 @@ export default function ConfiguracionFacturacion() {
                       </span>
                       <div className="business-type-info">
                         <span className="business-type-label">{type.label}</span>
-                        <span className="business-type-desc">{type.desc}</span>
+                        <span className="business-type-desc">{type.description}</span>
+                        {type.features.length > 0 && (
+                          <span className="business-type-features">
+                            {type.features.join(' • ')}
+                          </span>
+                        )}
                       </div>
-                      {datosEmpresa.business_type === type.value && (
+                      {datosEmpresa.business_type === type.id && (
                         <div className="business-type-check">
                           <Check size={20} />
                         </div>
@@ -328,48 +435,88 @@ export default function ConfiguracionFacturacion() {
                 value={datosEmpresa.business_type}
               />
               <small className="field-hint">
-                El tipo de negocio determina las funcionalidades disponibles (ej: toppings para comida)
+                <strong>Nota:</strong> El tipo de negocio define las funcionalidades principales disponibles (ej: toppings para comida, mesas y pedidos). 
+                Sin embargo, puedes crear productos de cualquier tipo independientemente del tipo de negocio seleccionado.
               </small>
             </div>
 
-            {/* Sistema de Mesas y Pedidos (solo para negocios de comida con premium) */}
-            {datosEmpresa.business_type === 'food' && hasFeature('mesas') && hasFeature('pedidos') && (
+            {/* Funciones Personalizables */}
+            {compatibleFeatures.length > 0 && (
               <div className="form-group">
                 <label>
-                  <Circle size={16} /> Sistema de Mesas y Pedidos
+                  <Settings size={16} /> Funciones Personalizables
                 </label>
-                <div className="checkbox-group" style={{ marginTop: '0.5rem' }}>
-                  <label className="checkbox-label">
-                    <input
-                      type="checkbox"
-                      name="mesas_habilitadas"
-                      checked={datosEmpresa.mesas_habilitadas}
-                      onChange={handleInputChange}
-                      disabled={!hasRoleOwner}
-                    />
-                    <span className="checkbox-text">
-                      <strong>Habilitar Sistema de Mesas</strong>
-                      <small>Gestiona las mesas de tu restaurante</small>
-                    </span>
-                  </label>
-                </div>
-                <div className="checkbox-group" style={{ marginTop: '0.5rem' }}>
-                  <label className="checkbox-label">
-                    <input
-                      type="checkbox"
-                      name="pedidos_habilitados"
-                      checked={datosEmpresa.pedidos_habilitados}
-                      onChange={handleInputChange}
-                      disabled={!hasRoleOwner}
-                    />
-                    <span className="checkbox-text">
-                      <strong>Habilitar Sistema de Pedidos</strong>
-                      <small>Permite tomar pedidos por mesa y enviarlos a cocina</small>
-                    </span>
-                  </label>
+                <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                  Activa o desactiva funciones adicionales según las necesidades de tu negocio
+                </p>
+                <div className="business-features-grid">
+                  {compatibleFeatures.map((feature) => {
+                    const IconComponent = feature.Icon;
+                    const isEnabled = (datosEmpresa.enabled_features || []).includes(feature.id);
+                    // Verificar acceso premium
+                    let hasPremiumAccess = true;
+                    if (feature.requiresPremium) {
+                      if (feature.id === 'mesas') {
+                        hasPremiumAccess = hasFeature('mesas');
+                      } else if (feature.id === 'pedidos') {
+                        hasPremiumAccess = hasFeature('pedidos');
+                      } else {
+                        hasPremiumAccess = true; // Otras funciones no requieren premium por ahora
+                      }
+                    }
+                    const dependencyCheck = checkFeatureDependencies(feature.id, datosEmpresa.enabled_features || []);
+                    const canToggle = hasRoleOwner && hasPremiumAccess && dependencyCheck.valid;
+                    
+                    return (
+                      <div
+                        key={feature.id}
+                        className={`business-feature-card ${isEnabled ? 'enabled' : ''} ${!canToggle ? 'disabled' : ''}`}
+                        onClick={() => canToggle && handleFeatureToggle(feature.id)}
+                        style={{ cursor: canToggle ? 'pointer' : 'not-allowed' }}
+                      >
+                        <div className="business-feature-header">
+                          <div className="business-feature-icon">
+                            <IconComponent size={20} />
+                          </div>
+                          {feature.id === 'mesas' && isEnabled ? (
+                            <button
+                              className="business-feature-add-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate('/dashboard/mesas');
+                              }}
+                              title="Ir a Gestión de Mesas"
+                            >
+                              <Plus size={18} />
+                            </button>
+                          ) : (
+                            <div className="business-feature-checkbox">
+                              <input
+                                type="checkbox"
+                                checked={isEnabled}
+                                onChange={() => {}}
+                                disabled={!canToggle}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            </div>
+                          )}
+                        </div>
+                        <div className="business-feature-content">
+                          <h4>{feature.label}</h4>
+                          <p>{feature.description}</p>
+                          {feature.requiresPremium && !hasFeature(feature.id) && (
+                            <span className="feature-premium-badge">Requiere Premium</span>
+                          )}
+                          {!dependencyCheck.valid && (
+                            <span className="feature-dependency-warning">{dependencyCheck.message}</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
                 <small className="field-hint">
-                  Estas funciones están disponibles solo para negocios de comida con suscripción premium
+                  Las funciones marcadas con "Requiere Premium" necesitan una suscripción profesional o superior
                 </small>
               </div>
             )}

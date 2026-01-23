@@ -43,6 +43,111 @@
   color: var(--text-secondary);
 }
 
+.cocina-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.cocina-refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--accent-primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cocina-refresh-btn:hover:not(:disabled) {
+  background: var(--accent-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+}
+
+.cocina-refresh-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cocina-refresh-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.cocina-refresh-btn svg.rotating {
+  animation: rotate 1s linear infinite;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.cocina-alert-pegados {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  background: #FEF3C7;
+  border: 1px solid #FCD34D;
+  border-radius: 6px;
+  color: #92400E;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.cocina-alert-icon {
+  font-size: 1rem;
+}
+
+.cocina-alert-text {
+  white-space: nowrap;
+}
+
+.cocina-alert-banner {
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.25rem;
+  background: #FEF3C7;
+  border: 2px solid #FCD34D;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(252, 211, 77, 0.2);
+}
+
+.cocina-alert-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.cocina-alert-icon-large {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.cocina-alert-content h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #92400E;
+}
+
+.cocina-alert-content p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #78350F;
+  line-height: 1.5;
+}
+
 .cocina-stats {
   display: flex;
   gap: 1.5rem;
@@ -474,11 +579,42 @@
   color: var(--text-primary);
 }
 
-.pedido-item-toppings-detalle {
+.pedido-item-toppings-preview,
+.pedido-item-variaciones-preview {
+  color: var(--accent-primary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-left: 0.25rem;
+}
+
+.pedido-item-toppings-detalle,
+.pedido-item-variaciones-detalle {
   margin: 0.25rem 0;
   font-size: 0.75rem;
   color: var(--text-secondary);
   font-style: italic;
+}
+
+.pedido-item-variaciones-detalle {
+  color: var(--accent-primary);
+  font-weight: 500;
+}
+
+.pedido-item-notas-detalle {
+  margin: 0.5rem 0;
+  padding: 0.5rem;
+  background: #FFF3CD;
+  border-left: 3px solid #FFC107;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  color: #856404;
+  font-weight: 500;
+}
+
+.pedido-item-notas-preview {
+  color: #856404;
+  font-style: italic;
+  font-size: 0.7rem;
 }
 
 .pedido-item-cantidad-detalle {

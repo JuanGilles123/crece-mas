@@ -1,6 +1,6 @@
 // 🍽️ Vista de Planta Interactiva para Mesas
 import React, { useState, useRef, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { motion, useMotionValue } from 'framer-motion';
 import { Users, Edit2, Trash2, RotateCcw } from 'lucide-react';
 import { getMesaEstadoColor } from '../utils/mesasUtils';
 import './VistaPlanta.css';
@@ -11,7 +11,8 @@ const VistaPlanta = ({
   onEliminar, 
   onCambiarEstado, 
   actualizarMesa,
-  organizationId
+  organizationId,
+  onResize
 }) => {
   const [mesaArrastrando, setMesaArrastrando] = useState(null);
   const [zoom, setZoom] = useState(1);
@@ -34,24 +35,35 @@ const VistaPlanta = ({
     
     if (!plantaRef.current || !organizationId) return;
 
-    const rect = plantaRef.current.getBoundingClientRect();
-    // Calcular posición relativa al contenedor escalado usando info.point
-    const x = (info.point.x - rect.left) / zoom;
-    const y = (info.point.y - rect.top) / zoom;
+    // Obtener el contenedor de contenido que tiene el scale
+    const contentElement = event.target.closest('.vista-planta-content');
+    if (!contentElement) return;
 
-    // Limitar dentro del área de la planta
-    const maxX = rect.width / zoom - 80;
-    const maxY = rect.height / zoom - 80;
+    // Obtener las posiciones de los contenedores
+    const plantaRect = plantaRef.current.getBoundingClientRect();
+    const contentRect = contentElement.getBoundingClientRect();
     
-    const nuevaX = Math.max(0, Math.min(x, maxX));
-    const nuevaY = Math.max(0, Math.min(y, maxY));
+    // Obtener la posición del elemento después del drag
+    const elementRect = event.target.getBoundingClientRect();
+    
+    // Calcular posición relativa al contenedor de contenido (antes del zoom)
+    // La posición del elemento menos la posición del contenedor escalado, dividido por zoom
+    const x = (elementRect.left - contentRect.left) / zoom;
+    const y = (elementRect.top - contentRect.top) / zoom;
+
+    // Limitar dentro del área de la planta (sin zoom)
+    const maxX = (plantaRect.width / zoom) - 80;
+    const maxY = (plantaRect.height / zoom) - 80;
+    
+    const xFinal = Math.max(0, Math.min(x, maxX));
+    const yFinal = Math.max(0, Math.min(y, maxY));
 
     try {
       await actualizarMesa.mutateAsync({
         id: mesa.id,
         organizationId,
-        posicion_x: Math.round(nuevaX),
-        posicion_y: Math.round(nuevaY)
+        posicion_x: Math.round(xFinal),
+        posicion_y: Math.round(yFinal)
       });
     } catch (error) {
       console.error('Error actualizando posición:', error);
@@ -64,8 +76,10 @@ const VistaPlanta = ({
     return estados[(indiceActual + 1) % estados.length];
   };
 
+
   return (
     <div className="vista-planta-container">
+
       {/* Leyenda */}
       <div className="vista-planta-leyenda">
         <h3>Estados</h3>
@@ -83,7 +97,10 @@ const VistaPlanta = ({
       </div>
 
       {/* Área de Planta */}
-      <div className="vista-planta-area" ref={plantaRef}>
+      <div 
+        className="vista-planta-area"
+        ref={plantaRef}
+      >
         <div 
           className="vista-planta-content"
           style={{ 
@@ -92,8 +109,8 @@ const VistaPlanta = ({
           }}
         >
           {mesas.map((mesa) => {
-            const x = mesa.posicion_x || Math.random() * 400;
-            const y = mesa.posicion_y || Math.random() * 300;
+            const x = mesa.posicion_x || 0;
+            const y = mesa.posicion_y || 0;
             const estadoColor = getMesaEstadoColor(mesa.estado);
             const esRedonda = mesa.forma === 'redonda' || !mesa.forma;
 
@@ -105,8 +122,15 @@ const VistaPlanta = ({
                 y={y}
                 estadoColor={estadoColor}
                 esRedonda={esRedonda}
+                zoom={zoom}
+                plantaRef={plantaRef}
                 onDragStart={() => handleDragStart(mesa)}
                 onDragEnd={(e, info) => handleDragEnd(mesa, e, info)}
+                onResize={(ancho, alto) => {
+                  if (onResize) {
+                    onResize(mesa, ancho, alto);
+                  }
+                }}
                 onEditar={onEditar}
                 onEliminar={onEliminar}
                 onCambiarEstado={() => onCambiarEstado(mesa, getSiguienteEstado(mesa.estado))}
@@ -144,29 +168,148 @@ const MesaPlanta = ({
   y, 
   estadoColor, 
   esRedonda, 
+  zoom,
+  plantaRef,
   onDragStart, 
   onDragEnd, 
+  onResize,
   onEditar, 
   onEliminar,
   onCambiarEstado,
   isDragging 
 }) => {
   const [mostrandoMenu, setMostrandoMenu] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeHandle, setResizeHandle] = useState(null); // 'se', 'sw', 'ne', 'nw'
+  
+  // Usar valores controlados de Framer Motion para el drag
+  const xMotion = useMotionValue(x);
+  const yMotion = useMotionValue(y);
+  
+  // Dimensiones actuales
+  const ancho = mesa.ancho || 80;
+  const alto = mesa.alto || 80;
+  const widthMotion = useMotionValue(ancho);
+  const heightMotion = useMotionValue(alto);
+
+  // Actualizar valores cuando cambian las props (después de guardar)
+  React.useEffect(() => {
+    xMotion.set(x);
+    yMotion.set(y);
+    widthMotion.set(ancho);
+    heightMotion.set(alto);
+  }, [x, y, ancho, alto, xMotion, yMotion, widthMotion, heightMotion]);
+
+  // Determinar si se puede redimensionar (barras y cuadradas)
+  const puedeRedimensionar = !esRedonda && (mesa.tipo === 'barra' || mesa.forma === 'cuadrada');
+
+  const handleResizeStart = (e, handle) => {
+    e.stopPropagation();
+    setIsResizing(true);
+    setResizeHandle(handle);
+  };
+
+  const handleResize = useCallback((e) => {
+    if (!isResizing || !plantaRef.current || !onResize) return;
+
+    const contentElement = e.target.closest('.vista-planta-content');
+    if (!contentElement) return;
+
+    const contentRect = contentElement.getBoundingClientRect();
+    const mouseX = (e.clientX - contentRect.left) / zoom;
+    const mouseY = (e.clientY - contentRect.top) / zoom;
+
+    const currentX = xMotion.get();
+    const currentY = yMotion.get();
+    const currentWidth = widthMotion.get();
+    const currentHeight = heightMotion.get();
+
+    let newWidth = currentWidth;
+    let newHeight = currentHeight;
+    let newX = currentX;
+    let newY = currentY;
+
+    switch (resizeHandle) {
+      case 'se': // Sudeste (esquina inferior derecha)
+        newWidth = Math.max(60, mouseX - currentX);
+        newHeight = Math.max(60, mouseY - currentY);
+        break;
+      case 'sw': // Sudoeste (esquina inferior izquierda)
+        newWidth = Math.max(60, currentX + currentWidth - mouseX);
+        newHeight = Math.max(60, mouseY - currentY);
+        newX = mouseX;
+        break;
+      case 'ne': // Noreste (esquina superior derecha)
+        newWidth = Math.max(60, mouseX - currentX);
+        newHeight = Math.max(60, currentY + currentHeight - mouseY);
+        newY = mouseY;
+        break;
+      case 'nw': // Noroeste (esquina superior izquierda)
+        newWidth = Math.max(60, currentX + currentWidth - mouseX);
+        newHeight = Math.max(60, currentY + currentHeight - mouseY);
+        newX = mouseX;
+        newY = mouseY;
+        break;
+      default:
+        // No hacer nada si el handle no es válido
+        break;
+    }
+
+    widthMotion.set(newWidth);
+    heightMotion.set(newHeight);
+    if (newX !== currentX) xMotion.set(newX);
+    if (newY !== currentY) yMotion.set(newY);
+  }, [isResizing, resizeHandle, zoom, plantaRef, xMotion, yMotion, widthMotion, heightMotion, onResize]);
+
+  const handleResizeEnd = useCallback(() => {
+    if (!isResizing) return;
+    
+    const finalWidth = Math.round(widthMotion.get());
+    const finalHeight = Math.round(heightMotion.get());
+    
+    onResize(mesa.id, finalWidth, finalHeight);
+    setIsResizing(false);
+    setResizeHandle(null);
+  }, [isResizing, widthMotion, heightMotion, onResize, mesa.id]);
+
+  React.useEffect(() => {
+    if (isResizing) {
+      document.addEventListener('mousemove', handleResize);
+      document.addEventListener('mouseup', handleResizeEnd);
+      return () => {
+        document.removeEventListener('mousemove', handleResize);
+        document.removeEventListener('mouseup', handleResizeEnd);
+      };
+    }
+  }, [isResizing, handleResize, handleResizeEnd]);
 
   return (
     <motion.div
-      className={`mesa-planta ${esRedonda ? 'redonda' : 'cuadrada'} ${isDragging ? 'dragging' : ''}`}
+      className={`mesa-planta ${esRedonda ? 'redonda' : 'cuadrada'} ${isDragging ? 'dragging' : ''} ${puedeRedimensionar ? 'resizable' : ''}`}
       style={{
-        left: `${x}px`,
-        top: `${y}px`,
+        x: xMotion,
+        y: yMotion,
+        width: widthMotion,
+        height: heightMotion,
         borderColor: estadoColor,
-        backgroundColor: `${estadoColor}15`
+        backgroundColor: `${estadoColor}15`,
+        position: 'absolute'
       }}
       drag
       dragMomentum={false}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      whileDrag={{ scale: 1.1, zIndex: 1000 }}
+      dragElastic={0}
+      dragConstraints={isResizing ? false : undefined}
+      onDragStart={(e, info) => {
+        if (!isResizing) {
+          onDragStart();
+        }
+      }}
+      onDragEnd={(e, info) => {
+        if (!isResizing) {
+          onDragEnd(e, info);
+        }
+      }}
+      whileDrag={{ scale: 1.1, zIndex: 1000, cursor: isResizing ? 'nwse-resize' : 'grabbing' }}
       initial={{ opacity: 0, scale: 0 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ type: 'spring', stiffness: 300, damping: 25 }}
@@ -183,6 +326,32 @@ const MesaPlanta = ({
           {mesa.capacidad}
         </div>
       </div>
+
+      {/* Handles de redimensionamiento para barras y cuadradas */}
+      {puedeRedimensionar && (
+        <>
+          <div 
+            className="resize-handle resize-handle-se"
+            onMouseDown={(e) => handleResizeStart(e, 'se')}
+            style={{ cursor: 'nwse-resize' }}
+          />
+          <div 
+            className="resize-handle resize-handle-sw"
+            onMouseDown={(e) => handleResizeStart(e, 'sw')}
+            style={{ cursor: 'nesw-resize' }}
+          />
+          <div 
+            className="resize-handle resize-handle-ne"
+            onMouseDown={(e) => handleResizeStart(e, 'ne')}
+            style={{ cursor: 'nesw-resize' }}
+          />
+          <div 
+            className="resize-handle resize-handle-nw"
+            onMouseDown={(e) => handleResizeStart(e, 'nw')}
+            style={{ cursor: 'nwse-resize' }}
+          />
+        </>
+      )}
 
       <div className="mesa-planta-menu">
         <button

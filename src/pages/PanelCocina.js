@@ -1,7 +1,7 @@
 // 🍽️ Panel de Cocina para Chefs
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, CheckCircle, ChefHat, Circle, Users, X, Eye } from 'lucide-react';
+import { Clock, CheckCircle, ChefHat, Circle, Users, X, Eye, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import { usePedidos, useActualizarPedido } from '../hooks/usePedidos';
@@ -32,7 +32,7 @@ const PanelCocina = () => {
   const { user, organization } = useAuth();
   const { hasFeature } = useSubscription();
   // Obtener todos los pedidos y filtrar por estados activos
-  const { data: todosPedidos = [], isLoading } = usePedidos(organization?.id);
+  const { data: todosPedidos = [], isLoading, refetch: refetchPedidos } = usePedidos(organization?.id);
   const actualizarPedido = useActualizarPedido();
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState(null);
 
@@ -44,9 +44,66 @@ const PanelCocina = () => {
     return todosPedidos.filter(p => p.estado === 'pendiente' || p.estado === 'en_preparacion');
   }, [todosPedidos]);
 
-  // Agrupar por estado
-  const pedidosPendientes = pedidosActivos.filter(p => p.estado === 'pendiente');
-  const pedidosEnPreparacion = pedidosActivos.filter(p => p.estado === 'en_preparacion');
+  // Identificar pedidos que podrían estar "pegados" (más de 2 horas sin cambios)
+  const pedidosPegados = useMemo(() => {
+    const ahora = new Date();
+    return pedidosActivos.filter(p => {
+      if (!p.updated_at) return false;
+      const fechaActualizacion = new Date(p.updated_at);
+      const horasSinCambiar = (ahora - fechaActualizacion) / (1000 * 60 * 60);
+      
+      // Considerar "pegado" si:
+      // - Pendiente más de 2 horas
+      // - En preparación más de 4 horas
+      if (p.estado === 'pendiente' && horasSinCambiar > 2) return true;
+      if (p.estado === 'en_preparacion' && horasSinCambiar > 4) return true;
+      return false;
+    });
+  }, [pedidosActivos]);
+
+  // Agrupar por estado y ordenar para facilitar el trabajo en cocina
+  // Orden: Pendientes primero (más urgentes), luego En Preparación
+  // Dentro de cada grupo: más antiguos primero (FIFO) para que no se queden pedidos sin atender
+  // Priorizar pedidos "pegados" al inicio de cada grupo
+  const pedidosPendientes = useMemo(() => {
+    const pendientes = pedidosActivos.filter(p => p.estado === 'pendiente');
+    // Separar pegados y no pegados
+    const pegados = pendientes.filter(p => pedidosPegados.some(pp => pp.id === p.id));
+    const noPegados = pendientes.filter(p => !pedidosPegados.some(pp => pp.id === p.id));
+    
+    // Ordenar cada grupo por fecha de creación (más antiguos primero)
+    const ordenarPorFecha = (a, b) => {
+      const fechaA = new Date(a.created_at || a.updated_at);
+      const fechaB = new Date(b.created_at || b.updated_at);
+      return fechaA - fechaB; // Ascendente (más antiguos primero)
+    };
+    
+    pegados.sort(ordenarPorFecha);
+    noPegados.sort(ordenarPorFecha);
+    
+    // Pegados primero, luego no pegados
+    return [...pegados, ...noPegados];
+  }, [pedidosActivos, pedidosPegados]);
+
+  const pedidosEnPreparacion = useMemo(() => {
+    const enPreparacion = pedidosActivos.filter(p => p.estado === 'en_preparacion');
+    // Separar pegados y no pegados
+    const pegados = enPreparacion.filter(p => pedidosPegados.some(pp => pp.id === p.id));
+    const noPegados = enPreparacion.filter(p => !pedidosPegados.some(pp => pp.id === p.id));
+    
+    // Ordenar cada grupo por fecha de actualización (más antiguos primero)
+    const ordenarPorFecha = (a, b) => {
+      const fechaA = new Date(a.updated_at || a.created_at);
+      const fechaB = new Date(b.updated_at || b.created_at);
+      return fechaA - fechaB; // Ascendente (más antiguos primero)
+    };
+    
+    pegados.sort(ordenarPorFecha);
+    noPegados.sort(ordenarPorFecha);
+    
+    // Pegados primero, luego no pegados
+    return [...pegados, ...noPegados];
+  }, [pedidosActivos, pedidosPegados]);
 
   const handleCambiarEstado = async (pedidoId, nuevoEstado) => {
     if (!organization?.id || !user?.id) {
@@ -79,7 +136,7 @@ const PanelCocina = () => {
   }
 
   return (
-    <div className="panel-cocina">
+      <div className="panel-cocina">
       <div className="cocina-header">
         <div className="cocina-header-content">
           <ChefHat size={32} />
@@ -88,14 +145,31 @@ const PanelCocina = () => {
             <p className="cocina-subtitle">Gestiona los pedidos en tiempo real</p>
           </div>
         </div>
-        <div className="cocina-stats">
-          <div className="cocina-stat">
-            <span className="cocina-stat-label">Pendientes</span>
-            <span className="cocina-stat-value">{pedidosPendientes.length}</span>
-          </div>
-          <div className="cocina-stat">
-            <span className="cocina-stat-label">En Preparación</span>
-            <span className="cocina-stat-value">{pedidosEnPreparacion.length}</span>
+        <div className="cocina-header-actions">
+          <button
+            className="cocina-refresh-btn"
+            onClick={() => refetchPedidos()}
+            title="Actualizar pedidos"
+            disabled={isLoading}
+          >
+            <RefreshCw size={16} className={isLoading ? 'rotating' : ''} />
+            Actualizar
+          </button>
+          {pedidosPegados.length > 0 && (
+            <div className="cocina-alert-pegados" title={`${pedidosPegados.length} pedido(s) llevan mucho tiempo sin actualizar`}>
+              <span className="cocina-alert-icon">⚠️</span>
+              <span className="cocina-alert-text">{pedidosPegados.length} atascado(s)</span>
+            </div>
+          )}
+          <div className="cocina-stats">
+            <div className="cocina-stat">
+              <span className="cocina-stat-label">Pendientes</span>
+              <span className="cocina-stat-value">{pedidosPendientes.length}</span>
+            </div>
+            <div className="cocina-stat">
+              <span className="cocina-stat-label">En Preparación</span>
+              <span className="cocina-stat-value">{pedidosEnPreparacion.length}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -111,7 +185,26 @@ const PanelCocina = () => {
           <p>Todos los pedidos están completados</p>
         </div>
       ) : (
-        <div className="cocina-container">
+        <>
+          {pedidosPegados.length > 0 && (
+            <motion.div
+              className="cocina-alert-banner"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <div className="cocina-alert-content">
+                <span className="cocina-alert-icon-large">⚠️</span>
+                <div>
+                  <h3>Pedidos que requieren atención</h3>
+                  <p>
+                    {pedidosPegados.length} pedido(s) llevan mucho tiempo sin actualizar. 
+                    Revisa si necesitan ser procesados o si hay algún problema.
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+          <div className="cocina-container">
           {/* Pedidos Pendientes */}
           {pedidosPendientes.length > 0 && (
             <motion.div
@@ -164,7 +257,8 @@ const PanelCocina = () => {
               </div>
             </motion.div>
           )}
-        </div>
+          </div>
+        </>
       )}
 
       {/* Modal de detalles */}
@@ -210,6 +304,16 @@ const PedidoCard = ({ pedido, onCambiarEstado, onVerDetalles }) => {
               <Users size={14} /> {pedido.mesa.numero} • {pedido.mesa.capacidad} personas
             </p>
           )}
+          {(pedido.estado === 'pendiente' || pedido.estado === 'en_preparacion') && pedido.cliente_nombre && (
+            <p className="pedido-cliente-nombre" style={{ 
+              fontWeight: 600, 
+              color: 'var(--accent-primary)',
+              fontSize: '0.9rem',
+              marginTop: '0.25rem'
+            }}>
+              👤 {pedido.cliente_nombre}
+            </p>
+          )}
           <p className="pedido-time">
             <Clock size={12} /> {formatTime(pedido.created_at)}
           </p>
@@ -224,6 +328,38 @@ const PedidoCard = ({ pedido, onCambiarEstado, onVerDetalles }) => {
         {pedido.items && pedido.items.slice(0, 3).map((item, idx) => (
           <span key={idx} className="pedido-item-preview">
             {item.cantidad}x {item.producto?.nombre || 'Producto'}
+            {item.toppings && item.toppings.length > 0 && (
+              <span className="pedido-item-toppings-preview">
+                {' | '}+ {item.toppings.map(t => t.nombre || t).join(', ')}
+              </span>
+            )}
+            {item.variaciones_seleccionadas && Object.keys(item.variaciones_seleccionadas).length > 0 && (
+              <span className="pedido-item-variaciones-preview">
+                {' | '}
+                {Object.entries(item.variaciones_seleccionadas).map(([key, value], i) => {
+                  // Buscar el label de la variación y opción
+                  const variacionConfig = item.producto?.metadata?.variaciones_config?.find(v => 
+                    (v.id || v.nombre?.toLowerCase()) === key.toLowerCase()
+                  );
+                  const opcion = variacionConfig?.opciones?.find(o => {
+                    const opcionValor = typeof o === 'string' ? o : o.valor;
+                    return opcionValor === value;
+                  });
+                  const variacionNombre = variacionConfig?.nombre || key;
+                  const opcionLabel = typeof opcion === 'string' ? opcion : (opcion?.label || value);
+                  
+                  return (
+                    <span key={i}>
+                      {variacionNombre}: {opcionLabel}
+                      {i < Object.keys(item.variaciones_seleccionadas).length - 1 && ', '}
+                    </span>
+                  );
+                })}
+              </span>
+            )}
+            {item.notas_item && (
+              <span className="pedido-item-notas-preview"> • {item.notas_item}</span>
+            )}
           </span>
         ))}
         {itemsCount > 3 && (
@@ -288,6 +424,19 @@ const PedidoDetalleModal = ({ pedido, onClose, onCambiarEstado }) => {
                 <Users size={16} /> {pedido.mesa.numero} • {pedido.mesa.capacidad} personas
               </p>
             )}
+            {(pedido.estado === 'pendiente' || pedido.estado === 'en_preparacion') && pedido.cliente_nombre && (
+              <p className="pedido-modal-cliente" style={{ 
+                fontWeight: 600, 
+                color: 'var(--accent-primary)',
+                fontSize: '0.95rem',
+                marginTop: '0.5rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                👤 {pedido.cliente_nombre}
+              </p>
+            )}
           </div>
           <button className="pedido-modal-close" onClick={onClose}>
             <X size={20} />
@@ -336,6 +485,11 @@ const PedidoDetalleModal = ({ pedido, onClose, onCambiarEstado }) => {
                     {item.toppings && item.toppings.length > 0 && (
                       <p className="pedido-item-toppings-detalle">
                         + {item.toppings.map(t => t.nombre).join(', ')}
+                      </p>
+                    )}
+                    {item.notas_item && (
+                      <p className="pedido-item-notas-detalle">
+                        📝 {item.notas_item}
                       </p>
                     )}
                     <p className="pedido-item-cantidad-detalle">

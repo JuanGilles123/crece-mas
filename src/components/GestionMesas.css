@@ -34,28 +34,71 @@
 }
 
 .vista-toggle-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   width: 40px;
   height: 40px;
   border-radius: 8px;
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
+  background: #3b82f6 !important;
+  border: 2px solid #3b82f6 !important;
+  color: white !important;
   cursor: pointer;
   transition: all 0.2s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.vista-toggle-icon,
+.vista-toggle-btn svg,
+.vista-toggle-btn > * {
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+  min-height: 20px !important;
+  stroke: white !important;
+  fill: none !important;
+  stroke-width: 2.5 !important;
+  color: white !important;
+  display: block !important;
+  position: relative !important;
+  z-index: 10 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: none !important;
+}
+
+.vista-toggle-icon path,
+.vista-toggle-btn svg path {
+  stroke: white !important;
+  fill: none !important;
+  stroke-width: 2.5 !important;
 }
 
 .vista-toggle-btn:hover {
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
+  background: #2563eb !important;
+  border-color: #2563eb !important;
+  transform: scale(1.05);
+}
+
+.vista-toggle-btn:hover svg,
+.vista-toggle-btn:hover > * {
+  stroke: white !important;
+  color: white !important;
 }
 
 .vista-toggle-btn.active {
-  background: var(--accent-primary);
-  color: white;
-  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+  background: #1d4ed8 !important;
+  border-color: #1d4ed8 !important;
+  color: white !important;
+  box-shadow: 0 2px 8px rgba(29, 78, 216, 0.4);
+  font-weight: 600;
+}
+
+.vista-toggle-btn.active svg,
+.vista-toggle-btn.active > * {
+  stroke: white !important;
+  color: white !important;
 }
 
 .mesas-header-content {
@@ -229,12 +272,8 @@
 .mesa-card-actions {
   display: flex;
   gap: 0.5rem;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.mesa-card:hover .mesa-card-actions {
   opacity: 1;
+  transition: opacity 0.2s ease;
 }
 
 .mesa-card-body {
@@ -251,6 +290,12 @@
   font-size: 0.875rem;
 }
 
+.mesa-card-body-actions {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+}
+
 .mesa-btn-cambiar-estado {
   display: flex;
   align-items: center;
@@ -265,7 +310,7 @@
   color: var(--text-primary);
   cursor: pointer;
   transition: all 0.2s ease;
-  width: 100%;
+  flex: 1;
 }
 
 .mesa-btn-cambiar-estado:hover {
@@ -273,6 +318,17 @@
   border-color: var(--accent-primary);
   color: var(--accent-primary);
   transform: translateY(-1px);
+}
+
+.mesa-btn-eliminar {
+  color: #EF4444;
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.mesa-btn-eliminar:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: #EF4444;
+  color: #EF4444;
 }
 
 .mesa-info svg {
@@ -441,6 +497,35 @@
   outline: none;
   border-color: var(--accent-primary);
   box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1);
+}
+
+.mesa-tipo-selector {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.mesa-tipo-btn {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  background: white;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mesa-tipo-btn:hover {
+  border-color: var(--accent-primary);
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.mesa-tipo-btn.active {
+  background: var(--accent-primary);
+  color: white;
+  border-color: var(--accent-primary);
 }
 
 .mesa-modal-actions {

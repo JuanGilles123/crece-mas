@@ -709,17 +709,19 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
                 <tbody>
                   {venta.items.map((item, idx) => {
                     const tieneToppings = item.toppings && Array.isArray(item.toppings) && item.toppings.length > 0;
+                    const tieneVariaciones = item.variaciones && Object.keys(item.variaciones).length > 0;
                     const precioItemBase = item.precio_venta || 0;
                     const precioToppings = tieneToppings 
                       ? item.toppings.reduce((sum, t) => sum + (t.precio || 0) * (t.cantidad || 1), 0)
                       : 0;
                     const precioTotalItem = item.precio_total || (precioItemBase + precioToppings);
                     const totalItem = precioTotalItem * item.qty;
+                    const tieneDetalles = tieneToppings || tieneVariaciones;
 
                     return (
                       <React.Fragment key={idx}>
                         <tr className="recibo-table-row" style={{
-                          borderBottom: tieneToppings ? 'none' : '1px solid #f3f4f6'
+                          borderBottom: tieneDetalles ? 'none' : '1px solid #f3f4f6'
                         }}>
                           <td className="recibo-td-cant" style={{
                             padding: '0.5rem 0.25rem',
@@ -736,6 +738,35 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
                           }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                               <span style={{ fontWeight: '500' }}>{item.nombre}</span>
+                              {tieneVariaciones && (
+                                <div style={{
+                                  marginTop: '0.25rem',
+                                  paddingLeft: '0.75rem',
+                                  fontSize: '0.8rem',
+                                  color: '#6b7280'
+                                }}>
+                                  <div style={{ 
+                                    marginBottom: '0.25rem',
+                                    fontWeight: '500',
+                                    color: '#4b5563'
+                                  }}>
+                                    Variaciones:
+                                  </div>
+                                  {Object.entries(item.variaciones).map(([key, value], vIdx) => {
+                                    const variacionNombre = key;
+                                    const opcionLabel = typeof value === 'boolean' 
+                                      ? (value ? 'Sí' : 'No') 
+                                      : String(value);
+                                    return (
+                                      <div key={vIdx} style={{
+                                        marginBottom: '0.125rem'
+                                      }}>
+                                        <span>• {variacionNombre}: {opcionLabel}</span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
                               {tieneToppings && (
                                 <div style={{
                                   marginTop: '0.25rem',
@@ -778,7 +809,7 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
                             paddingTop: '0.75rem'
                           }}>{formatCOP(totalItem)}</td>
                         </tr>
-                        {tieneToppings && (
+                        {tieneDetalles && (
                           <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
                             <td colSpan="3" style={{
                               padding: '0.25rem 0.5rem',

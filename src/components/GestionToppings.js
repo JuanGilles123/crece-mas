@@ -6,9 +6,10 @@ import { useToppings, useCrearTopping, useActualizarTopping, useEliminarTopping 
 import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import { canUseToppings } from '../utils/toppingsUtils';
+import { getCategoriaOptions } from '../constants/toppingCategories';
 import { supabase } from '../services/api/supabaseClient';
-import { compressProductImage } from '../utils/imageCompression';
-import OptimizedProductImage from './OptimizedProductImage';
+import { compressProductImage } from '../services/storage/imageCompression';
+import OptimizedProductImage from './business/OptimizedProductImage';
 import toast from 'react-hot-toast';
 import './GestionToppings.css';
 
@@ -42,11 +43,14 @@ const ToppingModal = ({ open, onClose, topping, onSave, organizationId, isServic
   const [nombre, setNombre] = useState('');
   const [precio, setPrecio] = useState('');
   const [precioDisplay, setPrecioDisplay] = useState('');
+  const [precioCompra, setPrecioCompra] = useState('');
+  const [precioCompraDisplay, setPrecioCompraDisplay] = useState('');
   const [stock, setStock] = useState('');
   const [stockDisplay, setStockDisplay] = useState('');
   const [imagen, setImagen] = useState(null);
   const [imagenPreview, setImagenPreview] = useState(null);
   const [comprimiendo, setComprimiendo] = useState(false);
+  const [categoria, setCategoria] = useState('general');
   const fileInputRef = React.useRef();
   const puedeSubirImagenes = hasFeature('productImages');
 
@@ -55,16 +59,22 @@ const ToppingModal = ({ open, onClose, topping, onSave, organizationId, isServic
       setNombre(topping.nombre || '');
       setPrecio(topping.precio?.toString() || '');
       setPrecioDisplay(formatNumber(topping.precio?.toString() || ''));
+      setPrecioCompra(topping.precio_compra?.toString() || '');
+      setPrecioCompraDisplay(formatNumber(topping.precio_compra?.toString() || ''));
       setStock(topping.stock !== null ? topping.stock.toString() : '');
       setStockDisplay(topping.stock !== null ? formatNumber(topping.stock.toString()) : '');
+      setCategoria(topping.categoria || 'general');
       setImagenPreview(topping.imagen_url || null);
       setImagen(null);
     } else {
       setNombre('');
       setPrecio('');
       setPrecioDisplay('');
+      setPrecioCompra('');
+      setPrecioCompraDisplay('');
       setStock('');
       setStockDisplay('');
+      setCategoria('general');
       setImagen(null);
       setImagenPreview(null);
     }
@@ -75,6 +85,13 @@ const ToppingModal = ({ open, onClose, topping, onSave, organizationId, isServic
     const numeric = getNumericValue(value);
     setPrecio(numeric.toString());
     setPrecioDisplay(formatNumber(numeric.toString()));
+  };
+
+  const handlePrecioCompraChange = (e) => {
+    const value = e.target.value;
+    const numeric = getNumericValue(value);
+    setPrecioCompra(numeric.toString());
+    setPrecioCompraDisplay(formatNumber(numeric.toString()));
   };
 
   const handleStockChange = (e) => {
@@ -159,12 +176,16 @@ const ToppingModal = ({ open, onClose, topping, onSave, organizationId, isServic
       }
     }
 
+    const precioCompraNum = getNumericValue(precioCompra);
+
     onSave({
       nombre: nombre.trim(),
       precio: precioNum,
+      precio_compra: precioCompraNum,
       stock: isServiceBusiness ? null : stockNum,
       imagen_url: imagenPath,
-      tipo: isServiceBusiness ? 'servicio' : 'comida'
+      tipo: isServiceBusiness ? 'servicio' : 'comida',
+      categoria: categoria || 'general'
     });
   };
 
@@ -199,7 +220,7 @@ const ToppingModal = ({ open, onClose, topping, onSave, organizationId, isServic
           </div>
 
           <div className="topping-form-group">
-            <label>Precio Adicional (COP) *</label>
+            <label>Precio de Venta (COP) *</label>
             <input
               type="text"
               value={precioDisplay}
@@ -208,6 +229,38 @@ const ToppingModal = ({ open, onClose, topping, onSave, organizationId, isServic
               inputMode="numeric"
               required
             />
+          </div>
+
+          <div className="topping-form-group">
+            <label>Precio de Compra (COP)</label>
+            <input
+              type="text"
+              value={precioCompraDisplay}
+              onChange={handlePrecioCompraChange}
+              placeholder="0"
+              inputMode="numeric"
+            />
+            <small style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', marginTop: '0.25rem', display: 'block' }}>
+              Precio al que compras este topping para calcular la ganancia
+            </small>
+          </div>
+
+          <div className="topping-form-group">
+            <label>Categoría</label>
+            <select
+              value={categoria}
+              onChange={(e) => setCategoria(e.target.value)}
+              className="topping-categoria-select"
+            >
+              {getCategoriaOptions().map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <small style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', marginTop: '0.25rem', display: 'block' }}>
+              Organiza tus toppings por categorías (salsas, adiciones, etc.)
+            </small>
           </div>
 
           {!isServiceBusiness && (
@@ -420,9 +473,17 @@ const GestionToppings = () => {
                 </div>
                 <div className="topping-card-body">
                   <div className="topping-info">
-                    <span className="topping-label">Precio:</span>
+                    <span className="topping-label">Precio Venta:</span>
                     <span className="topping-value">{formatCOP(topping.precio)}</span>
                   </div>
+                  {topping.precio_compra > 0 && (
+                    <div className="topping-info">
+                      <span className="topping-label">Ganancia:</span>
+                      <span className="topping-value" style={{ color: '#10b981' }}>
+                        {formatCOP(topping.precio - (topping.precio_compra || 0))}
+                      </span>
+                    </div>
+                  )}
                   <div className="topping-info">
                     <span className="topping-label">Stock:</span>
                     {topping.tipo === 'servicio' || topping.stock === null ? (

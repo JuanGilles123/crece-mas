@@ -38,7 +38,7 @@ export const useCrearMesa = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ organizationId, numero, capacidad, estado = 'disponible', forma = 'redonda', posicion_x = 0, posicion_y = 0 }) => {
+    mutationFn: async ({ organizationId, numero, capacidad, estado = 'disponible', forma = 'redonda', posicion_x = 0, posicion_y = 0, ancho = 80, alto = 80 }) => {
       const { data, error } = await supabase
         .from('mesas')
         .insert([{
@@ -49,6 +49,8 @@ export const useCrearMesa = () => {
           forma,
           posicion_x: posicion_x || 0,
           posicion_y: posicion_y || 0,
+          ancho: ancho || 80,
+          alto: alto || 80,
           activa: true
         }])
         .select();
@@ -78,7 +80,7 @@ export const useActualizarMesa = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, organizationId, numero, capacidad, estado, activa, forma, posicion_x, posicion_y }) => {
+    mutationFn: async ({ id, organizationId, numero, capacidad, estado, activa, forma, posicion_x, posicion_y, ancho, alto }) => {
       const updateData = {};
       if (numero !== undefined) updateData.numero = numero;
       if (capacidad !== undefined) updateData.capacidad = parseInt(capacidad) || 4;
@@ -87,6 +89,8 @@ export const useActualizarMesa = () => {
       if (forma !== undefined) updateData.forma = forma;
       if (posicion_x !== undefined) updateData.posicion_x = posicion_x;
       if (posicion_y !== undefined) updateData.posicion_y = posicion_y;
+      if (ancho !== undefined) updateData.ancho = ancho;
+      if (alto !== undefined) updateData.alto = alto;
 
       const { data, error } = await supabase
         .from('mesas')
