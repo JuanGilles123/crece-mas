@@ -64,54 +64,89 @@ export default function VentaRapida() {
 
     setProcesando(true);
 
-    try {
-      // Generar código de venta
-      const numeroVenta = await generarCodigoVenta(organization.id, metodoPago);
-      
-      // Registrar venta rápida - COLUMNAS ACTUALIZADAS
-      const ventaData = {
-        organization_id: organization.id,
-        user_id: user.id,
-        total: montoNumerico,
-        metodo_pago: metodoPago,
-        tipo_venta: 'rapida',
-        descripcion: descripcion.trim() || 'Venta rápida',
-        items: [],
-        fecha: new Date().toISOString(),
-        numero_venta: numeroVenta
-      };
+    const maxIntentos = 3;
+    let intento = 0;
+    let exito = false;
 
-      const { error: ventaError } = await supabase
-        .from('ventas')
-        .insert(ventaData)
-        .select()
-        .single();
+    while (intento < maxIntentos && !exito) {
+      try {
+        // Generar código de venta (forzar único en reintentos)
+        const numeroVenta = await generarCodigoVenta(organization.id, metodoPago, intento > 0);
+        
+        // Registrar venta rápida - COLUMNAS ACTUALIZADAS
+        const ventaData = {
+          organization_id: organization.id,
+          user_id: user.id,
+          total: montoNumerico,
+          metodo_pago: metodoPago,
+          tipo_venta: 'rapida',
+          descripcion: descripcion.trim() || 'Venta rápida',
+          items: [],
+          fecha: new Date().toISOString(),
+          numero_venta: numeroVenta
+        };
 
-      if (ventaError) {
-        console.error('❌ Error detallado de Supabase:', ventaError);
-        console.error('❌ Código:', ventaError.code);
-        console.error('❌ Mensaje:', ventaError.message);
-        console.error('❌ Detalles:', ventaError.details);
-        throw ventaError;
+        const { error: ventaError } = await supabase
+          .from('ventas')
+          .insert(ventaData)
+          .select()
+          .single();
+
+        if (ventaError) {
+          // Detectar error de clave duplicada
+          const esDuplicado = ventaError.code === '23505' || 
+                             ventaError.message?.includes('duplicate key') ||
+                             ventaError.message?.includes('idx_ventas_numero_venta_unique');
+          
+          if (esDuplicado && intento < maxIntentos - 1) {
+            console.warn(`⚠️ Número de venta duplicado (intento ${intento + 1}/${maxIntentos}), reintentando...`);
+            intento++;
+            // Esperar un poco antes de reintentar para evitar condiciones de carrera
+            const tiempoEspera = 100 * intento;
+            await new Promise(resolve => setTimeout(resolve, tiempoEspera));
+            continue;
+          }
+          
+          console.error('❌ Error detallado de Supabase:', ventaError);
+          console.error('❌ Código:', ventaError.code);
+          console.error('❌ Mensaje:', ventaError.message);
+          console.error('❌ Detalles:', ventaError.details);
+          throw ventaError;
+        }
+        
+        exito = true;
+        toast.success(`✅ Venta registrada: ${formatearMonto(montoNumerico)}`);
+        limpiarFormulario();
+      } catch (error) {
+        // Si no es un error de duplicado o ya agotamos los intentos, mostrar error
+        const esDuplicado = error.code === '23505' || 
+                           error.message?.includes('duplicate key') ||
+                           error.message?.includes('idx_ventas_numero_venta_unique');
+        
+        if (!esDuplicado || intento >= maxIntentos - 1) {
+          console.error('❌ Error al registrar venta:', error);
+          
+          // Mostrar mensaje de error más detallado
+          let errorMessage = 'Error al registrar la venta';
+          if (error.message) {
+            errorMessage = error.message;
+          }
+          if (error.details) {
+            errorMessage += ` - ${error.details}`;
+          }
+          
+          toast.error(errorMessage);
+          break;
+        }
+        
+        // Si es duplicado y aún hay intentos, continuar el loop
+        intento++;
+        const tiempoEspera = 100 * intento;
+        await new Promise(resolve => setTimeout(resolve, tiempoEspera));
       }
-      toast.success(`✅ Venta registrada: ${formatearMonto(montoNumerico)}`);
-      limpiarFormulario();
-    } catch (error) {
-      console.error('❌ Error al registrar venta:', error);
-      
-      // Mostrar mensaje de error más detallado
-      let errorMessage = 'Error al registrar la venta';
-      if (error.message) {
-        errorMessage = error.message;
-      }
-      if (error.details) {
-        errorMessage += ` - ${error.details}`;
-      }
-      
-      toast.error(errorMessage);
-    } finally {
-      setProcesando(false);
     }
+
+    setProcesando(false);
   };
 
   return (

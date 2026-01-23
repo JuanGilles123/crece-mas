@@ -1126,48 +1126,97 @@ export default function Caja() {
       montoPagoCliente = detallesPagoMixto.monto1 + detallesPagoMixto.monto2;
     }
     
+    const maxIntentos = 3;
+    let intento = 0;
+    let ventaResult = null;
+    let exito = false;
+
+    while (intento < maxIntentos && !exito) {
+      try {
+        console.log(`Guardando venta en base de datos... (intento ${intento + 1}/${maxIntentos})`);
+        
+        // Generar código de venta amigable (forzar único en reintentos)
+        const numeroVenta = await generarCodigoVenta(organization.id, metodoPagoFinal, intento > 0);
+        
+        // Guardar la venta en la base de datos
+        const ventaData = {
+          organization_id: organization.id,
+          user_id: user.id,
+          total: total,
+          metodo_pago: metodoPagoFinal,
+          items: cart,
+          fecha: new Date().toISOString(),
+          pago_cliente: montoPagoCliente,
+          detalles_pago_mixto: metodoActual === "Mixto" && detallesPagoMixto ? detallesPagoMixto : null,
+          numero_venta: numeroVenta,
+          cliente_id: clienteSeleccionado?.id || null
+        };
+        
+        console.log('Datos de venta a insertar:', ventaData);
+        
+        const { data: result, error: ventaError } = await supabase
+          .from('ventas')
+          .insert([ventaData])
+          .select();
+        
+        if (ventaError) {
+          // Detectar error de clave duplicada
+          const esDuplicado = ventaError.code === '23505' || 
+                             ventaError.message?.includes('duplicate key') ||
+                             ventaError.message?.includes('idx_ventas_numero_venta_unique');
+          
+          if (esDuplicado && intento < maxIntentos - 1) {
+            console.warn(`⚠️ Número de venta duplicado (intento ${intento + 1}/${maxIntentos}), reintentando...`);
+            intento++;
+            // Esperar un poco antes de reintentar para evitar condiciones de carrera
+            const tiempoEspera = 100 * intento;
+            await new Promise(resolve => setTimeout(resolve, tiempoEspera));
+            continue;
+          }
+          
+          console.error('Error guardando venta:', ventaError);
+          toast.error(`Error al guardar la venta: ${ventaError.message}`);
+          setProcesandoVenta(false);
+          return;
+        }
+        
+        if (!result || result.length === 0) {
+          console.error('No se retornó data de la venta');
+          toast.error('Error: No se pudo obtener el ID de la venta');
+          setProcesandoVenta(false);
+          return;
+        }
+        
+        ventaResult = result;
+        exito = true;
+        console.log("Venta guardada exitosamente:", ventaResult);
+      } catch (error) {
+        // Si no es un error de duplicado o ya agotamos los intentos, mostrar error
+        const esDuplicado = error.code === '23505' || 
+                           error.message?.includes('duplicate key') ||
+                           error.message?.includes('idx_ventas_numero_venta_unique');
+        
+        if (!esDuplicado || intento >= maxIntentos - 1) {
+          console.error('Error al guardar venta:', error);
+          toast.error(`Error al guardar la venta: ${error.message || 'Error desconocido'}`);
+          setProcesandoVenta(false);
+          return;
+        }
+        
+        // Si es duplicado y aún hay intentos, continuar el loop
+        intento++;
+        const tiempoEsperaActual = 100 * intento;
+        await new Promise(resolve => setTimeout(resolve, tiempoEsperaActual));
+      }
+    }
+
+    if (!exito || !ventaResult) {
+      toast.error('Error: No se pudo guardar la venta después de varios intentos');
+      setProcesandoVenta(false);
+      return;
+    }
+
     try {
-      console.log('Guardando venta en base de datos...');
-      
-      // Generar código de venta amigable
-      const numeroVenta = await generarCodigoVenta(organization.id, metodoPagoFinal);
-      
-      // Guardar la venta en la base de datos
-      const ventaData = {
-        organization_id: organization.id,
-        user_id: user.id,
-        total: total,
-        metodo_pago: metodoPagoFinal,
-        items: cart,
-        fecha: new Date().toISOString(),
-        pago_cliente: montoPagoCliente,
-        detalles_pago_mixto: metodoActual === "Mixto" && detallesPagoMixto ? detallesPagoMixto : null,
-        numero_venta: numeroVenta,
-        cliente_id: clienteSeleccionado?.id || null
-      };
-      
-      console.log('Datos de venta a insertar:', ventaData);
-      
-      const { data: ventaResult, error: ventaError } = await supabase
-        .from('ventas')
-        .insert([ventaData])
-        .select();
-      
-      if (ventaError) {
-        console.error('Error guardando venta:', ventaError);
-        toast.error(`Error al guardar la venta: ${ventaError.message}`);
-        setProcesandoVenta(false);
-        return;
-      }
-      
-      if (!ventaResult || ventaResult.length === 0) {
-        console.error('No se retornó data de la venta');
-        toast.error('Error: No se pudo obtener el ID de la venta');
-        setProcesandoVenta(false);
-        return;
-      }
-      
-      console.log("Venta guardada exitosamente:", ventaResult);
       
       // Si hay pedidos asociados (viene de "Pagar ahora" o pedidos consolidados), actualizar su estado según el tipo de pago
       const pedidosAActualizar = pedidosConsolidados.length > 0 ? pedidosConsolidados : (pedidoIdActual ? [pedidoIdActual] : []);
@@ -1291,7 +1340,7 @@ export default function Caja() {
         cantidadProductos: cart.length,
         detalles_pago_mixto: metodoActual === "Mixto" && detallesPagoMixto ? detallesPagoMixto : null,
         cliente: clienteInfo,
-        numero_venta: numeroVenta
+        numero_venta: ventaResult[0].numero_venta || null
       };
       
       console.log('Mostrando recibo:', ventaRecibo);

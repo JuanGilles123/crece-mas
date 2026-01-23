@@ -2,8 +2,13 @@
  * Genera un código de venta amigable y corto
  * Formato: [Método][Fecha][Consecutivo]
  * Ejemplo: EF-20250121-001, TR-20250121-002
+ * 
+ * @param {string} organizationId - ID de la organización
+ * @param {string} metodoPago - Método de pago
+ * @param {boolean} forzarUnico - Si es true, genera un código único con timestamp para evitar duplicados
+ * @returns {Promise<string>} Código de venta generado
  */
-export const generarCodigoVenta = async (organizationId, metodoPago) => {
+export const generarCodigoVenta = async (organizationId, metodoPago, forzarUnico = false) => {
   const { supabase } = await import('../services/api/supabaseClient');
   
   // Abreviaciones de métodos de pago
@@ -21,6 +26,51 @@ export const generarCodigoVenta = async (organizationId, metodoPago) => {
   // Fecha en formato YYYYMMDD
   const hoy = new Date();
   const fecha = hoy.toISOString().split('T')[0].replace(/-/g, '');
+  
+  // Si se fuerza único, usar timestamp completo + contador para garantizar unicidad
+  if (forzarUnico) {
+    // Intentar generar un código único (máximo 5 intentos)
+    for (let intento = 0; intento < 5; intento++) {
+      // Usar timestamp completo (13 dígitos) + número aleatorio grande para garantizar unicidad
+      const timestamp = Date.now();
+      const random = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
+      // Formato: EF-20250121-1234567890123456789 (timestamp completo + random de 6 dígitos)
+      const codigoUnico = `${abrev}-${fecha}-${timestamp}${random}`;
+      
+      // Verificar que no exista en la base de datos
+      try {
+        const { data: existe, error: errorVerificacion } = await supabase
+          .from('ventas')
+          .select('id')
+          .eq('organization_id', organizationId)
+          .eq('numero_venta', codigoUnico)
+          .limit(1);
+        
+        // Si hay error en la verificación, asumir que no existe y retornar
+        if (errorVerificacion) {
+          console.warn('Error verificando código único, usando código generado:', errorVerificacion);
+          return codigoUnico;
+        }
+        
+        // Si no existe, retornar el código
+        if (!existe || existe.length === 0) {
+          return codigoUnico;
+        }
+        
+        // Si existe, esperar un poco y generar uno nuevo
+        await new Promise(resolve => setTimeout(resolve, 10 * (intento + 1)));
+      } catch (err) {
+        // Si hay error, retornar el código generado
+        console.warn('Error verificando código único:', err);
+        return codigoUnico;
+      }
+    }
+    
+    // Si después de 5 intentos no se encontró uno único, usar timestamp + random más largo
+    const timestampFinal = Date.now();
+    const randomFinal = Math.floor(Math.random() * 10000000).toString().padStart(7, '0');
+    return `${abrev}-${fecha}-${timestampFinal}${randomFinal}`;
+  }
   
   // Buscar el último consecutivo del día para este método de pago
   const inicioDia = new Date(hoy);
@@ -40,7 +90,7 @@ export const generarCodigoVenta = async (organizationId, metodoPago) => {
       .lte('created_at', finDia.toISOString())
       .like('numero_venta', `${abrev}-${fecha}-%`)
       .order('created_at', { ascending: false })
-      .limit(1);
+      .limit(10); // Aumentar límite para mejor detección de duplicados
     
     if (result.error) {
       // Si la columna numero_venta no existe (código 42703), usar fallback
@@ -78,7 +128,11 @@ export const generarCodigoVenta = async (organizationId, metodoPago) => {
         .map(v => {
           const partes = v.numero_venta.split('-');
           if (partes.length === 3) {
-            return parseInt(partes[2]);
+            const num = parseInt(partes[2]);
+            // Solo considerar números consecutivos (no timestamps)
+            if (!isNaN(num) && num > 0 && partes[2].length <= 3) {
+              return num;
+            }
           }
           return 0;
         })
@@ -91,6 +145,39 @@ export const generarCodigoVenta = async (organizationId, metodoPago) => {
     }
   }
   
-  // Formato: EF-20250121-001
-  return `${abrev}-${fecha}-${String(consecutivo).padStart(3, '0')}`;
+  // Verificar que el código generado no exista (máximo 10 intentos para evitar loops infinitos)
+  for (let intento = 0; intento < 10; intento++) {
+    const codigoGenerado = `${abrev}-${fecha}-${String(consecutivo).padStart(3, '0')}`;
+    
+    try {
+      const { data: existe, error: errorVerificacion } = await supabase
+        .from('ventas')
+        .select('id')
+        .eq('organization_id', organizationId)
+        .eq('numero_venta', codigoGenerado)
+        .limit(1);
+      
+      // Si hay error en la verificación, asumir que no existe y retornar
+      if (errorVerificacion) {
+        console.warn('Error verificando código, usando código generado:', errorVerificacion);
+        return codigoGenerado;
+      }
+      
+      // Si no existe, retornar el código
+      if (!existe || existe.length === 0) {
+        return codigoGenerado;
+      }
+      
+      // Si existe, incrementar consecutivo y verificar nuevamente
+      consecutivo++;
+    } catch (err) {
+      // Si hay error, retornar el código generado
+      console.warn('Error verificando código:', err);
+      return codigoGenerado;
+    }
+  }
+  
+  // Si después de 10 intentos no se encontró uno único, usar timestamp como fallback
+  const timestamp = Date.now().toString().slice(-6);
+  return `${abrev}-${fecha}-${timestamp}`;
 };
