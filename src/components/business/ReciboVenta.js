@@ -112,11 +112,9 @@ export default function ReciboVenta({ venta, onNuevaVenta, onCerrar, mostrarCerr
     }
     
     setGenerandoPDF(true);
-    console.log('📄 Iniciando generación de PDF...');
     
     try {
       // Crear canvas del recibo con configuración optimizada
-      console.log('📸 Capturando recibo como imagen...');
       const canvas = await html2canvas(reciboRef.current, {
         scale: 2,
         useCORS: true,
@@ -129,16 +127,12 @@ export default function ReciboVenta({ venta, onNuevaVenta, onCerrar, mostrarCerr
         imageTimeout: 15000
       });
 
-      console.log('✅ Imagen capturada:', canvas.width, 'x', canvas.height);
-
       // Crear PDF con tamaño personalizado basado en el contenido
       const imgData = canvas.toDataURL('image/jpeg', 0.85);
       
       // Calcular dimensiones del PDF
       const imgWidth = 210; // A4 width in mm
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      
-      console.log('📋 Creando PDF con dimensiones:', imgWidth, 'x', imgHeight, 'mm');
       
       // Crear PDF
       const pdf = new jsPDF({
@@ -157,45 +151,34 @@ export default function ReciboVenta({ venta, onNuevaVenta, onCerrar, mostrarCerr
       const hora = new Date().toTimeString().split(' ')[0].replace(/:/g, '-');
       const fileName = `recibo_${venta.id}_${fecha}_${hora}.pdf`;
       
-      console.log('💾 Descargando PDF:', fileName);
-      
       // Descargar el PDF directamente
       pdf.save(fileName);
       
       // Intentar guardar en Supabase Storage (opcional, no bloqueante)
       try {
         const pdfBlob = pdf.output('blob');
-        console.log('☁️ Intentando guardar en Supabase Storage...');
         
-        const { data, error: storageError } = await supabase.storage
+        const { error: storageError } = await supabase.storage
           .from('recibos')
           .upload(`${organization?.id || user.id}/${fileName}`, pdfBlob, {
             contentType: 'application/pdf',
             upsert: true
           });
 
+        // Error silencioso si falla el guardado en Storage
         if (storageError) {
-          console.warn('⚠️ No se pudo guardar en Storage:', storageError.message);
-        } else {
-          console.log('✅ PDF guardado en Storage:', data);
+          // No hacer nada, es opcional
         }
       } catch (storageError) {
-        console.warn('⚠️ Error opcional de Storage:', storageError);
+        // Error silencioso
       }
       
       alert(`✅ PDF descargado exitosamente: ${fileName}`);
 
     } catch (error) {
-      console.error('❌ Error generando PDF:', error);
-      console.error('Detalles del error:', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      });
-      alert(`❌ Error al generar el PDF: ${error.message || 'Error desconocido'}\n\nRevisa la consola del navegador para más detalles.`);
+      alert(`❌ Error al generar el PDF: ${error.message || 'Error desconocido'}`);
     } finally {
       setGenerandoPDF(false);
-      console.log('✅ Proceso de generación PDF finalizado');
     }
   };
 

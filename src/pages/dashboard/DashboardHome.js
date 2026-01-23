@@ -3,11 +3,13 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../services/api/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
-import { ShoppingCart, Package, TrendingUp, AlertTriangle, Zap, Users, User, Calculator, Calendar } from 'lucide-react';
+import { useSubscription } from '../../hooks/useSubscription';
+import { ShoppingCart, Package, TrendingUp, AlertTriangle, Zap, Users, User, Calculator, Calendar, ClipboardList } from 'lucide-react';
 import './DashboardHome.css';
 
 const DashboardHome = () => {
-  const { userProfile, user } = useAuth();
+  const { userProfile, user, organization } = useAuth();
+  const { hasFeature } = useSubscription();
   const navigate = useNavigate();
   const [metricas, setMetricas] = useState({
     totalProductos: 0,
@@ -126,10 +128,19 @@ const DashboardHome = () => {
     }
   };
 
+  // Verificar si los pedidos están habilitados
+  const pedidosHabilitados = organization?.business_type === 'food' && 
+                             organization?.pedidos_habilitados && 
+                             hasFeature('pedidos');
+
   const accesosRapidos = [
     { icon: ShoppingCart, label: 'Caja', path: '/dashboard/caja', color: '#8B5CF6' },
     { icon: Package, label: 'Inventario', path: '/dashboard/inventario', color: '#3B82F6' },
-    { icon: TrendingUp, label: 'Resumen Ventas', path: '/dashboard/resumen-ventas', color: '#10B981' },
+    // Mostrar Pedidos si está habilitado, sino mostrar Resumen Ventas
+    ...(pedidosHabilitados 
+      ? [{ icon: ClipboardList, label: 'Pedidos', path: '/dashboard/tomar-pedido', color: '#06B6D4' }]
+      : [{ icon: TrendingUp, label: 'Resumen Ventas', path: '/dashboard/resumen-ventas', color: '#10B981' }]
+    ),
     { icon: Zap, label: 'Venta Rápida', path: '/dashboard/venta-rapida', color: '#F59E0B' },
     { icon: Calculator, label: 'Cierre de Caja', path: '/dashboard/cierre-caja', color: '#EF4444' },
     { icon: Users, label: 'Equipo', path: '/dashboard/equipo', color: '#6366F1' },

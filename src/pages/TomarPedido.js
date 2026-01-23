@@ -571,10 +571,6 @@ const TomarPedido = () => {
   const handleGuardarPedido = async (forzarPagoInmediato = false) => {
     // Usar el parámetro si se pasa, sino usar el estado
     const esPagoInmediato = forzarPagoInmediato || pagoInmediato;
-    console.log('handleGuardarPedido ejecutado');
-    console.log('pagoInmediato al inicio:', pagoInmediato);
-    console.log('forzarPagoInmediato:', forzarPagoInmediato);
-    console.log('esPagoInmediato:', esPagoInmediato);
     
     // Validar tipo de pedido
     if (!tipoPedido) {
@@ -629,8 +625,6 @@ const TomarPedido = () => {
 
       // Determinar prioridad
       const prioridad = tipoPedido === 'express' ? 'alta' : 'normal';
-
-      console.log('Antes de crear pedido - esPagoInmediato:', esPagoInmediato);
       
       const pedidoCreado = await crearPedido.mutateAsync({
         organizationId: organization.id,
@@ -649,17 +643,8 @@ const TomarPedido = () => {
         pagoInmediato: esPagoInmediato
       });
 
-      console.log('Después de crear pedido:');
-      console.log('- pedidoCreado:', pedidoCreado);
-      console.log('- esPagoInmediato:', esPagoInmediato);
-      console.log('- pedidoCreado existe?', !!pedidoCreado);
-      console.log('- pedidoCreado.id:', pedidoCreado?.id);
-      console.log('- Condición completa:', esPagoInmediato && pedidoCreado && pedidoCreado.id);
-
       // Si se seleccionó "Pagar ahora", redirigir a la caja con el pedido
       if (esPagoInmediato && pedidoCreado && pedidoCreado.id) {
-        console.log('Pago inmediato detectado, preparando redirección a caja...', { pedidoCreado, esPagoInmediato });
-        
         // Guardar el pedido en localStorage para que la caja lo cargue
         const pedidoParaCaja = {
           pedidoId: pedidoCreado.id,
@@ -682,7 +667,6 @@ const TomarPedido = () => {
           } : null
         };
         
-        console.log('Guardando pedido en localStorage:', pedidoParaCaja);
         localStorage.setItem('pedidoParaPagar', JSON.stringify(pedidoParaCaja));
         
         // Limpiar formulario antes de redirigir
@@ -702,7 +686,6 @@ const TomarPedido = () => {
         setMostrandoProductos(false);
         
         // Redirigir a la caja inmediatamente
-        console.log('Redirigiendo a /dashboard/caja...');
         toast.success('Pedido creado. Redirigiendo a la caja...', { duration: 1500 });
         
         // Usar setTimeout para asegurar que el toast se muestre y el estado se actualice

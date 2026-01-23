@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../services/api/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import { useProductos } from '../../hooks/useProductos';
@@ -36,6 +37,7 @@ function calcTotal(cart) {
 
 export default function Caja() {
   const { user, organization } = useAuth();
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState([]);
   const [method, setMethod] = useState("Efectivo");
@@ -72,6 +74,8 @@ export default function Caja() {
     direccion: ''
   });
   const [mostrarFacturaPantalla, setMostrarFacturaPantalla] = useState(false);
+  const [mostrarModalRegresarPedidos, setMostrarModalRegresarPedidos] = useState(false);
+  const [vieneDePedidos, setVieneDePedidos] = useState(false);
   
   // Hooks para clientes
   // eslint-disable-next-line no-unused-vars
@@ -190,6 +194,9 @@ export default function Caja() {
       try {
         const pedido = JSON.parse(pedidoData);
         if (pedido.items && pedido.items.length > 0) {
+          // Marcar que viene de pedidos
+          setVieneDePedidos(true);
+          
           // Guardar el ID del pedido
           if (pedido.pedidoId) {
             setPedidoIdActual(pedido.pedidoId);
@@ -226,7 +233,6 @@ export default function Caja() {
           localStorage.removeItem('pedidoParaPagar');
         }
       } catch (error) {
-        console.error('Error cargando pedido:', error);
         localStorage.removeItem('pedidoParaPagar');
       }
     }
@@ -298,7 +304,6 @@ export default function Caja() {
           localStorage.removeItem('cotizacionRetomar');
         }
       } catch (error) {
-        console.error('Error cargando cotización:', error);
         localStorage.removeItem('cotizacionRetomar');
       }
     }
@@ -453,7 +458,6 @@ export default function Caja() {
       setQuery('');
       localStorage.removeItem('cotizacionOriginal');
     } catch (error) {
-      console.error('Error al guardar cotización:', error);
       toast.error('Error al guardar la cotización');
     } finally {
       setGuardandoCotizacion(false);
@@ -1063,7 +1067,6 @@ export default function Caja() {
 
   async function confirmSale(metodoPagoOverride = null, detallesPagoMixto = null) {
     if (!user || !organization) {
-      console.error('Usuario u organización no autenticado');
       toast.error('Error: No hay usuario u organización activa');
       setProcesandoVenta(false);
       return;
@@ -1084,13 +1087,11 @@ export default function Caja() {
     // NO establecer datosVentaConfirmada como null aquí
     
     setProcesandoVenta(true);
-    console.log('Iniciando confirmación de venta...', { cart, total, method: metodoActual });
     
     // Validar que no se exceda el stock
     for (const item of cart) {
       const producto = productos.find(p => p.id === item.id);
       if (!producto) {
-        console.error('Producto no encontrado:', item.id);
         toast.error(`Error: Producto ${item.nombre} no encontrado`);
         return;
       }
@@ -1133,8 +1134,6 @@ export default function Caja() {
 
     while (intento < maxIntentos && !exito) {
       try {
-        console.log(`Guardando venta en base de datos... (intento ${intento + 1}/${maxIntentos})`);
-        
         // Generar código de venta amigable (forzar único en reintentos)
         const numeroVenta = await generarCodigoVenta(organization.id, metodoPagoFinal, intento > 0);
         
@@ -1152,8 +1151,6 @@ export default function Caja() {
           cliente_id: clienteSeleccionado?.id || null
         };
         
-        console.log('Datos de venta a insertar:', ventaData);
-        
         const { data: result, error: ventaError } = await supabase
           .from('ventas')
           .insert([ventaData])
@@ -1166,7 +1163,6 @@ export default function Caja() {
                              ventaError.message?.includes('idx_ventas_numero_venta_unique');
           
           if (esDuplicado && intento < maxIntentos - 1) {
-            console.warn(`⚠️ Número de venta duplicado (intento ${intento + 1}/${maxIntentos}), reintentando...`);
             intento++;
             // Esperar un poco antes de reintentar para evitar condiciones de carrera
             const tiempoEspera = 100 * intento;
@@ -1174,14 +1170,12 @@ export default function Caja() {
             continue;
           }
           
-          console.error('Error guardando venta:', ventaError);
           toast.error(`Error al guardar la venta: ${ventaError.message}`);
           setProcesandoVenta(false);
           return;
         }
         
         if (!result || result.length === 0) {
-          console.error('No se retornó data de la venta');
           toast.error('Error: No se pudo obtener el ID de la venta');
           setProcesandoVenta(false);
           return;
@@ -1189,7 +1183,6 @@ export default function Caja() {
         
         ventaResult = result;
         exito = true;
-        console.log("Venta guardada exitosamente:", ventaResult);
       } catch (error) {
         // Si no es un error de duplicado o ya agotamos los intentos, mostrar error
         const esDuplicado = error.code === '23505' || 
@@ -1197,7 +1190,6 @@ export default function Caja() {
                            error.message?.includes('idx_ventas_numero_venta_unique');
         
         if (!esDuplicado || intento >= maxIntentos - 1) {
-          console.error('Error al guardar venta:', error);
           toast.error(`Error al guardar la venta: ${error.message || 'Error desconocido'}`);
           setProcesandoVenta(false);
           return;
@@ -1223,8 +1215,6 @@ export default function Caja() {
       
       if (pedidosAActualizar.length > 0) {
         try {
-          console.log('Actualizando pedidos después del pago:', pedidosAActualizar);
-          
           // Obtener todos los pedidos para verificar su estado actual
           const { data: pedidosData, error: pedidosError } = await supabase
             .from('pedidos')
@@ -1232,7 +1222,7 @@ export default function Caja() {
             .in('id', pedidosAActualizar);
           
           if (pedidosError) {
-            console.error('Error obteniendo pedidos:', pedidosError);
+            // Error silencioso
           }
           
           // Actualizar cada pedido según su estado actual y tipo de pago
@@ -1255,16 +1245,12 @@ export default function Caja() {
               // Si ya está en "en_preparacion", mantenerlo o avanzar según corresponda
               else if (pedido.estado === 'en_preparacion') {
                 // Si ya está en preparación, no cambiar el estado (ya fue tomado por el chef)
-                console.log(`Pedido ${pedido.id} ya está en preparación, no se cambia el estado`);
                 continue;
               }
               // Para cualquier otro caso, no cambiar el estado
               else {
-                console.log(`Pedido ${pedido.id} tiene estado ${pedido.estado}, no se cambia`);
                 continue;
               }
-              
-              console.log(`Actualizando pedido ${pedido.id} de ${pedido.estado} a ${nuevoEstado}`);
               
               await actualizarPedido.mutateAsync({
                 id: pedido.id,
@@ -1272,28 +1258,22 @@ export default function Caja() {
                 estado: nuevoEstado
               });
             } catch (error) {
-              console.error(`Error actualizando pedido ${pedido.id}:`, error);
               // Continuar con los demás pedidos aunque uno falle
             }
           }
           
-          console.log(`${pedidosAActualizar.length} pedido(s) procesado(s) exitosamente`);
           setPedidoIdActual(null);
           setPedidosConsolidados([]);
         } catch (error) {
-          console.error('Error actualizando pedidos:', error);
           toast.error('La venta se completó pero hubo un error al actualizar los pedidos');
           // No fallar la venta si falla la actualización del pedido
         }
       }
       
       // Actualizar stock de productos
-      console.log('Actualizando stock de productos...');
       for (const item of cart) {
         const producto = productos.find(p => p.id === item.id);
         const nuevoStock = producto.stock - item.qty;
-        
-        console.log(`Actualizando stock de ${item.nombre}: ${producto.stock} -> ${nuevoStock}`);
         
         const { error: stockError } = await supabase
           .from('productos')
@@ -1301,7 +1281,6 @@ export default function Caja() {
           .eq('id', item.id);
         
         if (stockError) {
-          console.error('Error actualizando stock:', stockError);
           toast.error(`Error al actualizar el stock de ${item.nombre}. La venta se guardó pero el stock no se actualizó.`);
           // No retornamos aquí para que la venta se complete
         }
@@ -1343,8 +1322,6 @@ export default function Caja() {
         numero_venta: ventaResult[0].numero_venta || null
       };
       
-      console.log('Mostrando recibo:', ventaRecibo);
-      
       // Establecer datos y mostrar modal de éxito inmediatamente
       setDatosVentaConfirmada(ventaRecibo);
       setConfirmacionCargando(false);
@@ -1365,25 +1342,25 @@ export default function Caja() {
           setPedidosConsolidados([]); // Limpiar pedidos consolidados
           setClienteNombrePedido(null); // Limpiar nombre del cliente del pedido
           setMostrarFacturaPantalla(false); // Resetear checkbox
+          
+          // Si viene de pedidos, mostrar modal de regreso
+          if (vieneDePedidos) {
+            setMostrarModalRegresarPedidos(true);
+          }
         }, 2000);
       }, 1500);
       
       // Recargar productos para actualizar stock
-      console.log('Recargando productos...');
       const { data: productosActualizados, error: productosError } = await supabase
         .from('productos')
         .select('*')
         .eq('user_id', user.id);
       
-      if (productosError) {
-        console.error('Error recargando productos:', productosError);
-      } else {
+      if (!productosError) {
         setProductos(productosActualizados || []);
-        console.log('Productos recargados exitosamente');
       }
       
     } catch (error) {
-      console.error('Error confirmando venta:', error);
       toast.error(`Error al procesar la venta: ${error.message}`);
       setMostrandoConfirmacion(false);
       setConfirmacionCargando(false);
@@ -2069,6 +2046,41 @@ export default function Caja() {
         ventaData={datosVentaConfirmada}
       />
 
+      {/* Modal de regreso a pedidos */}
+      {mostrarModalRegresarPedidos && (
+        <div className="caja-modal-overlay" onClick={() => {
+          setMostrarModalRegresarPedidos(false);
+          setVieneDePedidos(false);
+        }}>
+          <div className="caja-modal-content" style={{ maxWidth: '320px', padding: '1.5rem' }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem' }}>¿Regresar al menú de pedidos?</h3>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <button
+                className="caja-btn caja-btn-secondary"
+                onClick={() => {
+                  setMostrarModalRegresarPedidos(false);
+                  setVieneDePedidos(false);
+                }}
+                style={{ padding: '0.5rem 1rem' }}
+              >
+                No
+              </button>
+              <button
+                className="caja-btn caja-btn-primary"
+                onClick={() => {
+                  setMostrarModalRegresarPedidos(false);
+                  setVieneDePedidos(false);
+                  navigate('/dashboard/tomar-pedido');
+                }}
+                style={{ padding: '0.5rem 1rem' }}
+              >
+                Sí
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal de selección de cliente */}
       {mostrandoModalSeleccionCliente && (
         <div className="caja-modal-overlay" onClick={() => setMostrandoModalSeleccionCliente(false)}>
@@ -2261,7 +2273,7 @@ export default function Caja() {
                     setMostrandoModalSeleccionCliente(false);
                     setNuevoCliente({ nombre: '', documento: '', telefono: '', email: '', direccion: '' });
                   } catch (error) {
-                    console.error('Error creando cliente:', error);
+                    // Error silencioso
                   }
                 }}
                 disabled={crearClienteMutation.isLoading}
