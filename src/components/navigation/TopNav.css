@@ -11,6 +11,254 @@
   width: 100%;
 }
 
+/* Desktop: Barra lateral izquierda */
+.top-nav-sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100vh;
+  width: 70px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-right: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 0;
+  overflow: visible; /* Permitir que tooltips sobresalgan */
+}
+
+.top-nav-sidebar-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  align-items: center;
+  justify-content: center; /* Centrar verticalmente */
+  gap: 1rem;
+  overflow: visible; /* Permitir que tooltips sobresalgan */
+}
+
+.top-nav-sidebar-logo {
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.top-nav-sidebar-logo-img {
+  height: 60px;
+  width: 60px;
+  object-fit: contain;
+  max-width: 100%;
+}
+
+.top-nav-sidebar-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0 0.5rem;
+  overflow-y: auto;
+  overflow-x: visible; /* Permitir que tooltips sobresalgan horizontalmente */
+  justify-content: center; /* Centrar verticalmente */
+  flex: 1;
+}
+
+.top-nav-sidebar-item-wrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  overflow: visible !important; /* Permitir que tooltips sobresalgan */
+}
+
+.top-nav-sidebar-item {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  border: none;
+  background: transparent;
+  color: #1a1a1a; /* Color más oscuro para mejor visibilidad */
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.top-nav-sidebar-item svg {
+  width: 22px;
+  height: 22px;
+  stroke-width: 2;
+  flex-shrink: 0;
+}
+
+.top-nav-sidebar-item:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #007AFF;
+}
+
+.top-nav-sidebar-item.active {
+  background: #007AFF;
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+}
+
+.top-nav-sidebar-item.open {
+  background: rgba(0, 122, 255, 0.1);
+  color: #007AFF;
+}
+
+/* Tooltip */
+.top-nav-tooltip {
+  position: fixed; /* Fixed para que no se corte por overflow */
+  left: 86px; /* 70px (ancho sidebar) + 16px (margen) */
+  transform: translateY(-50%); /* Centrar verticalmente */
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  z-index: 10002; /* Por encima de todo */
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  margin: 0;
+}
+
+.top-nav-tooltip::before {
+  content: '';
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 6px solid transparent;
+  border-right-color: rgba(0, 0, 0, 0.85);
+}
+
+/* Dropdown en sidebar */
+.top-nav-sidebar-dropdown {
+  position: fixed; /* Fixed para que no se corte por overflow */
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.1);
+  padding: 8px;
+  min-width: 200px;
+  max-width: 280px;
+  z-index: 10001;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+}
+
+.top-nav-sidebar-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  text-decoration: none;
+  color: #333;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+}
+
+.top-nav-sidebar-dropdown-item:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #007AFF;
+}
+
+.top-nav-sidebar-dropdown-item.active {
+  background: #007AFF;
+  color: white;
+}
+
+
+.top-nav-sidebar-profile-dropdown {
+  position: fixed; /* Fixed para que no se corte por overflow */
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.1);
+  padding: 8px;
+  min-width: 250px;
+  z-index: 10001;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+}
+
+/* Dark mode para sidebar */
+.dark .top-nav-sidebar {
+  background: rgba(28, 28, 30, 0.95);
+  border-right-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .top-nav-sidebar-item {
+  color: #fff;
+}
+
+.dark .top-nav-sidebar-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #0A84FF;
+}
+
+.dark .top-nav-sidebar-item.active {
+  background: #0A84FF;
+  color: white;
+}
+
+.dark .top-nav-sidebar-dropdown {
+  background: #1C1C1E;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .top-nav-sidebar-dropdown-item {
+  color: #fff;
+}
+
+.dark .top-nav-sidebar-dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #0A84FF;
+}
+
+.dark .top-nav-sidebar-profile-dropdown {
+  background: #1C1C1E;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Ocultar sidebar en móvil */
+@media (max-width: 768px) {
+  .top-nav-sidebar {
+    display: none;
+  }
+  
+  .top-nav-mobile {
+    display: block;
+  }
+}
+
+/* Mostrar sidebar solo en desktop */
+@media (min-width: 769px) {
+  .top-nav-mobile {
+    display: none;
+  }
+}
+
 /* Asegurar que los dropdowns estén por encima de otros elementos */
 @media (max-width: 768px) {
   .top-nav {

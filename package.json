@@ -69,7 +69,8 @@
     "serve": "serve -s build -l 3000",
     "setup-toppings": "bash setup-toppings.sh",
     "setup-storage-policies": "node ejecutar-politicas-storage.js",
-    "generar-plantilla-excel": "node scripts/generar-plantilla-excel.js"
+    "generar-plantilla-excel": "node scripts/generar-plantilla-excel.js",
+    "generar-iconos-pwa": "node scripts/generar-iconos-pwa.js"
   },
   "eslintConfig": {
     "extends": [
@@ -91,7 +92,8 @@
   },
   "devDependencies": {
     "eslint": "^8.57.0",
-    "prettier": "^3.2.5"
+    "prettier": "^3.2.5",
+    "sharp": "^0.34.5"
   },
   "engines": {
     "node": ">=18.0.0",

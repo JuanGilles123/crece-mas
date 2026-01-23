@@ -24,6 +24,9 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [organizations, setOrganizations] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [hoveredItem, setHoveredItem] = useState(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ top: 0 });
   const dropdownRefs = useRef({});
   const profileRef = useRef(null);
 
@@ -93,10 +96,10 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
             right: 12
           });
         } else {
-          // En desktop, posicionar normalmente
+          // En desktop, posicionar fuera del sidebar
           setDropdownPosition({
-            top: rect.bottom + 8,
-            left: rect.left
+            top: rect.top,
+            left: 86 // 70px (sidebar) + 16px (margen)
           });
         }
       }
@@ -177,6 +180,20 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
     }
   }, [user, loadOrganizations]);
 
+  // Detectar si es móvil
+  useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    checkIsMobile();
+    window.addEventListener('resize', checkIsMobile);
+
+    return () => {
+      window.removeEventListener('resize', checkIsMobile);
+    };
+  }, []);
+
   const switchOrganization = async (orgId) => {
     if (orgId === organization?.id) {
       setProfileDropdownOpen(false);
@@ -222,9 +239,39 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
     return group.items?.some(item => location.pathname === item.to);
   };
 
-  return (
-    <nav className="top-nav">
-      <div className="top-nav-container">
+  // Calcular posición del tooltip
+  const handleItemHover = (label, element) => {
+    if (element) {
+      const rect = element.getBoundingClientRect();
+      setTooltipPosition({ top: rect.top + rect.height / 2 });
+      setHoveredItem(label);
+    }
+  };
+
+  // Renderizar tooltip
+  const renderTooltip = (label) => {
+    // No mostrar tooltip si el dropdown está abierto o si es móvil
+    if (!isMobile && hoveredItem === label && openDropdown !== label) {
+      return (
+        <motion.div
+          className="top-nav-tooltip"
+          style={{ top: `${tooltipPosition.top}px` }}
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -10 }}
+        >
+          {label}
+        </motion.div>
+      );
+    }
+    return null;
+  };
+
+  // Si es móvil, renderizar la navegación superior normal
+  if (isMobile) {
+    return (
+      <nav className="top-nav top-nav-mobile">
+        <div className="top-nav-container">
         {/* Logos: Crece Mas y Empresa */}
         <div className="top-nav-logo-section">
           {/* Logo Crece Mas */}
@@ -442,6 +489,115 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
               )}
             </AnimatePresence>
           </div>
+        </div>
+      </div>
+    </nav>
+    );
+  }
+
+  // Desktop: Barra lateral izquierda con iconos
+  return (
+    <nav className="top-nav top-nav-sidebar">
+      <div className="top-nav-sidebar-container">
+        {/* Logo */}
+        <div className="top-nav-sidebar-logo">
+          <img 
+            src="/logo-crece.svg" 
+            alt="Crece+" 
+            className="top-nav-sidebar-logo-img"
+            onError={(e) => {
+              e.target.style.display = 'none';
+              e.target.parentElement.innerHTML = '<span style="color: #007AFF; font-size: 1.5rem; font-weight: 700;">Crece+</span>';
+            }}
+          />
+        </div>
+
+        {/* Menús principales como iconos */}
+        <div className="top-nav-sidebar-menu">
+          {menuGroups.map((group, index) => {
+            if (group.type === 'single') {
+              const Icon = group.icon;
+              const isActive = location.pathname === group.to;
+              
+              return (
+                <div
+                  key={group.to}
+                  className="top-nav-sidebar-item-wrapper"
+                  onMouseEnter={(e) => handleItemHover(group.label, e.currentTarget)}
+                  onMouseLeave={() => setHoveredItem(null)}
+                >
+                  <NavLink
+                    to={group.to}
+                    end={group.end}
+                    className={`top-nav-sidebar-item ${isActive ? 'active' : ''}`}
+                    onClick={handleItemClick}
+                  >
+                    <Icon size={22} />
+                  </NavLink>
+                  <AnimatePresence>
+                    {renderTooltip(group.label)}
+                  </AnimatePresence>
+                </div>
+              );
+            } else {
+              const Icon = group.icon;
+              const isActive = isGroupActive(group);
+              const isOpen = openDropdown === group.label;
+              
+              return (
+                <div
+                  key={`group-${group.label}`}
+                  className={`top-nav-sidebar-item-wrapper ${isActive ? 'active' : ''}`}
+                  ref={el => dropdownRefs.current[group.label] = el}
+                  onMouseEnter={(e) => handleItemHover(group.label, e.currentTarget)}
+                  onMouseLeave={() => setHoveredItem(null)}
+                >
+                  <button
+                    className={`top-nav-sidebar-item ${isOpen ? 'open' : ''}`}
+                    onClick={() => toggleDropdown(group.label)}
+                  >
+                    <Icon size={22} />
+                  </button>
+                  <AnimatePresence>
+                    {renderTooltip(group.label)}
+                  </AnimatePresence>
+                  
+                  <AnimatePresence>
+                    {isOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        transition={{ duration: 0.2 }}
+                        className="top-nav-sidebar-dropdown"
+                        style={{
+                          top: `${dropdownPosition.top}px`,
+                          left: `${dropdownPosition.left}px`
+                        }}
+                      >
+                        {group.items.map((item) => {
+                          const ItemIcon = item.icon;
+                          const isItemActive = location.pathname === item.to;
+                          
+                          return (
+                            <NavLink
+                              key={item.to}
+                              to={item.to}
+                              className={`top-nav-sidebar-dropdown-item ${isItemActive ? 'active' : ''}`}
+                              onClick={handleItemClick}
+                            >
+                              <ItemIcon size={18} />
+                              <span>{item.label}</span>
+                            </NavLink>
+                          );
+                        })}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            }
+          })}
         </div>
       </div>
     </nav>

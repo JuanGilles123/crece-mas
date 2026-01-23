@@ -56,8 +56,15 @@ export default function ReciboVenta({ venta, onNuevaVenta, onCerrar, mostrarCerr
     return precioItem * item.qty;
   };
 
-  const subtotal = venta.items.reduce((s, i) => s + calcularSubtotalItem(i), 0);
-  const total = venta.total || subtotal; // Usar el total que viene de la venta
+  // Usar subtotal de la venta si existe, sino calcularlo
+  const subtotalCalculado = venta.items.reduce((s, i) => s + calcularSubtotalItem(i), 0);
+  const subtotal = venta.subtotal || subtotalCalculado;
+  
+  // Obtener información del descuento
+  const descuentoInfo = venta.descuento || null;
+  const montoDescuento = descuentoInfo?.monto || 0;
+  
+  const total = venta.total || (subtotal - montoDescuento); // Usar el total que viene de la venta
   const cambio = venta.pagoCliente - total;
 
   // Detectar si es pago mixto y extraer detalles del string si no vienen en el objeto
@@ -214,6 +221,7 @@ ${venta.items.map(item =>
 
 💰 TOTALES:
 Subtotal: ${formatCOP(subtotal)}
+${montoDescuento > 0 && descuentoInfo ? `Descuento${descuentoInfo.tipo === 'porcentaje' ? ` (${descuentoInfo.valor}%)` : ''}${descuentoInfo.alcance === 'productos' ? ' en productos' : ''}: -${formatCOP(montoDescuento)}` : ''}
 TOTAL: ${formatCOP(total)}
 
 ${esCotizacion ? '📋 COTIZACIÓN\nEstado: Pendiente de pago' : `💳 PAGO:
@@ -828,6 +836,25 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
               <span>Subtotal</span>
               <span style={{ fontWeight: '500' }}>{formatCOP(subtotal)}</span>
             </div>
+            {montoDescuento > 0 && descuentoInfo && (
+              <div className="recibo-total-row recibo-descuento-row" style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                fontSize: '0.875rem',
+                padding: '0.25rem 0',
+                color: '#10b981',
+                fontWeight: '500'
+              }}>
+                <span>
+                  Descuento
+                  {descuentoInfo.tipo === 'porcentaje' && ` (${descuentoInfo.valor}%)`}
+                  {descuentoInfo.alcance === 'productos' && ' en productos'}
+                </span>
+                <span style={{ fontWeight: '600', color: '#10b981' }}>
+                  -{formatCOP(montoDescuento)}
+                </span>
+              </div>
+            )}
             <div className="recibo-total-row recibo-total-final" style={{
               display: 'flex',
               justifyContent: 'space-between',
