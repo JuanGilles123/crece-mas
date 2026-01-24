@@ -661,13 +661,13 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
                 <p className="step-description">Cambia la imagen del producto si lo deseas</p>
                 <label>
                   Imagen <span style={{ color: '#6b7280', fontWeight: 400 }}>(Opcional)</span>
-                  {!puedeSubirImagenes && <span style={{ color: '#ef4444', fontWeight: 600 }}> 🔒 Solo plan Profesional</span>}
+                  {!puedeSubirImagenes && <span style={{ color: '#ef4444', fontWeight: 600 }}> 🔒 Solo plan Estándar</span>}
                 </label>
                 <div className="input-upload-wrapper input-upload-centro">
                   <button
                     type="button"
                     className="input-upload-btn"
-                    onClick={puedeSubirImagenes ? handleClickUpload : () => toast.error('Actualiza al plan Profesional para subir imágenes')}
+                    onClick={puedeSubirImagenes ? handleClickUpload : () => toast.error('Actualiza al plan Estándar para subir imágenes')}
                     disabled={!puedeSubirImagenes}
                     style={!puedeSubirImagenes ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
                   >

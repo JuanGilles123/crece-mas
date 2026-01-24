@@ -96,7 +96,7 @@ const createProductSchema = (productType) => {
 
 const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) => {
   const { user, userProfile, organization } = useAuth();
-  const { hasFeature } = useSubscription();
+  const { hasFeature, canPerformAction } = useSubscription();
   
   // Obtener configuración del tipo de negocio
   const businessTypeConfig = organization?.business_type 
@@ -320,6 +320,13 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
   };
 
   const onSubmit = async (data) => {
+    // Verificar límite de productos antes de crear
+    const canCreate = await canPerformAction('createProduct');
+    if (!canCreate.allowed) {
+      toast.error(canCreate.reason || 'No puedes crear más productos. Actualiza tu plan.');
+      return;
+    }
+
     setSubiendo(true);
     let imagenPath = null;
 
@@ -741,7 +748,7 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
                 <p className="step-description">Agrega una imagen para identificar mejor tu producto</p>
                 <label>
                   Imagen <span style={{ color: '#6b7280', fontWeight: 400 }}>(Opcional)</span>
-                  {!puedeSubirImagenes && <span style={{ color: '#ef4444', fontWeight: 600 }}> 🔒 Solo plan Profesional</span>}
+                  {!puedeSubirImagenes && <span style={{ color: '#ef4444', fontWeight: 600 }}> 🔒 Solo plan Estándar</span>}
                 </label>
             <div className="input-upload-wrapper input-upload-centro">
               <button

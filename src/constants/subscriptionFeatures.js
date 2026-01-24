@@ -277,8 +277,8 @@ export const PLAN_FEATURES = {
 // Nombres amigables de los planes
 export const PLAN_NAMES = {
   free: 'Gratis',
-  professional: 'Profesional',
-  enterprise: 'Empresarial',
+  professional: 'Estándar',
+  enterprise: 'Premium',
   custom: 'Custom'
 };
 
@@ -289,12 +289,12 @@ export const PLAN_PRICES = {
     yearly: 0,
   },
   professional: {
-    monthly: 60000,
-    yearly: 600000,
+    monthly: 69900,
+    yearly: 699000,
   },
   enterprise: {
-    monthly: 150000,
-    yearly: 1500000,
+    monthly: 119900,
+    yearly: 1199000,
   },
   custom: {
     monthly: 300000,
@@ -317,4 +317,109 @@ export const planHasFeature = (planSlug, featureName) => {
 export const getPlanLimit = (planSlug, limitName) => {
   const plan = PLAN_FEATURES[planSlug];
   return plan?.limits?.[limitName];
+};
+
+// Mapeo de features a planes mínimos requeridos
+export const FEATURE_TO_PLAN = {
+  // Inventario
+  productImages: 'professional',
+  importCSV: 'professional',
+  exportData: 'professional',
+  bulkOperations: 'professional',
+  inventoryAdvanced: 'professional',
+  
+  // Ventas
+  advancedSale: 'professional',
+  multiplePaymentMethods: 'professional',
+  mixedPayments: 'professional',
+  salesReports: 'professional',
+  
+  // Caja
+  cashRegisterReports: 'professional',
+  closingHistory: 'professional',
+  
+  // Equipo
+  teamManagement: 'professional',
+  rolesAndPermissions: 'professional',
+  inviteUsers: 'professional',
+  
+  // Reportes
+  advancedReports: 'professional',
+  charts: 'professional',
+  metrics: 'professional',
+  
+  // Configuración
+  taxConfiguration: 'professional',
+  invoiceCustomization: 'professional',
+  notifications: 'professional',
+  
+  // Soporte
+  emailSupport: 'professional',
+  prioritySupport: 'enterprise',
+  
+  // Restaurantes
+  toppings: 'professional',
+  mesas: 'professional',
+  pedidos: 'professional',
+  
+  // Empresariales
+  multiOrg: 'enterprise',
+  branchTransfers: 'enterprise',
+  consolidatedReports: 'enterprise',
+  apiAccess: 'enterprise',
+  customBranding: 'enterprise',
+  clientsModule: 'enterprise',
+  suppliersModule: 'enterprise',
+  electronicInvoicing: 'enterprise',
+  whatsappSupport: 'enterprise',
+  onboarding: 'enterprise',
+};
+
+// Nombres amigables de features
+export const FEATURE_NAMES = {
+  productImages: 'Imágenes de Productos',
+  importCSV: 'Importar CSV',
+  exportData: 'Exportar Datos',
+  bulkOperations: 'Operaciones Masivas',
+  inventoryAdvanced: 'Inventario Avanzado',
+  advancedSale: 'Ventas con Descuentos',
+  multiplePaymentMethods: 'Múltiples Métodos de Pago',
+  mixedPayments: 'Pagos Mixtos',
+  salesReports: 'Reportes de Ventas',
+  cashRegisterReports: 'Reportes de Caja',
+  closingHistory: 'Historial de Cierres',
+  teamManagement: 'Gestión de Equipo',
+  rolesAndPermissions: 'Roles y Permisos',
+  inviteUsers: 'Invitar Usuarios',
+  advancedReports: 'Reportes Avanzados',
+  charts: 'Gráficos',
+  metrics: 'Métricas',
+  taxConfiguration: 'Configuración de Impuestos',
+  invoiceCustomization: 'Personalización de Facturas',
+  notifications: 'Notificaciones',
+  emailSupport: 'Soporte por Email',
+  prioritySupport: 'Soporte Prioritario',
+  toppings: 'Sistema de Toppings',
+  mesas: 'Sistema de Mesas',
+  pedidos: 'Sistema de Pedidos',
+  multiOrg: 'Multi-sucursal',
+  branchTransfers: 'Transferencias entre Sucursales',
+  consolidatedReports: 'Reportes Consolidados',
+  apiAccess: 'Acceso a API',
+  customBranding: 'Branding Personalizado',
+  clientsModule: 'Módulo de Clientes',
+  suppliersModule: 'Módulo de Proveedores',
+  electronicInvoicing: 'Facturación Electrónica',
+  whatsappSupport: 'Soporte por WhatsApp',
+  onboarding: 'Onboarding Personalizado',
+};
+
+// Helper para obtener el plan mínimo requerido para una feature
+export const getRequiredPlanForFeature = (featureName) => {
+  return FEATURE_TO_PLAN[featureName] || 'professional';
+};
+
+// Helper para obtener el nombre amigable de una feature
+export const getFeatureName = (featureName) => {
+  return FEATURE_NAMES[featureName] || featureName;
 };

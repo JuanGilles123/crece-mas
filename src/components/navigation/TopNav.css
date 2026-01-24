@@ -262,12 +262,32 @@
 /* Asegurar que los dropdowns estén por encima de otros elementos */
 @media (max-width: 768px) {
   .top-nav {
-    z-index: 1000;
+    z-index: 10000 !important;
+    position: relative;
+  }
+  
+  .top-nav-container {
+    position: relative;
+    z-index: 10000;
+    overflow: visible !important;
+  }
+  
+  .top-nav-menu {
+    position: relative;
+    z-index: 10000;
+    overflow: visible !important;
+  }
+  
+  .top-nav-dropdown {
+    position: relative;
+    z-index: 10000;
   }
   
   .top-nav-dropdown-menu,
   .top-nav-profile-dropdown {
-    z-index: 10002 !important; /* Por encima de todo en móvil */
+    z-index: 10003 !important; /* Por encima de todo en móvil */
+    position: fixed !important;
+    isolation: isolate;
   }
 }
 
@@ -287,6 +307,9 @@
   height: 64px;
   gap: 24px;
   box-sizing: border-box;
+  position: relative;
+  z-index: 10000;
+  overflow: visible;
 }
 
 /* Sección de logos */
@@ -350,6 +373,8 @@
   -webkit-overflow-scrolling: touch;
   padding: 0 16px;
   box-sizing: border-box;
+  position: relative;
+  z-index: 10000;
 }
 
 .top-nav-menu::-webkit-scrollbar {
@@ -458,6 +483,8 @@
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+  isolation: isolate;
+  pointer-events: auto;
 }
 
 .dark .top-nav-dropdown-menu {
@@ -909,7 +936,7 @@
     min-width: 180px;
     max-width: calc(100vw - 24px);
     left: auto !important;
-    right: 12px !important;
+    right: auto !important;
     top: auto !important;
     bottom: auto !important;
     transform: translateX(0);

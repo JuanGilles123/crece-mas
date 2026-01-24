@@ -341,6 +341,94 @@
   color: var(--accent-danger);
 }
 
+/* Comparativas Section */
+.pricing-comparison-section {
+  margin: 4rem 0;
+  text-align: center;
+}
+
+.comparison-section-title {
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
+}
+
+.comparison-section-subtitle {
+  font-size: 1.125rem;
+  color: var(--text-secondary);
+  margin-bottom: 2.5rem;
+}
+
+.comparison-images-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.comparison-image-card {
+  background: var(--bg-card);
+  border: 2px solid var(--border-primary);
+  border-radius: 20px;
+  padding: 2rem;
+  transition: all 0.3s ease;
+}
+
+.comparison-image-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.15);
+}
+
+.comparison-image-card h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.comparison-image-card p {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+}
+
+.comparison-image-wrapper {
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bg-secondary);
+  margin-bottom: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.comparison-image {
+  width: 100%;
+  height: auto;
+  display: block;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+}
+
+.comparison-image:hover {
+  transform: scale(1.02);
+}
+
+.comparison-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--accent-primary);
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.comparison-link:hover {
+  gap: 0.75rem;
+  text-decoration: underline;
+}
+
 /* FAQ Section */
 .pricing-faq {
   margin: 4rem 0;
@@ -481,6 +569,23 @@
 
   .pricing-cta-footer {
     padding: 2rem 1rem;
+  }
+
+  .comparison-images-container {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .comparison-section-title {
+    font-size: 1.75rem;
+  }
+
+  .comparison-section-subtitle {
+    font-size: 1rem;
+  }
+
+  .comparison-image-card {
+    padding: 1.5rem;
   }
 }
 

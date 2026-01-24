@@ -14,11 +14,12 @@
 
 .toppings-selector-modal {
   background: var(--bg-card);
-  border-radius: 16px;
-  padding: 1.5rem;
-  max-width: 700px;
+  border-radius: 12px;
+  padding: 1rem;
+  max-width: 480px;
   width: 100%;
-  max-height: 90vh;
+  max-height: 85vh;
+  height: auto;
   overflow-y: auto;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
 }
@@ -27,20 +28,20 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 1.5rem;
-  padding-bottom: 1rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
   border-bottom: 1px solid var(--border-color);
 }
 
 .toppings-selector-header h3 {
-  font-size: 1.25rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--text-primary);
   margin: 0 0 0.25rem 0;
 }
 
 .producto-nombre {
-  font-size: 0.95rem;
+  font-size: 0.8125rem;
   color: var(--text-secondary);
   margin: 0;
 }
@@ -63,20 +64,20 @@
 .toppings-selector-loading,
 .toppings-selector-empty {
   text-align: center;
-  padding: 2rem 1rem;
+  padding: 1.5rem 1rem;
   color: var(--text-secondary);
 }
 
 .toppings-selector-empty p {
-  margin: 1rem 0;
+  margin: 0.75rem 0;
 }
 
 /* Tabs de categorías */
 .toppings-categorias-tabs {
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-  padding-bottom: 1rem;
+  gap: 0.375rem;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.5rem;
   border-bottom: 1px solid var(--border-color);
   overflow-x: auto;
   scrollbar-width: thin;
@@ -85,14 +86,14 @@
 .topping-categoria-tab {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: 4px;
   color: var(--text-secondary);
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
@@ -115,12 +116,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 0.375rem;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 0.25rem;
   background: rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
-  font-size: 0.75rem;
+  border-radius: 8px;
+  font-size: 0.625rem;
   font-weight: 700;
 }
 
@@ -130,26 +131,26 @@
 
 .toppings-selector-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
-  max-height: 400px;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  max-height: 300px;
   overflow-y: auto;
-  padding-right: 0.5rem;
+  padding-right: 0.375rem;
 }
 
 .topping-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0.75rem;
+  padding: 0.5rem;
   background: var(--bg-primary);
   border: 2px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
   position: relative;
-  min-height: 140px;
+  min-height: 110px;
 }
 
 .topping-item:hover {
@@ -166,16 +167,16 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.375rem;
   flex: 1;
   width: 100%;
   text-align: center;
 }
 
 .topping-item-image {
-  width: 60px;
-  height: 60px;
-  border-radius: 8px;
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
   overflow: hidden;
   background: var(--bg-secondary);
   display: flex;
@@ -204,12 +205,12 @@
 
 .topping-item-check {
   position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  width: 24px;
-  height: 24px;
+  top: 0.375rem;
+  right: 0.375rem;
+  width: 20px;
+  height: 20px;
   border: 2px solid var(--border-color);
-  border-radius: 6px;
+  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -241,13 +242,13 @@
 .topping-item-nombre {
   font-weight: 600;
   color: var(--text-primary);
-  font-size: 0.875rem;
-  line-height: 1.3;
+  font-size: 0.75rem;
+  line-height: 1.2;
   word-break: break-word;
 }
 
 .topping-item-precio {
-  font-size: 0.8rem;
+  font-size: 0.6875rem;
   color: var(--accent-primary);
   font-weight: 700;
 }
@@ -255,28 +256,40 @@
 .topping-item-cantidad {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  background: var(--bg-secondary);
-  padding: 0.5rem;
-  border-radius: 8px;
-  margin-top: 0.5rem;
-  width: 100%;
+  gap: 0.0625rem;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  margin-top: 0.0625rem;
+  width: auto;
+  max-width: fit-content;
   justify-content: center;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .topping-cantidad-btn {
-  width: 28px;
-  height: 28px;
+  width: 7px;
+  height: 14px;
+  min-width: 7px;
+  min-height: 14px;
+  max-width: 7px;
+  max-height: 14px;
   border: none;
   background: var(--accent-primary);
   color: white;
-  border-radius: 6px;
+  border-radius: 2px;
   cursor: pointer;
   font-weight: 600;
+  font-size: 0.5rem;
+  line-height: 1;
+  padding: 0;
+  margin: 0;
   transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .topping-cantidad-btn:hover:not(:disabled) {
@@ -291,36 +304,38 @@
 .topping-item-cantidad span {
   font-weight: 600;
   color: var(--text-primary);
-  min-width: 24px;
+  min-width: 12px;
+  font-size: 0.625rem;
   text-align: center;
+  padding: 0 0.125rem;
 }
 
 .toppings-seleccionados {
-  margin-bottom: 1.5rem;
-  padding-top: 1rem;
+  margin-bottom: 0.75rem;
+  padding-top: 0.5rem;
   border-top: 1px solid var(--border-color);
 }
 
 .toppings-seleccionados h4 {
-  font-size: 0.95rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   color: var(--text-secondary);
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.375rem;
 }
 
 .toppings-seleccionados-list {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.375rem;
 }
 
 .topping-seleccionado-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.75rem;
+  padding: 0.5rem 0.625rem;
   background: var(--bg-secondary);
-  border-radius: 8px;
+  border-radius: 6px;
 }
 
 .topping-seleccionado-actions {
@@ -350,7 +365,7 @@
 }
 
 .toppings-selector-footer {
-  padding-top: 1rem;
+  padding-top: 0.5rem;
   border-top: 1px solid var(--border-color);
 }
 
@@ -358,43 +373,44 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
 }
 
 .toppings-precio-total.total {
-  margin-top: 0.75rem;
-  padding-top: 0.75rem;
+  margin-top: 0.375rem;
+  padding-top: 0.375rem;
   border-top: 2px solid var(--border-color);
 }
 
 .precio-label {
-  font-size: 0.95rem;
+  font-size: 0.8125rem;
   color: var(--text-secondary);
 }
 
 .precio-value {
-  font-size: 1.1rem;
+  font-size: 0.9375rem;
   font-weight: 700;
   color: var(--text-primary);
 }
 
 .toppings-precio-total.total .precio-value {
-  font-size: 1.25rem;
+  font-size: 1.0625rem;
   color: var(--accent-primary);
 }
 
 .toppings-selector-actions {
   display: flex;
-  gap: 0.75rem;
-  margin-top: 1rem;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
 }
 
 .topping-btn-primary,
 .topping-btn-secondary {
   flex: 1;
-  padding: 0.75rem 1.25rem;
-  border-radius: 8px;
+  padding: 0.625rem 1rem;
+  border-radius: 6px;
   font-weight: 600;
+  font-size: 0.875rem;
   cursor: pointer;
   transition: all 0.2s;
   border: none;

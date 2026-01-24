@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import { usePedidos, useActualizarPedido } from '../hooks/usePedidos';
 import { canUsePedidos, getPedidoEstadoColor } from '../utils/mesasUtils';
+import { supabase } from '../services/api/supabaseClient';
 import OptimizedProductImage from '../components/business/OptimizedProductImage';
 import './PanelCocina.css';
 
@@ -191,6 +192,30 @@ const PanelCocina = () => {
     }
     
     try {
+      // Si se está marcando como "listo", verificar si tiene pago_inmediato y venta_id
+      if (nuevoEstado === 'listo') {
+        // Obtener el pedido completo para verificar pago_inmediato y venta_id
+        const { data: pedido, error: pedidoError } = await supabase
+          .from('pedidos')
+          .select('pago_inmediato, venta_id')
+          .eq('id', pedidoId)
+          .single();
+        
+        if (pedidoError) {
+          console.error('Error obteniendo pedido:', pedidoError);
+        } else if (pedido && pedido.pago_inmediato && pedido.venta_id) {
+          // Si tiene pago_inmediato y ya tiene venta_id, marcar directamente como completado
+          await actualizarPedido.mutateAsync({
+            id: pedidoId,
+            organizationId: organization.id,
+            estado: 'completado',
+            chefId: null
+          });
+          return;
+        }
+      }
+      
+      // Actualización normal del estado
       await actualizarPedido.mutateAsync({
         id: pedidoId,
         organizationId: organization.id,

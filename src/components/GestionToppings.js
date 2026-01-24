@@ -5,6 +5,7 @@ import { X, Plus, Edit2, Trash2, Package, Upload } from 'lucide-react';
 import { useToppings, useCrearTopping, useActualizarTopping, useEliminarTopping } from '../hooks/useToppings';
 import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
+import FeatureGuard from './FeatureGuard';
 import { canUseToppings } from '../utils/toppingsUtils';
 import { getCategoriaOptions } from '../constants/toppingCategories';
 import { supabase } from '../services/api/supabaseClient';
@@ -407,6 +408,11 @@ const GestionToppings = () => {
   };
 
   return (
+    <FeatureGuard
+      feature="toppings"
+      recommendedPlan="professional"
+      showInline={false}
+    >
     <div className="gestion-toppings">
       <div className="toppings-header">
         <div className="toppings-header-content">
@@ -551,6 +557,7 @@ const GestionToppings = () => {
         )}
       </AnimatePresence>
     </div>
+    </FeatureGuard>
   );
 };
 

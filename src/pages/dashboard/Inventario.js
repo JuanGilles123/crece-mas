@@ -6,6 +6,7 @@ import './Inventario.css';
 import AgregarProductoModalV2 from '../../components/modals/AgregarProductoModalV2';
 import EditarProductoModalV2 from '../../components/modals/EditarProductoModalV2';
 import ImportarProductosCSV from '../../components/forms/ImportarProductosCSV';
+import FeatureGuard from '../../components/FeatureGuard';
 import OptimizedProductImage from '../../components/business/OptimizedProductImage';
 import LottieLoader from '../../components/ui/LottieLoader';
 import InventarioStats from '../../components/inventario/InventarioStats';
@@ -316,7 +317,23 @@ const Inventario = () => {
           <div className="inventario-header-wrapper">
             <div className="inventario-actions">
               <button className="inventario-btn inventario-btn-primary" onClick={() => setModalOpen(true)}>Nuevo producto</button>
-              <button className="inventario-btn inventario-btn-secondary" onClick={() => setCsvModalOpen(true)}>Importar CSV</button>
+              <FeatureGuard
+                feature="importCSV"
+                recommendedPlan="professional"
+                showInline={false}
+                fallback={
+                  <button 
+                    className="inventario-btn inventario-btn-secondary" 
+                    onClick={() => toast.error('La importación CSV está disponible en el plan Estándar')}
+                    style={{ opacity: 0.5, cursor: 'not-allowed' }}
+                    title="🔒 Plan Estándar"
+                  >
+                    Importar CSV
+                  </button>
+                }
+              >
+                <button className="inventario-btn inventario-btn-secondary" onClick={() => setCsvModalOpen(true)}>Importar CSV</button>
+              </FeatureGuard>
               <button className="inventario-btn inventario-btn-secondary inventario-btn-view-toggle" onClick={() => setModoLista(m => !m)}>
                 {modoLista ? <Grid3X3 size={18} /> : <List size={18} />}
               </button>

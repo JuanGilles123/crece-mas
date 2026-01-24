@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import './ResumenVentas.css';
 import { useAuth } from '../../context/AuthContext';
+import { useSubscription } from '../../hooks/useSubscription';
+import FeatureGuard from '../../components/FeatureGuard';
 import { supabase } from '../../services/api/supabaseClient';
 import { 
   BarChart3, 
@@ -31,6 +33,7 @@ import {
 import { Bar, Doughnut } from 'react-chartjs-2';
 import { format, subDays, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
+import toast from 'react-hot-toast';
 
 ChartJS.register(
   CategoryScale,
@@ -44,6 +47,7 @@ ChartJS.register(
 
 const ResumenVentas = () => {
   const { user, userProfile } = useAuth();
+  const { hasFeature } = useSubscription();
   const [cargando, setCargando] = useState(true);
   const [ventas, setVentas] = useState([]);
   const [vistaActual, setVistaActual] = useState('general');
@@ -235,6 +239,11 @@ const ResumenVentas = () => {
   };
 
   return (
+    <FeatureGuard
+      feature="advancedReports"
+      recommendedPlan="professional"
+      showInline={false}
+    >
     <motion.div 
       className="resumen-ventas-container"
       variants={containerVariants}
@@ -260,14 +269,27 @@ const ResumenVentas = () => {
             <RefreshCw size={16} />
             Actualizar
           </motion.button>
-          <motion.button 
-            className="resumen-ventas-btn resumen-ventas-btn-outline"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <Download size={16} />
-            Exportar
-          </motion.button>
+          {hasFeature('exportData') ? (
+            <motion.button 
+              className="resumen-ventas-btn resumen-ventas-btn-outline"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => toast.info('Función de exportación próximamente')}
+            >
+              <Download size={16} />
+              Exportar
+            </motion.button>
+          ) : (
+            <motion.button 
+              className="resumen-ventas-btn resumen-ventas-btn-outline"
+              style={{ opacity: 0.5, cursor: 'not-allowed' }}
+              onClick={() => toast.error('La exportación de datos está disponible en el plan Estándar')}
+              title="🔒 Plan Estándar"
+            >
+              <Download size={16} />
+              Exportar
+            </motion.button>
+          )}
         </motion.div>
       </motion.div>
 
@@ -631,6 +653,7 @@ const ResumenVentas = () => {
       </div>
 
     </motion.div>
+    </FeatureGuard>
   );
 };
 

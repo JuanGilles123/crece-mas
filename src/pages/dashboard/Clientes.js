@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import FeatureGuard from '../../components/FeatureGuard';
 import { useClientes, useCrearCliente, useActualizarCliente, useEliminarCliente } from '../../hooks/useClientes';
 import { Search, Plus, Edit2, Trash2, X, User, Phone, Mail, MapPin, FileText } from 'lucide-react';
 import './Clientes.css';
@@ -129,6 +130,11 @@ export default function Clientes() {
   }
 
   return (
+    <FeatureGuard
+      feature="clientsModule"
+      recommendedPlan="professional"
+      showInline={false}
+    >
     <div className="clientes-container">
       <div className="clientes-header">
         <div className="clientes-header-top">
@@ -355,5 +361,6 @@ export default function Clientes() {
         </div>
       )}
     </div>
+    </FeatureGuard>
   );
 }

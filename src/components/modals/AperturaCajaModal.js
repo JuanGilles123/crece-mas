@@ -4,6 +4,7 @@ import { X, DollarSign, User, Save, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCrearAperturaCaja } from '../../hooks/useAperturasCaja';
 import { useCurrencyInput } from '../../hooks/useCurrencyInput';
+import { supabase } from '../../services/api/supabaseClient';
 import './AperturaCajaModal.css';
 
 const AperturaCajaModal = ({ isOpen, onClose, onAperturaExitosa }) => {
@@ -28,17 +29,40 @@ const AperturaCajaModal = ({ isOpen, onClose, onAperturaExitosa }) => {
     setError('');
     
     try {
+      // Verificar primero si ya existe una apertura activa antes de intentar crear una nueva
+      const { data: aperturaExistente, error: errorVerificacion } = await supabase
+        .from('aperturas_caja')
+        .select('id')
+        .eq('organization_id', organization.id)
+        .is('cierre_id', null)
+        .maybeSingle();
+
+      if (errorVerificacion) {
+        setError('Error al verificar apertura existente');
+        return;
+      }
+
+      if (aperturaExistente) {
+        setError('Ya existe una caja abierta. Debes cerrarla antes de abrir una nueva.');
+        return;
+      }
+
       const apertura = await crearApertura.mutateAsync({
         organizationId: organization.id,
         userId: user.id,
         montoInicial: montoInicial
       });
 
-      if (apertura && onAperturaExitosa) {
-        onAperturaExitosa(apertura);
-      }
-      
+      // Cerrar el modal primero para evitar que se quede pegado
       onClose();
+      
+      // Luego notificar el éxito (esto actualizará el estado en Caja.js)
+      if (apertura && onAperturaExitosa) {
+        // Usar setTimeout para asegurar que el modal se cierre primero
+        setTimeout(() => {
+          onAperturaExitosa(apertura);
+        }, 50);
+      }
     } catch (error) {
       setError(error.message || 'Error al abrir la caja');
     }
@@ -104,7 +128,7 @@ const AperturaCajaModal = ({ isOpen, onClose, onAperturaExitosa }) => {
                 Monto Inicial <span className="required">*</span>
               </label>
               <div className="apertura-caja-input-wrapper">
-                <DollarSign size={20} className="apertura-caja-input-icon" />
+                <DollarSign size={18} className="apertura-caja-input-icon" />
                 <input
                   id="monto-inicial"
                   type="text"

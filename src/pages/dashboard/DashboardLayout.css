@@ -238,12 +238,14 @@ body[data-modal-open="true"] .dashboard-sidebar:hover {
   flex-direction: column;
   min-width: 0;
   background: #F2F2F7;
-  overflow: hidden;
+  overflow: visible; /* Cambiado a visible para permitir que dropdowns sobresalgan */
   margin: 0;
   padding-top: 0;
   width: 100%;
   height: 100vh;
   height: 100dvh;
+  position: relative;
+  z-index: 1;
 }
 
 /* Desktop: Ajustar margen izquierdo para sidebar y usar todo el espacio */
@@ -281,7 +283,7 @@ body[data-modal-open="true"] .dashboard-sidebar:hover {
   margin: 0;
   background: #F2F2F7;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: visible; /* Cambiado a visible para permitir que dropdowns sobresalgan */
   -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;

@@ -53,11 +53,11 @@ const Pricing = () => {
       ctaAction: 'current'
     },
     {
-      name: 'Profesional',
+      name: 'Estándar',
       slug: 'professional',
       description: 'Para negocios en crecimiento',
-      price: 60000,
-      priceYearly: 600000,
+      price: 69900,
+      priceYearly: 699000,
       savings: '2 meses gratis',
       icon: Zap,
       color: '#3B82F6',
@@ -77,36 +77,37 @@ const Pricing = () => {
         { name: 'Roles y permisos', included: true },
         { name: 'Configuración de facturas', included: true },
         { name: 'Notificaciones', included: true },
-        { name: 'Soporte por email', included: true },
+        { name: 'Soporte prioritario (24h)', included: true },
       ],
       recommended: true,
-      cta: 'Actualizar a Profesional',
+      cta: 'Actualizar a Estándar',
       ctaAction: 'upgrade'
     },
     {
-      name: 'Empresarial',
+      name: 'Premium',
       slug: 'enterprise',
       description: 'Para empresas con múltiples sucursales',
-      price: 150000,
-      priceYearly: 1500000,
+      price: 119900,
+      priceYearly: 1199000,
       savings: '2 meses gratis',
       icon: Building2,
       color: '#10B981',
       features: [
         { name: 'Hasta 5 organizaciones', included: true },
         { name: 'Usuarios ilimitados', included: true },
-        { name: 'Todo del plan Profesional', included: true },
+        { name: 'Todo del plan Estándar', included: true },
         { name: 'Multi-organización', included: true },
         { name: 'Transferencias entre sucursales', included: true },
         { name: 'Reportes consolidados', included: true },
         { name: 'API de integración', included: true },
         { name: 'Marca personalizada', included: true },
-        { name: 'Soporte prioritario', included: true },
+        { name: 'Soporte 24/7 prioritario', included: true },
         { name: 'WhatsApp directo', included: true },
         { name: 'Onboarding personalizado', included: true },
+        { name: 'Account Manager', included: true },
       ],
       recommended: false,
-      cta: 'Actualizar a Empresarial',
+      cta: 'Actualizar a Premium',
       ctaAction: 'upgrade'
     },
   ];
@@ -453,6 +454,73 @@ const Pricing = () => {
         })}
       </div>
 
+      {/* Comparativas Section */}
+      <motion.div
+        className="pricing-comparison-section"
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+      >
+        <h2 className="comparison-section-title">Comparativa de Planes</h2>
+        <p className="comparison-section-subtitle">
+          Compara todas las funcionalidades disponibles en cada plan
+        </p>
+        
+        <div className="comparison-images-container">
+          <motion.div
+            className="comparison-image-card"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.6 }}
+            whileHover={{ scale: 1.02 }}
+          >
+            <h3>Vista General</h3>
+            <p>Resumen rápido de las funcionalidades principales</p>
+            <div className="comparison-image-wrapper">
+              <img 
+                src="/images/comparativa-planes-general.png" 
+                alt="Comparativa general de planes"
+                className="comparison-image"
+              />
+            </div>
+            <a 
+              href="/comparativa-planes-general.html" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="comparison-link"
+            >
+              Ver versión completa →
+            </a>
+          </motion.div>
+
+          <motion.div
+            className="comparison-image-card"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.7 }}
+            whileHover={{ scale: 1.02 }}
+          >
+            <h3>Vista Detallada</h3>
+            <p>Análisis completo con todas las funciones específicas</p>
+            <div className="comparison-image-wrapper">
+              <img 
+                src="/images/comparativa-planes-detallada.png" 
+                alt="Comparativa detallada de planes"
+                className="comparison-image"
+              />
+            </div>
+            <a 
+              href="/comparativa-planes-detallada.html" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="comparison-link"
+            >
+              Ver versión completa →
+            </a>
+          </motion.div>
+        </div>
+      </motion.div>
+
       {/* FAQ Section */}
       <motion.div
         className="pricing-faq"
@@ -490,7 +558,7 @@ const Pricing = () => {
 
           <div className="faq-item">
             <h3>¿Ofrecen soporte técnico?</h3>
-            <p>El plan Profesional incluye soporte por email. El plan Empresarial incluye soporte prioritario y WhatsApp directo.</p>
+            <p>El plan Estándar incluye soporte prioritario por email (24h). El plan Premium incluye soporte 24/7 prioritario, WhatsApp directo y Account Manager.</p>
           </div>
         </div>
       </motion.div>

@@ -24,6 +24,7 @@ const CierreCaja = () => {
   const [mensaje, setMensaje] = useState({ tipo: '', texto: '' });
   const [cierreGuardado, setCierreGuardado] = useState(false);
   const [yaCerrado, setYaCerrado] = useState(false);
+  const [montoInicialApertura, setMontoInicialApertura] = useState(0);
   
   // Desglose por método de pago
   const [desgloseSistema, setDesgloseSistema] = useState({
@@ -38,6 +39,24 @@ const CierreCaja = () => {
 
     setCargando(true);
     try {
+      // Obtener la apertura activa para obtener el monto inicial
+      const { data: aperturaActiva, error: errorApertura } = await supabase
+        .from('aperturas_caja')
+        .select('monto_inicial')
+        .eq('organization_id', userProfile.organization_id)
+        .is('cierre_id', null)
+        .eq('estado', 'abierta')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (errorApertura) {
+        console.error('Error obteniendo apertura activa:', errorApertura);
+        setMontoInicialApertura(0);
+      } else {
+        setMontoInicialApertura(aperturaActiva?.monto_inicial || 0);
+      }
+
       const inicioHoy = new Date();
       inicioHoy.setHours(0, 0, 0, 0);
 
@@ -244,15 +263,20 @@ const CierreCaja = () => {
     const efectivo = efectivoRealInput.displayValue ? parseFloat(efectivoRealInput.displayValue.replace(/\./g, '')) || 0 : 0;
     const transferencias = transferenciasRealInput.displayValue ? parseFloat(transferenciasRealInput.displayValue.replace(/\./g, '')) || 0 : 0;
     const tarjeta = tarjetaRealInput.displayValue ? parseFloat(tarjetaRealInput.displayValue.replace(/\./g, '')) || 0 : 0;
+    // El monto inicial NO se suma al total real porque ya está incluido en el efectivo físico que cuenta el usuario
+    // El usuario cuenta TODO el efectivo en caja (monto inicial + ventas en efectivo del día)
     const total = efectivo + transferencias + tarjeta;
     setTotalReal(total);
     
     if (efectivoRealInput.displayValue !== '' || transferenciasRealInput.displayValue !== '' || tarjetaRealInput.displayValue !== '') {
-      setDiferencia(total - totalSistema);
+      // La diferencia se calcula: Total Real - (Total Sistema + Monto Inicial)
+      // Porque el Total Real incluye el monto inicial, pero el Total Sistema solo incluye las ventas del día
+      const totalEsperado = totalSistema + montoInicialApertura;
+      setDiferencia(total - totalEsperado);
     } else {
       setDiferencia(null);
     }
-  }, [efectivoRealInput.displayValue, transferenciasRealInput.displayValue, tarjetaRealInput.displayValue, totalSistema]);
+  }, [efectivoRealInput.displayValue, transferenciasRealInput.displayValue, tarjetaRealInput.displayValue, totalSistema, montoInicialApertura]);
 
   const generarTextoCierre = () => {
     const fecha = new Date().toLocaleDateString('es-CO', { 
@@ -266,20 +290,21 @@ const CierreCaja = () => {
 🧾 CIERRE DE CAJA - ${fecha}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📊 RESUMEN DEL SISTEMA:
+📊 RESUMEN REGISTRADO EN SISTEMA:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-💵 Efectivo: ${formatCOP(desgloseSistema.efectivo)}
-📲 Transferencias: ${formatCOP(desgloseSistema.transferencias)}
-💳 Tarjeta: ${formatCOP(desgloseSistema.tarjeta)}${desgloseSistema.mixto > 0 ? `
-💰 Mixto: ${formatCOP(desgloseSistema.mixto)}` : ''}
+💵 Efectivo registrado en sistema: ${formatCOP(desgloseSistema.efectivo)}
+📲 Transferencias registradas en sistema: ${formatCOP(desgloseSistema.transferencias)}
+💳 Tarjeta registrada en sistema: ${formatCOP(desgloseSistema.tarjeta)}${desgloseSistema.mixto > 0 ? `
+💰 Mixto registrado en sistema: ${formatCOP(desgloseSistema.mixto)}` : ''}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TOTAL SISTEMA: ${formatCOP(totalSistema)}
+TOTAL REGISTRADO EN SISTEMA: ${formatCOP(totalSistema)}
 
-� CONTEO REAL:
+�💰 CONTEO REAL:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-💵 Efectivo: ${formatCOP(efectivoRealInput.numericValue)}
-📲 Transferencias: ${formatCOP(transferenciasRealInput.numericValue)}
-💳 Tarjeta: ${formatCOP(tarjetaRealInput.numericValue)}
+🏦 Monto Inicial (referencia): ${formatCOP(montoInicialApertura)}
+💵 Efectivo real en caja: ${formatCOP(efectivoRealInput.numericValue)}
+📲 Transferencias reales recibidas: ${formatCOP(transferenciasRealInput.numericValue)}
+💳 Pago con tarjetas real recibido: ${formatCOP(tarjetaRealInput.numericValue)}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 TOTAL REAL: ${formatCOP(totalReal)}
 
@@ -350,7 +375,23 @@ Generado por Crece+ 🚀
 
     setGuardando(true);
     try {
-      const { error } = await supabase
+      // Primero, obtener la apertura activa para cerrarla
+      const { data: aperturaActiva, error: errorApertura } = await supabase
+        .from('aperturas_caja')
+        .select('id, monto_inicial')
+        .eq('organization_id', userProfile.organization_id)
+        .is('cierre_id', null)
+        .eq('estado', 'abierta')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (errorApertura) {
+        console.error('Error obteniendo apertura activa:', errorApertura);
+      }
+
+      // Crear el cierre de caja
+      const { data: cierreData, error } = await supabase
         .from('cierres_caja')
         .insert({
           organization_id: userProfile.organization_id,
@@ -373,12 +414,31 @@ Generado por Crece+ 🚀
           cantidad_ventas: ventasHoy.length,
           created_at: new Date().toISOString()
         })
-        .select();
+        .select()
+        .single();
 
       if (error) {
         console.error('Error detallado:', error);
         throw error;
       }
+
+      // Si hay una apertura activa, cerrarla vinculándola con el cierre
+      if (aperturaActiva && cierreData) {
+        const { error: errorCerrarApertura } = await supabase
+          .from('aperturas_caja')
+          .update({
+            cierre_id: cierreData.id,
+            estado: 'cerrada',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', aperturaActiva.id);
+
+        if (errorCerrarApertura) {
+          console.error('Error cerrando apertura:', errorCerrarApertura);
+          // No lanzar error, solo loguear, ya que el cierre ya se guardó
+        }
+      }
+
       setMensaje({ tipo: 'success', texto: 'Cierre de caja guardado correctamente' });
       setCierreGuardado(true); // Activar botones de compartir/descargar
       
@@ -489,7 +549,7 @@ Generado por Crece+ 🚀
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.1 }}
         >
-          <h2><ShoppingCart size={20} /> Resumen del Sistema</h2>
+          <h2><ShoppingCart size={20} /> Resumen Registrado en Sistema</h2>
           
           <div className="resumen-cards">
             <div className="resumen-card">
@@ -503,7 +563,7 @@ Generado por Crece+ 🚀
             <div className="resumen-card total">
               <TrendingUp size={24} />
               <div>
-                <p className="resumen-label">Total Sistema</p>
+                <p className="resumen-label">Total Registrado en Sistema</p>
                 <h3>{formatCOP(totalSistema)}</h3>
               </div>
             </div>
@@ -514,23 +574,23 @@ Generado por Crece+ 🚀
             <h3>Desglose por Método</h3>
             <div className="metodo-item">
               <Banknote size={18} />
-              <span>Efectivo:</span>
+              <span>Efectivo registrado en sistema:</span>
               <strong>{formatCOP(desgloseSistema.efectivo)}</strong>
             </div>
             <div className="metodo-item">
               <Smartphone size={18} />
-              <span>Transferencias:</span>
+              <span>Transferencias registradas en sistema:</span>
               <strong>{formatCOP(desgloseSistema.transferencias)}</strong>
             </div>
             <div className="metodo-item">
               <CreditCard size={18} />
-              <span>Tarjeta:</span>
+              <span>Tarjeta registrada en sistema:</span>
               <strong>{formatCOP(desgloseSistema.tarjeta)}</strong>
             </div>
             {desgloseSistema.mixto > 0 && (
               <div className="metodo-item">
                 <DollarSign size={18} />
-                <span>Mixto:</span>
+                <span>Mixto registrado en sistema:</span>
                 <strong>{formatCOP(desgloseSistema.mixto)}</strong>
               </div>
             )}
@@ -608,10 +668,32 @@ Generado por Crece+ 🚀
           <h2><Calculator size={20} /> Cierre Real</h2>
 
           <div className="calculo-container">
+            {montoInicialApertura > 0 && (
+              <div className="monto-inicial-info" style={{
+                background: 'var(--bg-secondary)',
+                padding: '1rem',
+                borderRadius: '12px',
+                marginBottom: '1rem',
+                border: '1px solid var(--border-primary)',
+                textAlign: 'center'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <DollarSign size={18} />
+                  <strong>Monto Inicial de Apertura</strong>
+                </div>
+                <div style={{ fontSize: '1.2rem', fontWeight: '600', color: 'var(--accent-primary)' }}>
+                  {formatCOP(montoInicialApertura)}
+                </div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                  Este monto ya está incluido cuando cuentas el efectivo físico en caja
+                </div>
+              </div>
+            )}
+            
             <div className="input-group">
               <label>
                 <Banknote size={20} />
-                Efectivo Real
+                Efectivo Real en Caja
               </label>
               <input
                 type="text"
@@ -619,16 +701,16 @@ Generado por Crece+ 🚀
                 onChange={efectivoRealInput.handleChange}
                 placeholder="0"
                 inputMode="numeric"
-                className="input-total-real"
+                className="input-total-contado"
               />
               <span className="input-hint">Cuenta el efectivo físico en caja</span>
-              <span className="sistema-vs-real">Sistema: {formatCOP(desgloseSistema.efectivo)}</span>
+              <span className="sistema-vs-contado">Efectivo registrado en sistema: {formatCOP(desgloseSistema.efectivo)}</span>
             </div>
             
             <div className="input-group">
               <label>
                 <Smartphone size={20} />
-                Transferencias Real
+                Transferencias Reales Recibidas
               </label>
               <input
                 type="text"
@@ -636,16 +718,16 @@ Generado por Crece+ 🚀
                 onChange={transferenciasRealInput.handleChange}
                 placeholder="0"
                 inputMode="numeric"
-                className="input-total-real"
+                className="input-total-contado"
               />
               <span className="input-hint">Verifica las transferencias recibidas</span>
-              <span className="sistema-vs-real">Sistema: {formatCOP(desgloseSistema.transferencias)}</span>
+              <span className="sistema-vs-contado">Transferencias registradas en sistema: {formatCOP(desgloseSistema.transferencias)}</span>
             </div>
             
             <div className="input-group">
               <label>
                 <CreditCard size={20} />
-                Tarjeta Real
+                Pago con Tarjetas Real Recibido
               </label>
               <input
                 type="text"
@@ -653,14 +735,14 @@ Generado por Crece+ 🚀
                 onChange={tarjetaRealInput.handleChange}
                 placeholder="0"
                 inputMode="numeric"
-                className="input-total-real"
+                className="input-total-contado"
               />
               <span className="input-hint">Verifica los pagos con tarjeta</span>
-              <span className="sistema-vs-real">Sistema: {formatCOP(desgloseSistema.tarjeta)}</span>
+              <span className="sistema-vs-contado">Tarjeta registrada en sistema: {formatCOP(desgloseSistema.tarjeta)}</span>
             </div>
             
             {(efectivoRealInput.displayValue !== '' || transferenciasRealInput.displayValue !== '' || tarjetaRealInput.displayValue !== '') && (
-              <div className="total-real-calculado">
+              <div className="total-contado-calculado">
                 <DollarSign size={20} />
                 <span>Total Real:</span>
                 <strong>{formatCOP(totalReal)}</strong>
@@ -678,7 +760,7 @@ Generado por Crece+ 🚀
                     <CheckCircle size={32} />
                     <div>
                       <h3>¡Perfecto! Cuadra exacto</h3>
-                      <p>No hay diferencias entre el sistema y el efectivo real</p>
+                      <p>No hay diferencias entre lo esperado (sistema + monto inicial) y el efectivo real</p>
                     </div>
                   </>
                 ) : diferencia > 0 ? (
@@ -706,13 +788,25 @@ Generado por Crece+ 🚀
                 <span>Concepto</span>
                 <span>Monto</span>
               </div>
+              {montoInicialApertura > 0 && (
+                <div className="comparacion-row">
+                  <span><DollarSign size={16} /> Monto Inicial</span>
+                  <span className="sistema">{formatCOP(montoInicialApertura)}</span>
+                </div>
+              )}
               <div className="comparacion-row">
-                <span><TrendingUp size={16} /> Total Sistema</span>
+                <span><TrendingUp size={16} /> Total Registrado en Sistema</span>
                 <span className="sistema">{formatCOP(totalSistema)}</span>
               </div>
+              {montoInicialApertura > 0 && (
+                <div className="comparacion-row">
+                  <span><Calculator size={16} /> Total Esperado (Sistema + Inicial)</span>
+                  <span className="sistema">{formatCOP(totalSistema + montoInicialApertura)}</span>
+                </div>
+              )}
               <div className="comparacion-row">
                 <span><DollarSign size={16} /> Total Real</span>
-                <span className="real">{formatCOP(totalReal)}</span>
+                <span className="contado">{formatCOP(totalReal)}</span>
               </div>
               {diferencia !== null && (
                 <div className="comparacion-row total">

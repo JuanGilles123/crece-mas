@@ -3,18 +3,28 @@ import { supabase } from '../services/api/supabaseClient';
 import toast from 'react-hot-toast';
 
 // Hook para obtener ventas
-export const useVentas = (organizationId, limit = 100) => {
+export const useVentas = (organizationId, limit = 100, historyDays = null) => {
   return useQuery({
-    queryKey: ['ventas', organizationId, limit],
+    queryKey: ['ventas', organizationId, limit, historyDays],
     queryFn: async () => {
       if (!organizationId) return [];
       
       try {
-        // Primero cargar las ventas
-        const { data: ventasData, error: ventasError } = await supabase
+        // Construir query base
+        let query = supabase
           .from('ventas')
           .select('*')
-          .eq('organization_id', organizationId)
+          .eq('organization_id', organizationId);
+        
+        // Aplicar límite de días si existe (plan gratuito = 7 días)
+        if (historyDays !== null && historyDays !== undefined) {
+          const fechaLimite = new Date();
+          fechaLimite.setDate(fechaLimite.getDate() - historyDays);
+          query = query.gte('created_at', fechaLimite.toISOString());
+        }
+        
+        // Aplicar orden y límite
+        const { data: ventasData, error: ventasError } = await query
           .order('created_at', { ascending: false })
           .limit(limit);
         
