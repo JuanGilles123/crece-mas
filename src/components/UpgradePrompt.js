@@ -1,11 +1,12 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Lock, Zap, ArrowRight, X } from 'lucide-react';
+import { Zap, X, Sparkles, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import './UpgradePrompt.css';
 
 const UpgradePrompt = ({ 
   feature, 
+  featureName,
   reason, 
   currentPlan = 'free',
   recommendedPlan = 'professional',
@@ -22,8 +23,8 @@ const UpgradePrompt = ({
   const getPlanName = (slug) => {
     const names = {
       free: 'Gratis',
-      professional: 'Profesional',
-      enterprise: 'Empresarial',
+      professional: 'Estándar',
+      enterprise: 'Premium',
       custom: 'Custom'
     };
     return names[slug] || slug;
@@ -31,8 +32,8 @@ const UpgradePrompt = ({
 
   const getPlanPrice = (slug) => {
     const prices = {
-      professional: '$60.000',
-      enterprise: '$150.000',
+      professional: '$69.900',
+      enterprise: '$119.900',
       custom: 'Personalizado'
     };
     return prices[slug] || '';
@@ -50,13 +51,13 @@ const UpgradePrompt = ({
         '✅ Múltiples métodos de pago'
       ],
       enterprise: [
-        '✅ Todo del plan Profesional',
+        '✅ Todo del plan Estándar',
         '✅ Multi-sucursal (hasta 5 organizaciones)',
         '✅ Usuarios ilimitados',
         '✅ API para integraciones',
         '✅ Soporte prioritario 24/7',
         '✅ Branding personalizado',
-        '✅ Capacitación personalizada'
+        '✅ Account Manager dedicado'
       ]
     };
     return benefits[slug] || [];
@@ -71,15 +72,18 @@ const UpgradePrompt = ({
         transition={{ duration: 0.3 }}
       >
         <div className="upgrade-inline-icon">
-          <Lock size={24} />
+          <Sparkles size={24} />
         </div>
         <div className="upgrade-inline-content">
-          <h3>Función Premium</h3>
-          <p>{reason || 'Esta función no está disponible en tu plan actual'}</p>
+          <h3>
+            <Sparkles size={18} style={{ display: 'inline', marginRight: '0.5rem', verticalAlign: 'middle' }} />
+            Función del Plan {getPlanName(recommendedPlan)}
+          </h3>
+          <p>{reason || `"${featureName || feature}" está disponible en el plan ${getPlanName(recommendedPlan)}. Actualiza tu plan para acceder a esta función.`}</p>
           <button onClick={handleUpgrade} className="upgrade-inline-button">
             <Zap size={18} />
-            Mejorar a {getPlanName(recommendedPlan)}
-            <ArrowRight size={18} />
+            Ver Plan {getPlanName(recommendedPlan)} y Actualizar
+            <ExternalLink size={16} />
           </button>
         </div>
       </motion.div>
@@ -114,11 +118,14 @@ const UpgradePrompt = ({
           )}
 
           <div className="upgrade-modal-icon">
-            <Lock size={48} />
+            <Sparkles size={48} />
           </div>
           
-          <h2>Mejora tu Plan</h2>
-          <p className="upgrade-reason">{reason}</p>
+          <h2>
+            <Sparkles size={24} style={{ display: 'inline', marginRight: '0.5rem', verticalAlign: 'middle' }} />
+            Función del Plan {getPlanName(recommendedPlan)}
+          </h2>
+          <p className="upgrade-reason">{reason || `"${featureName || feature}" está disponible en el plan ${getPlanName(recommendedPlan)}. Actualiza tu plan para acceder a esta función.`}</p>
           
           <div className="upgrade-plan-info">
             <div className="upgrade-plan-header">
@@ -141,7 +148,8 @@ const UpgradePrompt = ({
           <div className="upgrade-modal-actions">
             <button onClick={handleUpgrade} className="btn-upgrade-primary">
               <Zap size={20} />
-              Ver Planes y Precios
+              Ver Plan {getPlanName(recommendedPlan)} y Actualizar
+              <ExternalLink size={18} />
             </button>
             {onClose && (
               <button onClick={onClose} className="btn-upgrade-secondary">

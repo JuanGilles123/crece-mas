@@ -334,12 +334,12 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
               </>
             )}
 
-            <label>Imagen <span style={{ color: '#6b7280', fontWeight: 400 }}>(Opcional)</span> {!puedeSubirImagenes && <span style={{ color: '#ef4444', fontWeight: 600 }}>🔒 Solo plan Profesional</span>}</label>
+            <label>Imagen <span style={{ color: '#6b7280', fontWeight: 400 }}>(Opcional)</span> {!puedeSubirImagenes && <span style={{ color: '#ef4444', fontWeight: 600 }}>🔒 Solo plan Estándar</span>}</label>
             <div className="input-upload-wrapper input-upload-centro">
               <button
                 type="button"
                 className="input-upload-btn"
-                onClick={puedeSubirImagenes ? handleClickUpload : () => toast.error('Actualiza al plan Profesional para subir imágenes')}
+                onClick={puedeSubirImagenes ? handleClickUpload : () => toast.error('Actualiza al plan Estándar para subir imágenes')}
                 disabled={!puedeSubirImagenes}
                 style={!puedeSubirImagenes ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
               >
@@ -350,7 +350,7 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
             </div>
             {!puedeSubirImagenes && (
               <span style={{ fontSize: '0.875rem', color: '#ef4444', marginTop: '-0.5rem' }}>
-                Las imágenes de productos están disponibles en el plan Profesional
+                Las imágenes de productos están disponibles en el plan Estándar
               </span>
             )}
             <div className="form-actions form-actions-centro">

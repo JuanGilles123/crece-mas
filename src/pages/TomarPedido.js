@@ -2,7 +2,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Search, Plus, Minus, Trash2, Save, Circle, Users, Check, MapPin } from 'lucide-react';
+import { X, Search, Circle, Users, Check, MapPin } from 'lucide-react';
+// Imports mantenidos para compatibilidad futura: Plus, Minus, Trash2, Save
 import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import { useMesas } from '../hooks/useMesas';
@@ -10,12 +11,12 @@ import { useCrearPedido } from '../hooks/usePedidos';
 import ReciboVenta from '../components/business/ReciboVenta';
 import { canUsePedidos, getMesaEstadoColor } from '../utils/mesasUtils';
 import { canUseToppings } from '../utils/toppingsUtils';
-import { calcularPrecioConToppings } from '../utils/toppingsUtils';
 import { ORDER_TYPES, getCompatibleOrderTypes, getOrderTypeFields, validateOrderFields } from '../constants/orderTypes';
 import { supabase } from '../services/api/supabaseClient';
 import ToppingsSelector from '../components/ToppingsSelector';
 import VariacionesSelector from '../components/VariacionesSelector';
 import OptimizedProductImage from '../components/business/OptimizedProductImage';
+import Caja from './dashboard/Caja';
 import toast from 'react-hot-toast';
 import './TomarPedido.css';
 
@@ -38,6 +39,7 @@ const TomarPedido = () => {
   const [mostrandoMetodoPago, setMostrandoMetodoPago] = useState(false);
   const [metodoPagoSeleccionado, setMetodoPagoSeleccionado] = useState('Efectivo');
   const [ventaCompletada, setVentaCompletada] = useState(null);
+  const [mostrandoCaja, setMostrandoCaja] = useState(false);
 
   // Estados principales
   const [tipoPedido, setTipoPedido] = useState(null); // null = no seleccionado, 'dine_in', 'takeout', 'delivery', 'express'
@@ -115,6 +117,29 @@ const TomarPedido = () => {
     const orderType = ORDER_TYPES[tipoPedido];
     return orderType?.requiresMesa && tieneMesasHabilitadas;
   }, [tipoPedido, tieneMesasHabilitadas]);
+
+  // Verificar si los campos requeridos están completos
+  const camposCompletos = useMemo(() => {
+    if (!tipoPedido || camposRequeridos.length === 0) return true;
+    
+    return camposRequeridos.every(campo => {
+      if (campo.required) {
+        if (campo.key === 'mesa') {
+          return mesaSeleccionada !== null;
+        }
+        if (campo.key === 'cliente_nombre') {
+          return clienteNombre.trim() !== '';
+        }
+        if (campo.key === 'cliente_telefono') {
+          return clienteTelefono.trim() !== '';
+        }
+        if (campo.key === 'direccion_entrega') {
+          return direccionEntrega.trim() !== '';
+        }
+      }
+      return true;
+    });
+  }, [tipoPedido, camposRequeridos, mesaSeleccionada, clienteNombre, clienteTelefono, direccionEntrega]);
 
   // Cargar productos
   useEffect(() => {
@@ -403,50 +428,6 @@ const TomarPedido = () => {
     }
   };
 
-  // Modificar cantidad
-  const cambiarCantidad = (index, delta) => {
-    setItems(prev => {
-      const next = [...prev];
-      const item = next[index];
-      if (!item) return next;
-      
-      const nuevaCantidad = item.cantidad + delta;
-      
-      if (nuevaCantidad <= 0) {
-        return next.filter((_, i) => i !== index);
-      }
-
-      // Recalcular precio total con toppings
-      const precioBase = item.precio_unitario || 0;
-      const precioConToppings = calcularPrecioConToppings(precioBase, item.toppings || []);
-      
-      // Crear nuevo objeto en lugar de mutar
-      next[index] = {
-        ...item,
-        cantidad: nuevaCantidad,
-        precio_total: precioConToppings * nuevaCantidad
-      };
-      
-      return next;
-    });
-  };
-
-  // Eliminar item
-  const eliminarItem = (index) => {
-    setItems(prev => prev.filter((_, i) => i !== index));
-  };
-
-  // Actualizar notas de un item
-  const actualizarNotasItem = (index, notas) => {
-    setItems(prev => {
-      const next = [...prev];
-      next[index] = {
-        ...next[index],
-        notas: notas
-      };
-      return next;
-    });
-  };
 
   // Función para procesar pago inmediato
   const handlePagarAhora = async () => {
@@ -595,7 +576,9 @@ const TomarPedido = () => {
     }
   };
 
-  // Validar y guardar pedido
+  // Función para procesar pago inmediato (mantenida para compatibilidad con modal de métodos de pago)
+  // NOTA: Esta función ya no se usa directamente, el flujo ahora pasa por el componente Caja
+  // eslint-disable-next-line no-unused-vars
   const handleGuardarPedido = async (forzarPagoInmediato = false) => {
     // Si se pasa un evento (desde onClick), ignorarlo
     if (forzarPagoInmediato && typeof forzarPagoInmediato === 'object' && forzarPagoInmediato.target) {
@@ -1155,212 +1138,92 @@ const TomarPedido = () => {
                 </div>
               )}
 
-              {/* Botón para agregar productos */}
-              <div className="pedido-section">
-                <button
-                  className="btn-agregar-productos"
-                  onClick={() => setMostrandoProductos(true)}
-                >
-                  <Plus size={20} />
-                  Agregar Productos
-                </button>
-              </div>
+              {/* Resumen del pedido y acciones */}
+              {camposCompletos ? (
+                mostrandoCaja ? (
+                  <div 
+                    className="tomar-pedido-caja-container"
+                    style={{ 
+                      width: '100%', 
+                      height: '100vh', 
+                      position: 'fixed', 
+                      top: 0, 
+                      left: 0, 
+                      right: 0, 
+                      bottom: 0, 
+                      zIndex: 1000, 
+                      background: 'white',
+                      overflow: 'hidden',
+                      margin: 0,
+                      padding: 0,
+                      boxSizing: 'border-box'
+                    }}>
+                    <Caja
+                      mode="pedido"
+                      tipoPedido={tipoPedido}
+                      mesaSeleccionada={mesaSeleccionada}
+                      clienteNombre={clienteNombre}
+                      clienteTelefono={clienteTelefono}
+                      direccionEntrega={direccionEntrega}
+                      costoEnvio={costoEnvio}
+                      horaEstimada={horaEstimada}
+                      numeroPersonas={numeroPersonas}
+                      notas={notas}
+                      onPedidoGuardado={(pedido) => {
+                        // Limpiar formulario después de guardar
+                        setTipoPedido(null);
+                        setMesaSeleccionada(null);
+                        setClienteNombre('');
+                        setClienteTelefono('');
+                        setDireccionEntrega('');
+                        setCostoEnvio('0');
+                        setHoraEstimada('');
+                        setNumeroPersonas('');
+                        setNotas('');
+                        setMostrandoCaja(false);
+                        toast.success('Pedido guardado correctamente');
+                      }}
+                      onCancelar={() => {
+                        setMostrandoCaja(false);
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="pedido-section">
+                    <h2>Resumen del Pedido</h2>
+                    
+                    {/* Botón para agregar productos */}
+                    <button
+                      className="btn-agregar-productos"
+                      onClick={() => setMostrandoCaja(true)}
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem',
+                        marginBottom: '1.5rem',
+                        background: 'var(--accent-primary)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '0.875rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <Search size={18} style={{ marginRight: '0.5rem', display: 'inline-block', verticalAlign: 'middle' }} />
+                      Agregar Productos
+                    </button>
+                  </div>
+                )
+              ) : (
+                <div className="pedido-section">
+                  <p style={{ color: '#ef4444', marginTop: '1rem' }}>
+                    Completa todos los campos requeridos para continuar
+                  </p>
+                </div>
+              )}
             </>
           )}
-        </div>
-
-        {/* Panel derecho: Items del pedido */}
-        <div className="pedido-right">
-          <div className="pedido-resumen">
-            <h2>
-              {tipoPedido ? `Pedido ${ORDER_TYPES[tipoPedido]?.label}` : 'Nuevo Pedido'}
-              {mesaSeleccionada && ` - ${mesaSeleccionada.numero}`}
-            </h2>
-
-            {!tipoPedido ? (
-              <div className="pedido-vacio">
-                <p>Selecciona un tipo de pedido para comenzar</p>
-              </div>
-            ) : items.length === 0 ? (
-              <div className="pedido-vacio">
-                <p>No hay items en el pedido</p>
-                <small>Agrega productos al pedido</small>
-              </div>
-            ) : (
-              <>
-                <div className="pedido-items">
-                  <AnimatePresence>
-                    {items.map((item, index) => (
-                      <motion.div
-                        key={`${item.producto_id}-${JSON.stringify(item.toppings)}-${index}`}
-                        className="pedido-item"
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 20 }}
-                      >
-                        <div className="pedido-item-header">
-                          <div className="pedido-item-info">
-                            <h4>{item.producto_nombre}</h4>
-                            {item.toppings && item.toppings.length > 0 && (
-                              <p className="pedido-item-toppings">
-                                + {item.toppings.map(t => t.nombre).join(', ')}
-                              </p>
-                            )}
-                            {item.variaciones && Object.keys(item.variaciones).length > 0 && (
-                              <p className="pedido-item-variaciones">
-                                {Object.entries(item.variaciones).map(([key, value], idx) => {
-                                  // Buscar el label de la variación y opción
-                                  const productoCompleto = productos.find(p => p.id === item.producto_id);
-                                  const variacionConfig = productoCompleto?.metadata?.variaciones_config?.find(v => 
-                                    (v.id || v.nombre?.toLowerCase()) === key.toLowerCase()
-                                  );
-                                  const opcion = variacionConfig?.opciones?.find(o => 
-                                    (typeof o === 'string' ? o : o.valor) === value
-                                  );
-                                  const variacionNombre = variacionConfig?.nombre || key;
-                                  const opcionLabel = typeof opcion === 'string' ? opcion : (opcion?.label || value);
-                                  
-                                  return (
-                                    <span key={idx}>
-                                      {variacionNombre}: {opcionLabel}
-                                      {idx < Object.keys(item.variaciones).length - 1 && ' | '}
-                                    </span>
-                                  );
-                                })}
-                              </p>
-                            )}
-                            <p className="pedido-item-precio">{formatCOP(item.precio_total)}</p>
-                          </div>
-                          <div className="pedido-item-actions">
-                            <button
-                              className="btn-cantidad btn-cantidad-minus"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                cambiarCantidad(index, -1);
-                              }}
-                              type="button"
-                              aria-label="Disminuir cantidad"
-                            >
-                              <span className="btn-icon-wrapper">
-                                <Minus size={20} strokeWidth={2.5} />
-                              </span>
-                            </button>
-                            <span className="cantidad-display">{item.cantidad}</span>
-                            <button
-                              className="btn-cantidad btn-cantidad-plus"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                cambiarCantidad(index, 1);
-                              }}
-                              type="button"
-                              aria-label="Aumentar cantidad"
-                            >
-                              <span className="btn-icon-wrapper">
-                                <Plus size={20} strokeWidth={2.5} />
-                              </span>
-                            </button>
-                            <button
-                              className="btn-eliminar"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                eliminarItem(index);
-                              }}
-                              type="button"
-                              aria-label="Eliminar producto"
-                            >
-                              <span className="btn-icon-wrapper">
-                                <Trash2 size={20} strokeWidth={2.5} />
-                              </span>
-                            </button>
-                          </div>
-                        </div>
-                        <div className="pedido-item-notas">
-                          <input
-                            type="text"
-                            placeholder="Notas para este producto (ej: sin cebolla, bien cocido...)"
-                            value={item.notas || ''}
-                            onChange={(e) => actualizarNotasItem(index, e.target.value)}
-                            className="pedido-item-notas-input"
-                          />
-                        </div>
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                </div>
-
-                <div className="pedido-pago-option">
-                  <label>Método de pago</label>
-                  <div className="pedido-pago-options">
-                    <button
-                      type="button"
-                      className={`pedido-pago-btn ${!pagoInmediato ? 'active' : ''}`}
-                      onClick={() => setPagoInmediato(false)}
-                    >
-                      Pagar al final
-                    </button>
-                    <button
-                      type="button"
-                      className={`pedido-pago-btn ${pagoInmediato ? 'active' : ''}`}
-                      onClick={async () => {
-                        // Validar que haya productos
-                        if (items.length === 0) {
-                          toast.error('Agrega productos al pedido primero');
-                          return;
-                        }
-                        
-                        // Establecer pago inmediato y guardar el pedido pasando true como parámetro
-                        setPagoInmediato(true);
-                        await handleGuardarPedido(true); // Pasar true para forzar pago inmediato
-                      }}
-                      disabled={items.length === 0 || crearPedido.isLoading}
-                    >
-                      {crearPedido.isLoading ? 'Guardando...' : 'Pagar ahora'}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="pedido-notas">
-                  <label>Notas del pedido (opcional)</label>
-                  <textarea
-                    value={notas}
-                    onChange={(e) => setNotas(e.target.value)}
-                    placeholder="Ej: Sin cebolla, bien cocido..."
-                    rows="3"
-                  />
-                </div>
-
-                <div className="pedido-total">
-                  <div className="pedido-total-line">
-                    <span>Subtotal</span>
-                    <span>{formatCOP(subtotal)}</span>
-                  </div>
-                  {parseFloat(costoEnvio) > 0 && (
-                    <div className="pedido-total-line">
-                      <span>Costo de Envío</span>
-                      <span>{formatCOP(parseFloat(costoEnvio))}</span>
-                    </div>
-                  )}
-                  <div className="pedido-total-line total">
-                    <span>Total</span>
-                    <span className="pedido-total-amount">{formatCOP(total)}</span>
-                  </div>
-                </div>
-
-                <button
-                  className="btn-guardar-pedido"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleGuardarPedido(false);
-                  }}
-                  disabled={crearPedido.isLoading}
-                >
-                  <Save size={18} />
-                  {crearPedido.isLoading ? 'Guardando...' : 'Guardar Pedido'}
-                </button>
-              </>
-            )}
-          </div>
         </div>
       </div>
 
@@ -1421,13 +1284,13 @@ const TomarPedido = () => {
                 />
               </div>
 
-              <div className="productos-modal-content">
+              <div className="productos-modal-content" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '100%' }}>
                 {cargando ? (
-                  <div className="productos-modal-loading">
+                  <div className="productos-modal-loading" style={{ padding: '2rem', textAlign: 'center' }}>
                     <p>Cargando productos...</p>
                   </div>
                 ) : productosFiltrados.length === 0 ? (
-                  <div className="productos-modal-empty">
+                  <div className="productos-modal-empty" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-tertiary)' }}>
                     <p>No se encontraron productos</p>
                     {query ? (
                       <small>Intenta con otro término de búsqueda</small>
@@ -1437,46 +1300,108 @@ const TomarPedido = () => {
                   </div>
                 ) : (
                   <>
-                    <div className="productos-modal-grid-compact">
-                      {productosFiltrados.map((producto) => {
+                    <div className="caja-products-list" style={{ 
+                      flex: 1, 
+                      overflowY: 'auto', 
+                      padding: '0.5rem',
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))',
+                      gap: '0.5rem'
+                    }}>
+                      {productosFiltrados.map((producto, index) => {
                         const estaSeleccionado = productosSeleccionados.some(p => p.id === producto.id);
                         return (
-                          <motion.div
-                            key={producto.id}
-                            className={`producto-card-modal-compact ${estaSeleccionado ? 'seleccionado' : ''}`}
-                            onClick={() => handleSeleccionarProducto(producto)}
-                            whileHover={{ scale: 1.02, y: -2 }}
+                          <motion.div 
+                            key={producto.id} 
+                            className={`caja-product-card ${estaSeleccionado ? 'seleccionado' : ''}`}
+                            style={{
+                              border: estaSeleccionado ? '2px solid var(--accent-primary)' : undefined,
+                              background: estaSeleccionado ? 'rgba(59, 130, 246, 0.1)' : undefined
+                            }}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ 
+                              duration: 0.3, 
+                              delay: index * 0.05,
+                              ease: "easeOut"
+                            }}
+                            whileHover={{ 
+                              scale: 1.02,
+                              transition: { duration: 0.2 }
+                            }}
                             whileTap={{ scale: 0.98 }}
+                            onClick={() => handleSeleccionarProducto(producto)}
                           >
                             {estaSeleccionado && (
-                              <div className="producto-seleccionado-badge">
-                                <Check size={16} />
+                              <div style={{
+                                position: 'absolute',
+                                top: '0.25rem',
+                                right: '0.25rem',
+                                background: 'var(--accent-primary)',
+                                borderRadius: '50%',
+                                width: '24px',
+                                height: '24px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                zIndex: 10,
+                                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
+                              }}>
+                                <Check size={14} color="white" />
                               </div>
                             )}
-                            {producto.imagen && (
-                              <div className="producto-imagen-modal-compact">
-                                <OptimizedProductImage
-                                  imagePath={producto.imagen}
-                                  alt={producto.nombre}
+                            <div className="caja-product-content" style={{ padding: '0.35rem', gap: '0.25rem' }}>
+                              <div style={{ width: '100%', height: '60px', borderRadius: '0.4rem', overflow: 'hidden', background: 'var(--bg-tertiary)' }}>
+                                <OptimizedProductImage 
+                                  imagePath={producto.imagen} 
+                                  alt={producto.nombre} 
+                                  className="caja-product-image"
+                                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                 />
                               </div>
-                            )}
-                            <div className="producto-info-modal-compact">
-                              <h4>{producto.nombre}</h4>
-                              <p className="producto-precio-modal-compact">{formatCOP(producto.precio_venta)}</p>
+                              <div className="caja-product-info" style={{ width: '100%' }}>
+                                <p className="caja-product-name" style={{ fontSize: '0.65rem', marginBottom: '0.1rem', lineHeight: '1.2' }}>{producto.nombre}</p>
+                                <p className="caja-product-stock" style={{ fontSize: '0.55rem', marginBottom: '0.1rem' }}>Stock: {producto.stock}</p>
+                              </div>
+                              <span className="caja-product-price" style={{ fontSize: '0.7rem', fontWeight: 600 }}>{formatCOP(producto.precio_venta)}</span>
                             </div>
                           </motion.div>
                         );
                       })}
                     </div>
                     {productosSeleccionados.length > 0 && (
-                      <div className="productos-modal-footer">
-                        <div className="productos-seleccionados-count">
+                      <div className="productos-modal-footer" style={{
+                        padding: '1rem',
+                        borderTop: '1px solid var(--border-primary)',
+                        background: 'var(--bg-card)',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: '1rem'
+                      }}>
+                        <div className="productos-seleccionados-count" style={{
+                          fontSize: '0.875rem',
+                          color: 'var(--text-secondary)',
+                          fontWeight: 500
+                        }}>
                           {productosSeleccionados.length} producto(s) seleccionado(s)
                         </div>
                         <button
                           className="btn-confirmar-seleccion"
                           onClick={handleConfirmarSeleccion}
+                          style={{
+                            padding: '0.625rem 1.25rem',
+                            background: 'var(--accent-primary)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            fontWeight: 600,
+                            fontSize: '0.875rem',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            transition: 'all 0.2s ease'
+                          }}
                         >
                           <Check size={18} />
                           Confirmar Selección

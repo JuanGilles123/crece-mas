@@ -28,6 +28,7 @@ const MiSuscripcion = () => {
     subscription, 
     loading, 
     planName,
+    planPrice,
     checkLimit,
     refreshSubscription,
     isFreePlan,
@@ -193,7 +194,7 @@ const MiSuscripcion = () => {
             {!isVIP && !isFreePlan && (
               <div className="plan-precio">
                 <span className="precio-label">Precio mensual</span>
-                <span className="precio-valor">{formatCurrency(subscription?.plan?.price_monthly || 0)}</span>
+                <span className="precio-valor">{formatCurrency(planPrice || 0)}</span>
               </div>
             )}
           </div>

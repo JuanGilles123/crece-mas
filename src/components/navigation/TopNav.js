@@ -53,10 +53,26 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
           const isMobile = window.innerWidth <= 768;
           
           if (isMobile) {
+            // En móvil, posicionar justo debajo del botón
+            // Asegurar que no se salga de la pantalla
+            const dropdownWidth = 200; // min-width del dropdown
+            const screenWidth = window.innerWidth;
+            let left = rect.left;
+            
+            // Si el dropdown se sale por la derecha, ajustarlo
+            if (left + dropdownWidth > screenWidth - 12) {
+              left = screenWidth - dropdownWidth - 12;
+            }
+            
+            // Si el dropdown se sale por la izquierda, ajustarlo
+            if (left < 12) {
+              left = 12;
+            }
+            
             setDropdownPosition({
               top: rect.bottom + 8,
-              left: 'auto',
-              right: 12
+              left: left,
+              right: 'auto'
             });
           } else {
             setDropdownPosition({
@@ -89,11 +105,26 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
         const isMobile = window.innerWidth <= 768;
         
         if (isMobile) {
-          // En móvil, posicionar desde la derecha
+          // En móvil, posicionar justo debajo del botón
+          // Asegurar que no se salga de la pantalla
+          const dropdownWidth = 200; // min-width del dropdown
+          const screenWidth = window.innerWidth;
+          let left = rect.left;
+          
+          // Si el dropdown se sale por la derecha, ajustarlo
+          if (left + dropdownWidth > screenWidth - 12) {
+            left = screenWidth - dropdownWidth - 12;
+          }
+          
+          // Si el dropdown se sale por la izquierda, ajustarlo
+          if (left < 12) {
+            left = 12;
+          }
+          
           setDropdownPosition({
             top: rect.bottom + 8,
-            left: 'auto',
-            right: 12
+            left: left,
+            right: 'auto'
           });
         } else {
           // En desktop, posicionar fuera del sidebar

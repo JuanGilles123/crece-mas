@@ -2,7 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import { useSubscription } from '../hooks/useSubscription';
 import UpgradePrompt from './UpgradePrompt';
-import LottieLoader from './LottieLoader';
+import LottieLoader from './ui/LottieLoader';
+import { getRequiredPlanForFeature, getFeatureName } from '../constants/subscriptionFeatures';
 
 const FeatureGuard = ({ 
   feature,          // Nombre de la feature a verificar (ej: 'productImages')
@@ -10,10 +11,11 @@ const FeatureGuard = ({
   children,         // Contenido a mostrar si tiene acceso
   fallback,         // Componente personalizado si no tiene acceso
   recommendedPlan = 'professional',  // Plan recomendado para upgrade
-  showInline = true  // Mostrar como inline o como bloqueador total
+  showInline = false  // Mostrar como inline o como modal (por defecto: modal)
 }) => {
   const { hasFeature, canPerformAction, loading } = useSubscription();
   const [canPerform, setCanPerform] = useState(null);
+  const [modalOpen, setModalOpen] = useState(true);
 
   // Verificar acciones asíncronas
   useEffect(() => {
@@ -33,12 +35,23 @@ const FeatureGuard = ({
       return <>{fallback}</>;
     }
 
+    // Obtener el plan requerido para esta feature
+    const requiredPlan = recommendedPlan || getRequiredPlanForFeature(feature);
+    const featureName = getFeatureName(feature);
+    const planName = requiredPlan === 'professional' ? 'Estándar' : requiredPlan === 'enterprise' ? 'Premium' : 'Estándar';
+
+    if (!modalOpen && !showInline) {
+      return null; // Si el modal está cerrado y no es inline, no mostrar nada
+    }
+
     return (
       <UpgradePrompt 
         feature={feature}
-        reason={`Esta función requiere el plan ${recommendedPlan === 'professional' ? 'Profesional' : 'Empresarial'}`}
-        recommendedPlan={recommendedPlan}
+        featureName={featureName}
+        reason={`"${featureName}" está disponible en el plan ${planName}. Actualiza tu plan para acceder a esta función.`}
+        recommendedPlan={requiredPlan}
         inline={showInline}
+        onClose={showInline ? undefined : () => setModalOpen(false)}
       />
     );
   }
@@ -54,11 +67,16 @@ const FeatureGuard = ({
         return <>{fallback}</>;
       }
 
+      if (!modalOpen && !showInline) {
+        return null; // Si el modal está cerrado y no es inline, no mostrar nada
+      }
+
       return (
         <UpgradePrompt 
           reason={canPerform.reason}
           recommendedPlan={recommendedPlan}
           inline={showInline}
+          onClose={showInline ? undefined : () => setModalOpen(false)}
         />
       );
     }

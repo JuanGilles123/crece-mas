@@ -313,7 +313,7 @@
   color: #8B5CF6;
 }
 
-.input-total-real {
+.input-total-contado {
   padding: 1.25rem;
   font-size: 1.5rem;
   font-weight: 700;
@@ -335,7 +335,7 @@
   color: var(--text-secondary);
 }
 
-.sistema-vs-real {
+.sistema-vs-contado {
   font-size: 0.875rem;
   color: #8B5CF6;
   font-weight: 600;
@@ -346,8 +346,8 @@
   display: inline-block;
 }
 
-/* Total real calculado */
-.total-real-calculado {
+/* Total contado calculado */
+.total-contado-calculado {
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -473,7 +473,7 @@
   color: #8B5CF6;
 }
 
-.comparacion-row .real {
+.comparacion-row .contado {
   color: #3B82F6;
 }
 

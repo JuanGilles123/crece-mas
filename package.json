@@ -70,7 +70,10 @@
     "setup-toppings": "bash setup-toppings.sh",
     "setup-storage-policies": "node ejecutar-politicas-storage.js",
     "generar-plantilla-excel": "node scripts/generar-plantilla-excel.js",
-    "generar-iconos-pwa": "node scripts/generar-iconos-pwa.js"
+    "generar-iconos-pwa": "node scripts/generar-iconos-pwa.js",
+    "generar-imagen-planes": "node scripts/generar-imagen-planes.js",
+    "generar-imagen-planes-general": "node scripts/generar-imagen-planes.js general",
+    "generar-imagen-planes-detallada": "node scripts/generar-imagen-planes.js detallada"
   },
   "eslintConfig": {
     "extends": [
@@ -93,6 +96,7 @@
   "devDependencies": {
     "eslint": "^8.57.0",
     "prettier": "^3.2.5",
+    "puppeteer": "^24.36.0",
     "sharp": "^0.34.5"
   },
   "engines": {

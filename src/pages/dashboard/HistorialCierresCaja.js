@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
+import FeatureGuard from '../../components/FeatureGuard';
 import { useCierresCaja } from '../../hooks/useCierresCaja';
 import { 
   Search, 
@@ -116,6 +117,11 @@ Generado por Crece+ 🚀
   }
 
   return (
+    <FeatureGuard
+      feature="closingHistory"
+      recommendedPlan="professional"
+      showInline={false}
+    >
     <div className="historial-cierres-container">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -280,6 +286,7 @@ Generado por Crece+ 🚀
         </div>
       )}
     </div>
+    </FeatureGuard>
   );
 };
 

@@ -233,7 +233,7 @@ export default function ConfiguracionFacturacion() {
       <div className="config-facturacion">
         <UpgradePrompt
           feature="Configuración de Facturación"
-          reason="La personalización de facturas está disponible en el plan Profesional. Actualiza para configurar tu información tributaria, logotipo y mensajes personalizados."
+          reason="La personalización de facturas está disponible en el plan Estándar. Actualiza para configurar tu información tributaria, logotipo y mensajes personalizados."
           currentPlan={planSlug}
           recommendedPlan="professional"
           inline={true}

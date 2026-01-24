@@ -407,18 +407,41 @@ const VariacionesConfig = ({ variaciones = [], onChange, disabled = false }) => 
                         </label>
                         <select
                           value={variacion.tipo}
-                          onChange={(e) => actualizarVariacion(index, 'tipo', e.target.value)}
+                          onChange={(e) => {
+                            actualizarVariacion(index, 'tipo', e.target.value);
+                            // Si cambia a checkbox, quitar seleccion_multiple
+                            if (e.target.value === 'checkbox') {
+                              actualizarVariacion(index, 'seleccion_multiple', false);
+                            }
+                          }}
                           disabled={disabled}
                         >
-                          <option value="select">Selección única (Radio)</option>
+                          <option value="select">Selección (Radio/Checkbox)</option>
                           <option value="checkbox">Sí/No (Checkbox)</option>
                         </select>
                         <p className="variacion-config-hint">
                           {variacion.tipo === 'select'
-                            ? 'El cliente debe elegir una opción de una lista'
+                            ? 'El cliente puede elegir una o varias opciones de una lista'
                             : 'El cliente puede marcar o desmarcar (Sí/No)'}
                         </p>
                       </div>
+
+                      {variacion.tipo === 'select' && (
+                        <div className="variacion-config-field">
+                          <label>
+                            <input
+                              type="checkbox"
+                              checked={variacion.seleccion_multiple === true}
+                              onChange={(e) => actualizarVariacion(index, 'seleccion_multiple', e.target.checked)}
+                              disabled={disabled}
+                            />
+                            <span>Permitir selección múltiple</span>
+                          </label>
+                          <p className="variacion-config-hint">
+                            Si está marcado, el cliente puede seleccionar varias opciones. Si no, solo puede seleccionar una.
+                          </p>
+                        </div>
+                      )}
 
                       <div className="variacion-config-field">
                         <label>

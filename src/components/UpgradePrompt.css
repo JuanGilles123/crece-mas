@@ -23,6 +23,18 @@
   background: rgba(255, 255, 255, 0.2);
   border-radius: 12px;
   backdrop-filter: blur(10px);
+  animation: sparkle 2s ease-in-out infinite;
+}
+
+@keyframes sparkle {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1) rotate(180deg);
+    opacity: 0.8;
+  }
 }
 
 .upgrade-inline-content {
@@ -58,6 +70,15 @@
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.upgrade-inline-button svg:last-child {
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.upgrade-inline-button:hover svg:last-child {
+  opacity: 1;
 }
 
 .upgrade-inline-button:hover {
@@ -129,6 +150,11 @@
   align-items: center;
   justify-content: center;
   color: white;
+  animation: sparkle 2s ease-in-out infinite;
+}
+
+.upgrade-modal-icon svg {
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.5));
 }
 
 .upgrade-modal h2 {
@@ -223,6 +249,15 @@
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn-upgrade-primary svg:last-child {
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+}
+
+.btn-upgrade-primary:hover svg:last-child {
+  opacity: 1;
 }
 
 .btn-upgrade-primary:hover {

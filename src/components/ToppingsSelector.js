@@ -29,7 +29,7 @@ const ToppingItem = ({ topping, seleccionado, onToggle, onChangeCantidad }) => {
     >
       <div className="topping-item-content">
         <div className="topping-item-check">
-          {seleccionado && <Check size={18} />}
+          {seleccionado && <Check size={14} />}
         </div>
         {topping.imagen_url && (
           <div className="topping-item-image">

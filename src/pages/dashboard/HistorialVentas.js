@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
+import { useSubscription } from '../../hooks/useSubscription';
 import { useVentas } from '../../hooks/useVentas';
 import { useCotizaciones } from '../../hooks/useCotizaciones';
 import { useNavigate } from 'react-router-dom';
@@ -27,8 +28,10 @@ import './HistorialVentas.css';
 
 const HistorialVentas = () => {
   const { userProfile, organization } = useAuth();
+  const { getLimit } = useSubscription();
   const navigate = useNavigate();
-  const { data: ventas = [], isLoading, refetch } = useVentas(userProfile?.organization_id, 500);
+  const historyDays = getLimit('historyDays');
+  const { data: ventas = [], isLoading, refetch } = useVentas(userProfile?.organization_id, 500, historyDays);
   const { data: cotizaciones = [] } = useCotizaciones(userProfile?.organization_id);
   
   // Combinar ventas y cotizaciones, ordenar por fecha

@@ -76,7 +76,7 @@ const DashboardLayout = () => {
             icon: History,
             label: "Historial Cierres",
             title: "Historial de Cierres de Caja",
-            visible: hasPermission('sales') || true
+            visible: (hasPermission('sales') || true) && hasFeature('closingHistory')
           },
           {
             to: "/dashboard/clientes",
@@ -106,7 +106,7 @@ const DashboardLayout = () => {
             icon: Utensils,
             label: "Toppings",
             title: "Gestión de Toppings e Ingredientes",
-            visible: organization?.business_type === 'food' && (hasPermission('inventory') || true)
+            visible: organization?.business_type === 'food' && (hasPermission('inventory') || true) && hasFeature('toppings')
           },
           {
             to: "/dashboard/variaciones",
@@ -136,7 +136,7 @@ const DashboardLayout = () => {
             icon: Table,
             label: "Gestión de Mesas",
             title: "Gestionar Mesas y Mapa del Local",
-            visible: (organization?.mesas_habilitadas || organization?.enabled_features?.includes('mesas')) && hasFeature('mesas')
+            visible: (organization?.mesas_habilitadas || organization?.enabled_features?.includes('mesas')) && hasFeature('mesas') && hasFeature('mesas')
           },
           {
             to: "/dashboard/panel-cocina",
@@ -159,7 +159,7 @@ const DashboardLayout = () => {
             icon: TrendingUp,
             label: "Resumen Ventas",
             title: "Resumen de Ventas",
-            visible: hasPermission('reports') || true
+            visible: (hasPermission('reports') || true) && hasFeature('advancedReports')
           },
           {
             to: "/dashboard/analytics",
@@ -169,7 +169,7 @@ const DashboardLayout = () => {
             visible: isSuperAdmin
           }
         ].filter(item => item.visible),
-        visible: (hasPermission('reports') || true) || isSuperAdmin
+        visible: ((hasPermission('reports') || true) && hasFeature('advancedReports')) || isSuperAdmin
       },
       // Grupo: Configuración
       {

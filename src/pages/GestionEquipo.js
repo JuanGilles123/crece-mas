@@ -493,7 +493,7 @@ const GestionEquipo = () => {
       <div className="equipo-container">
         <UpgradePrompt 
           feature="Gestión de Equipo"
-          reason="La gestión de equipo está disponible en el plan Profesional. Actualiza para invitar miembros, asignar roles y gestionar permisos."
+          reason="La gestión de equipo está disponible en el plan Estándar. Actualiza para invitar miembros, asignar roles y gestionar permisos."
           currentPlan={planSlug}
           recommendedPlan="professional"
           inline={true}

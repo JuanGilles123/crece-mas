@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comparativa de Planes - Crece+</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 50px 30px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .header p {
+            font-size: 20px;
+            opacity: 0.95;
+        }
+        
+        .comparison-table {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 25px 70px rgba(0,0,0,0.3);
+        }
+        
+        .table-header {
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            color: white;
+            padding: 30px;
+        }
+        
+        .table-header-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        .feature-column {
+            font-size: 18px;
+            font-weight: 700;
+        }
+        
+        .plan-header {
+            text-align: center;
+        }
+        
+        .plan-name {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        
+        .plan-price {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .plan-price-yearly {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+        
+        .plan-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 5px;
+        }
+        
+        .plan-badge.popular {
+            background: #FBBF24;
+            color: #1e3a8a;
+        }
+        
+        .plan-badge.recommended {
+            background: #10B981;
+            color: white;
+        }
+        
+        .table-body {
+            padding: 0;
+        }
+        
+        .feature-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 20px;
+            padding: 20px 30px;
+            border-bottom: 1px solid #f0f0f0;
+            align-items: center;
+            transition: background 0.2s;
+        }
+        
+        .feature-row:hover {
+            background: #f9fafb;
+        }
+        
+        .feature-row:last-child {
+            border-bottom: none;
+        }
+        
+        .feature-category {
+            background: #f3f4f6;
+            font-weight: 700;
+            color: #1a1a1a;
+            font-size: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .feature-name {
+            font-size: 16px;
+            color: #374151;
+            font-weight: 500;
+        }
+        
+        .feature-value {
+            text-align: center;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .check {
+            color: #10B981;
+            font-size: 28px;
+            font-weight: 700;
+        }
+        
+        .cross {
+            color: #EF4444;
+            font-size: 28px;
+            font-weight: 700;
+        }
+        
+        .limit {
+            color: #F59E0B;
+            font-size: 15px;
+        }
+        
+        .unlimited {
+            color: #10B981;
+            font-size: 15px;
+            font-weight: 600;
+        }
+        
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 40px;
+            font-size: 16px;
+            opacity: 0.95;
+            line-height: 1.8;
+        }
+        
+        .view-detail-link {
+            text-align: center;
+            margin-top: 30px;
+            color: white;
+            font-size: 18px;
+        }
+        
+        .view-detail-link a {
+            color: white;
+            text-decoration: underline;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Comparativa de Planes</h1>
+            <p>Elige el plan perfecto para tu negocio</p>
+        </div>
+        
+        <div class="comparison-table">
+            <div class="table-header">
+                <div class="table-header-row">
+                    <div class="feature-column">Funcionalidades</div>
+                    <div class="plan-header">
+                        <div class="plan-name">Gratis</div>
+                        <div class="plan-price">$0</div>
+                        <div class="plan-price-yearly">COP / mes</div>
+                    </div>
+                    <div class="plan-header">
+                        <div class="plan-name">Estándar ⭐</div>
+                        <div class="plan-price">$69,900</div>
+                        <div class="plan-price-yearly">COP / mes</div>
+                        <div class="plan-price-yearly">$699,000/año</div>
+                        <div class="plan-badge popular">MÁS POPULAR</div>
+                    </div>
+                    <div class="plan-header">
+                        <div class="plan-name">Premium 🚀</div>
+                        <div class="plan-price">$119,900</div>
+                        <div class="plan-price-yearly">COP / mes</div>
+                        <div class="plan-price-yearly">$1,199,000/año</div>
+                        <div class="plan-badge recommended">MÁS RECOMENDADO</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="table-body">
+                <!-- CAPACIDAD -->
+                <div class="feature-row feature-category">
+                    <div>CAPACIDAD</div>
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                </div>
+                
+                <div class="feature-row">
+                    <div class="feature-name">Usuarios</div>
+                    <div class="feature-value limit">1</div>
+                    <div class="feature-value limit">10</div>
+                    <div class="feature-value unlimited">Ilimitados</div>
+                </div>
+                
+                <div class="feature-row">
+                    <div class="feature-name">Organizaciones / Sucursales</div>
+                    <div class="feature-value limit">1</div>
+                    <div class="feature-value limit">1</div>
+                    <div class="feature-value limit">5</div>
+                </div>
+                
+                <div class="feature-row">
+                    <div class="feature-name">Productos</div>
+                    <div class="feature-value limit">20</div>
+                    <div class="feature-value unlimited">Ilimitados</div>
+                    <div class="feature-value unlimited">Ilimitados</div>
+                </div>
+                
+                <div class="feature-row">
+                    <div class="feature-name">Ventas por mes</div>
+                    <div class="feature-value limit">50</div>
+                    <div class="feature-value unlimited">Ilimitadas</div>
+                    <div class="feature-value unlimited">Ilimitadas</div>
+                </div>
+                
+                <div class="feature-row">
+                    <div class="feature-name">Historial de ventas</div>
+                    <div class="feature-value limit">7 días</div>
+                    <div class="feature-value unlimited">Ilimitado</div>
+                    <div class="feature-value unlimited">Ilimitado</div>
+                </div>
+                
+                <!-- FUNCIONALIDADES PRINCIPALES -->
+                <div class="feature-row feature-category">
+                    <div>FUNCIONALIDADES PRINCIPALES</div>
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                </div>
+                
+                <div class="feature-row">
+                    <div class="feature-name">Gestión completa de inventario</div>
+                    <div class="feature-value check">✓</div>
+                    <div class="feature-value check">✓</div>
+                    <div class="feature-value check">✓</div>
+                </div>
+                
+                <div class="feature-row">
+                    <div class="feature-name">Imágenes de productos</div>
+                    <div class="feature-value cross">✗</div>
+                    <div class="feature-value unlimited">Ilimitadas</div>
+                    <div class="feature-value unlimited">Ilimitadas</div>
+                </div>
+                
+                <div class="feature-row">
+                    <div class="feature-name">Importar / Exportar datos</div>
+                    <div class="feature-value cross">✗</div>
+                    <div class="feature-value check">✓</div>
+                    <div class="feature-value check">✓</div>
+                </div>
+                
+                <div class="feature-row">
+                    <div class="feature-name">Venta rápida y caja registradora</div>
+                    <div class="feature-value check">✓</div>
+                    <div class="feature-value check">✓</div>
+                    <div class="feature-value check">✓</div>
+                </div>
+                
+                <div class="feature-row">
+                    <div class="feature-name">Métodos de pago</div>
+                    <div class="feature-value limit">Solo Efectivo</div>
+                    <div class="feature-value check">✓ Todos</div>
+                    <div class="feature-value check">✓ Todos</div>
+                </div>
+                
+                <div class="feature-row">
+                    <div class="feature-name">Descuentos y cotizaciones</div>
+                    <div class="feature-value cross">✗</div>
+                    <div class="feature-value check">✓</div>
+                    <div class="feature-value check">✓</div>
+                </div>
+                
+                <div class="feature-row">
+                    <div class="feature-name">Sistema de mesas y pedidos (restaurantes)</div>
+                    <div class="feature-value cross">✗</div>
+                    <div class="feature-value check">✓</div>
+                    <div class="feature-value check">✓</div>
+                </div>
+                
+                <div class="feature-row">
+                    <div class="feature-name">Gestión de clientes</div>
+                    <div class="feature-value cross">✗</div>
+                    <div class="feature-value check">✓</div>
+                    <div class="feature-value check">✓</div>
+                </div>
+                
+                <div class="feature-row">
+                    <div class="feature-name">Reportes avanzados con gráficos</div>
+                    <div class="feature-value cross">✗</div>
+                    <div class="feature-value check">✓</div>
+                    <div class="feature-value check">✓</div>
+                </div>
+                
+                <div class="feature-row">
+                    <div class="feature-name">Gestión de equipo y roles</div>
+                    <div class="feature-value cross">✗</div>
+                    <div class="feature-value check">✓</div>
+                    <div class="feature-value check">✓</div>
+                </div>
+                
+                <!-- FUNCIONALIDADES EMPRESARIALES -->
+                <div class="feature-row feature-category">
+                    <div>FUNCIONALIDADES EMPRESARIALES</div>
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                </div>
+                
+                <div class="feature-row">
+                    <div class="feature-name">Multi-organización (múltiples sucursales)</div>
+                    <div class="feature-value cross">✗</div>
+                    <div class="feature-value cross">✗</div>
+                    <div class="feature-value check">✓</div>
+                </div>
+                
+                <div class="feature-row">
+                    <div class="feature-name">API de integración</div>
+                    <div class="feature-value cross">✗</div>
+                    <div class="feature-value cross">✗</div>
+                    <div class="feature-value check">✓</div>
+                </div>
+                
+                <div class="feature-row">
+                    <div class="feature-name">Branding personalizado</div>
+                    <div class="feature-value cross">✗</div>
+                    <div class="feature-value cross">✗</div>
+                    <div class="feature-value check">✓</div>
+                </div>
+                
+                <div class="feature-row">
+                    <div class="feature-name">Módulo de proveedores</div>
+                    <div class="feature-value cross">✗</div>
+                    <div class="feature-value cross">✗</div>
+                    <div class="feature-value check">✓</div>
+                </div>
+                
+                <!-- SOPORTE -->
+                <div class="feature-row feature-category">
+                    <div>SOPORTE</div>
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                </div>
+                
+                <div class="feature-row">
+                    <div class="feature-name">Soporte por WhatsApp / Email</div>
+                    <div class="feature-value limit">Básico</div>
+                    <div class="feature-value check">✓ Prioritario</div>
+                    <div class="feature-value check">✓ 24/7 Prioritario</div>
+                </div>
+                
+                <div class="feature-row">
+                    <div class="feature-name">Tiempo de respuesta</div>
+                    <div class="feature-value limit">48-72 horas</div>
+                    <div class="feature-value limit">24 horas</div>
+                    <div class="feature-value limit">2 horas</div>
+                </div>
+                
+                <div class="feature-row">
+                    <div class="feature-name">Onboarding y Account Manager</div>
+                    <div class="feature-value cross">✗</div>
+                    <div class="feature-value cross">✗</div>
+                    <div class="feature-value check">✓</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>💡 Todos los planes incluyen actualizaciones gratuitas</p>
+            <p>📱 Apps móviles nativas disponibles próximamente para todos los planes de pago</p>
+            <div class="view-detail-link">
+                <p>👉 <a href="comparativa-planes-detallada.html">Ver comparativa detallada con todas las funciones</a></p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

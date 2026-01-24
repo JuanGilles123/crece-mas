@@ -23,13 +23,18 @@ const VariacionesSelector = ({
     if (open && variaciones.length > 0) {
       const iniciales = {};
       variaciones.forEach(variacion => {
+        const variacionKey = variacion.id || variacion.nombre;
         // Si es checkbox y no es requerido, por defecto "no"
         if (variacion.tipo === 'checkbox' && !variacion.requerido) {
-          iniciales[variacion.id] = 'no';
+          iniciales[variacionKey] = 'no';
         }
-        // Si es select y tiene opción por defecto, usarla
-        if (variacion.tipo === 'select' && variacion.opcion_default) {
-          iniciales[variacion.id] = variacion.opcion_default;
+        // Si es select con selección múltiple, inicializar como array vacío
+        if (variacion.tipo === 'select' && variacion.seleccion_multiple) {
+          iniciales[variacionKey] = [];
+        }
+        // Si es select sin selección múltiple y tiene opción por defecto, usarla
+        else if (variacion.tipo === 'select' && !variacion.seleccion_multiple && variacion.opcion_default) {
+          iniciales[variacionKey] = variacion.opcion_default;
         }
       });
       setSelecciones(iniciales);
@@ -38,11 +43,32 @@ const VariacionesSelector = ({
     }
   }, [open, variaciones]);
 
-  const handleSelectChange = (variacionId, valor) => {
-    setSelecciones(prev => ({
-      ...prev,
-      [variacionId]: valor
-    }));
+  const handleSelectChange = (variacionId, valor, esMultiple = false) => {
+    if (esMultiple) {
+      setSelecciones(prev => {
+        const seleccionActual = prev[variacionId] || [];
+        const nuevaSeleccion = Array.isArray(seleccionActual) ? [...seleccionActual] : [];
+        const indice = nuevaSeleccion.indexOf(valor);
+        
+        if (indice >= 0) {
+          // Si ya está seleccionado, quitarlo
+          nuevaSeleccion.splice(indice, 1);
+        } else {
+          // Si no está seleccionado, agregarlo
+          nuevaSeleccion.push(valor);
+        }
+        
+        return {
+          ...prev,
+          [variacionId]: nuevaSeleccion
+        };
+      });
+    } else {
+      setSelecciones(prev => ({
+        ...prev,
+        [variacionId]: valor
+      }));
+    }
   };
 
   const handleCheckboxChange = (variacionId, checked) => {
@@ -61,8 +87,14 @@ const VariacionesSelector = ({
         const seleccion = selecciones[variacionKey];
         // Para checkbox, "no" cuenta como no seleccionado si es requerido
         if (v.tipo === 'checkbox' && seleccion === 'no') return true;
-        // Para select, debe tener un valor
-        if (v.tipo === 'select' && !seleccion) return true;
+        // Para select con selección múltiple, debe tener al menos un valor
+        if (v.tipo === 'select' && v.seleccion_multiple) {
+          if (!Array.isArray(seleccion) || seleccion.length === 0) return true;
+        }
+        // Para select sin selección múltiple, debe tener un valor
+        else if (v.tipo === 'select' && !v.seleccion_multiple && !seleccion) {
+          return true;
+        }
         return false;
       })
       .map(v => v.nombre);
@@ -126,7 +158,14 @@ const VariacionesSelector = ({
                     {variacion.opciones?.map((opcion) => {
                       const valor = typeof opcion === 'string' ? opcion : opcion.valor;
                       const label = typeof opcion === 'string' ? opcion : opcion.label;
-                      const isSelected = selecciones[variacion.id || variacion.nombre] === valor;
+                      const variacionKey = variacion.id || variacion.nombre;
+                      const esMultiple = variacion.seleccion_multiple === true;
+                      const seleccionActual = selecciones[variacionKey];
+                      
+                      // Determinar si está seleccionado
+                      const isSelected = esMultiple
+                        ? (Array.isArray(seleccionActual) && seleccionActual.includes(valor))
+                        : (seleccionActual === valor);
 
                       return (
                         <label
@@ -134,15 +173,15 @@ const VariacionesSelector = ({
                           className={`variacion-option ${isSelected ? 'selected' : ''}`}
                         >
                           <input
-                            type="radio"
-                            name={variacion.id || variacion.nombre}
+                            type={esMultiple ? "checkbox" : "radio"}
+                            name={variacionKey}
                             value={valor}
                             checked={isSelected}
-                            onChange={() => handleSelectChange(variacion.id || variacion.nombre, valor)}
+                            onChange={() => handleSelectChange(variacionKey, valor, esMultiple)}
                           />
                           <span className="variacion-option-label">{label}</span>
                           {isSelected && (
-                            <Check size={16} className="variacion-option-check" />
+                            <Check size={14} className="variacion-option-check" />
                           )}
                         </label>
                       );

@@ -1,6 +1,6 @@
 // 🎯 Hook para gestionar suscripciones y verificar límites
 import { useAuth } from '../context/AuthContext';
-import { PLAN_FEATURES } from '../constants/subscriptionFeatures';
+import { PLAN_FEATURES, PLAN_NAMES, PLAN_PRICES } from '../constants/subscriptionFeatures';
 import { hasBypassAccess } from '../constants/vipUsers';
 import { supabase } from '../services/api/supabaseClient';
 import { useState, useEffect, useCallback } from 'react';
@@ -305,7 +305,7 @@ export const useSubscription = () => {
         return {
           allowed,
           reason: !allowed 
-            ? 'La gestión de equipo requiere el plan Profesional o superior' 
+            ? 'La gestión de equipo requiere el plan Estándar o superior' 
             : null
         };
       }
@@ -315,7 +315,7 @@ export const useSubscription = () => {
         return {
           allowed,
           reason: !allowed 
-            ? 'Los reportes avanzados requieren el plan Profesional o superior' 
+            ? 'Los reportes avanzados requieren el plan Estándar o superior' 
             : null
         };
       }
@@ -325,7 +325,7 @@ export const useSubscription = () => {
         return {
           allowed,
           reason: !allowed 
-            ? 'La gestión multi-sucursal requiere el plan Empresarial' 
+            ? 'La gestión multi-sucursal requiere el plan Premium' 
             : null
         };
       }
@@ -353,7 +353,8 @@ export const useSubscription = () => {
     
     // Helpers de plan
     planSlug: getPlanSlug(),
-    planName: subscription?.plan?.name || 'Gratis',
+    planName: PLAN_NAMES[getPlanSlug()] || 'Gratis', // Usar constantes en lugar de BD
+    planPrice: PLAN_PRICES[getPlanSlug()]?.monthly || 0, // Usar constantes en lugar de BD
     planFeatures: getPlanFeatures(),
     
     // Funciones de verificación

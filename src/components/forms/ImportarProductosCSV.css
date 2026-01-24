@@ -188,6 +188,65 @@
   margin-bottom: 1rem;
 }
 
+.importar-csv-inconsistencias {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.importar-csv-inconsistencias h3 {
+  margin: 0 0 0.5rem 0;
+  color: #856404;
+  font-size: 1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.importar-csv-inconsistencias > p {
+  margin: 0 0 1rem 0;
+  color: #856404;
+  font-size: 0.9rem;
+}
+
+.importar-csv-inconsistencias-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.importar-csv-inconsistencia-item {
+  background: white;
+  border: 1px solid #ffc107;
+  border-radius: 6px;
+  padding: 0.75rem;
+}
+
+.importar-csv-inconsistencia-header {
+  font-weight: 600;
+  color: #856404;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.importar-csv-inconsistencia-problemas {
+  margin: 0;
+  padding-left: 1.25rem;
+  list-style: none;
+}
+
+.importar-csv-inconsistencia-problemas li {
+  color: #856404;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin-bottom: 0.25rem;
+}
+
 .importar-csv-resultado {
   background: var(--bg-success);
   border: 1px solid var(--accent-success);

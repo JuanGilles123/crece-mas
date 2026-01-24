@@ -5,6 +5,7 @@ import { X, Plus, Circle, Grid, List, Square, Circle as CircleIcon, Edit2, Trash
 import { useMesas, useCrearMesa, useActualizarMesa, useEliminarMesa } from '../hooks/useMesas';
 import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
+import FeatureGuard from './FeatureGuard';
 import { canUseMesas, getMesaEstadoColor } from '../utils/mesasUtils';
 import VistaPlanta from './VistaPlanta';
 import toast from 'react-hot-toast';
@@ -313,6 +314,11 @@ const GestionMesas = () => {
   };
 
   return (
+    <FeatureGuard
+      feature="mesas"
+      recommendedPlan="professional"
+      showInline={false}
+    >
     <div className="gestion-mesas">
       <div className="mesas-header">
         <div className="mesas-header-content">
@@ -518,6 +524,7 @@ const GestionMesas = () => {
         )}
       </AnimatePresence>
     </div>
+    </FeatureGuard>
   );
 };
 
