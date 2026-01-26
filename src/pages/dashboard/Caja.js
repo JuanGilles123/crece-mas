@@ -642,8 +642,54 @@ export default function Caja({
     return productos.filter((p) => {
       // Buscar por nombre
       if (p.nombre?.toLowerCase().includes(q)) return true;
+      
       // Buscar por código de barras (parcial)
       if (p.codigo?.toLowerCase().includes(q)) return true;
+      
+      // Buscar por tipo de producto
+      if (p.tipo?.toLowerCase().includes(q)) return true;
+      
+      // Buscar en metadata (campos adicionales)
+      if (p.metadata) {
+        const metadata = typeof p.metadata === 'string' ? JSON.parse(p.metadata) : p.metadata;
+        
+        // Buscar en marca
+        if (metadata.marca?.toLowerCase().includes(q)) return true;
+        
+        // Buscar en modelo
+        if (metadata.modelo?.toLowerCase().includes(q)) return true;
+        
+        // Buscar en color
+        if (metadata.color?.toLowerCase().includes(q)) return true;
+        
+        // Buscar en talla
+        if (metadata.talla?.toLowerCase().includes(q)) return true;
+        
+        // Buscar en categoría
+        if (metadata.categoria?.toLowerCase().includes(q)) return true;
+        
+        // Buscar en descripción
+        if (metadata.descripcion?.toLowerCase().includes(q)) return true;
+        
+        // Buscar en ingredientes
+        if (metadata.ingredientes?.toLowerCase().includes(q)) return true;
+        
+        // Buscar en alérgenos
+        if (metadata.alergenos?.toLowerCase().includes(q)) return true;
+        
+        // Buscar en material
+        if (metadata.material?.toLowerCase().includes(q)) return true;
+        
+        // Buscar en duración (para servicios)
+        if (metadata.duracion?.toLowerCase().includes(q)) return true;
+        
+        // Buscar en peso (convertir a string)
+        if (metadata.peso?.toString().includes(q)) return true;
+        
+        // Buscar en dimensiones
+        if (metadata.dimensiones?.toLowerCase().includes(q)) return true;
+      }
+      
       return false;
     });
   }, [query, productos]);
