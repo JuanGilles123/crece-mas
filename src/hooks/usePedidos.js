@@ -131,50 +131,80 @@ export const useCrearPedido = () => {
         throw new Error(pedidoError.message || 'Error al crear pedido');
       }
 
+      // Validar que todos los productos existan antes de crear items
+      const productoIds = items.map(item => item.producto_id).filter(id => id != null);
+      if (productoIds.length > 0) {
+        const { data: productosExistentes, error: productosError } = await supabase
+          .from('productos')
+          .select('id')
+          .in('id', productoIds);
+        
+        if (productosError) {
+          await supabase.from('pedidos').delete().eq('id', pedidoResult.id);
+          throw new Error('Error al validar productos: ' + productosError.message);
+        }
+        
+        const idsExistentes = new Set(productosExistentes?.map(p => p.id) || []);
+        const productosNoEncontrados = productoIds.filter(id => !idsExistentes.has(id));
+        
+        if (productosNoEncontrados.length > 0) {
+          await supabase.from('pedidos').delete().eq('id', pedidoResult.id);
+          throw new Error(`Los siguientes productos no existen o fueron eliminados: ${productosNoEncontrados.join(', ')}`);
+        }
+      }
+      
       // Crear items del pedido - limpiar datos para evitar errores de serialización
-      const itemsData = items.map(item => {
-        // Limpiar toppings: solo incluir propiedades serializables
-        const toppingsLimpios = (item.toppings || []).map(t => {
-          if (typeof t === 'object' && t !== null) {
-            return {
-              id: t.id,
-              nombre: t.nombre,
-              precio: t.precio,
-            };
-          }
-          return t;
-        });
-        
-        // Limpiar variaciones: solo incluir valores primitivos
-        const variacionesLimpias = {};
-        const variaciones = item.variaciones || item.variaciones_seleccionadas;
-        if (variaciones && typeof variaciones === 'object' && Object.keys(variaciones).length > 0) {
-          Object.keys(variaciones).forEach(key => {
-            const value = variaciones[key];
-            // Solo incluir valores primitivos (string, number, boolean)
-            if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-              variacionesLimpias[key] = value;
+      const itemsData = items
+        .filter(item => item.producto_id != null) // Filtrar items sin producto_id válido
+        .map(item => {
+          // Limpiar toppings: solo incluir propiedades serializables
+          const toppingsLimpios = (item.toppings || []).map(t => {
+            if (typeof t === 'object' && t !== null) {
+              return {
+                id: t.id,
+                nombre: t.nombre,
+                precio: t.precio,
+              };
             }
+            return t;
           });
-        }
-        
-        const itemData = {
-          pedido_id: pedidoResult.id,
-          producto_id: item.producto_id,
-          cantidad: item.cantidad,
-          precio_unitario: item.precio_unitario,
-          precio_total: item.precio_total,
-          toppings: toppingsLimpios,
-          notas_item: item.notas || null
-        };
-        
-        // Solo incluir variaciones_seleccionadas si hay variaciones limpias
-        if (Object.keys(variacionesLimpias).length > 0) {
-          itemData.variaciones_seleccionadas = variacionesLimpias;
-        }
-        
-        return itemData;
-      });
+          
+          // Limpiar variaciones: solo incluir valores primitivos
+          const variacionesLimpias = {};
+          const variaciones = item.variaciones || item.variaciones_seleccionadas;
+          if (variaciones && typeof variaciones === 'object' && Object.keys(variaciones).length > 0) {
+            Object.keys(variaciones).forEach(key => {
+              const value = variaciones[key];
+              // Solo incluir valores primitivos (string, number, boolean)
+              if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+                variacionesLimpias[key] = value;
+              }
+            });
+          }
+          
+          const itemData = {
+            pedido_id: pedidoResult.id,
+            producto_id: item.producto_id,
+            cantidad: item.cantidad,
+            precio_unitario: item.precio_unitario,
+            precio_total: item.precio_total,
+            toppings: toppingsLimpios,
+            notas_item: item.notas || null
+          };
+          
+          // Solo incluir variaciones_seleccionadas si hay variaciones limpias
+          if (Object.keys(variacionesLimpias).length > 0) {
+            itemData.variaciones_seleccionadas = variacionesLimpias;
+          }
+          
+          return itemData;
+        });
+      
+      // Validar que haya al menos un item válido
+      if (itemsData.length === 0) {
+        await supabase.from('pedidos').delete().eq('id', pedidoResult.id);
+        throw new Error('No hay items válidos para crear el pedido');
+      }
 
       const { error: itemsError } = await supabase
         .from('pedido_items')
@@ -186,6 +216,13 @@ export const useCrearPedido = () => {
           // Eliminar pedido si falla la creación de items
           await supabase.from('pedidos').delete().eq('id', pedidoResult.id);
           throw new Error('La columna variaciones_seleccionadas no existe en la base de datos. Por favor ejecuta el script SQL: docs/ADD_VARIACIONES_TO_PEDIDO_ITEMS.sql en Supabase');
+        }
+        
+        // Si el error es de foreign key constraint (producto_id)
+        if (itemsError.message && (itemsError.message.includes('foreign key constraint') || itemsError.message.includes('producto_id_fkey'))) {
+          // Eliminar pedido si falla la creación de items
+          await supabase.from('pedidos').delete().eq('id', pedidoResult.id);
+          throw new Error('Uno o más productos no existen o fueron eliminados. Por favor, verifica que todos los productos del pedido estén disponibles.');
         }
         
         // Eliminar pedido si falla la creación de items
