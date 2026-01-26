@@ -2,15 +2,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, X, Trash2, Edit2, Save, Link as LinkIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useVariaciones } from '../hooks/useVariaciones';
+import { useVariaciones, useCrearVariacion, useActualizarVariacion } from '../hooks/useVariaciones';
 import { useAuth } from '../context/AuthContext';
+import toast from 'react-hot-toast';
 import './VariacionesConfig.css';
 
 const VariacionesConfig = ({ variaciones = [], onChange, disabled = false }) => {
   const { organization } = useAuth();
-  const { data: variacionesDisponibles = [] } = useVariaciones(organization?.id);
+  const { data: variacionesDisponibles = [], refetch: refetchVariaciones } = useVariaciones(organization?.id);
+  const crearVariacion = useCrearVariacion();
+  const actualizarVariacion = useActualizarVariacion();
   const [variacionesList, setVariacionesList] = useState([]);
-  const [variacionesVinculadas, setVariacionesVinculadas] = useState([]);
+  const [variacionesVinculadas, setVariacionesVinculadas] = useState([]); // Ahora guarda objetos: { id, opciones_seleccionadas: null | array, max_selecciones: null | number, seleccion_multiple: null | boolean, requerido: null | boolean }
+  const [configurandoOpciones, setConfigurandoOpciones] = useState(null); // ID de la variación que se está configurando
   const [editingIndex, setEditingIndex] = useState(null);
   const [mostrandoSelector, setMostrandoSelector] = useState(false);
   const inicializadoRef = useRef(false);
@@ -53,7 +57,14 @@ const VariacionesConfig = ({ variaciones = [], onChange, disabled = false }) => 
         const vinculadas = variaciones.filter(v => v.id && variacionesDisponibles.some(vd => vd.id === v.id));
         const locales = variaciones.filter(v => !v.id || !variacionesDisponibles.some(vd => vd.id === v.id));
         
-        setVariacionesVinculadas(vinculadas.map(v => v.id));
+        // Convertir variaciones vinculadas al nuevo formato: { id, opciones_seleccionadas, max_selecciones, seleccion_multiple, requerido }
+        setVariacionesVinculadas(vinculadas.map(v => ({
+          id: v.id,
+          opciones_seleccionadas: v.opciones_seleccionadas || null, // null = todas las opciones
+          max_selecciones: v.max_selecciones !== undefined ? v.max_selecciones : null, // null = usar el de la variación global
+          seleccion_multiple: v.seleccion_multiple !== undefined ? v.seleccion_multiple : null, // null = usar el de la variación global
+          requerido: v.requerido !== undefined ? v.requerido : null // null = usar el de la variación global
+        })));
         setVariacionesList(locales);
       } else {
         setVariacionesList([]);
@@ -101,12 +112,22 @@ const VariacionesConfig = ({ variaciones = [], onChange, disabled = false }) => 
     return true;
   };
   
-  // Función helper para comparar arrays de IDs
-  const idsEqual = (a, b) => {
+  // Función helper para comparar arrays de objetos de variaciones vinculadas
+  const vinculadasEqual = (a, b) => {
     if (a.length !== b.length) return false;
-    const sortedA = [...a].sort();
-    const sortedB = [...b].sort();
-    return sortedA.every((id, index) => id === sortedB[index]);
+    const sortedA = [...a].sort((x, y) => x.id.localeCompare(y.id));
+    const sortedB = [...b].sort((x, y) => x.id.localeCompare(y.id));
+    return sortedA.every((item, index) => {
+      const other = sortedB[index];
+      if (item.id !== other.id) return false;
+      // Comparar opciones_seleccionadas
+      if (item.opciones_seleccionadas === null && other.opciones_seleccionadas === null) return true;
+      if (item.opciones_seleccionadas === null || other.opciones_seleccionadas === null) return false;
+      if (item.opciones_seleccionadas.length !== other.opciones_seleccionadas.length) return false;
+      const sortedOpcionesA = [...item.opciones_seleccionadas].sort();
+      const sortedOpcionesB = [...other.opciones_seleccionadas].sort();
+      return sortedOpcionesA.every((op, i) => op === sortedOpcionesB[i]);
+    });
   };
   
   useEffect(() => {
@@ -114,19 +135,54 @@ const VariacionesConfig = ({ variaciones = [], onChange, disabled = false }) => 
     
     // Comparar con valores anteriores para evitar notificaciones innecesarias
     const listChanged = !arraysEqual(variacionesList, prevVariacionesListRef.current);
-    const vinculadasChanged = !idsEqual(variacionesVinculadas, prevVariacionesVinculadasRef.current);
+    const vinculadasChanged = !vinculadasEqual(variacionesVinculadas, prevVariacionesVinculadasRef.current);
     
     if (listChanged || vinculadasChanged) {
-      // Para variaciones vinculadas, solo guardar el objeto completo (se usará en el selector)
-      // Para variaciones locales, guardar como están
+      // Para variaciones vinculadas, crear objetos con la configuración completa
       const todas = [
-        ...variacionesDisponibles.filter(v => variacionesVinculadas.includes(v.id)),
+        ...variacionesDisponibles
+          .filter(v => variacionesVinculadas.some(vv => (typeof vv === 'object' ? vv.id : vv) === v.id))
+          .map(v => {
+            const config = variacionesVinculadas.find(vv => (typeof vv === 'object' ? vv.id : vv) === v.id);
+            const resultado = { ...v };
+            
+            // Si hay opciones_seleccionadas, filtrar las opciones
+            if (config && config.opciones_seleccionadas && Array.isArray(config.opciones_seleccionadas)) {
+              resultado.opciones = v.opciones ? v.opciones.filter(op => {
+                const valor = typeof op === 'string' ? op : op.valor;
+                return config.opciones_seleccionadas.includes(valor);
+              }) : [];
+              resultado.opciones_seleccionadas = config.opciones_seleccionadas;
+            } else {
+              resultado.opciones_seleccionadas = null;
+            }
+            
+            // Si hay max_selecciones configurado para este producto, usarlo; si no, usar el de la variación global
+            if (config && config.max_selecciones !== undefined && config.max_selecciones !== null) {
+              resultado.max_selecciones = config.max_selecciones;
+            }
+            // Si no hay max_selecciones en la config, se mantiene el de la variación global (v.max_selecciones)
+            
+            // Si hay seleccion_multiple configurado para este producto, usarlo; si no, usar el de la variación global
+            if (config && config.seleccion_multiple !== undefined && config.seleccion_multiple !== null) {
+              resultado.seleccion_multiple = config.seleccion_multiple;
+            }
+            // Si no hay seleccion_multiple en la config, se mantiene el de la variación global (v.seleccion_multiple)
+            
+            // Si hay requerido configurado para este producto, usarlo; si no, usar el de la variación global
+            if (config && config.requerido !== undefined && config.requerido !== null) {
+              resultado.requerido = config.requerido;
+            }
+            // Si no hay requerido en la config, se mantiene el de la variación global (v.requerido)
+            
+            return resultado;
+          }),
         ...variacionesList
       ];
       
       // Actualizar referencias antes de llamar onChange (crear copias para evitar mutaciones)
       prevVariacionesListRef.current = variacionesList.map(v => ({ ...v }));
-      prevVariacionesVinculadasRef.current = [...variacionesVinculadas];
+      prevVariacionesVinculadasRef.current = variacionesVinculadas.map(v => ({ ...v }));
       
       onChange(todas);
     }
@@ -153,7 +209,7 @@ const VariacionesConfig = ({ variaciones = [], onChange, disabled = false }) => 
     }
   };
 
-  const actualizarVariacion = (index, campo, valor) => {
+  const actualizarVariacionLocal = (index, campo, valor) => {
     const actualizadas = [...variacionesList];
     actualizadas[index] = {
       ...actualizadas[index],
@@ -267,7 +323,8 @@ const VariacionesConfig = ({ variaciones = [], onChange, disabled = false }) => 
                 <p>No hay variaciones disponibles. Crea algunas en el módulo de Gestión de Variaciones.</p>
               ) : (
                 variacionesDisponibles.map((variacion) => {
-                  const isChecked = variacionesVinculadas.includes(variacion.id);
+                  const vinculada = variacionesVinculadas.find(vv => typeof vv === 'object' ? vv.id === variacion.id : vv === variacion.id);
+                  const isChecked = !!vinculada;
                   return (
                     <label
                       key={variacion.id}
@@ -279,9 +336,15 @@ const VariacionesConfig = ({ variaciones = [], onChange, disabled = false }) => 
                         onChange={(e) => {
                           e.stopPropagation();
                           if (e.target.checked) {
-                            setVariacionesVinculadas([...variacionesVinculadas, variacion.id]);
+                            // Si ya existe en formato antiguo (string), convertir
+                            const nuevas = variacionesVinculadas.filter(vv => 
+                              typeof vv === 'object' ? vv.id !== variacion.id : vv !== variacion.id
+                            );
+                            setVariacionesVinculadas([...nuevas, { id: variacion.id, opciones_seleccionadas: null, max_selecciones: null, seleccion_multiple: null, requerido: null }]);
                           } else {
-                            setVariacionesVinculadas(variacionesVinculadas.filter(id => id !== variacion.id));
+                            setVariacionesVinculadas(variacionesVinculadas.filter(vv => 
+                              typeof vv === 'object' ? vv.id !== variacion.id : vv !== variacion.id
+                            ));
                           }
                         }}
                       />
@@ -291,6 +354,9 @@ const VariacionesConfig = ({ variaciones = [], onChange, disabled = false }) => 
                           <span className={`variacion-badge-mini tipo-${variacion.tipo}`}>
                             {variacion.tipo === 'select' ? 'Selección' : 'Sí/No'}
                           </span>
+                          {variacion.seleccion_multiple && (
+                            <span className="variacion-badge-mini multiple">Múltiple</span>
+                          )}
                           {variacion.requerido && (
                             <span className="variacion-badge-mini requerido">Requerido</span>
                           )}
@@ -319,31 +385,207 @@ const VariacionesConfig = ({ variaciones = [], onChange, disabled = false }) => 
           <h5>Variaciones Vinculadas</h5>
           <div className="variaciones-vinculadas-list">
             {variacionesDisponibles
-              .filter(v => variacionesVinculadas.includes(v.id))
-              .map((variacion) => (
-                <div key={variacion.id} className="variacion-vinculada-item">
-                  <div className="variacion-vinculada-info">
-                    <span className="variacion-vinculada-nombre">{variacion.nombre}</span>
-                    <div className="variacion-vinculada-badges">
-                      <span className={`variacion-badge-mini tipo-${variacion.tipo}`}>
-                        {variacion.tipo === 'select' ? 'Selección' : 'Sí/No'}
-                      </span>
-                      {variacion.requerido && (
-                        <span className="variacion-badge-mini requerido">Requerido</span>
+              .filter(v => variacionesVinculadas.some(vv => typeof vv === 'object' ? vv.id === v.id : vv === v.id))
+              .map((variacion) => {
+                const config = variacionesVinculadas.find(vv => typeof vv === 'object' ? vv.id === variacion.id : vv === variacion.id);
+                const opcionesLimitadas = config && typeof config === 'object' && config.opciones_seleccionadas && Array.isArray(config.opciones_seleccionadas);
+                
+                // Valores por producto o globales
+                const seleccionMultiple = config && typeof config === 'object' && config.seleccion_multiple !== undefined && config.seleccion_multiple !== null 
+                  ? config.seleccion_multiple 
+                  : variacion.seleccion_multiple || false;
+                const requerido = config && typeof config === 'object' && config.requerido !== undefined && config.requerido !== null 
+                  ? config.requerido 
+                  : variacion.requerido || false;
+                const maxSelecciones = config && typeof config === 'object' && config.max_selecciones !== undefined && config.max_selecciones !== null 
+                  ? config.max_selecciones 
+                  : variacion.max_selecciones || null;
+                
+                return (
+                  <div key={variacion.id} className="variacion-vinculada-card">
+                    <div className="variacion-vinculada-header">
+                      <h6 className="variacion-vinculada-nombre">{variacion.nombre}</h6>
+                      <button
+                        type="button"
+                        className="variacion-vinculada-remove"
+                        onClick={() => setVariacionesVinculadas(variacionesVinculadas.filter(vv => 
+                          typeof vv === 'object' ? vv.id !== variacion.id : vv !== variacion.id
+                        ))}
+                        title="Quitar variación"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                    
+                    <div className="variacion-vinculada-content">
+                      <div className="variacion-vinculada-badges-section">
+                        <div className="variacion-vinculada-badges">
+                          <span className={`variacion-badge-mini tipo-${variacion.tipo}`}>
+                            {variacion.tipo === 'select' ? 'Selección' : 'Sí/No'}
+                          </span>
+                          {seleccionMultiple && (
+                            <span className="variacion-badge-mini multiple">Múltiple</span>
+                          )}
+                          {requerido && (
+                            <span className="variacion-badge-mini requerido">Requerido</span>
+                          )}
+                          {opcionesLimitadas && (
+                            <span className="variacion-badge-mini opciones-limitadas" title={`${config.opciones_seleccionadas.length} de ${variacion.opciones.length} opciones seleccionadas`}>
+                              {config.opciones_seleccionadas.length}/{variacion.opciones.length} opc.
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {!disabled && (
+                        <div className="variacion-vinculada-config-section">
+                          {variacion.tipo === 'select' && (
+                            <>
+                              <div className="variacion-vinculada-config-row">
+                                <label className="variacion-vinculada-checkbox-label">
+                                  <input
+                                    type="checkbox"
+                                    checked={seleccionMultiple}
+                                    onChange={(e) => {
+                                      const nuevoValor = e.target.checked;
+                                      setVariacionesVinculadas(variacionesVinculadas.map(vv => {
+                                        if (typeof vv === 'object' && vv.id === variacion.id) {
+                                          return { ...vv, seleccion_multiple: nuevoValor };
+                                        }
+                                        if (typeof vv !== 'object' && vv === variacion.id) {
+                                          return { id: variacion.id, seleccion_multiple: nuevoValor, opciones_seleccionadas: null, max_selecciones: null, requerido: null };
+                                        }
+                                        return vv;
+                                      }));
+                                    }}
+                                  />
+                                  <span>Selección múltiple</span>
+                                </label>
+                                
+                                <label className="variacion-vinculada-checkbox-label">
+                                  <input
+                                    type="checkbox"
+                                    checked={requerido}
+                                    onChange={(e) => {
+                                      const nuevoValor = e.target.checked;
+                                      setVariacionesVinculadas(variacionesVinculadas.map(vv => {
+                                        if (typeof vv === 'object' && vv.id === variacion.id) {
+                                          return { ...vv, requerido: nuevoValor };
+                                        }
+                                        if (typeof vv !== 'object' && vv === variacion.id) {
+                                          return { id: variacion.id, requerido: nuevoValor, opciones_seleccionadas: null, max_selecciones: null, seleccion_multiple: null };
+                                        }
+                                        return vv;
+                                      }));
+                                    }}
+                                  />
+                                  <span>Obligatorio</span>
+                                </label>
+                              </div>
+                              
+                              {seleccionMultiple && (
+                                <div className="variacion-vinculada-config-row">
+                                  <div className="variacion-vinculada-max-selecciones">
+                                    <label className="variacion-vinculada-input-label">
+                                      Máx. selecciones:
+                                    </label>
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      value={maxSelecciones !== null && maxSelecciones !== undefined ? maxSelecciones : ''}
+                                      onChange={(e) => {
+                                        const valorTexto = e.target.value;
+                                        // Si está vacío, establecer null
+                                        if (valorTexto === '') {
+                                          const valor = null;
+                                          setVariacionesVinculadas(variacionesVinculadas.map(vv => {
+                                            if (typeof vv === 'object' && vv.id === variacion.id) {
+                                              return { ...vv, max_selecciones: valor };
+                                            }
+                                            if (typeof vv !== 'object' && vv === variacion.id) {
+                                              return { id: variacion.id, max_selecciones: valor, opciones_seleccionadas: null, seleccion_multiple: null, requerido: null };
+                                            }
+                                            return vv;
+                                          }));
+                                        } else {
+                                          // Intentar parsear el número
+                                          const valorNum = parseInt(valorTexto, 10);
+                                          if (!isNaN(valorNum) && valorNum > 0) {
+                                            setVariacionesVinculadas(variacionesVinculadas.map(vv => {
+                                              if (typeof vv === 'object' && vv.id === variacion.id) {
+                                                return { ...vv, max_selecciones: valorNum };
+                                              }
+                                              if (typeof vv !== 'object' && vv === variacion.id) {
+                                                return { id: variacion.id, max_selecciones: valorNum, opciones_seleccionadas: null, seleccion_multiple: null, requerido: null };
+                                              }
+                                              return vv;
+                                            }));
+                                          }
+                                        }
+                                      }}
+                                      placeholder="Sin límite"
+                                    />
+                                  </div>
+                                  
+                                  {variacion.opciones && variacion.opciones.length > 0 && (
+                                    <button
+                                      type="button"
+                                      className="variacion-vinculada-config-btn"
+                                      onClick={() => setConfigurandoOpciones(variacion.id)}
+                                      title={`Configurar opciones (${variacion.opciones.length} disponibles)`}
+                                    >
+                                      <Edit2 size={14} />
+                                      <span>Elegir opciones</span>
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                              
+                              {!seleccionMultiple && variacion.opciones && variacion.opciones.length > 0 && (
+                                <div className="variacion-vinculada-config-row">
+                                  <button
+                                    type="button"
+                                    className="variacion-vinculada-config-btn"
+                                    onClick={() => setConfigurandoOpciones(variacion.id)}
+                                    title={`Configurar opciones (${variacion.opciones.length} disponibles)`}
+                                  >
+                                    <Edit2 size={14} />
+                                    <span>Elegir opciones</span>
+                                  </button>
+                                </div>
+                              )}
+                            </>
+                          )}
+                          
+                          {variacion.tipo === 'checkbox' && (
+                            <div className="variacion-vinculada-config-row">
+                              <label className="variacion-vinculada-checkbox-label">
+                                <input
+                                  type="checkbox"
+                                  checked={requerido}
+                                  onChange={(e) => {
+                                    const nuevoValor = e.target.checked;
+                                    setVariacionesVinculadas(variacionesVinculadas.map(vv => {
+                                      if (typeof vv === 'object' && vv.id === variacion.id) {
+                                        return { ...vv, requerido: nuevoValor };
+                                      }
+                                      if (typeof vv !== 'object' && vv === variacion.id) {
+                                        return { id: variacion.id, requerido: nuevoValor, opciones_seleccionadas: null, max_selecciones: null, seleccion_multiple: null };
+                                      }
+                                      return vv;
+                                    }));
+                                  }}
+                                />
+                                <span>Obligatorio</span>
+                              </label>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
-                  {!disabled && (
-                    <button
-                      type="button"
-                      className="variacion-vinculada-remove"
-                      onClick={() => setVariacionesVinculadas(variacionesVinculadas.filter(id => id !== variacion.id))}
-                    >
-                      <X size={14} />
-                    </button>
-                  )}
-                </div>
-              ))}
+                );
+              })}
           </div>
         </div>
       )}
@@ -390,10 +632,10 @@ const VariacionesConfig = ({ variaciones = [], onChange, disabled = false }) => 
                           value={variacion.nombre}
                           onChange={(e) => {
                             const nombre = e.target.value;
-                            actualizarVariacion(index, 'nombre', nombre);
+                            actualizarVariacionLocal(index, 'nombre', nombre);
                             // Auto-generar ID si está vacío
                             if (!variacion.id || variacion.id.startsWith('variacion_')) {
-                              actualizarVariacion(index, 'id', nombre.toLowerCase().replace(/\s+/g, '_'));
+                              actualizarVariacionLocal(index, 'id', nombre.toLowerCase().replace(/\s+/g, '_'));
                             }
                           }}
                           placeholder="Ej: Salsa, Arequipe, Tamaño"
@@ -408,10 +650,10 @@ const VariacionesConfig = ({ variaciones = [], onChange, disabled = false }) => 
                         <select
                           value={variacion.tipo}
                           onChange={(e) => {
-                            actualizarVariacion(index, 'tipo', e.target.value);
+                            actualizarVariacionLocal(index, 'tipo', e.target.value);
                             // Si cambia a checkbox, quitar seleccion_multiple
                             if (e.target.value === 'checkbox') {
-                              actualizarVariacion(index, 'seleccion_multiple', false);
+                              actualizarVariacionLocal(index, 'seleccion_multiple', false);
                             }
                           }}
                           disabled={disabled}
@@ -427,20 +669,50 @@ const VariacionesConfig = ({ variaciones = [], onChange, disabled = false }) => 
                       </div>
 
                       {variacion.tipo === 'select' && (
-                        <div className="variacion-config-field">
-                          <label>
-                            <input
-                              type="checkbox"
-                              checked={variacion.seleccion_multiple === true}
-                              onChange={(e) => actualizarVariacion(index, 'seleccion_multiple', e.target.checked)}
-                              disabled={disabled}
-                            />
-                            <span>Permitir selección múltiple</span>
-                          </label>
-                          <p className="variacion-config-hint">
-                            Si está marcado, el cliente puede seleccionar varias opciones. Si no, solo puede seleccionar una.
-                          </p>
-                        </div>
+                        <>
+                          <div className="variacion-config-field">
+                            <label>
+                              <input
+                                type="checkbox"
+                                checked={variacion.seleccion_multiple === true}
+                                onChange={(e) => {
+                                  actualizarVariacionLocal(index, 'seleccion_multiple', e.target.checked);
+                                  // Si se desactiva selección múltiple, eliminar max_selecciones
+                                  if (!e.target.checked) {
+                                    actualizarVariacionLocal(index, 'max_selecciones', null);
+                                  }
+                                }}
+                                disabled={disabled}
+                              />
+                              <span>Permitir selección múltiple</span>
+                            </label>
+                            <p className="variacion-config-hint">
+                              Si está marcado, el cliente puede seleccionar varias opciones. Si no, solo puede seleccionar una.
+                            </p>
+                          </div>
+                          
+                          {variacion.seleccion_multiple && (
+                            <div className="variacion-config-field">
+                              <label>
+                                Cantidad máxima de opciones seleccionables
+                              </label>
+                              <input
+                                type="number"
+                                min="1"
+                                value={variacion.max_selecciones || ''}
+                                onChange={(e) => {
+                                  const valor = e.target.value === '' ? null : parseInt(e.target.value, 10);
+                                  actualizarVariacionLocal(index, 'max_selecciones', valor);
+                                }}
+                                placeholder="Sin límite"
+                                disabled={disabled}
+                              />
+                              <p className="variacion-config-hint">
+                                Define cuántas opciones máximo puede seleccionar el cliente. Déjalo vacío para permitir todas.
+                              </p>
+                            </div>
+                          )}
+                        </>
                       )}
 
                       <div className="variacion-config-field">
@@ -448,7 +720,7 @@ const VariacionesConfig = ({ variaciones = [], onChange, disabled = false }) => 
                           <input
                             type="checkbox"
                             checked={variacion.requerido}
-                            onChange={(e) => actualizarVariacion(index, 'requerido', e.target.checked)}
+                            onChange={(e) => actualizarVariacionLocal(index, 'requerido', e.target.checked)}
                             disabled={disabled}
                           />
                           <span>Variación requerida</span>
@@ -522,11 +794,75 @@ const VariacionesConfig = ({ variaciones = [], onChange, disabled = false }) => 
                         <button
                           type="button"
                           className="variacion-config-btn-guardar"
-                          onClick={() => setEditingIndex(null)}
-                          disabled={!variacion.nombre || (variacion.tipo === 'select' && (!variacion.opciones || variacion.opciones.length === 0))}
+                          onClick={async () => {
+                            // Validar que tenga nombre y opciones si es select
+                            if (!variacion.nombre || (variacion.tipo === 'select' && (!variacion.opciones || variacion.opciones.length === 0))) {
+                              return;
+                            }
+
+                            try {
+                              // Función auxiliar para verificar si un ID es un UUID válido
+                              const isValidUUID = (id) => {
+                                if (!id || typeof id !== 'string') return false;
+                                // UUID v4 tiene el formato: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
+                                const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+                                return uuidRegex.test(id);
+                              };
+
+                              // Si la variación no tiene ID real (es local o ID inválido), guardarla en la base de datos
+                              if (!variacion.id || variacion.id.startsWith('variacion_') || !isValidUUID(variacion.id)) {
+                                const nuevaVariacion = await crearVariacion.mutateAsync({
+                                  organizationId: organization?.id,
+                                  nombre: variacion.nombre,
+                                  tipo: variacion.tipo,
+                                  requerido: variacion.requerido || false,
+                                  seleccion_multiple: variacion.seleccion_multiple || false,
+                                  max_selecciones: variacion.max_selecciones || null,
+                                  opciones: variacion.opciones || []
+                                });
+
+                                // Actualizar la variación local con el ID real de la base de datos
+                                const actualizadas = [...variacionesList];
+                                actualizadas[index] = {
+                                  ...actualizadas[index],
+                                  id: nuevaVariacion.id
+                                };
+                                setVariacionesList(actualizadas);
+                                
+                                // Refrescar la lista de variaciones disponibles para que aparezca en el módulo de variaciones
+                                await refetchVariaciones();
+                                
+                                toast.success('Variación guardada en el sistema. Ya está disponible para otros productos.');
+                              } else {
+                                // Si la variación ya tiene ID real, actualizarla en la base de datos
+                                await actualizarVariacion.mutateAsync({
+                                  id: variacion.id,
+                                  organizationId: organization?.id,
+                                  nombre: variacion.nombre,
+                                  tipo: variacion.tipo,
+                                  requerido: variacion.requerido || false,
+                                  seleccion_multiple: variacion.seleccion_multiple || false,
+                                  max_selecciones: variacion.max_selecciones || null,
+                                  opciones: variacion.opciones || []
+                                });
+                                
+                                // Refrescar la lista de variaciones disponibles
+                                await refetchVariaciones();
+                                
+                                toast.success('Variación actualizada correctamente');
+                              }
+                            } catch (error) {
+                              console.error('Error guardando/actualizando variación:', error);
+                              toast.error('Error al guardar la variación en el sistema');
+                              return; // No cerrar el editor si hay error
+                            }
+
+                            setEditingIndex(null);
+                          }}
+                          disabled={!variacion.nombre || (variacion.tipo === 'select' && (!variacion.opciones || variacion.opciones.length === 0)) || crearVariacion.isLoading || actualizarVariacion.isLoading}
                         >
                           <Save size={14} />
-                          Guardar
+                          {(crearVariacion.isLoading || actualizarVariacion.isLoading) ? 'Guardando...' : 'Guardar'}
                         </button>
                       </div>
                     </div>
@@ -591,7 +927,160 @@ const VariacionesConfig = ({ variaciones = [], onChange, disabled = false }) => 
           </AnimatePresence>
         </div>
       )}
+
+      {/* Modal para configurar opciones de variación vinculada */}
+      {configurandoOpciones && <ConfigurarOpcionesModal
+        variacion={variacionesDisponibles.find(v => v.id === configurandoOpciones)}
+        config={variacionesVinculadas.find(vv => typeof vv === 'object' ? vv.id === configurandoOpciones : false)}
+        onClose={() => setConfigurandoOpciones(null)}
+        onSave={(opcionesSeleccionadas, mostrarTodas) => {
+          const nuevasVinculadas = variacionesVinculadas.map(vv => {
+            if (typeof vv === 'object' && vv.id === configurandoOpciones) {
+              return {
+                ...vv,
+                opciones_seleccionadas: mostrarTodas ? null : opcionesSeleccionadas
+              };
+            }
+            // Convertir formato antiguo (string) a nuevo formato
+            if (typeof vv === 'string' && vv === configurandoOpciones) {
+              return {
+                id: vv,
+                opciones_seleccionadas: mostrarTodas ? null : opcionesSeleccionadas
+              };
+            }
+            return vv;
+          });
+          // Si no existe, agregarlo
+          if (!nuevasVinculadas.some(vv => (typeof vv === 'object' ? vv.id : vv) === configurandoOpciones)) {
+            nuevasVinculadas.push({
+              id: configurandoOpciones,
+              opciones_seleccionadas: mostrarTodas ? null : opcionesSeleccionadas
+            });
+          }
+          setVariacionesVinculadas(nuevasVinculadas);
+          setConfigurandoOpciones(null);
+        }}
+      />}
     </div>
+  );
+};
+
+// Componente modal para configurar opciones de variación vinculada
+const ConfigurarOpcionesModal = ({ variacion, config, onClose, onSave }) => {
+  const opcionesIniciales = config && typeof config === 'object' && config.opciones_seleccionadas 
+    ? [...config.opciones_seleccionadas]
+    : variacion && variacion.opciones 
+      ? variacion.opciones.map(op => typeof op === 'string' ? op : op.valor)
+      : [];
+  const [opcionesSeleccionadas, setOpcionesSeleccionadas] = useState(opcionesIniciales);
+  const [mostrarTodas, setMostrarTodas] = useState(!config || !config.opciones_seleccionadas);
+
+  if (!variacion || variacion.tipo !== 'select' || !variacion.opciones) return null;
+
+  return (
+    <div className="variaciones-selector-overlay" onClick={(e) => {
+      if (e.target === e.currentTarget) {
+        onClose();
+      }
+    }}>
+      <motion.div
+        className="variaciones-selector-modal"
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="variaciones-selector-header">
+          <div className="variaciones-selector-header-content">
+            <h3>{variacion.nombre}</h3>
+            <div className="variacion-modal-badges">
+              <span className={`variacion-badge-mini tipo-${variacion.tipo}`}>
+                {variacion.tipo === 'select' ? 'Selección' : 'Sí/No'}
+              </span>
+              {variacion.requerido && (
+                <span className="variacion-badge-mini requerido">Requerido</span>
+              )}
+              {variacion.seleccion_multiple && (
+                <span className="variacion-badge-mini multiple">Múltiple</span>
+              )}
+              <span className="variacion-badge-mini opciones-count">
+                {variacion.opciones?.length || 0} {variacion.opciones?.length === 1 ? 'opción' : 'opciones'}
+              </span>
+            </div>
+          </div>
+          <button onClick={onClose} className="variaciones-selector-close-btn">
+            <X size={20} />
+          </button>
+        </div>
+        <div className="variaciones-selector-content">
+          <div className="variacion-opciones-toggle">
+            <label className="variacion-opciones-toggle-label">
+              <input
+                type="checkbox"
+                checked={mostrarTodas}
+                onChange={(e) => {
+                  setMostrarTodas(e.target.checked);
+                  if (e.target.checked) {
+                    setOpcionesSeleccionadas([]);
+                  } else {
+                    setOpcionesSeleccionadas(variacion.opciones.map(op => typeof op === 'string' ? op : op.valor));
+                  }
+                }}
+              />
+              <span className="variacion-opciones-toggle-text">Mostrar todas las opciones</span>
+            </label>
+            <p className="variacion-opciones-toggle-hint">
+              Si está marcado, se mostrarán todas las opciones de esta variación. Si no, selecciona las opciones específicas que quieres mostrar para este producto.
+            </p>
+          </div>
+
+          {!mostrarTodas && (
+            <div className="variacion-opciones-selector">
+              <h4 className="variacion-opciones-title">Opciones:</h4>
+              <div className="variacion-opciones-grid">
+                {variacion.opciones.map((opcion) => {
+                  const valor = typeof opcion === 'string' ? opcion : opcion.valor;
+                  const label = typeof opcion === 'string' ? opcion : opcion.label;
+                  const isSelected = opcionesSeleccionadas.includes(valor);
+                  return (
+                    <label
+                      key={valor}
+                      className={`variacion-opcion-checkbox ${isSelected ? 'selected' : ''}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setOpcionesSeleccionadas([...opcionesSeleccionadas, valor]);
+                          } else {
+                            setOpcionesSeleccionadas(opcionesSeleccionadas.filter(v => v !== valor));
+                          }
+                        }}
+                      />
+                      <span className="variacion-opcion-label">{label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+              <div className="variaciones-selector-footer">
+                <button
+                  className="variacion-btn-secondary"
+                  onClick={onClose}
+                >
+                  Cancelar
+                </button>
+                <button
+                  className="variacion-btn-primary"
+                  onClick={() => onSave(opcionesSeleccionadas, mostrarTodas)}
+                >
+                  Guardar
+                </button>
+              </div>
+            </motion.div>
+          </div>
   );
 };
 

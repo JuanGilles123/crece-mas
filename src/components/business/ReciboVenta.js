@@ -1,9 +1,11 @@
 import React, { useState, useRef } from "react";
-import { CheckCircle, Printer, Share2, Download, Banknote, CreditCard, Smartphone, MessageCircle } from "lucide-react";
+import { CheckCircle, Printer, Share2, Download, Banknote, CreditCard, Smartphone, MessageCircle, Loader2 } from "lucide-react";
 import { supabase } from '../../services/api/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { printReceipt, isBluetoothSupported } from '../../utils/thermalPrinter';
+import toast from 'react-hot-toast';
 import './ReciboVenta.css';
 
 /**
@@ -24,6 +26,7 @@ function formatCOP(value) {
 export default function ReciboVenta({ venta, onNuevaVenta, onCerrar, mostrarCerrar = false }) {
   const { user, organization } = useAuth();
   const [generandoPDF, setGenerandoPDF] = useState(false);
+  const [imprimiendoBluetooth, setImprimiendoBluetooth] = useState(false);
   const reciboRef = useRef(null);
 
   // Usar datos de la organización directamente desde AuthContext
@@ -246,13 +249,98 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
     }
   };
 
-  const imprimir = () => {
+  const imprimirBluetooth = async () => {
     // Validar datos de empresa
     if (!datosCompletos) {
       alert('⚠️ No has configurado los datos de facturación.\n\nVe a tu perfil → Configuración de Facturación para completar los datos de tu empresa.');
       return;
     }
 
+    // Verificar soporte de Bluetooth
+    if (!isBluetoothSupported()) {
+      alert('⚠️ Tu navegador no soporta impresión térmica directa.\n\nUsa Chrome, Edge u Opera para esta funcionalidad.\n\nPuedes usar el botón "Imprimir" normal como alternativa.');
+      return;
+    }
+
+    // Verificar HTTPS (excepto localhost)
+    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      alert('⚠️ Se requiere HTTPS para impresión térmica directa.\n\nLa impresión térmica solo funciona en conexiones seguras (HTTPS) o en localhost.');
+      return;
+    }
+
+    setImprimiendoBluetooth(true);
+
+    try {
+      // Verificar si es la primera vez en esta sesión
+      const impresoraGuardada = user?.user_metadata?.impresora_bluetooth;
+      if (impresoraGuardada && typeof navigator.bluetooth?.getDevices === 'function') {
+        try {
+          const devices = await navigator.bluetooth.getDevices();
+          const deviceEncontrado = devices.find(d => d.id === impresoraGuardada.id);
+          if (!deviceEncontrado) {
+            // Es la primera vez en esta sesión, mostrar mensaje informativo
+            toast('Selecciona tu impresora configurada en el diálogo', { 
+              icon: 'ℹ️',
+              duration: 3000 
+            });
+          }
+        } catch (e) {
+          // Si getDevices no está disponible, mostrar mensaje
+          toast('Selecciona tu impresora configurada en el diálogo', { 
+            icon: 'ℹ️',
+            duration: 3000 
+          });
+        }
+      }
+      
+      await printReceipt(venta, datosEmpresa, user);
+      toast.success('✅ Recibo impreso correctamente');
+    } catch (error) {
+      console.error('Error imprimiendo Bluetooth:', error);
+      let mensajeError = 'Error al imprimir: ';
+      
+      if (error.message) {
+        mensajeError += error.message;
+      } else if (error.name === 'NotFoundError') {
+        mensajeError += 'No se encontró ninguna impresora térmica. Asegúrate de que esté encendida y en modo de emparejamiento.';
+      } else if (error.name === 'SecurityError') {
+        mensajeError += 'Se requiere HTTPS para impresión térmica directa.';
+      } else if (error.name === 'NetworkError') {
+        mensajeError += 'Error de conexión. Verifica que la impresora esté cerca y encendida.';
+      } else {
+        mensajeError += 'Error desconocido. Intenta de nuevo.';
+      }
+      
+      toast.error(mensajeError);
+    } finally {
+      setImprimiendoBluetooth(false);
+    }
+  };
+
+  const imprimir = async () => {
+    // Validar datos de empresa
+    if (!datosCompletos) {
+      alert('⚠️ No has configurado los datos de facturación.\n\nVe a tu perfil → Configuración de Facturación para completar los datos de tu empresa.');
+      return;
+    }
+
+    // Verificar si hay impresora térmica configurada y disponible
+    const impresoraConfigurada = user?.user_metadata?.impresora_configuracion || user?.user_metadata?.impresora_bluetooth;
+    const tieneImpresoraTermica = impresoraConfigurada && impresoraConfigurada.tipo === 'bluetooth';
+    
+    // Si hay impresora térmica configurada y Bluetooth está disponible, usar impresión térmica
+    if (tieneImpresoraTermica && isBluetoothSupported()) {
+      // Verificar HTTPS (excepto localhost)
+      if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        // Si no hay HTTPS, continuar con impresión estándar
+      } else {
+        // Usar impresión térmica Bluetooth
+        await imprimirBluetooth();
+        return;
+      }
+    }
+
+    // Si no hay impresora térmica o no está disponible, usar impresión estándar
     // Crear una ventana nueva para imprimir solo el recibo
     const ventanaImpresion = window.open('', '_blank', 'width=800,height=600');
     
@@ -260,6 +348,7 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
     const reciboHTML = reciboRef.current.outerHTML;
     
     // Crear el documento HTML completo para impresión
+    // Optimizado para impresoras térmicas (58mm y 80mm)
     const documentoImpresion = `
       <!DOCTYPE html>
       <html>
@@ -267,31 +356,49 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
           <title>Recibo de Venta #${venta.id}</title>
           <style>
             @media print {
-              body { margin: 0; padding: 0; }
+              @page {
+                size: 80mm auto;
+                margin: 0;
+              }
+              body { 
+                margin: 0; 
+                padding: 0;
+                width: 80mm;
+                font-size: 10pt;
+              }
               .recibo-container { 
                 box-shadow: none !important;
                 border: none !important;
                 margin: 0 !important;
-                padding: 20px !important;
-                max-width: none !important;
-                width: 100% !important;
+                padding: 10mm !important;
+                max-width: 80mm !important;
+                width: 80mm !important;
+                background: white !important;
               }
               .recibo-actions { display: none !important; }
               .recibo-controls { display: none !important; }
+              * {
+                color: black !important;
+                background: white !important;
+              }
             }
             body {
-              font-family: Arial, sans-serif;
+              font-family: 'Courier New', monospace, Arial, sans-serif;
               margin: 0;
-              padding: 20px;
-              background: var(--bg-card);
+              padding: 0;
+              background: white;
+              color: black;
+              font-size: 10pt;
+              line-height: 1.2;
             }
             .recibo-container {
-              background: var(--bg-card);
-              border-radius: 8px;
-              box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-              max-width: 400px;
+              background: white;
+              border: none;
+              max-width: 80mm;
               margin: 0 auto;
-              padding: 20px;
+              padding: 10mm;
+              width: 80mm;
+              box-sizing: border-box;
             }
             .recibo-header {
               text-align: center;
@@ -1025,9 +1132,18 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
               <span className="recibo-btn-text recibo-btn-text-mobile-hidden">WhatsApp</span>
             </button>
           )}
-          <button className="recibo-btn recibo-btn-secondary" onClick={imprimir}>
-            <Printer className="recibo-btn-icon" /> 
-            <span className="recibo-btn-text">Imprimir</span>
+          <button 
+            className="recibo-btn recibo-btn-secondary" 
+            onClick={imprimir}
+            disabled={imprimiendoBluetooth}
+            title="Imprimir recibo"
+          >
+            {imprimiendoBluetooth ? (
+              <Loader2 className="recibo-btn-icon rotating" />
+            ) : (
+              <Printer className="recibo-btn-icon" />
+            )}
+            <span className="recibo-btn-text">{imprimiendoBluetooth ? 'Imprimiendo...' : 'Imprimir'}</span>
           </button>
           <button 
             className="recibo-btn recibo-btn-secondary" 

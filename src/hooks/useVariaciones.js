@@ -38,12 +38,14 @@ export const useCrearVariacion = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ organizationId, nombre, tipo, requerido, opciones }) => {
+    mutationFn: async ({ organizationId, nombre, tipo, requerido, seleccion_multiple, max_selecciones, opciones }) => {
       const variacionData = {
         organization_id: organizationId,
         nombre,
         tipo: tipo || 'select',
         requerido: requerido || false,
+        seleccion_multiple: tipo === 'select' ? (seleccion_multiple || false) : false,
+        max_selecciones: tipo === 'select' && seleccion_multiple ? max_selecciones : null,
         opciones: opciones || [],
         activo: true
       };
@@ -78,14 +80,16 @@ export const useActualizarVariacion = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, organizationId, nombre, tipo, requerido, opciones, activo }) => {
+    mutationFn: async ({ id, organizationId, nombre, tipo, requerido, seleccion_multiple, max_selecciones, opciones, activo }) => {
       const updateData = {};
       if (nombre !== undefined) updateData.nombre = nombre;
       if (tipo !== undefined) updateData.tipo = tipo;
       if (requerido !== undefined) updateData.requerido = requerido;
+      if (seleccion_multiple !== undefined) updateData.seleccion_multiple = seleccion_multiple;
+      if (max_selecciones !== undefined) updateData.max_selecciones = max_selecciones;
       if (opciones !== undefined) updateData.opciones = opciones;
       if (activo !== undefined) updateData.activo = activo;
-      updateData.updated_at = new Date().toISOString();
+      // Solo actualizar updated_at si la columna existe (se maneja automáticamente por triggers en algunas tablas)
 
       const { data, error } = await supabase
         .from('variaciones')
@@ -95,7 +99,8 @@ export const useActualizarVariacion = () => {
 
       if (error) {
         console.error('Error updating variacion:', error);
-        throw new Error('Error al actualizar variación');
+        console.error('Error details:', { id, updateData, errorMessage: error.message, errorCode: error.code });
+        throw new Error(error.message || 'Error al actualizar variación');
       }
 
       return data[0];

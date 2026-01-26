@@ -13,6 +13,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { useSubscription } from '../hooks/useSubscription';
+import { useAuth } from '../context/AuthContext';
 import LottieLoader from '../components/ui/LottieLoader';
 import { supabase } from '../services/api/supabaseClient';
 import toast from 'react-hot-toast';
@@ -20,7 +21,8 @@ import './Pricing.css';
 
 const Pricing = () => {
   const navigate = useNavigate();
-  const { planSlug, planName, loading, isVIP } = useSubscription();
+  const { planSlug, planName, loading, isVIP, refreshSubscription } = useSubscription();
+  const { refreshProfile } = useAuth();
   const [billingPeriod, setBillingPeriod] = useState('monthly'); // monthly | yearly
   const [processingPlan, setProcessingPlan] = useState(null); // Para mostrar loading en el botón
 
@@ -258,12 +260,26 @@ const Pricing = () => {
 
       if (response.ok) {
         toast.success('¡Pago simulado exitosamente! Suscripción activada');
-        navigate('/subscription/success?test=true');
+        
+        // Refrescar datos de suscripción y organización
+        try {
+          await refreshSubscription();
+          await refreshProfile();
+          
+          // Esperar un momento para que los datos se actualicen
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Redirigir al dashboard y forzar recarga
+          window.location.href = '/dashboard';
+        } catch (refreshError) {
+          console.error('Error refrescando datos:', refreshError);
+          // Aún así redirigir, los datos se actualizarán en el próximo render
+          window.location.href = '/dashboard';
+        }
       } else {
         toast.error(data.message || 'Error al simular pago');
+        setProcessingPlan(null);
       }
-
-      setProcessingPlan(null);
     } catch (error) {
       console.error('Error en test payment:', error);
       toast.error('Error al simular pago');

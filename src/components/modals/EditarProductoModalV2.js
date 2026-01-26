@@ -15,6 +15,7 @@ import toast from 'react-hot-toast';
 import { PRODUCT_TYPES, ADDITIONAL_FIELDS, getProductTypeFields } from '../../utils/productTypes';
 import OptimizedProductImage from '../../components/business/OptimizedProductImage';
 import VariacionesConfig from '../VariacionesConfig';
+import ProductosVinculados from '../ProductosVinculados';
 import './AgregarProductoModalV2.css';
 
 // Función para crear esquema de validación dinámico (igual que en AgregarProductoModalV2)
@@ -59,6 +60,7 @@ const createProductSchema = (productType) => {
   baseSchema.calorias = z.string().optional();
   baseSchema.porcion = z.string().optional();
   baseSchema.variaciones = z.string().optional();
+  baseSchema.permite_toppings = z.boolean().optional().default(true);
 
   return z.object(baseSchema).superRefine((data, ctx) => {
     const precioCompra = data.precioCompra ? parseFloat(data.precioCompra.replace(/[^\d]/g, '')) : 0;
@@ -111,12 +113,13 @@ const deleteImageFromStorage = async (imagePath) => {
 const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) => {
   const { userProfile } = useAuth();
   const { hasFeature } = useSubscription();
-  const [formStep, setFormStep] = useState(1);
+  const [formStep, setFormStep] = useState(1); // 1: básico + imagen, 2: opcionales del tipo, 3: adicionales
   const [imagen, setImagen] = useState(null);
   const [subiendo, setSubiendo] = useState(false);
   const [comprimiendo, setComprimiendo] = useState(false);
   const [additionalFields, setAdditionalFields] = useState([]);
   const [variacionesConfig, setVariacionesConfig] = useState([]);
+  const [productosVinculados, setProductosVinculados] = useState([]);
   const fileInputRef = useRef();
 
   const puedeSubirImagenes = hasFeature('productImages');
@@ -169,12 +172,20 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
       alergenos: metadata?.alergenos || '',
       calorias: metadata?.calorias || '',
       porcion: metadata?.porcion || '',
-      variaciones: metadata?.variaciones || ''
+      variaciones: metadata?.variaciones || '',
+      permite_toppings: metadata?.permite_toppings !== undefined ? metadata.permite_toppings : true
     }
   });
 
   // Ref para rastrear el último producto cargado y evitar re-cargas durante la edición
   const ultimoProductoIdRef = useRef(null);
+
+  // Resetear al paso 1 cuando se abre el modal
+  useEffect(() => {
+    if (open) {
+      setFormStep(1);
+    }
+  }, [open]);
 
   // Cargar valores cuando cambia el producto (solo cuando cambia el ID del producto)
   useEffect(() => {
@@ -197,6 +208,13 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
         setVariacionesConfig([]);
       }
       
+      // Cargar productos_vinculados si existe
+      if (metadata.productos_vinculados && Array.isArray(metadata.productos_vinculados)) {
+        setProductosVinculados(metadata.productos_vinculados);
+      } else {
+        setProductosVinculados([]);
+      }
+      
       // Cargar campos de metadata
       Object.keys(ADDITIONAL_FIELDS).forEach(fieldId => {
         if (metadata[fieldId]) {
@@ -213,6 +231,9 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
           }
         }
       });
+      
+      // Cargar permite_toppings
+      setValue('permite_toppings', metadata?.permite_toppings !== undefined ? metadata.permite_toppings : true);
 
       // Actualizar currency inputs solo cuando cambia el producto (por ID)
       precioCompraInput.setValue(producto.precio_compra || '');
@@ -227,7 +248,13 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
     }
   };
 
-  const handleNext = () => {
+  const handleNext = (e) => {
+    // Prevenir el submit del formulario
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
     const typeFields = getProductTypeFields(selectedType);
     
     if (formStep === 1) {
@@ -240,21 +267,26 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
         return;
       }
       
+      // Si tiene campos opcionales del tipo, ir a paso 2, sino saltar a paso 3
       if (typeFields.optional.length > 0) {
         setFormStep(2);
       } else if (Object.keys(ADDITIONAL_FIELDS).length > 0) {
         setFormStep(3);
       } else {
-        setFormStep(4);
+        // Si no hay más pasos, no hacer nada (el botón cambiará a "Actualizar Producto")
+        return;
       }
     } else if (formStep === 2) {
+      // De opcionales del tipo a adicionales
       if (Object.keys(ADDITIONAL_FIELDS).length > 0) {
         setFormStep(3);
       } else {
-        setFormStep(4);
+        // Si no hay más pasos, no hacer nada (el botón cambiará a "Actualizar Producto")
+        return;
       }
     } else if (formStep === 3) {
-      setFormStep(4);
+      // Ya estamos en el último paso, no hacer nada (el botón cambiará a "Actualizar Producto")
+      return;
     }
   };
 
@@ -355,6 +387,14 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
       if (variacionesConfig && variacionesConfig.length > 0) {
         newMetadata.variaciones_config = variacionesConfig;
       }
+      
+      // Agregar productos_vinculados si hay productos vinculados
+      if (productosVinculados && productosVinculados.length > 0) {
+        newMetadata.productos_vinculados = productosVinculados;
+      }
+      
+      // Agregar permite_toppings al metadata
+      newMetadata.permite_toppings = data.permite_toppings !== undefined ? data.permite_toppings : true;
 
       // Agregar metadata solo si tiene datos
       if (Object.keys(newMetadata).length > 0) {
@@ -370,6 +410,8 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
             reset();
             setImagen(null);
             setAdditionalFields([]);
+            setVariacionesConfig([]);
+            setProductosVinculados([]);
             precioCompraInput.reset();
             precioVentaInput.reset();
             stockInput.reset();
@@ -396,11 +438,10 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
   const typeFields = getProductTypeFields(selectedType);
   const productType = PRODUCT_TYPES[selectedType];
   
-  // Calcular labels de pasos
-  const stepLabels = ['Básico'];
+  // Calcular labels de pasos (ahora solo 3 pasos: básico+imagen, opcionales, adicionales)
+  const stepLabels = ['Básico + Imagen'];
   if (typeFields.optional.length > 0) stepLabels.push('Opcionales');
   if (Object.keys(ADDITIONAL_FIELDS).length > 0) stepLabels.push('Adicionales');
-  stepLabels.push('Imagen');
 
   return (
     <div className="modal-bg">
@@ -457,10 +498,10 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
           </div>
         ) : (
           <form className="form-producto form-producto-centro" onSubmit={handleSubmit(onSubmit)}>
-            {/* Paso 1: Campos básicos */}
+            {/* Paso 1: Campos básicos + Imagen */}
             {formStep === 1 && (
               <div className="form-step-content">
-                <h3 className="step-title">Información Básica</h3>
+                <h3 className="step-title">Información Básica e Imagen</h3>
                 <label>Código <span style={{ color: '#ef4444' }}>*</span></label>
                 <input
                   {...register('codigo')}
@@ -529,6 +570,71 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
                     {errors.stock && <span className="error-message">{errors.stock.message}</span>}
                   </>
                 )}
+
+                {/* Checkbox para permitir toppings */}
+                <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <input
+                    type="checkbox"
+                    id="permite_toppings_edit"
+                    {...register('permite_toppings')}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                  />
+                  <label htmlFor="permite_toppings_edit" style={{ cursor: 'pointer', fontWeight: 500, fontSize: '0.95rem' }}>
+                    Permitir agregar toppings/adicionales a este producto
+                  </label>
+                </div>
+
+                {/* Imagen del producto (ahora en el paso 1) */}
+                <div style={{ marginTop: '2rem', marginBottom: '2.5rem' }}>
+                  <h3 className="step-title" style={{ marginBottom: '0.5rem' }}>Imagen del Producto</h3>
+                  <p className="step-description" style={{ marginBottom: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                    Cambia la imagen del producto si lo deseas (Opcional)
+                  </p>
+                  <label>
+                    Imagen <span style={{ color: '#6b7280', fontWeight: 400 }}>(Opcional)</span>
+                    {!puedeSubirImagenes && <span style={{ color: '#ef4444', fontWeight: 600 }}> 🔒 Solo plan Estándar</span>}
+                  </label>
+                  <div className="input-upload-wrapper input-upload-centro" style={{ marginBottom: '1rem' }}>
+                    <button
+                      type="button"
+                      className="input-upload-btn"
+                      onClick={puedeSubirImagenes ? handleClickUpload : () => toast.error('Actualiza al plan Estándar para subir imágenes')}
+                      disabled={!puedeSubirImagenes}
+                      style={!puedeSubirImagenes ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                    >
+                      <svg width="22" height="22" fill="none" viewBox="0 0 24 24">
+                        <path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        <rect x="4" y="16" width="16" height="4" rx="2" fill="#2563eb" fillOpacity=".08" />
+                      </svg>
+                      {imagen ? imagen.name : producto?.imagen ? 'Cambiar imagen' : puedeSubirImagenes ? 'Seleccionar imagen' : '🔒 Bloqueado'}
+                    </button>
+                    <input type="file" accept="image/*" onChange={handleImagenChange} ref={fileInputRef} style={{ display: 'none' }} disabled={!puedeSubirImagenes} />
+                  </div>
+
+                  {imagen && (
+                    <div className="image-preview" style={{ marginBottom: '1rem' }}>
+                      <img src={URL.createObjectURL(imagen)} alt="Preview" />
+                      <button
+                        type="button"
+                        className="remove-image-btn"
+                        onClick={() => setImagen(null)}
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  )}
+
+                  {producto?.imagen && !imagen && (
+                    <div className="image-preview" style={{ marginBottom: '1rem' }}>
+                      <OptimizedProductImage
+                        imagePath={producto.imagen}
+                        alt="Imagen actual"
+                        className=""
+                      />
+                      <span style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.5rem', display: 'block', textAlign: 'center' }}>Imagen actual</span>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -578,6 +684,13 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
                   onChange={setVariacionesConfig}
                 />
               )}
+              
+              {/* Productos vinculados */}
+              <ProductosVinculados
+                productosVinculados={productosVinculados}
+                onChange={setProductosVinculados}
+                organizationId={producto?.organization_id}
+              />
               </div>
             )}
 
@@ -654,57 +767,6 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
               </div>
             )}
 
-            {/* Paso 4: Imagen */}
-            {formStep === 4 && (
-              <div className="form-step-content">
-                <h3 className="step-title">Imagen del Producto</h3>
-                <p className="step-description">Cambia la imagen del producto si lo deseas</p>
-                <label>
-                  Imagen <span style={{ color: '#6b7280', fontWeight: 400 }}>(Opcional)</span>
-                  {!puedeSubirImagenes && <span style={{ color: '#ef4444', fontWeight: 600 }}> 🔒 Solo plan Estándar</span>}
-                </label>
-                <div className="input-upload-wrapper input-upload-centro">
-                  <button
-                    type="button"
-                    className="input-upload-btn"
-                    onClick={puedeSubirImagenes ? handleClickUpload : () => toast.error('Actualiza al plan Estándar para subir imágenes')}
-                    disabled={!puedeSubirImagenes}
-                    style={!puedeSubirImagenes ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
-                  >
-                    <svg width="22" height="22" fill="none" viewBox="0 0 24 24">
-                      <path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      <rect x="4" y="16" width="16" height="4" rx="2" fill="#2563eb" fillOpacity=".08" />
-                    </svg>
-                    {imagen ? imagen.name : producto?.imagen ? 'Cambiar imagen' : puedeSubirImagenes ? 'Seleccionar imagen' : '🔒 Bloqueado'}
-                  </button>
-                  <input type="file" accept="image/*" onChange={handleImagenChange} ref={fileInputRef} style={{ display: 'none' }} disabled={!puedeSubirImagenes} />
-                </div>
-
-                {imagen && (
-                  <div className="image-preview">
-                    <img src={URL.createObjectURL(imagen)} alt="Preview" />
-                    <button
-                      type="button"
-                      className="remove-image-btn"
-                      onClick={() => setImagen(null)}
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                )}
-
-                {producto?.imagen && !imagen && (
-                  <div className="image-preview" style={{ marginTop: '1rem' }}>
-                    <OptimizedProductImage
-                      imagePath={producto.imagen}
-                      alt="Imagen actual"
-                      className=""
-                    />
-                    <span style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.5rem', display: 'block', textAlign: 'center' }}>Imagen actual</span>
-                  </div>
-                )}
-              </div>
-            )}
 
             {/* Botones de navegación */}
             <div className="form-actions form-actions-centro">
@@ -716,15 +778,28 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
                   ← Atrás
                 </button>
               )}
-              {formStep < 4 ? (
-                <button type="button" className="inventario-btn inventario-btn-primary" onClick={handleNext}>
-                  Siguiente →
-                </button>
-              ) : (
-                <button type="submit" className="inventario-btn inventario-btn-primary" disabled={subiendo || isSubmitting}>
-                  {subiendo ? (comprimiendo ? '🗜️ Comprimiendo...' : 'Actualizando...') : 'Actualizar Producto'}
-                </button>
-              )}
+              {(() => {
+                const typeFields = selectedType ? getProductTypeFields(selectedType) : { required: [], optional: [] };
+                const hasStep2 = typeFields.optional.length > 0;
+                const hasStep3 = Object.keys(ADDITIONAL_FIELDS).length > 0;
+                const isLastStep = (formStep === 1 && !hasStep2 && !hasStep3) ||
+                                  (formStep === 2 && !hasStep3) ||
+                                  formStep === 3;
+                
+                if (isLastStep) {
+                  return (
+                    <button type="submit" className="inventario-btn inventario-btn-primary" disabled={subiendo || isSubmitting}>
+                      {subiendo ? (comprimiendo ? '🗜️ Comprimiendo...' : 'Actualizando...') : 'Actualizar Producto'}
+                    </button>
+                  );
+                } else {
+                  return (
+                    <button type="button" className="inventario-btn inventario-btn-primary" onClick={handleNext}>
+                      Siguiente →
+                    </button>
+                  );
+                }
+              })()}
             </div>
           </form>
         )}

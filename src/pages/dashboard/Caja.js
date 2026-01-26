@@ -11,6 +11,7 @@ import { generarCodigoVenta } from '../../utils/generarCodigoVenta';
 import { useClientes, useCrearCliente } from '../../hooks/useClientes';
 import { usePedidos, useActualizarPedido, useCrearPedido } from '../../hooks/usePedidos';
 import { useAperturaCajaActiva } from '../../hooks/useAperturasCaja';
+import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
 import OptimizedProductImage from '../../components/business/OptimizedProductImage';
 import ReciboVenta from '../../components/business/ReciboVenta';
 import ConfirmacionVenta from '../../components/business/ConfirmacionVenta';
@@ -638,7 +639,13 @@ export default function Caja({
   const filteredProducts = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return productos;
-    return productos.filter((p) => p.nombre.toLowerCase().includes(q));
+    return productos.filter((p) => {
+      // Buscar por nombre
+      if (p.nombre?.toLowerCase().includes(q)) return true;
+      // Buscar por código de barras (parcial)
+      if (p.codigo?.toLowerCase().includes(q)) return true;
+      return false;
+    });
   }, [query, productos]);
 
   // Calcular subtotal incluyendo precios de toppings
@@ -698,14 +705,20 @@ export default function Caja({
   
   const total = useMemo(() => Math.max(0, subtotal - montoDescuento), [subtotal, montoDescuento]);
 
+  const addToCartRef = useRef(null);
+  
   function addToCart(producto) {
+    // Si se agrega un producto manualmente (no desde un pedido), resetear el flag
+    if (!esModoPedido) {
+      setVieneDePedidos(false);
+    }
     // Verificar stock disponible
     const stockDisponible = producto.stock;
     const itemEnCarrito = cart.find(item => item.id === producto.id);
     const cantidadEnCarrito = itemEnCarrito ? itemEnCarrito.qty : 0;
     
     if (cantidadEnCarrito >= stockDisponible) {
-      toast.error(`No hay suficiente stock. Disponible: ${stockDisponible}`);
+      toast.error(`No hay suficiente stock. Disponible: ${parseFloat(stockDisponible).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`);
       return;
     }
 
@@ -717,6 +730,11 @@ export default function Caja({
       return;
     }
 
+    // Verificar si el producto permite toppings (por defecto true si no está definido)
+    const permiteToppings = producto.metadata?.permite_toppings !== undefined 
+      ? producto.metadata.permite_toppings 
+      : true;
+    
     // Verificar si el producto tiene variaciones
     const tieneVariaciones = producto.metadata?.variaciones_config && producto.metadata.variaciones_config.length > 0;
     
@@ -728,13 +746,53 @@ export default function Caja({
       return;
     }
     
-    // Si no tiene variaciones, mostrar selector de toppings directamente
-    setProductoParaToppings(producto);
-    setMostrandoToppingsSelector(true);
+    // Si permite toppings, mostrar selector de toppings
+    if (permiteToppings) {
+      setProductoParaToppings(producto);
+      setMostrandoToppingsSelector(true);
+    } else {
+      // Si no permite toppings, agregar directamente al carrito
+      agregarProductoConToppingsYVariaciones(producto, [], {});
+    }
   }
+  
+  // Guardar referencia a addToCart para usar en el hook de código de barras
+  addToCartRef.current = addToCart;
+  
+  // Hook para detectar código de barras
+  const handleBarcodeScanned = useCallback((barcode) => {
+    // Buscar producto por código de barras exacto
+    const producto = productos.find(p => 
+      p.codigo && p.codigo.toLowerCase() === barcode.toLowerCase()
+    );
+    
+    if (producto && addToCartRef.current) {
+      // Agregar al carrito automáticamente
+      addToCartRef.current(producto);
+      // Limpiar búsqueda después de un pequeño delay
+      setTimeout(() => {
+        setQuery('');
+        // El foco se mantendrá automáticamente por el hook
+      }, 100);
+      toast.success(`Producto agregado: ${producto.nombre}`);
+    } else {
+      // Si no se encuentra, buscar por código parcial
+      setQuery(barcode);
+      toast('Producto no encontrado por código de barras', { icon: '⚠️' });
+    }
+  }, [productos]);
+  
+  const { inputRef: barcodeInputRef, handleKeyDown: handleBarcodeKeyDown, handleInputChange: handleBarcodeInputChange } = useBarcodeScanner(handleBarcodeScanned, {
+    minLength: 3,
+    maxTimeBetweenChars: 100
+  });
   
   // Función para agregar producto al carrito después de seleccionar toppings y variaciones
   const agregarProductoConToppingsYVariaciones = (producto, toppings = [], variaciones = {}) => {
+    // Si se agrega un producto manualmente (no desde un pedido), resetear el flag
+    if (!esModoPedido) {
+      setVieneDePedidos(false);
+    }
     // Verificar stock disponible
     const stockDisponible = producto.stock;
     const itemEnCarrito = cart.find(item => {
@@ -756,7 +814,7 @@ export default function Caja({
     const cantidadEnCarrito = itemEnCarrito ? itemEnCarrito.qty : 0;
     
     if (cantidadEnCarrito >= stockDisponible) {
-      toast.error(`No hay suficiente stock. Disponible: ${stockDisponible}`);
+      toast.error(`No hay suficiente stock. Disponible: ${parseFloat(stockDisponible).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`);
       return;
     }
 
@@ -833,7 +891,7 @@ export default function Caja({
     console.log('Producto encontrado:', producto);
     
     if (itemEnCarrito && producto && producto.stock !== undefined && itemEnCarrito.qty >= producto.stock) {
-      toast.error(`No hay suficiente stock. Disponible: ${producto.stock}`);
+      toast.error(`No hay suficiente stock. Disponible: ${parseFloat(producto.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`);
       return;
     }
     
@@ -884,7 +942,7 @@ export default function Caja({
     }
     
     if (producto && qty > producto.stock) {
-      toast.error(`No hay suficiente stock. Disponible: ${producto.stock}`);
+      toast.error(`No hay suficiente stock. Disponible: ${parseFloat(producto.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`);
       // Mantener la cantidad anterior si excede el stock
       const itemEnCarrito = cart.find(item => item.id === id);
       if (itemEnCarrito) {
@@ -990,6 +1048,7 @@ export default function Caja({
       
       // Limpiar el carrito después de guardar
       setCart([]);
+      setVieneDePedidos(false); // Resetear flag cuando se vacía el carrito
       setQuery('');
       localStorage.removeItem('cotizacionOriginal');
     } catch (error) {
@@ -1765,7 +1824,22 @@ export default function Caja({
           }
         } else {
           // Es un producto normal
-          const producto = productos.find(p => p.id === item.id);
+          // Primero intentar obtener el producto del array, si no está, obtenerlo de la BD
+          let producto = productos.find(p => p.id === item.id);
+          
+          // Si no está en el array, obtenerlo directamente de la BD
+          if (!producto) {
+            const { data: productoBD, error: productoBDError } = await supabase
+              .from('productos')
+              .select('id, nombre, stock, metadata')
+              .eq('id', item.id)
+              .single();
+            
+            if (!productoBDError && productoBD) {
+              producto = productoBD;
+            }
+          }
+          
           if (producto && producto.stock !== null && producto.stock !== undefined) {
             const nuevoStock = producto.stock - item.qty;
             const { error: stockError } = await supabase
@@ -1778,11 +1852,97 @@ export default function Caja({
               toast.error(`Error al actualizar el stock de ${item.nombre}. La venta se guardó pero el stock no se actualizó.`);
             }
           }
+          
+          // Descontar productos vinculados si existen
+          // Parsear metadata si viene como string
+          let metadata = producto?.metadata;
+          if (typeof metadata === 'string') {
+            try {
+              metadata = JSON.parse(metadata);
+            } catch (e) {
+              console.warn('Error parseando metadata:', e);
+              metadata = null;
+            }
+          }
+          
+          const productosVinculados = metadata?.productos_vinculados;
+          if (productosVinculados && Array.isArray(productosVinculados) && productosVinculados.length > 0) {
+            for (const productoVinculado of productosVinculados) {
+              // Validar que tenga producto_id
+              if (!productoVinculado.producto_id) {
+                console.warn('Producto vinculado sin producto_id:', productoVinculado);
+                continue;
+              }
+              
+              // Calcular cantidad a descontar (puede ser fraccionada)
+              const cantidadADescontar = parseFloat(productoVinculado.cantidad || 0) * parseFloat(item.qty || 1);
+              
+              console.log(`📦 Descontando producto vinculado:`, {
+                producto_id: productoVinculado.producto_id,
+                producto_nombre: productoVinculado.producto_nombre,
+                cantidad_por_unidad: productoVinculado.cantidad,
+                cantidad_vendida: item.qty,
+                cantidad_total_a_descontar: cantidadADescontar,
+                es_porcion: productoVinculado.es_porcion
+              });
+              
+              // Obtener el producto vinculado actual
+              const { data: prodVinculado, error: prodError } = await supabase
+                .from('productos')
+                .select('id, nombre, stock')
+                .eq('id', productoVinculado.producto_id)
+                .single();
+              
+              if (prodError) {
+                console.error(`Error obteniendo producto vinculado ${productoVinculado.producto_id}:`, prodError);
+                toast.error(`Error al obtener producto vinculado ${productoVinculado.producto_nombre || productoVinculado.producto_id}. La venta se guardó pero el stock no se actualizó.`);
+                continue;
+              }
+              
+              if (prodVinculado && prodVinculado.stock !== null && prodVinculado.stock !== undefined) {
+                // Convertir stock actual a número (puede venir como string)
+                const stockActual = parseFloat(prodVinculado.stock) || 0;
+                const nuevoStockVinculado = Math.max(0, stockActual - cantidadADescontar);
+                
+                // Redondear a 2 decimales para evitar problemas de precisión
+                const nuevoStockRedondeado = Math.round(nuevoStockVinculado * 100) / 100;
+                
+                console.log(`📊 Actualizando stock:`, {
+                  producto: prodVinculado.nombre,
+                  stock_actual: stockActual,
+                  cantidad_a_descontar: cantidadADescontar,
+                  nuevo_stock: nuevoStockRedondeado
+                });
+                
+                const { error: stockVinculadoError } = await supabase
+                  .from('productos')
+                  .update({ stock: nuevoStockRedondeado })
+                  .eq('id', productoVinculado.producto_id);
+                
+                if (stockVinculadoError) {
+                  console.error(`❌ Error al actualizar el stock del producto vinculado ${productoVinculado.producto_nombre || prodVinculado.nombre}:`, stockVinculadoError);
+                  console.error(`   Detalles del error:`, JSON.stringify(stockVinculadoError, null, 2));
+                  console.error(`   Valores usados:`, {
+                    producto_id: productoVinculado.producto_id,
+                    stock_actual: stockActual,
+                    cantidad_a_descontar: cantidadADescontar,
+                    nuevo_stock: nuevoStockRedondeado
+                  });
+                  toast.error(`Error al actualizar el stock de ${productoVinculado.producto_nombre || prodVinculado.nombre}. La venta se guardó pero el stock no se actualizó.`);
+                } else {
+                  console.log(`✅ Stock actualizado para producto vinculado: ${prodVinculado.nombre} (${stockActual} -> ${nuevoStockRedondeado})`);
+                }
+              } else {
+                console.warn(`Producto vinculado ${prodVinculado?.nombre || productoVinculado.producto_id} no tiene stock configurado`);
+              }
+            }
+          }
         }
       }
 
       // Limpiar carrito y estados
       setCart([]);
+      setVieneDePedidos(false); // Resetear flag cuando se vacía el carrito
       setProcesandoVenta(false);
       setMostrandoMetodosPago(false);
       setMostrandoPagoEfectivo(false);
@@ -1913,6 +2073,7 @@ export default function Caja({
 
       // Limpiar carrito
       setCart([]);
+      setVieneDePedidos(false); // Resetear flag cuando se vacía el carrito
       setProcesandoVenta(false);
 
       // Llamar callback si existe
@@ -1990,7 +2151,7 @@ export default function Caja({
         }
         
         if (topping.stock !== null && topping.stock !== undefined && item.qty > topping.stock) {
-          toast.error(`No hay suficiente stock para ${item.nombre}. Disponible: ${topping.stock}`);
+          toast.error(`No hay suficiente stock para ${item.nombre}. Disponible: ${parseFloat(topping.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`);
           setProcesandoVenta(false);
           return;
         }
@@ -2004,7 +2165,7 @@ export default function Caja({
         }
         
         if (producto.stock !== null && producto.stock !== undefined && item.qty > producto.stock) {
-          toast.error(`No hay suficiente stock para ${item.nombre}. Disponible: ${producto.stock}`);
+          toast.error(`No hay suficiente stock para ${item.nombre}. Disponible: ${parseFloat(producto.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`);
           setProcesandoVenta(false);
           return;
         }
@@ -2207,7 +2368,22 @@ export default function Caja({
           }
         } else {
           // Es un producto normal
-          const producto = productos.find(p => p.id === item.id);
+          // Primero intentar obtener el producto del array, si no está, obtenerlo de la BD
+          let producto = productos.find(p => p.id === item.id);
+          
+          // Si no está en el array, obtenerlo directamente de la BD
+          if (!producto) {
+            const { data: productoBD, error: productoBDError } = await supabase
+              .from('productos')
+              .select('id, nombre, stock, metadata')
+              .eq('id', item.id)
+              .single();
+            
+            if (!productoBDError && productoBD) {
+              producto = productoBD;
+            }
+          }
+          
           if (producto && producto.stock !== null && producto.stock !== undefined) {
             const nuevoStock = producto.stock - item.qty;
             const { error: stockError } = await supabase
@@ -2218,6 +2394,91 @@ export default function Caja({
             if (stockError) {
               console.error(`Error al actualizar el stock de ${item.nombre}:`, stockError);
               toast.error(`Error al actualizar el stock de ${item.nombre}. La venta se guardó pero el stock no se actualizó.`);
+            }
+          }
+          
+          // Descontar productos vinculados si existen
+          // Parsear metadata si viene como string
+          let metadata = producto?.metadata;
+          if (typeof metadata === 'string') {
+            try {
+              metadata = JSON.parse(metadata);
+            } catch (e) {
+              console.warn('Error parseando metadata:', e);
+              metadata = null;
+            }
+          }
+          
+          const productosVinculados = metadata?.productos_vinculados;
+          if (productosVinculados && Array.isArray(productosVinculados) && productosVinculados.length > 0) {
+            for (const productoVinculado of productosVinculados) {
+              // Validar que tenga producto_id
+              if (!productoVinculado.producto_id) {
+                console.warn('Producto vinculado sin producto_id:', productoVinculado);
+                continue;
+              }
+              
+              // Calcular cantidad a descontar (puede ser fraccionada)
+              const cantidadADescontar = parseFloat(productoVinculado.cantidad || 0) * parseFloat(item.qty || 1);
+              
+              console.log(`📦 Descontando producto vinculado:`, {
+                producto_id: productoVinculado.producto_id,
+                producto_nombre: productoVinculado.producto_nombre,
+                cantidad_por_unidad: productoVinculado.cantidad,
+                cantidad_vendida: item.qty,
+                cantidad_total_a_descontar: cantidadADescontar,
+                es_porcion: productoVinculado.es_porcion
+              });
+              
+              // Obtener el producto vinculado actual
+              const { data: prodVinculado, error: prodError } = await supabase
+                .from('productos')
+                .select('id, nombre, stock')
+                .eq('id', productoVinculado.producto_id)
+                .single();
+              
+              if (prodError) {
+                console.error(`Error obteniendo producto vinculado ${productoVinculado.producto_id}:`, prodError);
+                toast.error(`Error al obtener producto vinculado ${productoVinculado.producto_nombre || productoVinculado.producto_id}. La venta se guardó pero el stock no se actualizó.`);
+                continue;
+              }
+              
+              if (prodVinculado && prodVinculado.stock !== null && prodVinculado.stock !== undefined) {
+                // Convertir stock actual a número (puede venir como string)
+                const stockActual = parseFloat(prodVinculado.stock) || 0;
+                const nuevoStockVinculado = Math.max(0, stockActual - cantidadADescontar);
+                
+                // Redondear a 2 decimales para evitar problemas de precisión
+                const nuevoStockRedondeado = Math.round(nuevoStockVinculado * 100) / 100;
+                
+                console.log(`📊 Actualizando stock:`, {
+                  producto: prodVinculado.nombre,
+                  stock_actual: stockActual,
+                  cantidad_a_descontar: cantidadADescontar,
+                  nuevo_stock: nuevoStockRedondeado
+                });
+                
+                const { error: stockVinculadoError } = await supabase
+                  .from('productos')
+                  .update({ stock: nuevoStockRedondeado })
+                  .eq('id', productoVinculado.producto_id);
+                
+                if (stockVinculadoError) {
+                  console.error(`❌ Error al actualizar el stock del producto vinculado ${productoVinculado.producto_nombre || prodVinculado.nombre}:`, stockVinculadoError);
+                  console.error(`   Detalles del error:`, JSON.stringify(stockVinculadoError, null, 2));
+                  console.error(`   Valores usados:`, {
+                    producto_id: productoVinculado.producto_id,
+                    stock_actual: stockActual,
+                    cantidad_a_descontar: cantidadADescontar,
+                    nuevo_stock: nuevoStockRedondeado
+                  });
+                  toast.error(`Error al actualizar el stock de ${productoVinculado.producto_nombre || prodVinculado.nombre}. La venta se guardó pero el stock no se actualizó.`);
+                } else {
+                  console.log(`✅ Stock actualizado para producto vinculado: ${prodVinculado.nombre} (${stockActual} -> ${nuevoStockRedondeado})`);
+                }
+              } else {
+                console.warn(`Producto vinculado ${prodVinculado?.nombre || productoVinculado.producto_id} no tiene stock configurado`);
+              }
             }
           }
         }
@@ -2282,6 +2543,7 @@ export default function Caja({
         setTimeout(() => {
           setVentaCompletada(ventaRecibo);
           setCart([]);
+          setVieneDePedidos(false); // Resetear flag cuando se vacía el carrito
           setShowCartMobile(false);
           setPedidoIdActual(null); // Limpiar pedido actual
           setPedidosConsolidados([]); // Limpiar pedidos consolidados
@@ -2318,6 +2580,7 @@ export default function Caja({
   // Si consolidarTodos es true, carga todos los pedidos de la misma mesa
   // Si es false (por defecto), solo carga el pedido seleccionado
   const cargarPedidoEnCarrito = (pedido, consolidarTodos = false) => {
+    setVieneDePedidos(true); // Marcar que el carrito viene de un pedido
     if (!pedido.items || pedido.items.length === 0) {
       toast.error('El pedido no tiene items');
       return;
@@ -2688,11 +2951,22 @@ export default function Caja({
         <div className="caja-search-container">
           <Search className="caja-search-icon" size={20} />
           <input
+            ref={barcodeInputRef}
             type="text"
-            placeholder="Buscar producto..."
+            placeholder="Buscar producto o escanear código de barras..."
             className="caja-search-input"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              // El hook manejará la detección de código de barras
+              handleBarcodeInputChange(e);
+            }}
+            onKeyDown={handleBarcodeKeyDown}
+            autoFocus
+            onFocus={(e) => {
+              // Prevenir scroll cuando se enfoca - mantener posición
+              e.target.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+            }}
           />
         </div>
 
@@ -2723,7 +2997,7 @@ export default function Caja({
                 />
                 <div className="caja-product-info">
                   <p className="caja-product-name">{producto.nombre}</p>
-                  <p className="caja-product-stock">Stock: {producto.stock}</p>
+                  <p className="caja-product-stock">Stock: {producto.stock !== null && producto.stock !== undefined ? parseFloat(producto.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : 'N/A'}</p>
                 </div>
                 <span className="caja-product-price">{formatCOP(producto.precio_venta)}</span>
               </div>
@@ -2861,6 +3135,7 @@ export default function Caja({
                 className="caja-header-icon-btn caja-icon-vaciar"
                 onClick={() => {
                   setCart([]);
+                  setVieneDePedidos(false); // Resetear flag cuando se vacía el carrito
                   setPedidoIdActual(null);
                   setPedidosConsolidados([]);
                   setClienteNombrePedido(null); // Limpiar nombre del cliente del pedido
@@ -2941,13 +3216,14 @@ export default function Caja({
                           </span>
                         </div>
                       )}
-                      <div className="caja-cart-item-notas">
-                        <textarea
-                          placeholder="Notas para este producto..."
-                          value={item.notas || ''}
-                          onChange={(e) => actualizarNotasItem(item.id, e.target.value, index, item.toppings, item.variaciones)}
-                          className="caja-cart-item-notas-input"
-                          rows={1}
+                      {(esModoPedido || vieneDePedidos) && (
+                        <div className="caja-cart-item-notas">
+                          <textarea
+                            placeholder="Notas para este producto..."
+                            value={item.notas || ''}
+                            onChange={(e) => actualizarNotasItem(item.id, e.target.value, index, item.toppings, item.variaciones)}
+                            className="caja-cart-item-notas-input"
+                            rows={1}
                           style={{
                             width: '100%',
                             padding: '0.1rem 0.35rem',
@@ -2961,7 +3237,8 @@ export default function Caja({
                             lineHeight: '1.2'
                           }}
                         />
-                      </div>
+                        </div>
+                      )}
                     </div>
                     <div className="caja-cart-item-right-section">
                       <div className="caja-cart-item-controls">
@@ -3346,13 +3623,14 @@ export default function Caja({
                             </span>
                           </div>
                         )}
-                        <div className="caja-mobile-cart-item-notas">
-                          <textarea
-                            placeholder="Notas para este producto..."
-                            value={item.notas || ''}
-                            onChange={(e) => actualizarNotasItem(item.id, e.target.value, index, item.toppings, item.variaciones)}
-                            className="caja-mobile-cart-item-notas-input"
-                            rows={1}
+                        {(esModoPedido || vieneDePedidos) && (
+                          <div className="caja-mobile-cart-item-notas">
+                            <textarea
+                              placeholder="Notas para este producto..."
+                              value={item.notas || ''}
+                              onChange={(e) => actualizarNotasItem(item.id, e.target.value, index, item.toppings, item.variaciones)}
+                              className="caja-mobile-cart-item-notas-input"
+                              rows={1}
                             style={{
                               width: '100%',
                               padding: '0.15rem 0.4rem',
@@ -3366,7 +3644,8 @@ export default function Caja({
                               lineHeight: '1.3'
                             }}
                           />
-                        </div>
+                          </div>
+                        )}
                       </div>
                       <div className="caja-mobile-cart-item-right-section">
                         <div className="caja-mobile-cart-item-controls">
@@ -3674,12 +3953,24 @@ export default function Caja({
             if (esTopping) {
               // Agregar directamente al carrito sin toppings adicionales
               agregarProductoConToppingsYVariaciones(producto, [], variaciones);
-            } else if (productoParaToppings) {
-              setMostrandoToppingsSelector(true);
             } else {
-              // Si por alguna razón no hay productoParaToppings, usar productoParaVariaciones
-              setProductoParaToppings(productoParaVariaciones);
-              setMostrandoToppingsSelector(true);
+              // Verificar si el producto permite toppings (por defecto true si no está definido)
+              const permiteToppings = producto?.metadata?.permite_toppings !== undefined 
+                ? producto.metadata.permite_toppings 
+                : true;
+              
+              if (permiteToppings) {
+                if (productoParaToppings) {
+                  setMostrandoToppingsSelector(true);
+                } else {
+                  // Si por alguna razón no hay productoParaToppings, usar productoParaVariaciones
+                  setProductoParaToppings(productoParaVariaciones);
+                  setMostrandoToppingsSelector(true);
+                }
+              } else {
+                // Si no permite toppings, agregar directamente al carrito
+                agregarProductoConToppingsYVariaciones(producto, [], variaciones);
+              }
             }
           }}
         />

@@ -50,6 +50,7 @@ const ToppingModal = ({ open, onClose, topping, onSave, organizationId, isServic
   const [stockDisplay, setStockDisplay] = useState('');
   const [imagen, setImagen] = useState(null);
   const [imagenPreview, setImagenPreview] = useState(null);
+  const [imagenAEliminar, setImagenAEliminar] = useState(null);
   const [comprimiendo, setComprimiendo] = useState(false);
   const [categoria, setCategoria] = useState('general');
   const fileInputRef = React.useRef();
@@ -67,6 +68,7 @@ const ToppingModal = ({ open, onClose, topping, onSave, organizationId, isServic
       setCategoria(topping.categoria || 'general');
       setImagenPreview(topping.imagen_url || null);
       setImagen(null);
+      setImagenAEliminar(null);
     } else {
       setNombre('');
       setPrecio('');
@@ -78,6 +80,7 @@ const ToppingModal = ({ open, onClose, topping, onSave, organizationId, isServic
       setCategoria('general');
       setImagen(null);
       setImagenPreview(null);
+      setImagenAEliminar(null);
     }
   }, [topping, open]);
 
@@ -106,6 +109,10 @@ const ToppingModal = ({ open, onClose, topping, onSave, organizationId, isServic
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setImagen(file);
+      // Si había una imagen guardada y se está cambiando, marcar la anterior para eliminación
+      if (topping?.imagen_url && !imagenAEliminar) {
+        setImagenAEliminar(true);
+      }
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagenPreview(reader.result);
@@ -133,7 +140,23 @@ const ToppingModal = ({ open, onClose, topping, onSave, organizationId, isServic
       return;
     }
 
-    let imagenPath = topping?.imagen_url || null;
+    let imagenPath = null;
+
+    // Si se marcó para eliminar, eliminar del storage
+    if (imagenAEliminar && topping?.imagen_url) {
+      try {
+        const { error } = await supabase.storage.from('productos').remove([topping.imagen_url]);
+        if (error) {
+          console.error('Error eliminando imagen anterior:', error);
+          // No bloquear el guardado si falla la eliminación
+        } else {
+          console.log('✅ Imagen anterior eliminada del storage');
+        }
+      } catch (error) {
+        console.error('Error eliminando imagen:', error);
+        // No bloquear el guardado si falla la eliminación
+      }
+    }
 
     // Si hay nueva imagen y tiene permiso, subirla con compresión
     if (imagen && puedeSubirImagenes && organizationId) {
@@ -163,9 +186,13 @@ const ToppingModal = ({ open, onClose, topping, onSave, organizationId, isServic
 
         console.log('✅ Imagen de topping subida exitosamente:', nombreArchivo);
 
-        // Eliminar imagen anterior si existe
-        if (topping?.imagen_url) {
-          await supabase.storage.from('productos').remove([topping.imagen_url]);
+        // Eliminar imagen anterior si existe y no se había marcado para eliminar antes
+        if (topping?.imagen_url && !imagenAEliminar) {
+          const { error: errorRemove } = await supabase.storage.from('productos').remove([topping.imagen_url]);
+          if (errorRemove) {
+            console.error('Error eliminando imagen anterior:', errorRemove);
+            // No bloquear el guardado si falla la eliminación
+          }
         }
 
         imagenPath = nombreArchivo;
@@ -175,6 +202,9 @@ const ToppingModal = ({ open, onClose, topping, onSave, organizationId, isServic
         setComprimiendo(false);
         return;
       }
+    } else if (!imagenAEliminar && topping?.imagen_url) {
+      // Si no hay nueva imagen y no se marcó para eliminar, mantener la imagen actual
+      imagenPath = topping.imagen_url;
     }
 
     const precioCompraNum = getNumericValue(precioCompra);
@@ -288,14 +318,31 @@ const ToppingModal = ({ open, onClose, topping, onSave, organizationId, isServic
                     <button
                       type="button"
                       className="topping-remove-image"
-                      onClick={() => {
+                      onClick={async () => {
+                        // Si hay una imagen guardada, marcarla para eliminación
+                        if (topping?.imagen_url && imagenPreview === topping.imagen_url) {
+                          setImagenAEliminar(true);
+                        }
                         setImagen(null);
-                        setImagenPreview(topping?.imagen_url || null);
-                        fileInputRef.current.value = '';
+                        setImagenPreview(null);
+                        if (fileInputRef.current) {
+                          fileInputRef.current.value = '';
+                        }
                       }}
+                      title="Eliminar imagen"
                     >
                       <X size={16} />
                     </button>
+                    {imagen && (
+                      <button
+                        type="button"
+                        className="topping-change-image"
+                        onClick={() => fileInputRef.current?.click()}
+                        title="Cambiar imagen"
+                      >
+                        <Upload size={14} />
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <button
@@ -496,7 +543,7 @@ const GestionToppings = () => {
                       <span className="topping-value" style={{ fontStyle: 'italic', color: 'var(--text-secondary)' }}>N/A</span>
                     ) : (
                       <span className={`topping-value ${topping.stock <= 5 ? 'stock-bajo' : ''}`}>
-                        {topping.stock} unidades
+                        {parseFloat(topping.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} unidades
                       </span>
                     )}
                   </div>

@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { useSubscription } from '../../hooks/useSubscription';
@@ -45,6 +46,18 @@ const HistorialVentas = () => {
   }, [ventas, cotizaciones]);
   const [busqueda, setBusqueda] = useState('');
   const [filtroFecha, setFiltroFecha] = useState('todos');
+  
+  // Hook para detectar código de barras
+  const handleBarcodeScanned = useCallback((barcode) => {
+    // Buscar en ventas por código de barras
+    setBusqueda(barcode);
+    toast('Buscando por código de barras...', { icon: '🔍' });
+  }, []);
+  
+  const { inputRef: barcodeInputRef, handleKeyDown: handleBarcodeKeyDown, handleInputChange: handleBarcodeInputChange } = useBarcodeScanner(handleBarcodeScanned, {
+    minLength: 3,
+    maxTimeBetweenChars: 100
+  });
   const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
   const [mostrandoRecibo, setMostrandoRecibo] = useState(false);
   const [mostrandoDevolucion, setMostrandoDevolucion] = useState(false);
@@ -155,9 +168,13 @@ const HistorialVentas = () => {
       const termino = busqueda.toLowerCase();
       filtradas = filtradas.filter(venta => {
         const idMatch = venta.id?.toString().toLowerCase().includes(termino);
-        const itemsMatch = venta.items?.some(item => 
-          item.nombre?.toLowerCase().includes(termino)
-        );
+        const itemsMatch = venta.items?.some(item => {
+          // Buscar por nombre de producto
+          if (item.nombre?.toLowerCase().includes(termino)) return true;
+          // Buscar por código de barras del producto
+          if (item.codigo?.toLowerCase().includes(termino)) return true;
+          return false;
+        });
         const metodoMatch = venta.metodo_pago?.toLowerCase().includes(termino);
         return idMatch || itemsMatch || metodoMatch;
       });
@@ -707,10 +724,20 @@ const HistorialVentas = () => {
         <div className="search-box">
           <Search size={20} />
           <input
+            ref={barcodeInputRef}
             type="text"
-            placeholder="Buscar por ID, producto o método de pago..."
+            placeholder="Buscar por ID, producto, código de barras o método de pago..."
             value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
+            onChange={(e) => {
+              setBusqueda(e.target.value);
+              // El hook manejará la detección de código de barras
+              handleBarcodeInputChange(e);
+            }}
+            onKeyDown={handleBarcodeKeyDown}
+            onFocus={(e) => {
+              // Prevenir scroll cuando se enfoca
+              e.target.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+            }}
           />
           {busqueda && (
             <button 

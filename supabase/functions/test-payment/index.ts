@@ -99,17 +99,19 @@ serve(async (req) => {
       periodEnd.setMonth(periodEnd.getMonth() + 1)
     }
 
-    // Buscar suscripción existente
-    const { data: existingSub } = await supabaseAdmin
+    // Buscar suscripción existente (puede haber múltiples, buscar la activa o la más reciente)
+    const { data: existingSubs } = await supabaseAdmin
       .from('subscriptions')
       .select('*')
       .eq('organization_id', organization_id)
-      .single()
+      .order('created_at', { ascending: false })
 
     let subscription
+    const existingSub = existingSubs && existingSubs.length > 0 ? existingSubs[0] : null
 
     if (existingSub) {
       // Actualizar suscripción existente
+      console.log('🔄 Actualizando suscripción existente:', existingSub.id)
       const { data: updatedSub, error: subError } = await supabaseAdmin
         .from('subscriptions')
         .update({
@@ -123,10 +125,15 @@ serve(async (req) => {
         .select()
         .single()
 
-      if (subError) throw subError
+      if (subError) {
+        console.error('❌ Error actualizando suscripción:', subError)
+        throw subError
+      }
       subscription = updatedSub
+      console.log('✅ Suscripción actualizada:', subscription.id, 'Plan:', plan_id)
     } else {
       // Crear nueva suscripción
+      console.log('➕ Creando nueva suscripción')
       const { data: newSub, error: subError } = await supabaseAdmin
         .from('subscriptions')
         .insert({
@@ -140,8 +147,12 @@ serve(async (req) => {
         .select()
         .single()
 
-      if (subError) throw subError
+      if (subError) {
+        console.error('❌ Error creando suscripción:', subError)
+        throw subError
+      }
       subscription = newSub
+      console.log('✅ Suscripción creada:', subscription.id, 'Plan:', plan_id)
     }
 
     // 5. Actualizar organization

@@ -86,13 +86,14 @@
   font-weight: 700;
   margin-bottom: 0.75rem;
   color: var(--text-primary);
-  font-size: 1.125rem;
+  font-size: 1rem;
   letter-spacing: 0.01em;
 }
 
 .variacion-required {
-  color: var(--accent-error);
+  color: #ef4444;
   margin-left: 0.25rem;
+  font-weight: 700;
 }
 
 .variacion-options {
@@ -104,56 +105,78 @@
 .variacion-option {
   display: flex;
   align-items: center;
-  gap: 0.625rem;
-  padding: 0.5rem 0.75rem;
-  border: 1.5px solid var(--border-color);
-  border-radius: 10px;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
-  background: var(--bg-primary);
+  background: #f5f5f5;
   position: relative;
 }
 
 .variacion-option:hover {
-  border-color: var(--accent-primary);
-  background: rgba(59, 130, 246, 0.06);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+  border-color: #d4d4d4;
+  background: #eeeeee;
 }
 
 .variacion-option.selected {
-  border-color: var(--accent-primary);
-  background: rgba(59, 130, 246, 0.12);
-  box-shadow: 0 2px 12px rgba(59, 130, 246, 0.15);
+  border-color: #3b82f6;
+  background: #eff6ff;
 }
 
-.variacion-option input[type="radio"] {
+.variacion-option input[type="radio"],
+.variacion-option input[type="checkbox"] {
   margin: 0;
   cursor: pointer;
-  width: 14px;
-  height: 14px;
-  accent-color: var(--accent-primary);
+  width: 18px;
+  height: 18px;
+  accent-color: #3b82f6;
   flex-shrink: 0;
 }
 
 .variacion-option-label {
   flex: 1;
-  color: var(--text-primary);
+  color: #1f2937;
   font-weight: 400;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   text-align: left;
 }
 
 .variacion-option.selected .variacion-option-label {
-  font-weight: 600;
-  color: var(--accent-primary);
+  font-weight: 500;
+  color: #1f2937;
 }
 
 .variacion-option-check {
-  color: var(--accent-primary);
-  flex-shrink: 0;
-  width: 14px;
-  height: 14px;
+  display: none;
+}
+
+.variacion-option.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.variacion-option.disabled:hover {
+  transform: none;
+  border-color: var(--border-color);
+  background: var(--bg-primary);
+  box-shadow: none;
+}
+
+.variacion-max-selecciones-hint {
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.variacion-selecciones-count {
+  font-weight: 600;
+  color: #3b82f6;
 }
 
 .variacion-checkbox-group {
@@ -165,56 +188,50 @@
 .variacion-checkbox-option {
   display: flex;
   align-items: center;
-  gap: 0.625rem;
-  padding: 0.5rem 0.75rem;
-  border: 1.5px solid var(--border-color);
-  border-radius: 10px;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
-  background: var(--bg-primary);
+  background: #f5f5f5;
   position: relative;
 }
 
 .variacion-checkbox-option:hover {
-  border-color: var(--accent-primary);
-  background: rgba(59, 130, 246, 0.06);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+  border-color: #d4d4d4;
+  background: #eeeeee;
 }
 
 .variacion-checkbox-option:has(input:checked) {
-  border-color: var(--accent-primary);
-  background: rgba(59, 130, 246, 0.12);
-  box-shadow: 0 2px 12px rgba(59, 130, 246, 0.15);
+  border-color: #3b82f6;
+  background: #eff6ff;
 }
 
 .variacion-checkbox-option input[type="checkbox"] {
   margin: 0;
   cursor: pointer;
-  width: 14px;
-  height: 14px;
-  accent-color: var(--accent-primary);
+  width: 18px;
+  height: 18px;
+  accent-color: #3b82f6;
   flex-shrink: 0;
 }
 
 .variacion-checkbox-label {
   flex: 1;
-  color: var(--text-primary);
+  color: #1f2937;
   font-weight: 400;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   text-align: left;
 }
 
 .variacion-checkbox-option:has(input:checked) .variacion-checkbox-label {
-  font-weight: 600;
-  color: var(--accent-primary);
+  font-weight: 500;
+  color: #1f2937;
 }
 
 .variacion-checkbox-check {
-  color: var(--accent-primary);
-  flex-shrink: 0;
-  width: 14px;
-  height: 14px;
+  display: none;
 }
 
 .variaciones-selector-footer {

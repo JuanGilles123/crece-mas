@@ -2,13 +2,14 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { User, Settings, Building2, LogOut, Edit3, Save, X, Lock, Sliders, Bell, CreditCard, BarChart3, Crown, Sparkles, Shield, Key } from 'lucide-react';
+import { User, Settings, Building2, LogOut, Edit3, Save, X, Lock, Sliders, Bell, CreditCard, BarChart3, Crown, Sparkles, Shield, Key, Printer } from 'lucide-react';
 import { useSubscription } from '../../hooks/useSubscription';
 import ThemeToggle from '../../components/ui/ThemeToggle';
 import { supabase } from '../../services/api/supabaseClient';
 import { useUpdateEmployeeCode } from '../../hooks/useTeam';
 import EditarCodigoEmpleadoModal from '../../components/EditarCodigoEmpleadoModal';
 import PreferenciasAplicacion from '../../components/PreferenciasAplicacion';
+import ConfiguracionImpresora from '../../components/ConfiguracionImpresora';
 import './Perfil.css';
 
 const Perfil = () => {
@@ -506,6 +507,19 @@ const Perfil = () => {
                     <h3>Notificaciones</h3>
                     <p>Configurar alertas y notificaciones</p>
                   </motion.div>
+
+                  <motion.div 
+                    className="perfil-config-item clickable"
+                    onClick={() => setActiveConfigSection('impresora')}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <div className="config-icon-wrapper">
+                      <Printer size={24} />
+                    </div>
+                    <h3>Impresora</h3>
+                    <p>Configurar impresora predeterminada</p>
+                  </motion.div>
                   
                   <motion.div 
                     className="perfil-config-item clickable"
@@ -555,6 +569,22 @@ const Perfil = () => {
                     <p>Sección en desarrollo</p>
                   </div>
                   {/* <ConfiguracionNotificaciones /> */}
+                </motion.div>
+              )}
+
+              {activeConfigSection === 'impresora' && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                >
+                  <button 
+                    className="perfil-back-btn"
+                    onClick={() => setActiveConfigSection(null)}
+                  >
+                    ← Volver a Configuración
+                  </button>
+                  <ConfiguracionImpresora />
                 </motion.div>
               )}
 
