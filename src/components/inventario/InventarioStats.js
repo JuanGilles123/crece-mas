@@ -56,7 +56,7 @@ const InventarioStats = ({ productos }) => {
       value: totalStock,
       icon: Box,
       color: 'primary',
-      format: (val) => val.toLocaleString('es-CO')
+      format: (val) => parseFloat(val).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
     },
     {
       id: 'costo',

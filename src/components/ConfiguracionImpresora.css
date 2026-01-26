@@ -1,0 +1,349 @@
+.config-impresora {
+  background: var(--card-bg, #ffffff);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.config-impresora-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+
+.config-impresora-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+}
+
+.config-impresora-header p {
+  margin: 0.25rem 0 0 0;
+  font-size: 0.875rem;
+  color: var(--text-secondary, #6b7280);
+}
+
+.config-impresora-alert {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: #fef3c7;
+  border: 1px solid #fbbf24;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+}
+
+.config-impresora-alert svg {
+  color: #f59e0b;
+  flex-shrink: 0;
+}
+
+.config-impresora-alert strong {
+  display: block;
+  color: #92400e;
+  margin-bottom: 0.25rem;
+}
+
+.config-impresora-alert p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #78350f;
+}
+
+.config-impresora-configurada {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.config-impresora-info {
+  padding: 1rem;
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: 8px;
+}
+
+.config-impresora-status {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.config-impresora-check {
+  color: #10b981;
+  flex-shrink: 0;
+}
+
+.config-impresora-status strong {
+  display: block;
+  color: #065f46;
+  margin-bottom: 0.25rem;
+}
+
+.config-impresora-status p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #047857;
+}
+
+.config-impresora-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.config-impresora-sin-configurar {
+  text-align: center;
+  padding: 2rem 1rem;
+}
+
+.config-impresora-mensaje {
+  margin-bottom: 1.5rem;
+}
+
+.config-impresora-mensaje svg {
+  color: var(--text-secondary, #6b7280);
+  margin-bottom: 1rem;
+}
+
+.config-impresora-mensaje p {
+  margin: 0.5rem 0;
+  color: var(--text-primary, #111827);
+  font-weight: 500;
+}
+
+.config-impresora-subtexto {
+  font-size: 0.875rem;
+  color: var(--text-secondary, #6b7280);
+  font-weight: normal;
+}
+
+.config-impresora-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.config-impresora-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.config-impresora-btn-primary {
+  background: #3b82f6;
+  color: white;
+}
+
+.config-impresora-btn-primary:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.config-impresora-btn-secondary {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.config-impresora-btn-secondary:hover:not(:disabled) {
+  background: #e5e7eb;
+}
+
+.config-impresora-btn-danger {
+  background: #ef4444;
+  color: white;
+}
+
+.config-impresora-btn-danger:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+.config-impresora-btn-large {
+  padding: 0.875rem 1.5rem;
+  font-size: 1rem;
+}
+
+.config-impresora-dispositivos {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-color, #e5e7eb);
+}
+
+.config-impresora-dispositivos h4 {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary, #6b7280);
+}
+
+.config-impresora-dispositivos ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.config-impresora-dispositivos li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary, #6b7280);
+}
+
+.config-impresora-loading {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-secondary, #6b7280);
+}
+
+.config-impresora-tipo-selector {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+
+.config-impresora-tipo-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary, #6b7280);
+  margin-bottom: 0.75rem;
+}
+
+.config-impresora-tipo-options {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.config-impresora-tipo-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  border: 2px solid var(--border-color, #e5e7eb);
+  border-radius: 8px;
+  background: white;
+  color: var(--text-primary, #111827);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.config-impresora-tipo-btn:hover:not(:disabled) {
+  border-color: #3b82f6;
+  background: #f0f9ff;
+}
+
+.config-impresora-tipo-btn.active {
+  border-color: #3b82f6;
+  background: #3b82f6;
+  color: white;
+}
+
+.config-impresora-tipo-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.config-impresora-wifi-config {
+  padding: 1rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.config-impresora-wifi-input-group {
+  margin-bottom: 1rem;
+}
+
+.config-impresora-wifi-input-group label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary, #111827);
+  margin-bottom: 0.5rem;
+}
+
+.config-impresora-wifi-input-group input {
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  box-sizing: border-box;
+}
+
+.config-impresora-wifi-note {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #6b7280);
+  margin: 0;
+  font-style: italic;
+}
+
+.config-impresora-usb-info,
+.config-impresora-estandar-info {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: #fef3c7;
+  border: 1px solid #fbbf24;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.config-impresora-usb-info svg,
+.config-impresora-estandar-info svg {
+  color: #f59e0b;
+  flex-shrink: 0;
+}
+
+.config-impresora-usb-info strong,
+.config-impresora-estandar-info strong {
+  display: block;
+  color: #92400e;
+  margin-bottom: 0.25rem;
+}
+
+.config-impresora-usb-info p,
+.config-impresora-estandar-info p {
+  margin: 0.25rem 0;
+  font-size: 0.875rem;
+  color: #78350f;
+}
+
+@media (max-width: 768px) {
+  .config-impresora {
+    padding: 1rem;
+  }
+
+  .config-impresora-actions {
+    flex-direction: column;
+  }
+
+  .config-impresora-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .config-impresora-tipo-options {
+    flex-direction: column;
+  }
+
+  .config-impresora-tipo-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

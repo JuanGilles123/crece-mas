@@ -7,12 +7,19 @@ import UpgradePrompt from '../UpgradePrompt';
 import { Save, Building2, MapPin, Phone, Hash, Mail, AlertCircle, FileText, CreditCard, ShieldAlert, Store, Check, Settings, Plus } from 'lucide-react';
 import { BUSINESS_TYPES } from '../../constants/businessTypes';
 import { BUSINESS_FEATURES, getCompatibleFeatures, getDefaultFeatures, checkFeatureDependencies } from '../../constants/businessFeatures';
+import { hasBypassAccess } from '../../constants/vipUsers';
 import toast from 'react-hot-toast';
 import './ConfiguracionFacturacion.css';
 
 export default function ConfiguracionFacturacion() {
   const navigate = useNavigate();
-  const { organization, hasRoleOwner } = useAuth();
+  const { organization, hasRoleOwner, user, hasPermission } = useAuth();
+  
+  // Verificar si el usuario puede editar facturación
+  // Puede ser owner, tener permiso específico, o ser desarrollador VIP
+  const canEditBilling = hasRoleOwner || 
+                         hasPermission('config.edit_billing') || 
+                         (user && hasBypassAccess(user, organization));
   const { hasFeature, planSlug, loading: subscriptionLoading } = useSubscription();
   const [datosEmpresa, setDatosEmpresa] = useState({
     razon_social: '',
@@ -170,8 +177,8 @@ export default function ConfiguracionFacturacion() {
   const compatibleFeatures = getCompatibleFeatures(datosEmpresa.business_type);
 
   const guardarDatos = async () => {
-    if (!organization || !hasRoleOwner) {
-      toast.error('Solo el propietario puede actualizar la información');
+    if (!organization || !canEditBilling) {
+      toast.error('No tienes permisos para actualizar la información de facturación');
       return;
     }
 
@@ -254,7 +261,7 @@ export default function ConfiguracionFacturacion() {
             <p className="subtitle">{organization.name}</p>
           </div>
         </div>
-        {hasRoleOwner && (
+        {canEditBilling && (
           <button
             className="btn-guardar-principal"
             onClick={guardarDatos}
@@ -266,14 +273,14 @@ export default function ConfiguracionFacturacion() {
         )}
       </div>
 
-      {!hasRoleOwner && (
+      {!canEditBilling && (
         <div className="alert-warning">
           <div className="alert-icon">
             <ShieldAlert size={24} />
           </div>
           <div className="alert-content">
             <h3>Permisos Restringidos</h3>
-            <p>Solo el propietario del negocio puede modificar la información de facturación. Si necesitas hacer cambios, contacta al propietario.</p>
+            <p>Solo el propietario del negocio o usuarios con permisos específicos pueden modificar la información de facturación. Si necesitas hacer cambios, contacta al propietario.</p>
           </div>
         </div>
       )}
@@ -297,8 +304,8 @@ export default function ConfiguracionFacturacion() {
                 value={datosEmpresa.razon_social}
                 onChange={handleInputChange}
                 placeholder="Nombre legal de la empresa"
-                disabled={!hasRoleOwner}
-                className={!hasRoleOwner ? 'disabled' : ''}
+                disabled={!canEditBilling}
+                className={!canEditBilling ? 'disabled' : ''}
               />
             </div>
 
@@ -313,8 +320,8 @@ export default function ConfiguracionFacturacion() {
                 value={datosEmpresa.nit}
                 onChange={handleInputChange}
                 placeholder="Número de identificación tributaria"
-                disabled={!hasRoleOwner}
-                className={!hasRoleOwner ? 'disabled' : ''}
+                disabled={!canEditBilling}
+                className={!canEditBilling ? 'disabled' : ''}
               />
             </div>
 
@@ -327,8 +334,8 @@ export default function ConfiguracionFacturacion() {
                 name="regimen_tributario"
                 value={datosEmpresa.regimen_tributario}
                 onChange={handleInputChange}
-                disabled={!hasRoleOwner}
-                className={!hasRoleOwner ? 'disabled' : ''}
+                disabled={!canEditBilling}
+                className={!canEditBilling ? 'disabled' : ''}
               >
                 <option value="simplificado">Régimen Simplificado</option>
                 <option value="comun">Régimen Común</option>
@@ -372,8 +379,8 @@ export default function ConfiguracionFacturacion() {
                 value={datosEmpresa.direccion}
                 onChange={handleInputChange}
                 placeholder="Dirección completa del negocio"
-                disabled={!hasRoleOwner}
-                className={!hasRoleOwner ? 'disabled' : ''}
+                disabled={!canEditBilling}
+                className={!canEditBilling ? 'disabled' : ''}
               />
             </div>
 
@@ -388,8 +395,8 @@ export default function ConfiguracionFacturacion() {
                 value={datosEmpresa.ciudad}
                 onChange={handleInputChange}
                 placeholder="Ciudad donde opera el negocio"
-                disabled={!hasRoleOwner}
-                className={!hasRoleOwner ? 'disabled' : ''}
+                disabled={!canEditBilling}
+                className={!canEditBilling ? 'disabled' : ''}
               />
             </div>
 
@@ -405,8 +412,8 @@ export default function ConfiguracionFacturacion() {
                       key={type.id}
                       type="button"
                       className={`business-type-option ${datosEmpresa.business_type === type.id ? 'selected' : ''}`}
-                      onClick={() => hasRoleOwner && handleInputChange({ target: { name: 'business_type', value: type.id } })}
-                      disabled={!hasRoleOwner}
+                      onClick={() => canEditBilling && handleInputChange({ target: { name: 'business_type', value: type.id } })}
+                      disabled={!canEditBilling}
                     >
                       <span className="business-type-icon">
                         <IconComponent size={24} />
@@ -532,8 +539,8 @@ export default function ConfiguracionFacturacion() {
                 value={datosEmpresa.telefono}
                 onChange={handleInputChange}
                 placeholder="Número de contacto"
-                disabled={!hasRoleOwner}
-                className={!hasRoleOwner ? 'disabled' : ''}
+                disabled={!canEditBilling}
+                className={!canEditBilling ? 'disabled' : ''}
               />
             </div>
 
@@ -548,8 +555,8 @@ export default function ConfiguracionFacturacion() {
                 value={datosEmpresa.email}
                 onChange={handleInputChange}
                 placeholder="correo@ejemplo.com"
-                disabled={!hasRoleOwner}
-                className={!hasRoleOwner ? 'disabled' : ''}
+                disabled={!canEditBilling}
+                className={!canEditBilling ? 'disabled' : ''}
               />
             </div>
           </div>
@@ -573,8 +580,8 @@ export default function ConfiguracionFacturacion() {
                 onChange={handleInputChange}
                 placeholder="Mensaje que aparecerá al final de cada factura"
                 rows="4"
-                disabled={!hasRoleOwner}
-                className={!hasRoleOwner ? 'disabled' : ''}
+                disabled={!canEditBilling}
+                className={!canEditBilling ? 'disabled' : ''}
               />
               <small className="field-hint">
                 Este mensaje aparecerá impreso en todas las facturas que generes

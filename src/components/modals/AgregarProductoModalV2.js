@@ -15,6 +15,7 @@ import toast from 'react-hot-toast';
 import { PRODUCT_TYPES, ADDITIONAL_FIELDS, getProductTypeFields } from '../../utils/productTypes';
 import { getBusinessTypeConfig, getDefaultProductType, getAvailableProductTypes, shouldSkipProductTypeSelector } from '../../constants/businessTypes';
 import VariacionesConfig from '../VariacionesConfig';
+import ProductosVinculados from '../ProductosVinculados';
 import './AgregarProductoModalV2.css';
 
 // Función para crear esquema de validación dinámico
@@ -60,6 +61,7 @@ const createProductSchema = (productType) => {
   baseSchema.calorias = z.string().optional();
   baseSchema.porcion = z.string().optional();
   baseSchema.variaciones = z.string().optional();
+  baseSchema.permite_toppings = z.boolean().optional().default(true);
 
   return z.object(baseSchema).superRefine((data, ctx) => {
     const precioCompra = data.precioCompra ? parseFloat(data.precioCompra.replace(/[^\d]/g, '')) : 0;
@@ -117,28 +119,34 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
     : Object.keys(PRODUCT_TYPES);
   
   const [step, setStep] = useState(skipTypeSelector ? 'basic' : 'selectType'); // 'selectType' | 'basic' | 'optional' | 'additional' | 'image'
-  const [formStep, setFormStep] = useState(1); // 1: básico, 2: opcionales del tipo, 3: adicionales, 4: imagen
+  const [formStep, setFormStep] = useState(1); // 1: básico + imagen, 2: opcionales del tipo, 3: adicionales
   const [selectedType, setSelectedType] = useState(skipTypeSelector ? defaultProductType : null);
   const [imagen, setImagen] = useState(null);
   const [subiendo, setSubiendo] = useState(false);
   const [comprimiendo, setComprimiendo] = useState(false);
   const [additionalFields, setAdditionalFields] = useState([]);
   const [variacionesConfig, setVariacionesConfig] = useState([]);
+  const [productosVinculados, setProductosVinculados] = useState([]);
   const fileInputRef = useRef();
 
   const puedeSubirImagenes = hasFeature('productImages');
   
   // Efecto para establecer el tipo por defecto cuando se abre el modal
   useEffect(() => {
-    if (open && skipTypeSelector && defaultProductType && !selectedType) {
-      setSelectedType(defaultProductType);
-      setStep('basic');
-    } else if (open && !skipTypeSelector && selectedType) {
-      // Si no debe saltarse, resetear
-      setSelectedType(null);
-      setStep('selectType');
+    if (open) {
+      // Siempre resetear al paso 1 cuando se abre el modal
+      setFormStep(1);
+      
+      if (skipTypeSelector && defaultProductType) {
+        setSelectedType(defaultProductType);
+        setStep('basic');
+      } else if (!skipTypeSelector) {
+        // Si no debe saltarse, resetear
+        setSelectedType(null);
+        setStep('selectType');
+      }
     }
-  }, [open, skipTypeSelector, defaultProductType, selectedType]);
+  }, [open, skipTypeSelector, defaultProductType]);
 
   // Currency inputs
   const precioCompraInput = useCurrencyInput();
@@ -184,7 +192,8 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
       alergenos: '',
       calorias: '',
       porcion: '',
-      variaciones: ''
+      variaciones: '',
+      permite_toppings: true
     }
   });
 
@@ -232,7 +241,13 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
     }
   };
 
-  const handleNext = () => {
+  const handleNext = (e) => {
+    // Prevenir el submit del formulario
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
     const typeFields = selectedType ? getProductTypeFields(selectedType) : { required: [], optional: [] };
     
     // Validar paso actual antes de avanzar
@@ -253,18 +268,20 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
       } else if (Object.keys(ADDITIONAL_FIELDS).length > 0) {
         setFormStep(3);
       } else {
-        setFormStep(4); // Ir directo a imagen
+        // Si no hay más pasos, no hacer nada (el botón cambiará a "Agregar Producto")
+        return;
       }
     } else if (formStep === 2) {
-      // De opcionales del tipo a adicionales o imagen
+      // De opcionales del tipo a adicionales
       if (Object.keys(ADDITIONAL_FIELDS).length > 0) {
         setFormStep(3);
       } else {
-        setFormStep(4);
+        // Si no hay más pasos, no hacer nada (el botón cambiará a "Agregar Producto")
+        return;
       }
     } else if (formStep === 3) {
-      // De adicionales a imagen
-      setFormStep(4);
+      // Ya estamos en el último paso, no hacer nada (el botón cambiará a "Agregar Producto")
+      return;
     }
   };
 
@@ -385,9 +402,17 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
       if (data.porcion) metadata.porcion = data.porcion;
       if (data.variaciones) metadata.variaciones = data.variaciones;
       
+      // Agregar permite_toppings al metadata
+      metadata.permite_toppings = data.permite_toppings !== undefined ? data.permite_toppings : true;
+      
       // Agregar variaciones_config si hay variaciones configuradas
       if (variacionesConfig && variacionesConfig.length > 0) {
         metadata.variaciones_config = variacionesConfig;
+      }
+      
+      // Agregar productos_vinculados si hay productos vinculados
+      if (productosVinculados && productosVinculados.length > 0) {
+        metadata.productos_vinculados = productosVinculados;
       }
 
       // Agregar metadata solo si tiene datos
@@ -407,8 +432,11 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
             setSelectedType(null);
             setStep('selectType');
           }
+          // Siempre resetear al paso 1
+          setFormStep(1);
           setAdditionalFields([]);
           setVariacionesConfig([]);
+          setProductosVinculados([]);
           precioCompraInput.reset();
           precioVentaInput.reset();
           stockInput.reset();
@@ -475,11 +503,10 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
   const typeFields = selectedType ? getProductTypeFields(selectedType) : { required: [], optional: [] };
   const productType = PRODUCT_TYPES[selectedType];
   
-  // Calcular labels de pasos
-  const stepLabels = ['Básico'];
+  // Calcular labels de pasos (ahora solo 3 pasos: básico+imagen, opcionales, adicionales)
+  const stepLabels = ['Básico + Imagen'];
   if (typeFields.optional.length > 0) stepLabels.push('Opcionales');
   if (Object.keys(ADDITIONAL_FIELDS).length > 0) stepLabels.push('Adicionales');
-  stepLabels.push('Imagen');
 
   return (
     <div className="modal-bg">
@@ -543,10 +570,10 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
           </div>
         ) : (
           <form className="form-producto form-producto-centro" onSubmit={handleSubmit(onSubmit)}>
-            {/* Paso 1: Campos básicos */}
+            {/* Paso 1: Campos básicos + Imagen */}
             {formStep === 1 && (
               <div className="form-step-content">
-                <h3 className="step-title">Información Básica</h3>
+                <h3 className="step-title">Información Básica e Imagen</h3>
                 <label>Código <span style={{ color: '#ef4444' }}>*</span></label>
             <input
               {...register('codigo')}
@@ -616,6 +643,61 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
               </>
             )}
 
+            {/* Checkbox para permitir toppings */}
+            <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <input
+                type="checkbox"
+                id="permite_toppings"
+                {...register('permite_toppings')}
+                defaultChecked={true}
+                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+              />
+              <label htmlFor="permite_toppings" style={{ cursor: 'pointer', fontWeight: 500, fontSize: '0.95rem' }}>
+                Permitir agregar toppings/adicionales a este producto
+              </label>
+            </div>
+
+            {/* Imagen del producto (ahora en el paso 1) */}
+            <div style={{ marginTop: '1.5rem', marginBottom: '2.5rem' }}>
+              <h3 className="step-title" style={{ marginBottom: '0.5rem' }}>Imagen del Producto</h3>
+              <p className="step-description" style={{ marginBottom: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                Agrega una imagen para identificar mejor tu producto (Opcional)
+              </p>
+              <label>
+                Imagen <span style={{ color: '#6b7280', fontWeight: 400 }}>(Opcional)</span>
+                {!puedeSubirImagenes && <span style={{ color: '#ef4444', fontWeight: 600 }}> 🔒 Solo plan Estándar</span>}
+              </label>
+              <div className="input-upload-wrapper input-upload-centro" style={{ marginBottom: '1rem' }}>
+                <button
+                  type="button"
+                  className="input-upload-btn"
+                  onClick={puedeSubirImagenes ? handleClickUpload : () => toast.error('Actualiza al plan Profesional para subir imágenes')}
+                  disabled={!puedeSubirImagenes}
+                  style={!puedeSubirImagenes ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                >
+                  <svg width="22" height="22" fill="none" viewBox="0 0 24 24">
+                    <path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <rect x="4" y="16" width="16" height="4" rx="2" fill="#2563eb" fillOpacity=".08" />
+                  </svg>
+                  {imagen ? imagen.name : puedeSubirImagenes ? 'Seleccionar imagen' : '🔒 Bloqueado'}
+                </button>
+                <input type="file" accept="image/*" onChange={handleImagenChange} ref={fileInputRef} style={{ display: 'none' }} disabled={!puedeSubirImagenes} />
+              </div>
+
+              {imagen && (
+                <div className="image-preview">
+                  <img src={URL.createObjectURL(imagen)} alt="Preview" />
+                  <button
+                    type="button"
+                    className="remove-image-btn"
+                    onClick={() => setImagen(null)}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
+            </div>
+
             </div>
             )}
 
@@ -665,6 +747,13 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
                   onChange={setVariacionesConfig}
                 />
               )}
+              
+              {/* Productos vinculados */}
+              <ProductosVinculados
+                productosVinculados={productosVinculados}
+                onChange={setProductosVinculados}
+                organizationId={organization?.id}
+              />
               </div>
             )}
 
@@ -741,61 +830,34 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
               </div>
             )}
 
-            {/* Paso 4: Imagen */}
-            {formStep === 4 && (
-              <div className="form-step-content">
-                <h3 className="step-title">Imagen del Producto</h3>
-                <p className="step-description">Agrega una imagen para identificar mejor tu producto</p>
-                <label>
-                  Imagen <span style={{ color: '#6b7280', fontWeight: 400 }}>(Opcional)</span>
-                  {!puedeSubirImagenes && <span style={{ color: '#ef4444', fontWeight: 600 }}> 🔒 Solo plan Estándar</span>}
-                </label>
-            <div className="input-upload-wrapper input-upload-centro">
-              <button
-                type="button"
-                className="input-upload-btn"
-                onClick={puedeSubirImagenes ? handleClickUpload : () => toast.error('Actualiza al plan Profesional para subir imágenes')}
-                disabled={!puedeSubirImagenes}
-                style={!puedeSubirImagenes ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
-              >
-                <svg width="22" height="22" fill="none" viewBox="0 0 24 24">
-                  <path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  <rect x="4" y="16" width="16" height="4" rx="2" fill="#2563eb" fillOpacity=".08" />
-                </svg>
-                {imagen ? imagen.name : puedeSubirImagenes ? 'Seleccionar imagen' : '🔒 Bloqueado'}
-              </button>
-              <input type="file" accept="image/*" onChange={handleImagenChange} ref={fileInputRef} style={{ display: 'none' }} disabled={!puedeSubirImagenes} />
-            </div>
-
-                {imagen && (
-                  <div className="image-preview">
-                    <img src={URL.createObjectURL(imagen)} alt="Preview" />
-                    <button
-                      type="button"
-                      className="remove-image-btn"
-                      onClick={() => setImagen(null)}
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
 
             {/* Botones de navegación */}
             <div className="form-actions form-actions-centro">
               <button type="button" className="inventario-btn inventario-btn-secondary" onClick={onClose} disabled={subiendo}>
                 Cancelar
               </button>
-              {formStep < 4 ? (
-                <button type="button" className="inventario-btn inventario-btn-primary" onClick={handleNext}>
-                  Siguiente →
-                </button>
-              ) : (
-                <button type="submit" className="inventario-btn inventario-btn-primary" disabled={subiendo || isSubmitting}>
-                  {subiendo ? (comprimiendo ? '🗜️ Comprimiendo...' : 'Subiendo...') : 'Agregar Producto'}
-                </button>
-              )}
+              {(() => {
+                const typeFields = selectedType ? getProductTypeFields(selectedType) : { required: [], optional: [] };
+                const hasStep2 = typeFields.optional.length > 0;
+                const hasStep3 = Object.keys(ADDITIONAL_FIELDS).length > 0;
+                const isLastStep = (formStep === 1 && !hasStep2 && !hasStep3) ||
+                                  (formStep === 2 && !hasStep3) ||
+                                  formStep === 3;
+                
+                if (isLastStep) {
+                  return (
+                    <button type="submit" className="inventario-btn inventario-btn-primary" disabled={subiendo || isSubmitting}>
+                      {subiendo ? (comprimiendo ? '🗜️ Comprimiendo...' : 'Subiendo...') : 'Agregar Producto'}
+                    </button>
+                  );
+                } else {
+                  return (
+                    <button type="button" className="inventario-btn inventario-btn-primary" onClick={handleNext}>
+                      Siguiente →
+                    </button>
+                  );
+                }
+              })()}
             </div>
           </form>
         )}

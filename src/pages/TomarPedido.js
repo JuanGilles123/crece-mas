@@ -265,15 +265,53 @@ const TomarPedido = () => {
       // Cerrar modal de productos primero
       setMostrandoProductos(false);
       
-      // Procesar toppings para cada producto
-      setProductosPendientesToppings(productosParaProcesar);
-      setIndiceProductoActualToppings(0);
-      if (productosParaProcesar.length > 0) {
-        setProductoParaToppings(productosParaProcesar[0]);
+      // Filtrar productos que permiten toppings
+      const productosConToppings = productosParaProcesar.filter(p => {
+        const permiteToppings = p.metadata?.permite_toppings !== undefined 
+          ? p.metadata.permite_toppings 
+          : true;
+        return permiteToppings;
+      });
+      
+      const productosSinToppings = productosParaProcesar.filter(p => {
+        const permiteToppings = p.metadata?.permite_toppings !== undefined 
+          ? p.metadata.permite_toppings 
+          : true;
+        return !permiteToppings;
+      });
+      
+      // Agregar productos que no permiten toppings directamente
+      productosSinToppings.forEach(producto => {
+        const tieneVar = tieneVariaciones(producto);
+        if (tieneVar) {
+          // Si tiene variaciones, procesarlas primero
+          if (!productosPendientesVariaciones || productosPendientesVariaciones.length === 0) {
+            setProductosPendientesVariaciones([producto]);
+            setIndiceProductoActualVariaciones(0);
+            setProductoParaVariaciones(producto);
+            setTimeout(() => {
+              setMostrandoVariacionesSelector(true);
+            }, 300);
+          }
+        } else {
+          agregarItem(producto, [], producto.precio_venta, {});
+        }
+      });
+      
+      // Procesar toppings para productos que los permiten
+      if (productosConToppings.length > 0) {
+        setProductosPendientesToppings(productosConToppings);
+        setIndiceProductoActualToppings(0);
+        setProductoParaToppings(productosConToppings[0]);
         // Pequeño delay para que el modal de productos se cierre antes
         setTimeout(() => {
           setMostrandoToppingsSelector(true);
         }, 300);
+      } else if (productosSinToppings.length > 0 && !tieneVariaciones(productosSinToppings[0])) {
+        // Si solo hay productos sin toppings y sin variaciones, mostrar mensaje
+        setProductosSeleccionados([]);
+        setMostrandoProductos(false);
+        toast.success(`${productosSinToppings.length} producto(s) agregado(s)`);
       }
     }
   };
@@ -350,9 +388,68 @@ const TomarPedido = () => {
     // Si hay más productos pendientes, continuar con el siguiente
     const siguienteIndice = indiceProductoActualToppings + 1;
     if (siguienteIndice < productosPendientesToppings.length) {
-      setIndiceProductoActualToppings(siguienteIndice);
-      setProductoParaToppings(productosPendientesToppings[siguienteIndice]);
-      // El selector de toppings se mantiene abierto
+      const siguienteProducto = productosPendientesToppings[siguienteIndice];
+      // Verificar si el siguiente producto permite toppings
+      const permiteToppings = siguienteProducto.metadata?.permite_toppings !== undefined 
+        ? siguienteProducto.metadata.permite_toppings 
+        : true;
+      
+      if (permiteToppings) {
+        setIndiceProductoActualToppings(siguienteIndice);
+        setProductoParaToppings(siguienteProducto);
+        // El selector de toppings se mantiene abierto
+      } else {
+        // Si no permite toppings, agregarlo directamente y buscar el siguiente que sí permita
+        const tieneVar = tieneVariaciones(siguienteProducto);
+        if (tieneVar) {
+          setProductoParaVariaciones(siguienteProducto);
+          setIndiceProductoActualToppings(siguienteIndice);
+          setMostrandoToppingsSelector(false);
+          setTimeout(() => {
+            setMostrandoVariacionesSelector(true);
+          }, 300);
+        } else {
+          agregarItem(siguienteProducto, [], siguienteProducto.precio_venta, {});
+          // Buscar el siguiente producto que permita toppings
+          let nuevoIndice = siguienteIndice + 1;
+          while (nuevoIndice < productosPendientesToppings.length) {
+            const prod = productosPendientesToppings[nuevoIndice];
+            const permite = prod.metadata?.permite_toppings !== undefined 
+              ? prod.metadata.permite_toppings 
+              : true;
+            if (permite) {
+              setIndiceProductoActualToppings(nuevoIndice);
+              setProductoParaToppings(prod);
+              break;
+            } else {
+              const tieneVar = tieneVariaciones(prod);
+              if (tieneVar) {
+                setProductoParaVariaciones(prod);
+                setIndiceProductoActualToppings(nuevoIndice);
+                setMostrandoToppingsSelector(false);
+                setTimeout(() => {
+                  setMostrandoVariacionesSelector(true);
+                }, 300);
+                break;
+              } else {
+                agregarItem(prod, [], prod.precio_venta, {});
+                nuevoIndice++;
+              }
+            }
+          }
+          // Si no hay más productos que permitan toppings, terminar
+          if (nuevoIndice >= productosPendientesToppings.length) {
+            const cantidadTotal = productosPendientesToppings.length;
+            setProductoParaToppings(null);
+            setProductosPendientesToppings([]);
+            setIndiceProductoActualToppings(0);
+            setProductosSeleccionados([]);
+            setMostrandoToppingsSelector(false);
+            setMostrandoProductos(false);
+            toast.success(`${cantidadTotal} producto(s) agregado(s)`);
+          }
+        }
+      }
     } else {
       // Terminamos con todos los productos
       const cantidadTotal = productosPendientesToppings.length;

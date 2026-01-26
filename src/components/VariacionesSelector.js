@@ -1,7 +1,7 @@
 // 🎯 Componente para seleccionar variaciones/opciones de un producto
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { X, Check } from 'lucide-react';
+import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import './VariacionesSelector.css';
 
@@ -43,7 +43,7 @@ const VariacionesSelector = ({
     }
   }, [open, variaciones]);
 
-  const handleSelectChange = (variacionId, valor, esMultiple = false) => {
+  const handleSelectChange = (variacionId, valor, esMultiple = false, maxSelecciones = null) => {
     if (esMultiple) {
       setSelecciones(prev => {
         const seleccionActual = prev[variacionId] || [];
@@ -54,7 +54,11 @@ const VariacionesSelector = ({
           // Si ya está seleccionado, quitarlo
           nuevaSeleccion.splice(indice, 1);
         } else {
-          // Si no está seleccionado, agregarlo
+          // Si no está seleccionado, verificar límite antes de agregar
+          if (maxSelecciones !== null && maxSelecciones !== undefined && nuevaSeleccion.length >= maxSelecciones) {
+            toast.error(`Solo puedes seleccionar máximo ${maxSelecciones} opción${maxSelecciones > 1 ? 'es' : ''}`);
+            return prev;
+          }
           nuevaSeleccion.push(valor);
         }
         
@@ -155,37 +159,60 @@ const VariacionesSelector = ({
 
                 {variacion.tipo === 'select' ? (
                   <div className="variacion-options">
-                    {variacion.opciones?.map((opcion) => {
-                      const valor = typeof opcion === 'string' ? opcion : opcion.valor;
-                      const label = typeof opcion === 'string' ? opcion : opcion.label;
+                    {(() => {
                       const variacionKey = variacion.id || variacion.nombre;
                       const esMultiple = variacion.seleccion_multiple === true;
-                      const seleccionActual = selecciones[variacionKey];
+                      const maxSelecciones = variacion.max_selecciones;
+                      
+                      return variacion.opciones?.map((opcion) => {
+                        const valor = typeof opcion === 'string' ? opcion : opcion.valor;
+                        const label = typeof opcion === 'string' ? opcion : opcion.label;
+                        const seleccionActual = selecciones[variacionKey];
                       
                       // Determinar si está seleccionado
                       const isSelected = esMultiple
                         ? (Array.isArray(seleccionActual) && seleccionActual.includes(valor))
                         : (seleccionActual === valor);
+                      
+                      // Determinar si se puede seleccionar (verificar límite)
+                      const puedeSeleccionar = esMultiple && maxSelecciones !== null && maxSelecciones !== undefined
+                        ? (Array.isArray(seleccionActual) ? seleccionActual.length < maxSelecciones : true) || isSelected
+                        : true;
 
                       return (
                         <label
                           key={valor}
-                          className={`variacion-option ${isSelected ? 'selected' : ''}`}
+                          className={`variacion-option ${isSelected ? 'selected' : ''} ${!puedeSeleccionar ? 'disabled' : ''}`}
                         >
                           <input
                             type={esMultiple ? "checkbox" : "radio"}
                             name={variacionKey}
                             value={valor}
                             checked={isSelected}
-                            onChange={() => handleSelectChange(variacionKey, valor, esMultiple)}
+                            disabled={!puedeSeleccionar && !isSelected}
+                            onChange={() => handleSelectChange(variacionKey, valor, esMultiple, maxSelecciones)}
                           />
                           <span className="variacion-option-label">{label}</span>
-                          {isSelected && (
-                            <Check size={14} className="variacion-option-check" />
-                          )}
                         </label>
                       );
-                    })}
+                    });
+                    })()}
+                    {(() => {
+                      const variacionKey = variacion.id || variacion.nombre;
+                      const esMultiple = variacion.seleccion_multiple === true;
+                      const maxSelecciones = variacion.max_selecciones;
+                      
+                      return esMultiple && maxSelecciones !== null && maxSelecciones !== undefined ? (
+                        <p className="variacion-max-selecciones-hint">
+                          Máximo {maxSelecciones} opción{maxSelecciones > 1 ? 'es' : ''} seleccionable{maxSelecciones > 1 ? 's' : ''}
+                          {Array.isArray(selecciones[variacionKey]) && (
+                            <span className="variacion-selecciones-count">
+                              ({selecciones[variacionKey]?.length || 0}/{maxSelecciones})
+                            </span>
+                          )}
+                        </p>
+                      ) : null;
+                    })()}
                   </div>
                 ) : (
                   <div className="variacion-checkbox-group">
@@ -196,9 +223,6 @@ const VariacionesSelector = ({
                         onChange={(e) => handleCheckboxChange(variacion.id || variacion.nombre, e.target.checked)}
                       />
                       <span className="variacion-checkbox-label">Sí</span>
-                      {selecciones[variacion.id || variacion.nombre] === 'si' && (
-                        <Check size={16} className="variacion-checkbox-check" />
-                      )}
                     </label>
                   </div>
                 )}

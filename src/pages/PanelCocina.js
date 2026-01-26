@@ -586,9 +586,42 @@ const PedidoDetalleModal = ({ pedido, onClose, onCambiarEstado }) => {
                   </div>
                   <div className="pedido-item-info-detalle">
                     <h5>{item.producto?.nombre || 'Producto'}</h5>
+                    {item.variaciones_seleccionadas && Object.keys(item.variaciones_seleccionadas).length > 0 && (
+                      <div className="pedido-item-variaciones-detalle">
+                        {Object.entries(item.variaciones_seleccionadas).map(([key, value], i) => {
+                          // Buscar el label de la variación y opción
+                          const variacionConfig = item.producto?.metadata?.variaciones_config?.find(v => {
+                            const variacionId = v.id || v.nombre?.toLowerCase();
+                            const keyLower = key.toLowerCase();
+                            return variacionId === keyLower || variacionId?.includes(keyLower) || keyLower.includes(variacionId);
+                          });
+                          
+                          // Si no se encuentra por ID/nombre, buscar en las opciones
+                          let opcionLabel = value;
+                          let variacionNombre = key;
+                          
+                          if (variacionConfig) {
+                            variacionNombre = variacionConfig.nombre || key;
+                            const opcion = variacionConfig.opciones?.find(o => {
+                              const opcionValor = typeof o === 'string' ? o : o.valor;
+                              return opcionValor === value || opcionValor?.toString() === value?.toString();
+                            });
+                            if (opcion) {
+                              opcionLabel = typeof opcion === 'string' ? opcion : (opcion.label || opcion.valor || value);
+                            }
+                          }
+                          
+                          return (
+                            <span key={i} className="pedido-item-variacion-badge">
+                              <strong>{variacionNombre}:</strong> {opcionLabel}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
                     {item.toppings && item.toppings.length > 0 && (
                       <p className="pedido-item-toppings-detalle">
-                        + {item.toppings.map(t => t.nombre).join(', ')}
+                        + {item.toppings.map(t => t.nombre || t).join(', ')}
                       </p>
                     )}
                     {item.notas_item && (

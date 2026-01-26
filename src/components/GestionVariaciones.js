@@ -12,6 +12,8 @@ const VariacionModal = ({ open, onClose, variacion, onSave, organizationId }) =>
   const [nombre, setNombre] = useState('');
   const [tipo, setTipo] = useState('select');
   const [requerido, setRequerido] = useState(false);
+  const [seleccionMultiple, setSeleccionMultiple] = useState(false);
+  const [maxSelecciones, setMaxSelecciones] = useState(null);
   const [opciones, setOpciones] = useState([]);
 
   React.useEffect(() => {
@@ -19,11 +21,15 @@ const VariacionModal = ({ open, onClose, variacion, onSave, organizationId }) =>
       setNombre(variacion.nombre || '');
       setTipo(variacion.tipo || 'select');
       setRequerido(variacion.requerido || false);
+      setSeleccionMultiple(variacion.seleccion_multiple || false);
+      setMaxSelecciones(variacion.max_selecciones || null);
       setOpciones(variacion.opciones || []);
     } else {
       setNombre('');
       setTipo('select');
       setRequerido(false);
+      setSeleccionMultiple(false);
+      setMaxSelecciones(null);
       setOpciones([]);
     }
   }, [variacion, open]);
@@ -75,6 +81,8 @@ const VariacionModal = ({ open, onClose, variacion, onSave, organizationId }) =>
       nombre: nombre.trim(),
       tipo,
       requerido,
+      seleccion_multiple: tipo === 'select' ? seleccionMultiple : false,
+      max_selecciones: tipo === 'select' && seleccionMultiple ? maxSelecciones : null,
       opciones: tipo === 'select' ? opciones : []
     });
   };
@@ -125,6 +133,50 @@ const VariacionModal = ({ open, onClose, variacion, onSave, organizationId }) =>
                 : 'El cliente puede marcar o desmarcar (Sí/No)'}
             </p>
           </div>
+
+          {tipo === 'select' && (
+            <>
+              <div className="variacion-form-group">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={seleccionMultiple}
+                    onChange={(e) => {
+                      setSeleccionMultiple(e.target.checked);
+                      if (!e.target.checked) {
+                        setMaxSelecciones(null);
+                      }
+                    }}
+                  />
+                  <span>Permitir selección múltiple</span>
+                </label>
+                <p className="variacion-form-hint">
+                  Si está marcado, el cliente puede seleccionar varias opciones. Si no, solo puede seleccionar una.
+                </p>
+              </div>
+
+              {seleccionMultiple && (
+                <div className="variacion-form-group">
+                  <label>
+                    Cantidad máxima de opciones seleccionables
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={maxSelecciones || ''}
+                    onChange={(e) => {
+                      const valor = e.target.value === '' ? null : parseInt(e.target.value, 10);
+                      setMaxSelecciones(valor);
+                    }}
+                    placeholder="Sin límite"
+                  />
+                  <p className="variacion-form-hint">
+                    Define cuántas opciones máximo puede seleccionar el cliente. Déjalo vacío para permitir todas.
+                  </p>
+                </div>
+              )}
+            </>
+          )}
 
           <div className="variacion-form-group">
             <label>

@@ -394,7 +394,7 @@ const InventarioOptimizado = () => {
                               }).format(producto.precio_venta)}
                             </span>
                             <span className="inventario-item-stock">
-                              Stock: {producto.stock}
+                              Stock: {producto.stock !== null && producto.stock !== undefined ? parseFloat(producto.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : 'N/A'}
                             </span>
                           </div>
                         </div>
@@ -444,7 +444,7 @@ const InventarioOptimizado = () => {
                               }).format(producto.precio_venta)}
                             </span>
                             <span className="inventario-card-stock">
-                              Stock: {producto.stock}
+                              Stock: {producto.stock !== null && producto.stock !== undefined ? parseFloat(producto.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : 'N/A'}
                             </span>
                           </div>
                           <div className="inventario-card-actions">
@@ -497,7 +497,7 @@ const InventarioOptimizado = () => {
                               }).format(producto.precio_venta)}
                             </span>
                             <span className="inventario-item-stock">
-                              Stock: {producto.stock}
+                              Stock: {producto.stock !== null && producto.stock !== undefined ? parseFloat(producto.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : 'N/A'}
                             </span>
                           </div>
                         </div>
@@ -547,7 +547,7 @@ const InventarioOptimizado = () => {
                               }).format(producto.precio_venta)}
                             </span>
                             <span className="inventario-card-stock">
-                              Stock: {producto.stock}
+                              Stock: {producto.stock !== null && producto.stock !== undefined ? parseFloat(producto.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : 'N/A'}
                             </span>
                           </div>
                           <div className="inventario-card-actions">

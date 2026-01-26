@@ -103,7 +103,11 @@ const OptimizedProductImage = ({ imagePath, src, alt, className, onError }) => {
       onError={handleError}
       style={{
         transition: 'opacity 0.3s ease-in-out',
-        opacity: imageLoaded ? 1 : loading ? 0 : 1
+        opacity: imageLoaded ? 1 : loading ? 0 : 1,
+        width: '100%',
+        height: '100%',
+        objectFit: 'cover',
+        aspectRatio: '1 / 1'
       }}
     />
   );
