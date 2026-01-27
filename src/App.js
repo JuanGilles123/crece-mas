@@ -17,6 +17,7 @@ const Registro = lazy(() => import('./pages/auth/Registro'));
 const Recuperar = lazy(() => import('./pages/auth/Recuperar'));
 const Dashboard = lazy(() => import('./pages/dashboard/Dashboard'));
 const RestablecerContrasena = lazy(() => import('./pages/auth/ResetPassword'));
+const CambiarContrasenaObligatorio = lazy(() => import('./components/CambiarContrasenaObligatorio'));
 const Confirmacion = lazy(() => import('./pages/auth/Confirmacion'));
 const ConfirmacionExitosa = lazy(() => import('./components/ConfirmacionExitosa'));
 const Invitaciones = lazy(() => import('./pages/Invitaciones'));
@@ -84,6 +85,11 @@ function App() {
                 <Route path="/registro" element={<Registro />} />
                 <Route path="/recuperar" element={<Recuperar />} />
                 <Route path="/restablecer-contraseña" element={<RestablecerContrasena />} />
+                <Route path="/cambiar-contrasena-obligatorio" element={
+                  <ProtectedRoute>
+                    <CambiarContrasenaObligatorio />
+                  </ProtectedRoute>
+                } />
                 <Route path="/dashboard/*" element={
                   <ProtectedRoute>
                     <Dashboard />

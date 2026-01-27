@@ -516,18 +516,19 @@ const GestionEquipo = () => {
     }
   };
 
-  const handleAgregarEmpleado = async ({ nombre, email, telefono, role, customRoleId, codigo }) => {
+  const handleAgregarEmpleado = async ({ nombre, email, telefono, usuario, password, role, customRoleId }) => {
     try {
       const result = await createEmployee.mutateAsync({
         organizationId: organization.id,
         nombre,
         email,
         telefono,
+        usuario,
+        password,
         role,
-        customRoleId,
-        codigo
+        customRoleId
       });
-      // Retornar el resultado con el código para que el modal lo muestre
+      // Retornar el resultado con el usuario y contraseña para que el modal lo muestre
       return result;
     } catch (error) {
       console.error('Error agregando empleado:', error);

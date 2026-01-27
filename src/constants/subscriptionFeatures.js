@@ -68,7 +68,7 @@ export const PLAN_FEATURES = {
   professional: {
     limits: {
       maxOrganizations: 1,
-      maxUsers: 10,
+      maxUsers: 3,
       maxProducts: null,        // Ilimitado
       maxSalesPerMonth: null,   // Ilimitado
       historyDays: null,        // Ilimitado

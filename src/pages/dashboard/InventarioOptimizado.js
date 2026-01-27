@@ -1,9 +1,10 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './Inventario.css';
 import AgregarProductoModal from '../../components/modals/AgregarProductoModal';
 import EditarProductoModal from '../../components/modals/EditarProductoModal';
 import ImportarProductosCSV from '../../components/forms/ImportarProductosCSV';
+import EntradaInventarioModal from '../../components/modals/EntradaInventarioModal';
 import OptimizedProductImage from '../../components/business/OptimizedProductImage';
 import SearchInput from '../../components/ui/SearchInput';
 import Pagination from '../../components/ui/Pagination';
@@ -12,7 +13,7 @@ import { ProductCardSkeleton, ProductListSkeleton, InventoryHeaderSkeleton } fro
 import LottieLoader from '../../components/ui/LottieLoader';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../services/api/supabaseClient';
-import { Search, List, Grid3X3, Plus, Upload, Filter, Utensils, ListChecks } from 'lucide-react';
+import { Search, List, Grid3X3, Plus, Upload, Filter, Utensils, ListChecks, PackagePlus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { 
   useProductosPaginados, 
@@ -46,6 +47,7 @@ const InventarioOptimizado = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editarModalOpen, setEditarModalOpen] = useState(false);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
+  const [entradaInventarioOpen, setEntradaInventarioOpen] = useState(false);
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
   const [modoLista, setModoLista] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -167,6 +169,116 @@ const InventarioOptimizado = () => {
     }
   }, [viewMode, refetchPaginados, refetchInfinite]);
 
+  // Refs para detección global de código de barras (funciona aunque el cursor no esté en el buscador)
+  const globalBarcodeBufferRef = useRef('');
+  const globalLastCharTimeRef = useRef(null);
+  const globalBarcodeTimeoutRef = useRef(null);
+  const globalBarcodeProcessingRef = useRef(false);
+  const searchInputRef = useRef(null);
+
+  // Listener global para detectar códigos de barras en cualquier parte de la página
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      // Ignorar si el usuario está escribiendo en un input, textarea o contenteditable
+      const target = e.target;
+      const isInputElement = target.tagName === 'INPUT' || 
+                            target.tagName === 'TEXTAREA' || 
+                            target.isContentEditable ||
+                            target.closest('input') ||
+                            target.closest('textarea');
+      
+      // Si está en el input del buscador, dejar que se maneje normalmente
+      if (target === searchInputRef.current) {
+        return;
+      }
+      
+      // Si está en otro input, no procesar como código de barras
+      if (isInputElement) {
+        return;
+      }
+      
+      // Si es Enter o Tab, podría ser el final del código de barras
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const barcode = globalBarcodeBufferRef.current.trim();
+        if (barcode.length >= 3 && !globalBarcodeProcessingRef.current) {
+          globalBarcodeProcessingRef.current = true;
+          // Establecer el código en el buscador
+          setSearchQuery(barcode);
+          // Enfocar el input del buscador
+          if (searchInputRef.current) {
+            searchInputRef.current.focus();
+          }
+          
+          // Limpiar buffer
+          globalBarcodeBufferRef.current = '';
+          globalLastCharTimeRef.current = null;
+          
+          // Resetear flag después de un delay
+          setTimeout(() => {
+            globalBarcodeProcessingRef.current = false;
+          }, 500);
+        }
+        return;
+      }
+      
+      // Si es un carácter imprimible
+      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const now = Date.now();
+        
+        // Si pasó mucho tiempo desde el último carácter, resetear buffer
+        if (globalLastCharTimeRef.current && (now - globalLastCharTimeRef.current) > 150) {
+          globalBarcodeBufferRef.current = '';
+        }
+        
+        // Agregar carácter al buffer
+        globalBarcodeBufferRef.current += e.key;
+        globalLastCharTimeRef.current = now;
+        
+        // Limpiar timeout anterior
+        if (globalBarcodeTimeoutRef.current) {
+          clearTimeout(globalBarcodeTimeoutRef.current);
+        }
+        
+        // Si después de un tiempo no hay más caracteres, procesar como código de barras
+        globalBarcodeTimeoutRef.current = setTimeout(() => {
+          const barcode = globalBarcodeBufferRef.current.trim();
+          if (barcode.length >= 3 && !globalBarcodeProcessingRef.current) {
+            globalBarcodeProcessingRef.current = true;
+            // Establecer el código en el buscador
+            setSearchQuery(barcode);
+            // Enfocar el input del buscador
+            if (searchInputRef.current) {
+              searchInputRef.current.focus();
+            }
+            
+            // Limpiar buffer
+            globalBarcodeBufferRef.current = '';
+            globalLastCharTimeRef.current = null;
+            
+            // Resetear flag después de un delay
+            setTimeout(() => {
+              globalBarcodeProcessingRef.current = false;
+            }, 500);
+          }
+        }, 150);
+      }
+    };
+    
+    // Agregar listener global
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    
+    // Limpiar al desmontar
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown);
+      if (globalBarcodeTimeoutRef.current) {
+        clearTimeout(globalBarcodeTimeoutRef.current);
+      }
+    };
+  }, []);
+
   if (!user) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -210,6 +322,14 @@ const InventarioOptimizado = () => {
             </>
           )}
           <button
+            onClick={() => setEntradaInventarioOpen(true)}
+            className="inventario-action-button"
+            title="Registrar entrada de inventario"
+          >
+            <PackagePlus className="w-5 h-5" />
+            Entrada Inventario
+          </button>
+          <button
             onClick={() => setCsvModalOpen(true)}
             className="inventario-action-button"
           >
@@ -230,6 +350,7 @@ const InventarioOptimizado = () => {
       <div className="inventario-controls">
         <div className="inventario-search">
           <SearchInput
+            ref={searchInputRef}
             value={searchQuery}
             onChange={setSearchQuery}
             placeholder="Buscar productos por nombre, código o descripción..."
@@ -622,6 +743,16 @@ const InventarioOptimizado = () => {
             onClose={() => setCsvModalOpen(false)}
             onSuccess={() => {
               setCsvModalOpen(false);
+              refetchData();
+            }}
+          />
+        )}
+
+        {entradaInventarioOpen && (
+          <EntradaInventarioModal
+            open={entradaInventarioOpen}
+            onClose={() => {
+              setEntradaInventarioOpen(false);
               refetchData();
             }}
           />

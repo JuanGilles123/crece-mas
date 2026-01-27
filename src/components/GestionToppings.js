@@ -394,6 +394,7 @@ const GestionToppings = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [toppingEditando, setToppingEditando] = useState(null);
   const [toppingEliminando, setToppingEliminando] = useState(null);
+  const [busqueda, setBusqueda] = useState('');
 
   // Verificar si puede usar toppings
   const acceso = canUseToppings(organization, null, hasFeature);
@@ -487,8 +488,28 @@ const GestionToppings = () => {
           </button>
         </div>
       ) : (
-        <div className="toppings-grid">
-          {toppings.map((topping) => (
+        <>
+          {/* Buscador de toppings */}
+          <div className="gestion-toppings-busqueda-container">
+            <span className="gestion-toppings-busqueda-icon-outside">🔍</span>
+            <input
+              type="text"
+              placeholder="Buscar por nombre o categoría..."
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              className="gestion-toppings-busqueda-input"
+            />
+          </div>
+
+          <div className="toppings-grid">
+            {toppings
+              .filter(topping => {
+                if (!busqueda.trim()) return true;
+                const query = busqueda.toLowerCase();
+                return topping.nombre?.toLowerCase().includes(query) ||
+                       topping.categoria?.toLowerCase().includes(query);
+              })
+              .map((topping) => (
             <motion.div
               key={topping.id}
               className="topping-card"
@@ -552,6 +573,7 @@ const GestionToppings = () => {
             </motion.div>
           ))}
         </div>
+        </>
       )}
 
       <ToppingModal

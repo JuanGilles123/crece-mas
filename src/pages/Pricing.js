@@ -13,7 +13,6 @@ import {
   Sparkles
 } from 'lucide-react';
 import { useSubscription } from '../hooks/useSubscription';
-import { useAuth } from '../context/AuthContext';
 import LottieLoader from '../components/ui/LottieLoader';
 import { supabase } from '../services/api/supabaseClient';
 import toast from 'react-hot-toast';
@@ -21,8 +20,7 @@ import './Pricing.css';
 
 const Pricing = () => {
   const navigate = useNavigate();
-  const { planSlug, planName, loading, isVIP, refreshSubscription } = useSubscription();
-  const { refreshProfile } = useAuth();
+  const { planSlug, planName, loading, isVIP } = useSubscription();
   const [billingPeriod, setBillingPeriod] = useState('monthly'); // monthly | yearly
   const [processingPlan, setProcessingPlan] = useState(null); // Para mostrar loading en el botón
 
@@ -51,7 +49,7 @@ const Pricing = () => {
         { name: 'Sin equipo', included: false },
       ],
       recommended: false,
-      cta: 'Plan Actual',
+      cta: 'Comenzar Gratis',
       ctaAction: 'current'
     },
     {
@@ -65,7 +63,7 @@ const Pricing = () => {
       color: '#3B82F6',
       features: [
         { name: '1 organización', included: true },
-        { name: 'Hasta 10 usuarios', included: true },
+        { name: 'Hasta 3 usuarios', included: true },
         { name: 'Productos ilimitados', included: true },
         { name: 'Ventas ilimitadas', included: true },
         { name: 'Historial completo', included: true },
@@ -211,82 +209,6 @@ const Pricing = () => {
     }
   };
 
-  // Función de prueba para simular pago exitoso
-  const handleTestPayment = async (plan) => {
-    try {
-      setProcessingPlan(plan.slug);
-
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error('Debes iniciar sesión');
-        return;
-      }
-
-      // Obtener plan de BD
-      const { data: dbPlan } = await supabase
-        .from('subscription_plans')
-        .select('id')
-        .eq('slug', plan.slug)
-        .single();
-
-      // Obtener organization_id
-      const { data: profile } = await supabase
-        .from('user_profiles')
-        .select('organization_id')
-        .eq('user_id', session.user.id)
-        .single();
-
-      console.log('🧪 Simulando pago para:', { plan: plan.name, billing: billingPeriod });
-
-      // Llamar a función de prueba
-      const response = await fetch(
-        `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/test-payment`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-            'apikey': process.env.REACT_APP_SUPABASE_ANON_KEY,
-          },
-          body: JSON.stringify({
-            plan_id: dbPlan.id,
-            billing_period: billingPeriod,
-            organization_id: profile.organization_id,
-          }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (response.ok) {
-        toast.success('¡Pago simulado exitosamente! Suscripción activada');
-        
-        // Refrescar datos de suscripción y organización
-        try {
-          await refreshSubscription();
-          await refreshProfile();
-          
-          // Esperar un momento para que los datos se actualicen
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          // Redirigir al dashboard y forzar recarga
-          window.location.href = '/dashboard';
-        } catch (refreshError) {
-          console.error('Error refrescando datos:', refreshError);
-          // Aún así redirigir, los datos se actualizarán en el próximo render
-          window.location.href = '/dashboard';
-        }
-      } else {
-        toast.error(data.message || 'Error al simular pago');
-        setProcessingPlan(null);
-      }
-    } catch (error) {
-      console.error('Error en test payment:', error);
-      toast.error('Error al simular pago');
-      setProcessingPlan(null);
-    }
-  };
-
   if (loading) {
     return (
       <div className="pricing-loading">
@@ -358,7 +280,9 @@ const Pricing = () => {
       <div className="pricing-plans-grid">
         {plans.map((plan, index) => {
           const Icon = plan.icon;
-          const isCurrentPlan = plan.slug === planSlug;
+          // Solo marcar como actual si el slug coincide exactamente con el plan actual
+          // Usar comparación estricta para evitar falsos positivos
+          const isCurrentPlan = planSlug === plan.slug;
           const displayPrice = billingPeriod === 'yearly' ? plan.priceYearly : plan.price;
           const monthlyEquivalent = billingPeriod === 'yearly' ? plan.priceYearly / 12 : null;
 
@@ -433,22 +357,6 @@ const Pricing = () => {
                   </>
                 )}
               </button>
-
-              {/* Botón de prueba (solo en desarrollo) */}
-              {!isCurrentPlan && plan.slug !== 'free' && process.env.NODE_ENV === 'development' && (
-                <button
-                  className="plan-cta-test"
-                  onClick={() => handleTestPayment(plan)}
-                  disabled={processingPlan !== null}
-                  style={{
-                    marginTop: '10px',
-                    background: '#10b981',
-                    fontSize: '0.9em',
-                  }}
-                >
-                  🧪 Simular Pago (Test)
-                </button>
-              )}
 
               <div className="plan-features">
                 {plan.features.map((feature, idx) => (

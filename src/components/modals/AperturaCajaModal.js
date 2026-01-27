@@ -128,7 +128,7 @@ const AperturaCajaModal = ({ isOpen, onClose, onAperturaExitosa }) => {
                 Monto Inicial <span className="required">*</span>
               </label>
               <div className="apertura-caja-input-wrapper">
-                <DollarSign size={18} className="apertura-caja-input-icon" />
+                <span className="apertura-caja-input-icon-outside">$</span>
                 <input
                   id="monto-inicial"
                   type="text"

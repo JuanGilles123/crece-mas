@@ -1,4 +1,5 @@
-// Edge Function para simular un pago exitoso de Wompi (solo para testing)
+// Edge Function para simular un pago exitoso de Wompi (DESHABILITADA)
+// Esta función ha sido deshabilitada por seguridad. Solo se permiten pagos reales.
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
 
@@ -12,6 +13,19 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
+  // Función deshabilitada - solo se permiten pagos reales
+  return new Response(
+    JSON.stringify({
+      error: 'Función deshabilitada',
+      message: 'Los pagos de prueba han sido deshabilitados. Solo se permiten pagos reales a través de Wompi.'
+    }),
+    {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 403, // Forbidden
+    }
+  )
+
+  /* CÓDIGO DESHABILITADO - Solo se permiten pagos reales
   try {
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -208,4 +222,5 @@ serve(async (req) => {
       }
     )
   }
+  */
 })

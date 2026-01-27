@@ -25,7 +25,23 @@ export const useProductosPaginados = (userId, options = {}) => {
 
       // Aplicar filtro de búsqueda si existe
       if (searchTerm.trim()) {
-        query = query.or(`nombre.ilike.%${searchTerm}%,descripcion.ilike.%${searchTerm}%,codigo.ilike.%${searchTerm}%`);
+        // Buscar en campos directos y en metadata (JSON)
+        // Para metadata, usamos el operador ->> para acceder a campos JSON como texto
+        query = query.or(
+          `nombre.ilike.%${searchTerm}%,` +
+          `codigo.ilike.%${searchTerm}%,` +
+          `metadata->>marca.ilike.%${searchTerm}%,` +
+          `metadata->>modelo.ilike.%${searchTerm}%,` +
+          `metadata->>color.ilike.%${searchTerm}%,` +
+          `metadata->>talla.ilike.%${searchTerm}%,` +
+          `metadata->>categoria.ilike.%${searchTerm}%,` +
+          `metadata->>descripcion.ilike.%${searchTerm}%,` +
+          `metadata->>material.ilike.%${searchTerm}%,` +
+          `metadata->>dimensiones.ilike.%${searchTerm}%,` +
+          `metadata->>duracion.ilike.%${searchTerm}%,` +
+          `metadata->>ingredientes.ilike.%${searchTerm}%,` +
+          `metadata->>alergenos.ilike.%${searchTerm}%`
+        );
       }
 
       // Aplicar paginación
@@ -81,7 +97,23 @@ export const useProductosInfinite = (userId, options = {}) => {
 
       // Aplicar filtro de búsqueda si existe
       if (searchTerm.trim()) {
-        query = query.or(`nombre.ilike.%${searchTerm}%,descripcion.ilike.%${searchTerm}%,codigo.ilike.%${searchTerm}%`);
+        // Buscar en campos directos y en metadata (JSON)
+        // Para metadata, usamos el operador ->> para acceder a campos JSON como texto
+        query = query.or(
+          `nombre.ilike.%${searchTerm}%,` +
+          `codigo.ilike.%${searchTerm}%,` +
+          `metadata->>marca.ilike.%${searchTerm}%,` +
+          `metadata->>modelo.ilike.%${searchTerm}%,` +
+          `metadata->>color.ilike.%${searchTerm}%,` +
+          `metadata->>talla.ilike.%${searchTerm}%,` +
+          `metadata->>categoria.ilike.%${searchTerm}%,` +
+          `metadata->>descripcion.ilike.%${searchTerm}%,` +
+          `metadata->>material.ilike.%${searchTerm}%,` +
+          `metadata->>dimensiones.ilike.%${searchTerm}%,` +
+          `metadata->>duracion.ilike.%${searchTerm}%,` +
+          `metadata->>ingredientes.ilike.%${searchTerm}%,` +
+          `metadata->>alergenos.ilike.%${searchTerm}%`
+        );
       }
 
       // Aplicar paginación
@@ -133,7 +165,21 @@ export const useProductosBusqueda = (userId, searchTerm, options = {}) => {
         .from('productos')
         .select('*')
         .eq('user_id', userId)
-        .or(`nombre.ilike.%${searchTerm}%,descripcion.ilike.%${searchTerm}%,codigo.ilike.%${searchTerm}%`)
+        .or(
+          `nombre.ilike.%${searchTerm}%,` +
+          `codigo.ilike.%${searchTerm}%,` +
+          `metadata->>marca.ilike.%${searchTerm}%,` +
+          `metadata->>modelo.ilike.%${searchTerm}%,` +
+          `metadata->>color.ilike.%${searchTerm}%,` +
+          `metadata->>talla.ilike.%${searchTerm}%,` +
+          `metadata->>categoria.ilike.%${searchTerm}%,` +
+          `metadata->>descripcion.ilike.%${searchTerm}%,` +
+          `metadata->>material.ilike.%${searchTerm}%,` +
+          `metadata->>dimensiones.ilike.%${searchTerm}%,` +
+          `metadata->>duracion.ilike.%${searchTerm}%,` +
+          `metadata->>ingredientes.ilike.%${searchTerm}%,` +
+          `metadata->>alergenos.ilike.%${searchTerm}%`
+        )
         .order('nombre')
         .limit(limit);
 

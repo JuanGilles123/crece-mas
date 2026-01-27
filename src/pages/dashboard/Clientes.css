@@ -47,9 +47,24 @@
 }
 
 .clientes-search {
-  position: relative;
   display: flex;
   align-items: center;
+  gap: 0.75rem;
+}
+
+.clientes-search-icon-outside {
+  font-size: 20px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  color: var(--text-secondary) !important;
+  flex-shrink: 0;
+  line-height: 1;
+  user-select: none;
+  width: 24px;
+  height: 24px;
 }
 
 .clientes-search-icon {
@@ -60,8 +75,8 @@
 }
 
 .clientes-search-input {
-  width: 100%;
-  padding: 0.75rem 1rem 0.75rem 3rem;
+  flex: 1;
+  padding: 0.75rem 1rem;
   border: 1px solid var(--border-primary);
   border-radius: 0.5rem;
   font-size: 0.9rem;

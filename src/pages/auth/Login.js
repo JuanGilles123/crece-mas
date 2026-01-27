@@ -3,7 +3,7 @@ import { supabase } from '../../services/api/supabaseClient';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, ArrowLeft, TrendingUp, Users, BarChart3, Key } from 'lucide-react';
-import { loginEmployee, loginEmployeeWithPassword } from '../../utils/employeeAuth';
+import { loginEmployee } from '../../utils/employeeAuth';
 import styles from './Login.module.css';
 
 const TerminosModal = ({ open, onClose }) => (
@@ -41,29 +41,30 @@ const Login = () => {
     setLoading(true);
     
     if (isEmployeeLogin) {
-      // Login de empleado con código
+      // Login de empleado con email/teléfono y contraseña
       if (!employeeCode.trim()) {
-        setError('Por favor ingresa tu código de empleado.');
+        setError('Por favor ingresa tu email o teléfono.');
+        setLoading(false);
+        return;
+      }
+
+      if (!employeePassword.trim()) {
+        setError('Por favor ingresa tu contraseña.');
         setLoading(false);
         return;
       }
 
       try {
-        // Intentar login solo con código primero
-        let result = await loginEmployee(employeeCode.trim().toUpperCase());
-        
-        // Si necesita contraseña, intentar con contraseña
-        if (!result.success && result.needsPassword) {
-          if (!employeePassword) {
-            setError('Este código requiere contraseña. Por favor ingresa tu contraseña.');
-            setLoading(false);
-            return;
-          }
-          result = await loginEmployeeWithPassword(employeeCode.trim().toUpperCase(), employeePassword);
-        }
+        // Intentar login con email/teléfono y contraseña
+        const result = await loginEmployee(employeeCode.trim(), employeePassword);
 
         if (result.success) {
-          navigate('/dashboard');
+          // Si necesita cambiar contraseña, redirigir a la página de cambio obligatorio
+          if (result.needsPasswordChange) {
+            navigate('/cambiar-contrasena-obligatorio');
+          } else {
+            navigate('/dashboard');
+          }
         } else {
           setError(result.error || 'Error al iniciar sesión');
         }
@@ -208,22 +209,21 @@ const Login = () => {
                 <>
                   <div className={styles.inputGroup}>
                     <div className={styles.inputWrapper}>
-                      <Key size={20} className={styles.inputIcon} />
+                      <Mail size={20} className={styles.inputIcon} />
                       <input
                         type="text"
-                        placeholder="Código (ej: 12345) o Teléfono + PIN (ej: 3001234567|1234)"
+                        placeholder="Email o Teléfono"
                         value={employeeCode}
                         onChange={e => {
                           const value = e.target.value;
-                          // Si contiene |, mantener el formato, sino convertir a mayúsculas
-                          setEmployeeCode(value.includes('|') ? value : value.toUpperCase());
+                          setEmployeeCode(value);
                         }}
                         required
                         className={styles.input}
                       />
                     </div>
                     <small className={styles.hint}>
-                      Puedes usar un código corto (5 dígitos) o tu teléfono + PIN (4 dígitos)
+                      Ingresa tu email (ej: juan@ejemplo.com) o tu número de teléfono (ej: 3001234567)
                     </small>
                   </div>
 
@@ -232,9 +232,10 @@ const Login = () => {
                       <Lock size={20} className={styles.inputIcon} />
                       <input
                         type={showEmployeePass ? 'text' : 'password'}
-                        placeholder="Contraseña (opcional)"
+                        placeholder="Contraseña"
                         value={employeePassword}
                         onChange={e => setEmployeePassword(e.target.value)}
+                        required
                         className={styles.input}
                       />
                       <button 
@@ -246,7 +247,7 @@ const Login = () => {
                       </button>
                     </div>
                     <small className={styles.hint}>
-                      Si tu código requiere contraseña, ingrésala aquí. Si no, deja este campo vacío.
+                      Ingresa tu contraseña. Si es tu primer acceso, usa la contraseña que te proporcionó tu administrador.
                     </small>
                   </div>
                 </>

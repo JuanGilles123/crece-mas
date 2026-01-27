@@ -72,6 +72,47 @@
   margin: 0.75rem 0;
 }
 
+/* Buscador de toppings */
+.toppings-busqueda-container {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.toppings-busqueda-icon-outside {
+  font-size: 18px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  color: var(--text-secondary) !important;
+  flex-shrink: 0;
+  line-height: 1;
+  user-select: none;
+  width: 20px;
+  height: 20px;
+}
+
+.toppings-busqueda-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  background: transparent;
+  padding: 0.25rem 0;
+}
+
+.toppings-busqueda-input::placeholder {
+  color: var(--text-tertiary);
+}
+
 /* Tabs de categorías */
 .toppings-categorias-tabs {
   display: flex;

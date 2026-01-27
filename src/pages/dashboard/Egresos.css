@@ -1,0 +1,513 @@
+.egresos-container {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.egresos-header {
+  margin-bottom: 2rem;
+}
+
+.egresos-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 0.5rem 0;
+}
+
+.egresos-header p {
+  color: #6b7280;
+  margin: 0;
+}
+
+/* Estadísticas */
+.egresos-estadisticas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.egreso-stat-card {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.egreso-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.egreso-stat-card-danger {
+  border-left: 4px solid #dc2626;
+}
+
+.egreso-stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.egreso-stat-content {
+  flex: 1;
+}
+
+.egreso-stat-label {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0 0 0.25rem 0;
+}
+
+.egreso-stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+}
+
+.egreso-stat-subvalue {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0.25rem 0 0 0;
+}
+
+/* Pestañas */
+.egresos-tabs {
+  display: flex;
+  border-bottom: 2px solid #e5e7eb;
+  background: transparent;
+  padding: 0;
+  gap: 0;
+  margin: 0 0 2rem 0;
+  overflow-x: auto;
+}
+
+.egreso-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: #6b7280;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: -2px;
+  white-space: nowrap;
+}
+
+.egreso-tab:hover:not(:disabled) {
+  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.egreso-tab.active {
+  color: #2563eb;
+  border-bottom-color: #2563eb;
+  background: transparent;
+  font-weight: 600;
+}
+
+.egreso-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: #2563eb;
+  border-radius: 2px 2px 0 0;
+}
+
+.egreso-tab:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Contenido */
+.egresos-content {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.egresos-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.egresos-section-header h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+/* Filtros */
+.egresos-filtros {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.egresos-search-input {
+  flex: 1;
+  min-width: 300px;
+  padding: 0.75rem 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  transition: border-color 0.2s;
+  background-color: white;
+  box-sizing: border-box;
+}
+
+.egresos-search-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.egresos-select-filtro {
+  padding: 0.75rem 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: white;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.egresos-select-filtro:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+/* Lista */
+.egresos-lista {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.egreso-card {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 1px solid #e5e7eb;
+}
+
+.egreso-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.egreso-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  gap: 1rem;
+}
+
+.egreso-card-header h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 0.5rem 0;
+}
+
+.egreso-card-meta {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.egreso-card-meta span {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.egreso-card-body {
+  margin-bottom: 1rem;
+}
+
+.egreso-card-body p {
+  margin: 0.5rem 0;
+  color: #374151;
+  font-size: 0.95rem;
+}
+
+.egreso-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.egreso-badge-activo {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.egreso-badge-borrador {
+  background: #e5e7eb;
+  color: #6b7280;
+}
+
+.egreso-badge-enviada {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.egreso-badge-aprobada {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.egreso-badge-recibida {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.egreso-badge-facturada {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.egreso-badge-pendiente {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.egreso-badge-parcial {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.egreso-badge-pagado {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.egreso-badge-vencido {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.egreso-fecha {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.egreso-montos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.egreso-monto-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.egreso-monto-label {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.egreso-monto-value {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.egreso-monto-pagado {
+  color: #16a34a;
+}
+
+.egreso-monto-pendiente {
+  color: #dc2626;
+}
+
+/* Botones */
+.egreso-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.egreso-btn-primary {
+  background: #3b82f6;
+  color: white;
+}
+
+.egreso-btn-primary:hover {
+  background: #2563eb;
+}
+
+.egreso-btn-secondary {
+  background: #f3f4f6;
+  color: #1f2937;
+}
+
+.egreso-btn-secondary:hover {
+  background: #e5e7eb;
+}
+
+/* Empty state */
+.egresos-empty {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: #9ca3af;
+}
+
+.egresos-empty p {
+  margin-top: 1rem;
+  font-size: 1.125rem;
+}
+
+/* Loading */
+.egresos-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  color: #6b7280;
+}
+
+/* Botones de acción en cards */
+.egreso-btn-icon {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  z-index: 10;
+  visibility: visible !important;
+  opacity: 1 !important;
+  flex-shrink: 0;
+}
+
+.egreso-btn-icon:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+  color: #1f2937;
+}
+
+.egreso-btn-icon svg {
+  display: block !important;
+  width: 18px !important;
+  height: 18px !important;
+  stroke-width: 2.5;
+  visibility: visible !important;
+  opacity: 1 !important;
+  z-index: 11;
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* Estilo específico para el botón azul de continuar orden */
+.egreso-btn-icon-blue {
+  background: #3b82f6 !important;
+  border-color: #3b82f6 !important;
+  color: white !important;
+}
+
+.egreso-btn-icon-blue:hover {
+  background: #2563eb !important;
+  border-color: #2563eb !important;
+  color: white !important;
+}
+
+.egreso-btn-icon-blue svg {
+  color: white !important;
+  stroke: white !important;
+  fill: none !important;
+}
+
+.egreso-btn-icon-danger {
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.egreso-btn-icon-danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .egresos-container {
+    padding: 1rem;
+  }
+
+  .egresos-estadisticas {
+    grid-template-columns: 1fr;
+  }
+
+  .egresos-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .egreso-montos {
+    grid-template-columns: 1fr;
+  }
+
+  .egresos-section-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .egreso-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

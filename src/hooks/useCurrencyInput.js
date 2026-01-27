@@ -70,8 +70,11 @@ export const useCurrencyInput = (initialValue = '') => {
     return numericValueRef.current;
   }, []);
 
-  return {
-    displayValue,
+  // Retornar objeto estable usando useRef para mantener la misma referencia
+  const stableObjectRef = useRef({
+    get displayValue() {
+      return displayValue;
+    },
     get numericValue() {
       return numericValueRef.current;
     },
@@ -79,7 +82,21 @@ export const useCurrencyInput = (initialValue = '') => {
     setValue,
     reset,
     getNumericValue
-  };
+  });
+  
+  // Actualizar las propiedades del objeto sin cambiar la referencia
+  const obj = stableObjectRef.current;
+  Object.defineProperty(obj, 'displayValue', {
+    get: () => displayValue,
+    enumerable: true,
+    configurable: true
+  });
+  obj.handleChange = handleChange;
+  obj.setValue = setValue;
+  obj.reset = reset;
+  obj.getNumericValue = getNumericValue;
+  
+  return obj;
 };
 
 /**

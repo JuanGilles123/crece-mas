@@ -9,6 +9,7 @@ import { useToppings } from '../../hooks/useToppings';
 import { useGuardarCotizacion, useActualizarCotizacion } from '../../hooks/useCotizaciones';
 import { generarCodigoVenta } from '../../utils/generarCodigoVenta';
 import { useClientes, useCrearCliente } from '../../hooks/useClientes';
+import { useCrearCredito } from '../../hooks/useCreditos';
 import { usePedidos, useActualizarPedido, useCrearPedido } from '../../hooks/usePedidos';
 import { useAperturaCajaActiva } from '../../hooks/useAperturasCaja';
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
@@ -19,7 +20,7 @@ import AperturaCajaModal from '../../components/modals/AperturaCajaModal';
 import DescuentoModal from '../../components/modals/DescuentoModal';
 import ToppingsSelector from '../../components/ToppingsSelector';
 import VariacionesSelector from '../../components/VariacionesSelector';
-import { ShoppingCart, Trash2, Search, CheckCircle, CreditCard, Banknote, Smartphone, Wallet, ArrowLeft, Save, Plus, X, UserCircle, Lock, Percent, List, ArrowRight, Package } from 'lucide-react';
+import { ShoppingCart, Trash2, CheckCircle, CreditCard, Banknote, Smartphone, Wallet, ArrowLeft, Save, Plus, X, UserCircle, Lock, Percent, List, ArrowRight, Package, Receipt } from 'lucide-react';
 import toast from 'react-hot-toast';
 import './Caja.css';
 
@@ -96,6 +97,8 @@ export default function Caja({
     email: '',
     direccion: ''
   });
+  const [fechaVencimientoCredito, setFechaVencimientoCredito] = useState('');
+  const [mostrandoModalCredito, setMostrandoModalCredito] = useState(false);
   // Leer preferencia de mostrar factura desde user_metadata
   const mostrarFacturaPantalla = user?.user_metadata?.mostrarFacturaPantalla === true;
   const [mostrarModalRegresarPedidos, setMostrarModalRegresarPedidos] = useState(false);
@@ -179,6 +182,7 @@ export default function Caja({
   // eslint-disable-next-line no-unused-vars
   const { data: clientes = [] } = useClientes(organization?.id);
   const crearClienteMutation = useCrearCliente();
+  const crearCreditoMutation = useCrearCredito();
 
   // Hook para guardar y actualizar cotización
   const guardarCotizacionMutation = useGuardarCotizacion();
@@ -833,6 +837,106 @@ export default function Caja({
     maxTimeBetweenChars: 100
   });
   
+  // Refs para detección global de código de barras (funciona aunque el cursor no esté en el buscador)
+  const globalBarcodeBufferRef = useRef('');
+  const globalLastCharTimeRef = useRef(null);
+  const globalBarcodeTimeoutRef = useRef(null);
+  const globalBarcodeProcessingRef = useRef(false);
+  
+  // Listener global para detectar códigos de barras en cualquier parte de la página
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      // Ignorar si el usuario está escribiendo en un input, textarea o contenteditable
+      const target = e.target;
+      const isInputElement = target.tagName === 'INPUT' || 
+                            target.tagName === 'TEXTAREA' || 
+                            target.isContentEditable ||
+                            target.closest('input') ||
+                            target.closest('textarea');
+      
+      // Si está en el input del buscador, dejar que el hook normal lo maneje
+      if (target === barcodeInputRef.current) {
+        return;
+      }
+      
+      // Si está en otro input, no procesar como código de barras
+      if (isInputElement) {
+        return;
+      }
+      
+      // Si es Enter o Tab, podría ser el final del código de barras
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const barcode = globalBarcodeBufferRef.current.trim();
+        if (barcode.length >= 3 && !globalBarcodeProcessingRef.current) {
+          globalBarcodeProcessingRef.current = true;
+          handleBarcodeScanned(barcode);
+          
+          // Limpiar buffer
+          globalBarcodeBufferRef.current = '';
+          globalLastCharTimeRef.current = null;
+          
+          // Resetear flag después de un delay
+          setTimeout(() => {
+            globalBarcodeProcessingRef.current = false;
+          }, 500);
+        }
+        return;
+      }
+      
+      // Si es un carácter imprimible
+      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const now = Date.now();
+        
+        // Si pasó mucho tiempo desde el último carácter, resetear buffer
+        if (globalLastCharTimeRef.current && (now - globalLastCharTimeRef.current) > 150) {
+          globalBarcodeBufferRef.current = '';
+        }
+        
+        // Agregar carácter al buffer
+        globalBarcodeBufferRef.current += e.key;
+        globalLastCharTimeRef.current = now;
+        
+        // Limpiar timeout anterior
+        if (globalBarcodeTimeoutRef.current) {
+          clearTimeout(globalBarcodeTimeoutRef.current);
+        }
+        
+        // Si después de un tiempo no hay más caracteres, procesar como código de barras
+        globalBarcodeTimeoutRef.current = setTimeout(() => {
+          const barcode = globalBarcodeBufferRef.current.trim();
+          if (barcode.length >= 3 && !globalBarcodeProcessingRef.current) {
+            globalBarcodeProcessingRef.current = true;
+            handleBarcodeScanned(barcode);
+            
+            // Limpiar buffer
+            globalBarcodeBufferRef.current = '';
+            globalLastCharTimeRef.current = null;
+            
+            // Resetear flag después de un delay
+            setTimeout(() => {
+              globalBarcodeProcessingRef.current = false;
+            }, 500);
+          }
+        }, 150);
+      }
+    };
+    
+    // Agregar listener global
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    
+    // Limpiar al desmontar
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown);
+      if (globalBarcodeTimeoutRef.current) {
+        clearTimeout(globalBarcodeTimeoutRef.current);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [handleBarcodeScanned]);
+  
   // Función para agregar producto al carrito después de seleccionar toppings y variaciones
   const agregarProductoConToppingsYVariaciones = (producto, toppings = [], variaciones = {}) => {
     // Si se agrega un producto manualmente (no desde un pedido), resetear el flag
@@ -1119,6 +1223,17 @@ export default function Caja({
       setMetodoMixto1('Efectivo');
       setMetodoMixto2('Transferencia');
       setMostrandoPagoMixto(true);
+    } else if (metodo === 'Credito') {
+      // Para crédito, verificar que haya un cliente seleccionado
+      if (!clienteSeleccionado) {
+        // Mostrar modal de selección de cliente
+        setMostrandoModalSeleccionCliente(true);
+        toast.error('Debes seleccionar un cliente para vender a crédito');
+        return;
+      }
+      // Mostrar modal para fecha de vencimiento
+      setFechaVencimientoCredito('');
+      setMostrandoModalCredito(true);
     } else {
       // Para otros métodos, proceder directamente pasando el método como parámetro
       confirmSale(metodo);
@@ -1448,6 +1563,15 @@ export default function Caja({
               <span className="metodo-pago-desc">🔒 Plan Estándar</span>
             </button>
           )}
+          
+          <button 
+            className={`metodo-pago-card ${metodoSeleccionado === 'Credito' ? 'selected' : ''}`}
+            onClick={() => setMetodoSeleccionado('Credito')}
+          >
+            <Receipt className="metodo-pago-icon" size={32} />
+            <span className="metodo-pago-label">Crédito</span>
+            <span className="metodo-pago-desc">Venta a crédito / Fiado</span>
+          </button>
         </div>
         
         <div className="metodos-pago-actions">
@@ -1785,7 +1909,7 @@ export default function Caja({
       }
       montoPagoCliente = montoNumero;
     } else if (metodoActual === "Mixto" && detallesPago) {
-      metodoPagoFinal = `Mixto (${detallesPago.metodo1}: ${formatCOP(detallesPago.monto1)} + ${detallesPago.metodo2}: ${formatCOP(detallesPago.monto2)})`;
+      metodoPagoFinal = 'Mixto';
       montoPagoCliente = detallesPago.monto1 + detallesPago.monto2;
     }
 
@@ -2173,6 +2297,16 @@ export default function Caja({
     // Usar el método pasado como parámetro o el estado actual
     const metodoActual = metodoPagoOverride || method;
 
+    // Si es crédito, verificar que haya un cliente seleccionado
+    if (metodoActual === 'Credito') {
+      if (!clienteSeleccionado) {
+        toast.error('Debes seleccionar un cliente para vender a crédito');
+        setMostrandoModalSeleccionCliente(true);
+        setProcesandoVenta(false);
+        return;
+      }
+    }
+
     // Mostrar modal de confirmación con carga
     setMostrandoConfirmacion(true);
     setConfirmacionCargando(true);
@@ -2231,8 +2365,8 @@ export default function Caja({
       }
       montoPagoCliente = montoNumero;
     } else if (metodoActual === "Mixto" && detallesPagoMixto) {
-      // Formatear método de pago mixto como string
-      metodoPagoFinal = `Mixto (${detallesPagoMixto.metodo1}: ${formatCOP(detallesPagoMixto.monto1)} + ${detallesPagoMixto.metodo2}: ${formatCOP(detallesPagoMixto.monto2)})`;
+      // Guardar solo "Mixto" sin el detalle
+      metodoPagoFinal = 'Mixto';
       montoPagoCliente = detallesPagoMixto.monto1 + detallesPagoMixto.monto2;
     }
     
@@ -2262,10 +2396,11 @@ export default function Caja({
           metodo_pago: metodoPagoFinal,
           items: cart,
           fecha: new Date().toISOString(),
-          pago_cliente: montoPagoCliente,
+          pago_cliente: metodoActual === 'Credito' ? 0 : montoPagoCliente,
           detalles_pago_mixto: metodoActual === "Mixto" && detallesPagoMixto ? detallesPagoMixto : null,
           numero_venta: numeroVenta,
-          cliente_id: clienteSeleccionado?.id || null
+          cliente_id: clienteSeleccionado?.id || null,
+          es_credito: metodoActual === 'Credito'
         };
         
         const { data: result, error: ventaError } = await supabase
@@ -2323,6 +2458,42 @@ export default function Caja({
       toast.error('Error: No se pudo guardar la venta después de varios intentos');
       setProcesandoVenta(false);
       return;
+    }
+
+    // Si es crédito, crear el registro de crédito
+    let creditoId = null;
+    if (metodoActual === 'Credito' && clienteSeleccionado) {
+      try {
+        // Calcular fecha de vencimiento (por defecto 30 días desde hoy)
+        const fechaVenc = fechaVencimientoCredito 
+          ? new Date(fechaVencimientoCredito)
+          : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+        
+        const creditoData = {
+          organization_id: organization.id,
+          venta_id: ventaResult[0].id,
+          cliente_id: clienteSeleccionado.id,
+          monto_total: total,
+          monto_pagado: 0,
+          monto_pendiente: total,
+          fecha_vencimiento: fechaVenc.toISOString().split('T')[0],
+          estado: 'pendiente',
+          notas: `Crédito generado automáticamente por venta ${ventaResult[0].numero_venta}`
+        };
+        
+        const creditoCreado = await crearCreditoMutation.mutateAsync(creditoData);
+        creditoId = creditoCreado.id;
+        
+        // Actualizar la venta con el credito_id
+        await supabase
+          .from('ventas')
+          .update({ credito_id: creditoId })
+          .eq('id', ventaResult[0].id);
+        
+      } catch (error) {
+        console.error('Error al crear crédito:', error);
+        toast.error('La venta se guardó pero hubo un error al crear el crédito. Por favor, créalo manualmente.');
+      }
     }
 
     try {
@@ -2797,7 +2968,7 @@ export default function Caja({
             <>
               {/* Buscador de pedidos */}
               <div className="caja-pedidos-search-container">
-                <Search className="caja-pedidos-search-icon" size={18} />
+                <span className="caja-pedidos-search-icon-outside">🔍</span>
                 <input
                   type="text"
                   placeholder="Buscar por pedido, cliente, teléfono o mesa..."
@@ -2995,7 +3166,7 @@ export default function Caja({
           </div>
         )}
         <div className="caja-search-container">
-          <Search className="caja-search-icon" size={20} />
+          <span className="caja-search-icon-outside">🔍</span>
           <input
             ref={barcodeInputRef}
             type="text"
@@ -4110,7 +4281,7 @@ export default function Caja({
             </div>
             <div className="caja-modal-body">
               <div className="caja-cliente-search-modal">
-                <Search size={18} className="caja-cliente-search-icon-modal" />
+                <span className="caja-cliente-search-icon-outside">🔍</span>
                 <input
                   type="text"
                   placeholder="Buscar cliente por nombre, documento, teléfono o email..."
@@ -4192,6 +4363,75 @@ export default function Caja({
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para fecha de vencimiento del crédito */}
+      {mostrandoModalCredito && (
+        <div className="caja-modal-overlay" onClick={() => setMostrandoModalCredito(false)}>
+          <div className="caja-modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div className="caja-modal-header">
+              <h3>Fecha de Vencimiento del Crédito</h3>
+              <button 
+                className="caja-modal-close"
+                onClick={() => setMostrandoModalCredito(false)}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="caja-modal-body">
+              <div className="caja-cliente-form-group">
+                <label>Fecha de Vencimiento *</label>
+                <input
+                  type="date"
+                  value={fechaVencimientoCredito}
+                  onChange={(e) => setFechaVencimientoCredito(e.target.value)}
+                  min={new Date().toISOString().split('T')[0]}
+                  required
+                />
+                <small style={{ color: '#666', marginTop: '0.5rem', display: 'block' }}>
+                  Si no seleccionas una fecha, se establecerá automáticamente 30 días desde hoy.
+                </small>
+              </div>
+              {clienteSeleccionado && (
+                <div style={{ 
+                  background: '#f0f9ff', 
+                  padding: '1rem', 
+                  borderRadius: '8px', 
+                  marginTop: '1rem',
+                  border: '1px solid #bae6fd'
+                }}>
+                  <p style={{ margin: 0, fontWeight: 500, color: '#0369a1' }}>
+                    Cliente: {clienteSeleccionado.nombre}
+                  </p>
+                  <p style={{ margin: '0.5rem 0 0 0', color: '#0369a1', fontSize: '0.9rem' }}>
+                    Total a crédito: {formatCOP(total)}
+                  </p>
+                </div>
+              )}
+            </div>
+            <div className="caja-modal-footer" style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+              <button
+                className="caja-btn caja-btn-secondary"
+                onClick={() => {
+                  setMostrandoModalCredito(false);
+                  setFechaVencimientoCredito('');
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                className="caja-btn caja-btn-primary"
+                onClick={() => {
+                  setMostrandoModalCredito(false);
+                  confirmSale('Credito');
+                }}
+                disabled={!fechaVencimientoCredito && false} // Permitir sin fecha (se usará 30 días por defecto)
+              >
+                Confirmar Crédito
+              </button>
             </div>
           </div>
         </div>
