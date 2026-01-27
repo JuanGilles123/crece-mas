@@ -22,6 +22,9 @@ const Perfil = () => {
   const [editandoNombre, setEditandoNombre] = useState(false);
   const [nombreCompleto, setNombreCompleto] = useState(user?.user_metadata?.full_name || '');
   const [guardandoNombre, setGuardandoNombre] = useState(false);
+  const [editandoNombreNegocio, setEditandoNombreNegocio] = useState(false);
+  const [nombreNegocio, setNombreNegocio] = useState(organization?.name || '');
+  const [guardandoNombreNegocio, setGuardandoNombreNegocio] = useState(false);
   const [employeeData, setEmployeeData] = useState(null);
   const [editandoCodigo, setEditandoCodigo] = useState(false);
   const updateEmployeeCode = useUpdateEmployeeCode();
@@ -112,6 +115,51 @@ const Perfil = () => {
       alert('Error al actualizar el nombre. Intenta de nuevo.');
     } finally {
       setGuardandoNombre(false);
+    }
+  };
+
+  const handleEditarNombreNegocio = () => {
+    setEditandoNombreNegocio(true);
+    setNombreNegocio(organization?.name || '');
+  };
+
+  const handleCancelarEdicionNombreNegocio = () => {
+    setEditandoNombreNegocio(false);
+    setNombreNegocio(organization?.name || '');
+  };
+
+  const handleGuardarNombreNegocio = async () => {
+    if (!nombreNegocio.trim()) {
+      alert('Por favor ingresa un nombre de negocio válido');
+      return;
+    }
+
+    if (!organization?.id) {
+      alert('No se pudo identificar la organización');
+      return;
+    }
+
+    setGuardandoNombreNegocio(true);
+    try {
+      const { error } = await supabase
+        .from('organizations')
+        .update({ name: nombreNegocio.trim() })
+        .eq('id', organization.id);
+
+      if (error) {
+        console.error('Error actualizando nombre del negocio:', error);
+        alert('Error al actualizar el nombre del negocio. Intenta de nuevo.');
+      } else {
+        alert('Nombre del negocio actualizado exitosamente');
+        setEditandoNombreNegocio(false);
+        // Recargar la página para actualizar el contexto
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al actualizar el nombre del negocio. Intenta de nuevo.');
+    } finally {
+      setGuardandoNombreNegocio(false);
     }
   };
 
@@ -294,6 +342,52 @@ const Perfil = () => {
               )}
 
               <div className="perfil-datos-grid">
+                <div className="perfil-dato-item">
+                  <label className="perfil-dato-label">Nombre del Negocio</label>
+                  {editandoNombreNegocio ? (
+                    <div className="perfil-edit-form">
+                      <input
+                        type="text"
+                        value={nombreNegocio}
+                        onChange={(e) => setNombreNegocio(e.target.value)}
+                        className="perfil-edit-input"
+                        placeholder="Ingresa el nombre de tu negocio"
+                        disabled={guardandoNombreNegocio}
+                      />
+                      <div className="perfil-edit-actions">
+                        <button
+                          className="perfil-edit-btn perfil-edit-save"
+                          onClick={handleGuardarNombreNegocio}
+                          disabled={guardandoNombreNegocio}
+                        >
+                          <Save size={16} />
+                          {guardandoNombreNegocio ? 'Guardando...' : 'Guardar'}
+                        </button>
+                        <button
+                          className="perfil-edit-btn perfil-edit-cancel"
+                          onClick={handleCancelarEdicionNombreNegocio}
+                          disabled={guardandoNombreNegocio}
+                        >
+                          <X size={16} />
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="perfil-dato-display">
+                      <p className="perfil-dato-value">
+                        {organization?.name || 'No especificado'}
+                      </p>
+                      <button
+                        className="perfil-edit-btn perfil-edit-start"
+                        onClick={handleEditarNombreNegocio}
+                      >
+                        <Edit3 size={16} />
+                        Editar
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <div className="perfil-dato-item">
                   <label className="perfil-dato-label">Nombre Completo</label>
                   {editandoNombre ? (

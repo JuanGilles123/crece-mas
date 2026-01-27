@@ -78,9 +78,24 @@
 }
 
 .monto-input-wrapper {
-  position: relative;
   display: flex;
   align-items: center;
+  gap: 0.75rem;
+}
+
+.monto-simbolo-outside {
+  font-size: 40px !important;
+  font-weight: 600 !important;
+  color: #C7C7CC !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  flex-shrink: 0;
+  line-height: 1;
+  user-select: none;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
 }
 
 .monto-simbolo {
@@ -95,8 +110,8 @@
 }
 
 .monto-input {
-  width: 100%;
-  padding: 20px 20px 20px 60px;
+  flex: 1;
+  padding: 20px;
   border: 2px solid rgba(0, 0, 0, 0.1);
   border-radius: 12px;
   font-size: 40px;
@@ -397,6 +412,10 @@
   color: #fff;
 }
 
+.dark .monto-simbolo-outside {
+  color: #636366 !important;
+}
+
 .dark .monto-simbolo {
   color: #636366;
 }
@@ -534,7 +553,11 @@
 
   .monto-input {
     font-size: 32px;
-    padding: 14px 14px 14px 52px;
+    padding: 14px;
+  }
+
+  .monto-simbolo-outside {
+    font-size: 32px !important;
   }
 
   .monto-simbolo {
@@ -560,6 +583,10 @@
     font-size: 28px;
   }
 
+  .monto-simbolo-outside {
+    font-size: 2rem !important;
+  }
+  
   .monto-simbolo {
     font-size: 2rem;
   }

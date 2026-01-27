@@ -22,6 +22,7 @@ import {
   Banknote,
   CreditCard,
   Smartphone,
+  Receipt,
   ArrowRight
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -46,6 +47,9 @@ const HistorialVentas = () => {
   }, [ventas, cotizaciones]);
   const [busqueda, setBusqueda] = useState('');
   const [filtroFecha, setFiltroFecha] = useState('todos');
+  const [fechaEspecifica, setFechaEspecifica] = useState('');
+  const [fechaInicio, setFechaInicio] = useState('');
+  const [fechaFin, setFechaFin] = useState('');
   
   // Hook para detectar código de barras
   const handleBarcodeScanned = useCallback((barcode) => {
@@ -204,6 +208,30 @@ const HistorialVentas = () => {
             const mesAtras = new Date(hoy);
             mesAtras.setMonth(mesAtras.getMonth() - 1);
             return fechaVenta >= mesAtras;
+          case 'especifica':
+            if (fechaEspecifica) {
+              const fechaSeleccionada = new Date(fechaEspecifica);
+              fechaSeleccionada.setHours(0, 0, 0, 0);
+              return fechaVenta.getTime() === fechaSeleccionada.getTime();
+            }
+            return true;
+          case 'rango':
+            if (fechaInicio && fechaFin) {
+              const inicio = new Date(fechaInicio);
+              inicio.setHours(0, 0, 0, 0);
+              const fin = new Date(fechaFin);
+              fin.setHours(23, 59, 59, 999);
+              return fechaVenta >= inicio && fechaVenta <= fin;
+            } else if (fechaInicio) {
+              const inicio = new Date(fechaInicio);
+              inicio.setHours(0, 0, 0, 0);
+              return fechaVenta >= inicio;
+            } else if (fechaFin) {
+              const fin = new Date(fechaFin);
+              fin.setHours(23, 59, 59, 999);
+              return fechaVenta <= fin;
+            }
+            return true;
           default:
             return true;
         }
@@ -211,7 +239,7 @@ const HistorialVentas = () => {
     }
 
     return filtradas;
-  }, [todasLasVentas, busqueda, filtroFecha]);
+  }, [todasLasVentas, busqueda, filtroFecha, fechaEspecifica, fechaInicio, fechaFin]);
 
   const formatCOP = (value) => {
     return new Intl.NumberFormat('es-CO', {
@@ -750,17 +778,67 @@ const HistorialVentas = () => {
         </div>
 
         <div className="filtro-fecha">
-          <Calendar size={18} />
+          <span className="filtro-fecha-icon-outside">📅</span>
           <select 
             value={filtroFecha} 
-            onChange={(e) => setFiltroFecha(e.target.value)}
+            onChange={(e) => {
+              setFiltroFecha(e.target.value);
+              if (e.target.value !== 'especifica' && e.target.value !== 'rango') {
+                setFechaEspecifica('');
+                setFechaInicio('');
+                setFechaFin('');
+              }
+            }}
+            className="filtro-fecha-select"
           >
             <option value="todos">Todas las fechas</option>
             <option value="hoy">Hoy</option>
             <option value="ayer">Ayer</option>
             <option value="semana">Última semana</option>
             <option value="mes">Último mes</option>
+            <option value="especifica">Fecha específica</option>
+            <option value="rango">Rango de fechas</option>
           </select>
+          {filtroFecha === 'especifica' && (
+            <input
+              type="date"
+              value={fechaEspecifica}
+              onChange={(e) => setFechaEspecifica(e.target.value)}
+              className="filtro-fecha-input"
+              title={fechaEspecifica ? new Date(fechaEspecifica).toLocaleDateString('es-CO', { 
+                day: '2-digit', 
+                month: '2-digit', 
+                year: 'numeric' 
+              }) : 'Seleccionar fecha'}
+            />
+          )}
+          {filtroFecha === 'rango' && (
+            <>
+              <input
+                type="date"
+                value={fechaInicio}
+                onChange={(e) => setFechaInicio(e.target.value)}
+                className="filtro-fecha-input"
+                title={fechaInicio ? new Date(fechaInicio).toLocaleDateString('es-CO', { 
+                  day: '2-digit', 
+                  month: '2-digit', 
+                  year: 'numeric' 
+                }) : 'Seleccionar fecha inicio'}
+              />
+              <span className="filtro-fecha-separador">-</span>
+              <input
+                type="date"
+                value={fechaFin}
+                onChange={(e) => setFechaFin(e.target.value)}
+                className="filtro-fecha-input"
+                title={fechaFin ? new Date(fechaFin).toLocaleDateString('es-CO', { 
+                  day: '2-digit', 
+                  month: '2-digit', 
+                  year: 'numeric' 
+                }) : 'Seleccionar fecha fin'}
+              />
+            </>
+          )}
         </div>
       </div>
 
@@ -788,6 +866,12 @@ const HistorialVentas = () => {
                     {(venta.estado === 'cotizacion' || venta.metodo_pago === 'COTIZACION') && (
                       <span className="venta-badge cotizacion" title="Cotización pendiente">Cotización</span>
                     )}
+                    {(venta.es_credito === true || venta.metodo_pago === 'Credito') && (
+                      <span className="venta-badge credito" title="Venta a crédito - Pendiente de pago">
+                        <Receipt size={12} style={{ marginRight: '0.25rem' }} />
+                        Crédito
+                      </span>
+                    )}
                     {venta.total === 0 && (!venta.items || venta.items.length === 0) && (
                       <span className="venta-badge devuelta">Devuelta</span>
                     )}
@@ -802,7 +886,14 @@ const HistorialVentas = () => {
                     {formatFecha(venta.created_at || venta.fecha)}
                   </div>
                   <div className="venta-metodo">
-                    {venta.metodo_pago || 'N/A'}
+                    {(venta.es_credito === true || venta.metodo_pago === 'Credito') ? (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Receipt size={14} />
+                        Crédito
+                      </span>
+                    ) : (
+                      venta.metodo_pago || 'N/A'
+                    )}
                   </div>
                   {venta.cliente && (
                     <div className="venta-cliente">

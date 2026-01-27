@@ -125,9 +125,25 @@
 }
 
 .descuento-input-wrapper {
-  position: relative;
   display: flex;
   align-items: center;
+  gap: 0.75rem;
+}
+
+.descuento-input-icon-outside {
+  font-size: 20px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  color: var(--text-secondary) !important;
+  flex-shrink: 0;
+  line-height: 1;
+  user-select: none;
+  width: 24px;
+  height: 24px;
+  font-weight: 600;
 }
 
 .descuento-input-icon {
@@ -139,7 +155,7 @@
 }
 
 .descuento-input {
-  width: 100%;
+  flex: 1;
   padding: 0.875rem 1rem;
   padding-right: 3rem;
   border: 2px solid var(--border-primary);

@@ -121,6 +121,7 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
   const [variacionesConfig, setVariacionesConfig] = useState([]);
   const [productosVinculados, setProductosVinculados] = useState([]);
   const fileInputRef = useRef();
+  const codigoInputRef = useRef(null);
 
   const puedeSubirImagenes = hasFeature('productImages');
 
@@ -241,6 +242,124 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
       stockInput.setValue(producto.stock || '');
     }
   }, [producto, setValue, precioCompraInput, precioVentaInput, stockInput]);
+
+  // Refs para detección global de código de barras (funciona aunque el cursor no esté en el campo código)
+  const globalBarcodeBufferRef = useRef('');
+  const globalLastCharTimeRef = useRef(null);
+  const globalBarcodeTimeoutRef = useRef(null);
+  const globalBarcodeProcessingRef = useRef(false);
+
+  // Listener global para detectar códigos de barras en cualquier parte del modal
+  useEffect(() => {
+    // Solo activar si el modal está abierto
+    if (!open) {
+      return;
+    }
+
+    const handleGlobalKeyDown = (e) => {
+      // Ignorar si el usuario está escribiendo en un input, textarea o contenteditable
+      const target = e.target;
+      const isInputElement = target.tagName === 'INPUT' || 
+                            target.tagName === 'TEXTAREA' || 
+                            target.isContentEditable ||
+                            target.closest('input') ||
+                            target.closest('textarea');
+      
+      // Si está en el input del código, dejar que se maneje normalmente
+      if (target === codigoInputRef.current) {
+        return;
+      }
+      
+      // Si está en otro input, no procesar como código de barras
+      if (isInputElement) {
+        return;
+      }
+      
+      // Si es Enter o Tab, podría ser el final del código de barras
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const barcode = globalBarcodeBufferRef.current.trim();
+        if (barcode.length >= 3 && !globalBarcodeProcessingRef.current) {
+          globalBarcodeProcessingRef.current = true;
+          // Establecer el código en el campo código
+          setValue('codigo', barcode, { shouldValidate: true });
+          // Enfocar el input del código
+          if (codigoInputRef.current) {
+            codigoInputRef.current.focus();
+          }
+          
+          // Limpiar buffer
+          globalBarcodeBufferRef.current = '';
+          globalLastCharTimeRef.current = null;
+          
+          // Resetear flag después de un delay
+          setTimeout(() => {
+            globalBarcodeProcessingRef.current = false;
+          }, 500);
+        }
+        return;
+      }
+      
+      // Si es un carácter imprimible
+      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const now = Date.now();
+        
+        // Si pasó mucho tiempo desde el último carácter, resetear buffer
+        if (globalLastCharTimeRef.current && (now - globalLastCharTimeRef.current) > 150) {
+          globalBarcodeBufferRef.current = '';
+        }
+        
+        // Agregar carácter al buffer
+        globalBarcodeBufferRef.current += e.key;
+        globalLastCharTimeRef.current = now;
+        
+        // Limpiar timeout anterior
+        if (globalBarcodeTimeoutRef.current) {
+          clearTimeout(globalBarcodeTimeoutRef.current);
+        }
+        
+        // Si después de un tiempo no hay más caracteres, procesar como código de barras
+        globalBarcodeTimeoutRef.current = setTimeout(() => {
+          const barcode = globalBarcodeBufferRef.current.trim();
+          if (barcode.length >= 3 && !globalBarcodeProcessingRef.current) {
+            globalBarcodeProcessingRef.current = true;
+            // Establecer el código en el campo código
+            setValue('codigo', barcode, { shouldValidate: true });
+            // Enfocar el input del código
+            if (codigoInputRef.current) {
+              codigoInputRef.current.focus();
+            }
+            
+            // Limpiar buffer
+            globalBarcodeBufferRef.current = '';
+            globalLastCharTimeRef.current = null;
+            
+            // Resetear flag después de un delay
+            setTimeout(() => {
+              globalBarcodeProcessingRef.current = false;
+            }, 500);
+          }
+        }, 150);
+      }
+    };
+    
+    // Agregar listener global
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    
+    // Limpiar al desmontar o cuando se cierre el modal
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown);
+      if (globalBarcodeTimeoutRef.current) {
+        clearTimeout(globalBarcodeTimeoutRef.current);
+      }
+      // Limpiar buffer cuando se cierre el modal
+      globalBarcodeBufferRef.current = '';
+      globalLastCharTimeRef.current = null;
+      globalBarcodeProcessingRef.current = false;
+    };
+  }, [open, setValue]);
 
   const handleBack = () => {
     if (formStep > 1) {
@@ -504,7 +623,14 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
                 <h3 className="step-title">Información Básica e Imagen</h3>
                 <label>Código <span style={{ color: '#ef4444' }}>*</span></label>
                 <input
-                  {...register('codigo')}
+                  {...register('codigo', {
+                    onChange: (e) => {
+                      codigoInputRef.current = e.target;
+                    }
+                  })}
+                  ref={(e) => {
+                    codigoInputRef.current = e;
+                  }}
                   className={`input-form ${errors.codigo ? 'error' : ''}`}
                   placeholder="Ej: SKU123"
                 />

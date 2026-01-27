@@ -151,7 +151,7 @@ const DescuentoModal = ({ isOpen, onClose, onAplicar, cart, descuentoActual }) =
                   </>
                 ) : (
                   <>
-                    <DollarSign size={20} className="descuento-input-icon" />
+                    <span className="descuento-input-icon-outside">$</span>
                     <input
                       type="text"
                       className="descuento-input"

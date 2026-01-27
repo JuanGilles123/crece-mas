@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, forwardRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, Loader2 } from 'lucide-react';
 
-const SearchInput = ({
+const SearchInput = forwardRef(({
   value,
   onChange,
   placeholder = "Buscar productos...",
@@ -12,7 +12,7 @@ const SearchInput = ({
   loading = false,
   onClear,
   ...props
-}) => {
+}, ref) => {
   const [internalValue, setInternalValue] = useState(value || '');
   const debounceRef = useRef(null);
 
@@ -63,6 +63,7 @@ const SearchInput = ({
 
         {/* Input */}
         <input
+          ref={ref}
           type="text"
           value={internalValue}
           onChange={(e) => setInternalValue(e.target.value)}
@@ -106,6 +107,8 @@ const SearchInput = ({
       )}
     </div>
   );
-};
+});
+
+SearchInput.displayName = 'SearchInput';
 
 export default SearchInput;

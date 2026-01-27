@@ -20,16 +20,32 @@ const OptimizedProductImage = ({ imagePath, src, alt, className, onError }) => {
   // Si no hay ruta de imagen, mostrar placeholder inmediatamente
   if (!actualImagePath || actualImagePath.trim() === '' || actualImagePath === 'null' || actualImagePath === 'undefined') {
     return (
-      <div className={className} style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#f3f4f6',
-        borderRadius: '12px',
-        color: '#666',
-        fontSize: '12px'
-      }}>
-        Sin imagen
+      <div 
+        className={className} 
+        style={{
+          display: 'block',
+          width: '100%',
+          height: '100%',
+          minWidth: '100%',
+          minHeight: '100%',
+          backgroundColor: '#f3f4f6',
+          borderRadius: '8px',
+          color: '#666',
+          fontSize: '12px',
+          position: 'relative',
+          overflow: 'hidden'
+        }}
+      >
+        <div style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          textAlign: 'center',
+          width: '100%'
+        }}>
+          Sin imagen
+        </div>
       </div>
     );
   }
@@ -78,16 +94,32 @@ const OptimizedProductImage = ({ imagePath, src, alt, className, onError }) => {
 
   if (error || !finalImageUrl) {
     return (
-      <div className={className} style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#f3f4f6',
-        borderRadius: '12px',
-        color: '#666',
-        fontSize: '12px'
-      }}>
-        Sin imagen
+      <div 
+        className={className} 
+        style={{
+          display: 'block',
+          width: '100%',
+          height: '100%',
+          minWidth: '100%',
+          minHeight: '100%',
+          backgroundColor: '#f3f4f6',
+          borderRadius: '8px',
+          color: '#666',
+          fontSize: '12px',
+          position: 'relative',
+          overflow: 'hidden'
+        }}
+      >
+        <div style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          textAlign: 'center',
+          width: '100%'
+        }}>
+          Sin imagen
+        </div>
       </div>
     );
   }

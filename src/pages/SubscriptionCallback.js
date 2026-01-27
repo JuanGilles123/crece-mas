@@ -19,21 +19,6 @@ const SubscriptionCallback = () => {
     const checkPaymentStatus = async () => {
       try {
         const id = searchParams.get('id'); // Transaction ID de Wompi
-        const isTest = searchParams.get('test') === 'true'; // Pago de test
-        
-        // Si es un pago de test, mostrar éxito inmediatamente
-        if (isTest) {
-          setStatus('success');
-          setMessage('¡Tu suscripción de prueba está activa!');
-          
-          // Redirigir al dashboard después de 3 segundos
-          setTimeout(() => {
-            navigate('/dashboard');
-            // Recargar para actualizar la suscripción
-            window.location.href = '/dashboard';
-          }, 3000);
-          return;
-        }
         
         if (!id) {
           setStatus('error');

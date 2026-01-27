@@ -169,7 +169,7 @@ export default function VentaRapida() {
             Monto de la Venta
           </label>
           <div className="monto-input-wrapper">
-            <span className="monto-simbolo">$</span>
+            <span className="monto-simbolo-outside">$</span>
             <input
               type="text"
               inputMode="numeric"

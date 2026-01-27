@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Banknote, CreditCard, Smartphone, Calendar, User, CheckCircle } from 'lucide-react';
+import { X, Banknote, CreditCard, Smartphone, Calendar, User, CheckCircle, Receipt } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import './DetalleVenta.css';
@@ -35,8 +35,9 @@ export default function DetalleVenta({ venta, onCerrar, organization }) {
 
   const subtotal = (venta.items || []).reduce((s, i) => s + calcularSubtotalItem(i), 0);
   const total = venta.total || subtotal;
-  const pagoCliente = venta.pago_cliente || total;
-  const cambio = pagoCliente - total;
+  const esCredito = venta.es_credito === true || venta.metodo_pago === 'Credito';
+  const pagoCliente = esCredito ? 0 : (venta.pago_cliente || total);
+  const cambio = esCredito ? 0 : (pagoCliente - total);
 
   // Detectar pago mixto
   const esPagoMixto = venta.metodo_pago === 'Mixto' || venta.metodo_pago?.startsWith('Mixto (');
@@ -62,6 +63,8 @@ export default function DetalleVenta({ venta, onCerrar, organization }) {
         return <Smartphone size={16} />;
       case 'tarjeta':
         return <CreditCard size={16} />;
+      case 'credito':
+        return <Receipt size={16} />;
       default:
         return null;
     }
@@ -111,8 +114,29 @@ export default function DetalleVenta({ venta, onCerrar, organization }) {
             )}
             <div className="detalle-venta-info-row">
               {getIconoMetodoPago(venta.metodo_pago)}
-              <span><strong>Método de pago:</strong> {esPagoMixto ? 'Mixto' : venta.metodo_pago || 'N/A'}</span>
+              <span>
+                <strong>Método de pago:</strong> {esPagoMixto ? 'Mixto' : (esCredito ? 'Crédito' : venta.metodo_pago || 'N/A')}
+                {esCredito && (
+                  <span style={{ 
+                    marginLeft: '0.5rem', 
+                    padding: '0.25rem 0.5rem', 
+                    background: '#fef3c7', 
+                    color: '#d97706', 
+                    borderRadius: '4px',
+                    fontSize: '0.75rem',
+                    fontWeight: 600
+                  }}>
+                    Pendiente de pago
+                  </span>
+                )}
+              </span>
             </div>
+            {esCredito && venta.cliente && (
+              <div className="detalle-venta-info-row">
+                <User size={16} />
+                <span><strong>Cliente:</strong> {venta.cliente.nombre || 'N/A'}</span>
+              </div>
+            )}
             {venta.mesa_id && (
               <div className="detalle-venta-info-row">
                 <span><strong>Mesa:</strong> {venta.mesa_id}</span>
@@ -145,6 +169,7 @@ export default function DetalleVenta({ venta, onCerrar, organization }) {
               </div>
             </div>
           )}
+
 
           {/* Items de la venta */}
           <div className="detalle-venta-items">
@@ -201,16 +226,36 @@ export default function DetalleVenta({ venta, onCerrar, organization }) {
               <span>Total</span>
               <span>{formatCOP(total)}</span>
             </div>
-            <div className="detalle-venta-total-row">
-              <span>Pago del cliente</span>
-              <span>{formatCOP(pagoCliente)}</span>
-            </div>
-            <div className="detalle-venta-total-row detalle-venta-cambio">
-              <span>Cambio</span>
-              <span className={cambio < 0 ? 'negativo' : 'positivo'}>
-                {cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambio)}
-              </span>
-            </div>
+            {!esCredito && (
+              <>
+                <div className="detalle-venta-total-row">
+                  <span>Pago del cliente</span>
+                  <span>{formatCOP(pagoCliente)}</span>
+                </div>
+                <div className="detalle-venta-total-row detalle-venta-cambio">
+                  <span>Cambio</span>
+                  <span className={cambio < 0 ? 'negativo' : 'positivo'}>
+                    {cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambio)}
+                  </span>
+                </div>
+              </>
+            )}
+            {esCredito && (
+              <div className="detalle-venta-total-row" style={{ 
+                background: '#fef3c7', 
+                padding: '0.75rem', 
+                borderRadius: '8px',
+                marginTop: '0.5rem'
+              }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Receipt size={16} />
+                  <strong>Venta a Crédito</strong>
+                </span>
+                <span style={{ color: '#d97706', fontWeight: 600 }}>
+                  Pendiente de pago
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Footer */}

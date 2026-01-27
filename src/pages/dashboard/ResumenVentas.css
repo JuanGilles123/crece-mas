@@ -168,6 +168,18 @@
     border: 1px solid #e5e7eb;
   }
   
+  .resumen-ventas-filtro-rapido {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-secondary);
+  }
+
+  .resumen-ventas-filtro-icon {
+    font-size: 1rem;
+    line-height: 1;
+  }
+
   .resumen-ventas-filtro {
     display: flex;
     align-items: center;           /* <- centra icono + label */
@@ -245,6 +257,26 @@
     color: var(--text-primary);
     margin: 0;
   }
+
+  .resumen-ventas-metrica-variacion {
+    font-size: 0.75rem;
+    font-weight: 500;
+    margin: 0.25rem 0 0 0;
+  }
+
+  .resumen-ventas-metrica-variacion.positiva {
+    color: var(--accent-success);
+  }
+
+  .resumen-ventas-metrica-variacion.negativa {
+    color: var(--accent-error);
+  }
+
+  .resumen-ventas-metrica-subtext {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin: 0.25rem 0 0 0;
+  }
   
   .resumen-ventas-utilidad {
     color: var(--accent-success);
@@ -314,7 +346,8 @@
   /* Rankings */
   .resumen-ventas-rankings {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(2, auto);
     gap: 1.5rem;
     margin-top: 3rem;
   }
@@ -325,18 +358,33 @@
     border: 1px solid #e5e7eb;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 400px;
   }
   
   .resumen-ventas-ranking-title {
-    font-size: 1.125rem;
+    font-size: 1rem;
     font-weight: 600;
     color: var(--text-primary);
     margin: 0;
-    padding: 1.5rem 1.5rem 0 1.5rem;
+    padding: 1.25rem 1.25rem 0.75rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-bottom: 2px solid #f3f4f6;
+  }
+  
+  .resumen-ventas-ranking-title svg {
+    width: 18px;
+    height: 18px;
+    color: var(--accent-primary);
   }
   
   .resumen-ventas-ranking-content {
-    padding: 1.5rem;
+    padding: 1rem 1.25rem;
+    flex: 1;
+    overflow-y: auto;
   }
   
   .resumen-ventas-ranking-list {
@@ -346,11 +394,21 @@
   }
   
   .resumen-ventas-ranking-item {
-    display: flex;
-    align-items: center;           /* <- centra avatar + texto + cantidad */
-    gap: 0.75rem;
+    display: grid;
+    grid-template-columns: 2.5rem 1fr 6rem 8rem;
+    gap: 0.75rem 1.25rem;
+    align-items: center;
     padding: 0.75rem 0;
     border-bottom: 1px solid #f3f4f6;
+    transition: all 0.2s ease;
+  }
+  
+  .resumen-ventas-ranking-item:hover {
+    background-color: #f9fafb;
+    margin: 0 -1.25rem;
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+    border-radius: 0.375rem;
   }
   
   .resumen-ventas-ranking-item:last-child {
@@ -358,19 +416,40 @@
   }
   
   .resumen-ventas-ranking-position {
-    font-weight: 600;
+    font-weight: 700;
     color: var(--accent-primary);
-    min-width: 1.5rem;
+    font-size: 0.875rem;
+    text-align: left;
+    width: 2.5rem;
   }
   
   .resumen-ventas-ranking-nombre {
-    flex: 1;
     color: var(--text-primary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    text-align: left;
   }
   
   .resumen-ventas-ranking-cantidad {
     font-weight: 600;
     color: var(--accent-success);
+    font-size: 0.875rem;
+    text-align: left;
+    white-space: nowrap;
+    width: 6rem;
+  }
+
+  .resumen-ventas-ranking-total {
+    color: var(--accent-primary);
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-align: left;
+    white-space: nowrap;
+    width: 8rem;
   }
   
   /* Barra de búsqueda y exportar */
@@ -753,6 +832,10 @@
     .resumen-ventas-grafico-content { 
       height: 300px; 
     }
+    .resumen-ventas-rankings { 
+      grid-template-columns: repeat(2, 1fr); 
+      gap: 1rem; 
+    }
   }
 
   @media (max-width: 768px) {
@@ -784,6 +867,16 @@
     .resumen-ventas-rankings { 
       grid-template-columns: 1fr; 
       gap: 1.5rem; 
+    }
+    .resumen-ventas-ranking-item {
+      grid-template-columns: 2rem 1fr 5rem;
+      gap: 0.5rem;
+    }
+    .resumen-ventas-ranking-cantidad {
+      width: 5rem;
+    }
+    .resumen-ventas-ranking-total {
+      display: none;
     }
     .resumen-ventas-graficos { 
       grid-template-columns: 1fr; 

@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { supabase } from '../services/api/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { useCurrencyInput } from '../hooks/useCurrencyInput';
-import { Calculator, TrendingUp, DollarSign, ShoppingCart, AlertCircle, CheckCircle, XCircle, Save, Banknote, CreditCard, Smartphone, Share2, Download } from 'lucide-react';
+import { Calculator, TrendingUp, DollarSign, ShoppingCart, AlertCircle, CheckCircle, XCircle, Save, Banknote, CreditCard, Smartphone, Share2, Download, Receipt } from 'lucide-react';
 import './CierreCaja.css';
 
 const CierreCaja = () => {
@@ -11,6 +11,12 @@ const CierreCaja = () => {
   const [cargando, setCargando] = useState(true);
   const [ventasHoy, setVentasHoy] = useState([]);
   const [cotizacionesHoy, setCotizacionesHoy] = useState([]); // Cotizaciones informativas (no cuentan en totales)
+  const [ventasCreditoHoy, setVentasCreditoHoy] = useState([]); // Ventas a crédito informativas (no cuentan en totales)
+  const [pagosCreditoHoy, setPagosCreditoHoy] = useState([]); // Pagos de créditos recibidos hoy
+  const [desglosePagosCredito, setDesglosePagosCredito] = useState({ efectivo: 0, transferencias: 0, tarjeta: 0 });
+  const [totalPagosCredito, setTotalPagosCredito] = useState(0);
+  const [totalPagosTotales, setTotalPagosTotales] = useState(0);
+  const [totalAbonos, setTotalAbonos] = useState(0);
   const [totalSistema, setTotalSistema] = useState(0);
   
   // Currency inputs optimizados
@@ -93,19 +99,95 @@ const CierreCaja = () => {
 
       if (error) throw error;
 
-      // Separar ventas reales de cotizaciones (por si alguna se filtró)
+      // Separar ventas reales de cotizaciones y créditos (por si alguna se filtró)
       const ventasReales = (data || []).filter(venta => {
         const metodo = (venta.metodo_pago || '').toUpperCase();
         const estado = (venta.estado || '').toLowerCase();
-        // Excluir cotizaciones: método COTIZACION o estado cotizacion
-        return metodo !== 'COTIZACION' && estado !== 'cotizacion';
+        const esCredito = venta.es_credito === true || metodo === 'CREDITO';
+        // Excluir cotizaciones y créditos: método COTIZACION/CREDITO o estado cotizacion
+        return metodo !== 'COTIZACION' && metodo !== 'CREDITO' && estado !== 'cotizacion' && !esCredito;
+      });
+
+      // Separar ventas a crédito para mostrarlas aparte
+      const ventasCredito = (data || []).filter(venta => {
+        const metodo = (venta.metodo_pago || '').toUpperCase();
+        const esCredito = venta.es_credito === true || metodo === 'CREDITO';
+        return esCredito;
       });
 
       setVentasHoy(ventasReales);
+      setVentasCreditoHoy(ventasCredito);
       const total = ventasReales.reduce((sum, venta) => sum + (venta.total || 0), 0);
       setTotalSistema(total);
       
-      // Calcular desglose por método de pago - procesando pagos mixtos (solo ventas reales)
+      // Cargar pagos de créditos recibidos hoy (usar inicioHoy ya declarado arriba)
+      let pagosCreditoQuery = supabase
+        .from('pagos_creditos')
+        .select(`
+          *,
+          credito:creditos(id, monto_total, monto_pagado, monto_pendiente, estado, cliente:clientes(nombre, documento))
+        `)
+        .eq('organization_id', userProfile.organization_id)
+        .gte('created_at', inicioHoy.toISOString());
+      
+      // Si ya hay un cierre hoy, solo mostrar pagos posteriores al último cierre
+      if (hayUltioCierre) {
+        const ultimoCierre = cierresHoy[0].created_at;
+        pagosCreditoQuery = pagosCreditoQuery.gt('created_at', ultimoCierre);
+      }
+      
+      const { data: pagosCreditoHoy = [], error: errorPagosCredito } = await pagosCreditoQuery
+        .order('created_at', { ascending: false });
+      
+      if (errorPagosCredito) {
+        console.error('Error cargando pagos de créditos:', errorPagosCredito);
+      }
+      
+      // Calcular desglose de pagos de créditos por método
+      const desglosePagosCredito = pagosCreditoHoy.reduce((acc, pago) => {
+        const metodo = (pago.metodo_pago || '').toLowerCase();
+        const monto = parseFloat(pago.monto || 0);
+        
+        if (metodo === 'efectivo') {
+          acc.efectivo += monto;
+        } else if (metodo === 'transferencia') {
+          acc.transferencias += monto;
+        } else if (metodo === 'tarjeta') {
+          acc.tarjeta += monto;
+        } else if (metodo === 'nequi') {
+          acc.transferencias += monto; // Nequi se cuenta como transferencia
+        }
+        
+        return acc;
+      }, { efectivo: 0, transferencias: 0, tarjeta: 0 });
+      
+      // Calcular total de pagos de créditos
+      const totalPagosCredito = pagosCreditoHoy.reduce((sum, pago) => sum + parseFloat(pago.monto || 0), 0);
+      
+      // Identificar pagos totales vs abonos
+      const pagosTotales = pagosCreditoHoy.filter(pago => {
+        const credito = pago.credito;
+        if (!credito) return false;
+        // Si después del pago, el crédito quedó pagado, es un pago total
+        const montoPago = parseFloat(pago.monto || 0);
+        const montoPagadoAntes = parseFloat(credito.monto_pagado || 0) - montoPago;
+        const montoPendienteAntes = parseFloat(credito.monto_total || 0) - montoPagadoAntes;
+        return montoPago >= montoPendienteAntes; // El pago cubre todo lo pendiente
+      });
+      
+      const abonos = pagosCreditoHoy.filter(pago => !pagosTotales.includes(pago));
+      
+      const totalPagosTotales = pagosTotales.reduce((sum, pago) => sum + parseFloat(pago.monto || 0), 0);
+      const totalAbonos = abonos.reduce((sum, pago) => sum + parseFloat(pago.monto || 0), 0);
+      
+      // Guardar estados de pagos de créditos
+      setPagosCreditoHoy(pagosCreditoHoy);
+      setDesglosePagosCredito(desglosePagosCredito);
+      setTotalPagosCredito(totalPagosCredito);
+      setTotalPagosTotales(totalPagosTotales);
+      setTotalAbonos(totalAbonos);
+      
+      // Calcular desglose por método de pago - procesando pagos mixtos (solo ventas reales, excluyendo créditos)
       const desglose = ventasReales.reduce((acc, venta) => {
         const metodo = (venta.metodo_pago || '').toLowerCase();
         const montoTotal = venta.total || 0;
@@ -198,6 +280,12 @@ const CierreCaja = () => {
         
         // Si no se procesó como pago mixto, procesar como método único
         if (!procesado) {
+          // Excluir créditos del desglose (ya se filtraron antes, pero por seguridad)
+          if (venta.es_credito === true || metodo === 'credito') {
+            // No agregar a ningún método de pago
+            return acc;
+          }
+          
           if (metodo === 'efectivo') {
             acc.efectivo += montoTotal;
           } else if (metodo === 'transferencia') {
@@ -215,7 +303,19 @@ const CierreCaja = () => {
         return acc;
       }, { efectivo: 0, transferencias: 0, tarjeta: 0, mixto: 0 });
       
-      setDesgloseSistema(desglose || { efectivo: 0, transferencias: 0, tarjeta: 0, mixto: 0 });
+      // Sumar los pagos de créditos al desglose (estos SÍ cuentan en el cierre porque son dinero recibido)
+      // Nota: desglosePagosCredito, totalPagosCredito ya fueron calculados arriba
+      const desgloseFinal = {
+        efectivo: desglose.efectivo + desglosePagosCredito.efectivo,
+        transferencias: desglose.transferencias + desglosePagosCredito.transferencias,
+        tarjeta: desglose.tarjeta + desglosePagosCredito.tarjeta,
+        mixto: desglose.mixto
+      };
+      
+      // Actualizar el total del sistema para incluir los pagos de créditos
+      const totalConPagosCredito = total + totalPagosCredito;
+      setTotalSistema(totalConPagosCredito);
+      setDesgloseSistema(desgloseFinal);
 
       // Cargar cotizaciones por separado (solo informativas, no cuentan en totales)
       try {
@@ -624,6 +724,134 @@ Generado por Crece+ 🚀
               </div>
             )}
           </div>
+
+          {/* Sección informativa de ventas a crédito (no cuentan en totales) */}
+          {ventasCreditoHoy.length > 0 && (
+            <div className="cotizaciones-lista" style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #e5e7eb' }}>
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#6b7280', fontSize: '0.9rem', marginBottom: '0.75rem' }}>
+                <Receipt size={16} />
+                Ventas a Crédito (Informativo)
+              </h3>
+              <p style={{ fontSize: '0.75rem', color: '#9ca3af', marginBottom: '0.75rem' }}>
+                Estas ventas a crédito no se cuentan en el cierre de caja porque el dinero aún no se ha recibido. Se gestionan en el módulo de Créditos.
+              </p>
+              <div className="ventas-scroll" style={{ maxHeight: '200px' }}>
+                {ventasCreditoHoy.map((venta, index) => (
+                  <motion.div
+                    key={venta.id}
+                    className="venta-item"
+                    style={{ opacity: 0.7, backgroundColor: '#fef3c7' }}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 0.7, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                  >
+                    <div className="venta-hora">{formatHora(venta.created_at)}</div>
+                    <div className="venta-metodo">
+                      <Receipt size={16} />
+                      <span>Crédito</span>
+                    </div>
+                    <div className="venta-total" style={{ color: '#d97706' }}>{formatCOP(venta.total)}</div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Sección de pagos de créditos recibidos (SÍ cuentan en el cierre) */}
+          {pagosCreditoHoy.length > 0 && (
+            <div className="pagos-credito-lista" style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #e5e7eb' }}>
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#10b981', fontSize: '1rem', marginBottom: '0.75rem' }}>
+                <Receipt size={18} />
+                Pagos de Créditos Recibidos
+              </h3>
+              <div style={{ 
+                background: '#f0fdf4', 
+                padding: '0.75rem', 
+                borderRadius: '8px', 
+                marginBottom: '0.75rem',
+                fontSize: '0.875rem',
+                color: '#166534'
+              }}>
+                <p style={{ marginBottom: '0.5rem', fontWeight: 600 }}>
+                  Total recibido: <strong>{formatCOP(totalPagosCredito)}</strong>
+                </p>
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                  <span>
+                    Pagos totales: <strong>{formatCOP(totalPagosTotales)}</strong> ({pagosCreditoHoy.filter(p => {
+                      const credito = p.credito;
+                      if (!credito) return false;
+                      const montoPago = parseFloat(p.monto || 0);
+                      const montoPagadoAntes = parseFloat(credito.monto_pagado || 0) - montoPago;
+                      const montoPendienteAntes = parseFloat(credito.monto_total || 0) - montoPagadoAntes;
+                      return montoPago >= montoPendienteAntes;
+                    }).length} créditos)
+                  </span>
+                  <span>
+                    Abonos: <strong>{formatCOP(totalAbonos)}</strong> ({pagosCreditoHoy.filter(p => {
+                      const credito = p.credito;
+                      if (!credito) return true;
+                      const montoPago = parseFloat(p.monto || 0);
+                      const montoPagadoAntes = parseFloat(credito.monto_pagado || 0) - montoPago;
+                      const montoPendienteAntes = parseFloat(credito.monto_total || 0) - montoPagadoAntes;
+                      return montoPago < montoPendienteAntes;
+                    }).length} pagos)
+                  </span>
+                </div>
+              </div>
+              <div className="ventas-scroll" style={{ maxHeight: '250px' }}>
+                {pagosCreditoHoy.map((pago, index) => {
+                  const credito = pago.credito;
+                  const esPagoTotal = credito && (() => {
+                    const montoPago = parseFloat(pago.monto || 0);
+                    const montoPagadoAntes = parseFloat(credito.monto_pagado || 0) - montoPago;
+                    const montoPendienteAntes = parseFloat(credito.monto_total || 0) - montoPagadoAntes;
+                    return montoPago >= montoPendienteAntes;
+                  })();
+                  
+                  return (
+                    <motion.div
+                      key={pago.id}
+                      className="venta-item"
+                      style={{ 
+                        backgroundColor: esPagoTotal ? '#dcfce7' : '#fef3c7',
+                        borderLeft: `3px solid ${esPagoTotal ? '#10b981' : '#d97706'}`
+                      }}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                    >
+                      <div className="venta-hora">{formatHora(pago.created_at)}</div>
+                      <div className="venta-metodo" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.25rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          {getMetodoIcon(pago.metodo_pago)}
+                          <span>{pago.metodo_pago}</span>
+                        </div>
+                        {credito?.cliente && (
+                          <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                            {credito.cliente.nombre || 'Cliente'}
+                            {credito.cliente.documento && ` (${credito.cliente.documento})`}
+                          </span>
+                        )}
+                        <span style={{ 
+                          fontSize: '0.75rem', 
+                          padding: '0.125rem 0.5rem',
+                          borderRadius: '4px',
+                          background: esPagoTotal ? '#dcfce7' : '#fef3c7',
+                          color: esPagoTotal ? '#166534' : '#d97706',
+                          fontWeight: 600
+                        }}>
+                          {esPagoTotal ? 'Pago Total' : 'Abono'}
+                        </span>
+                      </div>
+                      <div className="venta-total" style={{ color: esPagoTotal ? '#10b981' : '#d97706' }}>
+                        {formatCOP(parseFloat(pago.monto || 0))}
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Sección informativa de cotizaciones (no cuentan en totales) */}
           {cotizacionesHoy.length > 0 && (

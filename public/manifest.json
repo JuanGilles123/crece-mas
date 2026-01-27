@@ -1,30 +1,8 @@
 {
   "short_name": "Crece+",
   "name": "Crece+ | Sistema de Punto de Venta",
+  "description": "Sistema completo de gestión de ventas, inventario y facturación",
   "icons": [
-    {
-      "src": "/logo-crece.svg",
-      "type": "image/svg+xml",
-      "sizes": "any",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/logo-crece.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
-    },
-    {
-      "src": "/logo-crece.svg",
-      "type": "image/svg+xml",
-      "sizes": "192x192",
-      "purpose": "any"
-    },
-    {
-      "src": "/logo-crece.svg",
-      "type": "image/svg+xml",
-      "sizes": "512x512",
-      "purpose": "any"
-    },
     {
       "src": "/logo192.png",
       "type": "image/png",
@@ -36,11 +14,36 @@
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any maskable"
+    },
+    {
+      "src": "/logo-crece.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
     }
   ],
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "any",
   "theme_color": "#8B5CF6",
   "background_color": "#0f172a",
-  "orientation": "portrait-primary"
+  "categories": ["business", "productivity", "finance"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Caja",
+      "short_name": "Caja",
+      "description": "Abrir la caja de ventas",
+      "url": "/dashboard/caja",
+      "icons": [{ "src": "/logo192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Inventario",
+      "short_name": "Inventario",
+      "description": "Gestionar inventario",
+      "url": "/dashboard/inventario",
+      "icons": [{ "src": "/logo192.png", "sizes": "192x192" }]
+    }
+  ]
 }

@@ -87,6 +87,7 @@ const ToppingsSelector = ({
   const { data: toppings = [], isLoading } = useToppings(organizationId);
   const [toppingsSeleccionados, setToppingsSeleccionados] = useState([]);
   const [categoriaActiva, setCategoriaActiva] = useState(null);
+  const [busqueda, setBusqueda] = useState('');
 
   // Filtrar toppings por tipo y stock (si aplica)
   // Para servicios, el stock puede ser null, así que permitimos null o > 0
@@ -101,10 +102,21 @@ const ToppingsSelector = ({
     return t.stock > 0;
   });
 
+  // Filtrar por búsqueda
+  const toppingsFiltrados = useMemo(() => {
+    if (!busqueda.trim()) return toppingsDisponibles;
+    
+    const query = busqueda.toLowerCase();
+    return toppingsDisponibles.filter(topping => 
+      topping.nombre?.toLowerCase().includes(query) ||
+      topping.categoria?.toLowerCase().includes(query)
+    );
+  }, [toppingsDisponibles, busqueda]);
+
   // Agrupar toppings por categoría
   const toppingsPorCategoria = useMemo(() => {
     const grupos = {};
-    toppingsDisponibles.forEach(topping => {
+    toppingsFiltrados.forEach(topping => {
       const cat = topping.categoria || 'general';
       if (!grupos[cat]) {
         grupos[cat] = [];
@@ -112,7 +124,7 @@ const ToppingsSelector = ({
       grupos[cat].push(topping);
     });
     return grupos;
-  }, [toppingsDisponibles]);
+  }, [toppingsFiltrados]);
 
   const categorias = Object.keys(toppingsPorCategoria).sort();
 
@@ -130,6 +142,7 @@ const ToppingsSelector = ({
   useEffect(() => {
     if (!open) {
       setToppingsSeleccionados([]);
+      setBusqueda('');
     }
   }, [open]);
 
@@ -215,7 +228,7 @@ const ToppingsSelector = ({
           <div className="toppings-selector-loading">
             <p>Cargando toppings...</p>
           </div>
-        ) : toppingsDisponibles.length === 0 ? (
+        ) : toppingsFiltrados.length === 0 ? (
           <div className="toppings-selector-empty">
             <Package size={48} />
             <p>No hay {itemLabel} disponibles</p>
@@ -225,6 +238,18 @@ const ToppingsSelector = ({
           </div>
         ) : (
           <>
+            {/* Buscador de toppings */}
+            <div className="toppings-busqueda-container">
+              <span className="toppings-busqueda-icon-outside">🔍</span>
+              <input
+                type="text"
+                placeholder="Buscar por nombre o categoría..."
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                className="toppings-busqueda-input"
+              />
+            </div>
+
             {/* Tabs de categorías (si hay más de una) */}
             {categorias.length > 1 && (
               <div className="toppings-categorias-tabs">
@@ -260,7 +285,7 @@ const ToppingsSelector = ({
                 })
               ) : (
                 // Si no hay categoría activa, mostrar todos (fallback)
-                toppingsDisponibles.map((topping) => {
+                toppingsFiltrados.map((topping) => {
                   const seleccionado = toppingsSeleccionados.find(t => t.id === topping.id);
                   return (
                     <ToppingItem

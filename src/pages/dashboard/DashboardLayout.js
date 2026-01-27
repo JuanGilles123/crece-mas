@@ -2,7 +2,33 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Outlet } from 'react-router-dom';
 import { DashboardSkeleton } from '../../components/ui/SkeletonLoader';
-import { BarChart3, CreditCard, Package, User, TrendingUp, Users, Zap, Calculator, Activity, CreditCard as SubscriptionIcon, FileText, Circle, ChefHat, Settings, History, UserCircle, Table, Utensils, ListChecks } from 'lucide-react';
+import { 
+  BarChart3, 
+  CreditCard, 
+  Package, 
+  User, 
+  TrendingUp, 
+  Users, 
+  Zap, 
+  Calculator, 
+  Activity, 
+  CreditCard as SubscriptionIcon, 
+  FileText, 
+  Circle, 
+  ChefHat, 
+  Settings, 
+  History, 
+  UserCircle, 
+  Table, 
+  Utensils, 
+  ListChecks, 
+  Receipt, 
+  TrendingDown,
+  ShoppingCart,
+  Store,
+  FileBarChart,
+  ClipboardList
+} from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSubscription } from '../../hooks/useSubscription';
 import UsageBanner from '../../components/UsageBanner';
@@ -37,11 +63,12 @@ const DashboardLayout = () => {
         end: true,
         visible: hasPermission('dashboard') || true
       },
-      // Grupo: Ventas
+      
+      // Grupo: Ventas y Caja
       {
         type: 'group',
-        icon: CreditCard,
-        label: "Ventas",
+        icon: ShoppingCart,
+        label: "Ventas y Caja",
         items: [
           {
             to: "/dashboard/caja",
@@ -60,7 +87,7 @@ const DashboardLayout = () => {
           {
             to: "/dashboard/historial-ventas",
             icon: History,
-            label: "Historial Ventas",
+            label: "Historial de Ventas",
             title: "Historial de Órdenes de Venta",
             visible: hasPermission('sales') || true
           },
@@ -73,21 +100,39 @@ const DashboardLayout = () => {
           },
           {
             to: "/dashboard/historial-cierres",
-            icon: History,
-            label: "Historial Cierres",
+            icon: FileBarChart,
+            label: "Historial de Cierres",
             title: "Historial de Cierres de Caja",
             visible: (hasPermission('sales') || true) && hasFeature('closingHistory')
-          },
+          }
+        ].filter(item => item.visible),
+        visible: hasPermission('sales') || true
+      },
+      
+      // Grupo: Clientes y Créditos
+      {
+        type: 'group',
+        icon: UserCircle,
+        label: "Clientes y Créditos",
+        items: [
           {
             to: "/dashboard/clientes",
             icon: UserCircle,
             label: "Clientes",
             title: "Gestión de Clientes",
             visible: hasPermission('sales') || true
+          },
+          {
+            to: "/dashboard/creditos",
+            icon: Receipt,
+            label: "Créditos",
+            title: "Gestión de Créditos y Cobranza",
+            visible: hasPermission('sales') || true
           }
         ].filter(item => item.visible),
         visible: hasPermission('sales') || true
       },
+      
       // Grupo: Inventario
       {
         type: 'group',
@@ -118,10 +163,28 @@ const DashboardLayout = () => {
         ].filter(item => item.visible),
         visible: hasPermission('inventory') || true
       },
+      
+      // Grupo: Compras y Egresos
+      {
+        type: 'group',
+        icon: Store,
+        label: "Compras y Egresos",
+        items: [
+          {
+            to: "/dashboard/egresos",
+            icon: TrendingDown,
+            label: "Egresos y Compras",
+            title: "Gestión de Gastos, Créditos, Órdenes de Compra y Proveedores",
+            visible: hasPermission('inventory') || true
+          }
+        ].filter(item => item.visible),
+        visible: hasPermission('inventory') || true
+      },
+      
       // Grupo: Pedidos (solo para food)
       {
         type: 'group',
-        icon: Circle,
+        icon: ClipboardList,
         label: "Pedidos",
         items: [
           {
@@ -148,16 +211,17 @@ const DashboardLayout = () => {
         ].filter(item => item.visible),
         visible: organization?.business_type === 'food' && organization?.pedidos_habilitados && hasFeature('pedidos')
       },
-      // Grupo: Reportes
+      
+      // Grupo: Reportes y Análisis
       {
         type: 'group',
         icon: TrendingUp,
-        label: "Reportes",
+        label: "Reportes y Análisis",
         items: [
           {
             to: "/dashboard/resumen-ventas",
             icon: TrendingUp,
-            label: "Resumen Ventas",
+            label: "Resumen de Ventas",
             title: "Resumen de Ventas",
             visible: (hasPermission('reports') || true) && hasFeature('advancedReports')
           },
@@ -171,6 +235,7 @@ const DashboardLayout = () => {
         ].filter(item => item.visible),
         visible: ((hasPermission('reports') || true) && hasFeature('advancedReports')) || isSuperAdmin
       },
+      
       // Grupo: Configuración
       {
         type: 'group',
@@ -201,6 +266,7 @@ const DashboardLayout = () => {
         ].filter(item => item.visible),
         visible: true
       },
+      
       // Perfil (siempre visible, no agrupado)
       {
         type: 'single',

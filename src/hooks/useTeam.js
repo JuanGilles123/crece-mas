@@ -73,8 +73,14 @@ export const useTeamMembers = (organizationId) => {
 
       // Combinar manualmente
       return members.map(member => {
-        // Si es empleado sin login (is_employee = true y user_id = null)
-        if (member.is_employee && !member.user_id) {
+        // Identificar empleados: 
+        // 1. Empleados sin login (is_employee = true y user_id = null)
+        // 2. Empleados con autenticación (tienen employee_code/employee_name pero is_employee = false debido al constraint)
+        const isEmployee = (member.is_employee && !member.user_id) || 
+                          (!member.is_employee && member.user_id && (member.employee_code || member.employee_name));
+        
+        if (isEmployee && !member.user_id) {
+          // Empleado sin login
           return {
             ...member,
             user_profiles: null,
@@ -86,7 +92,21 @@ export const useTeamMembers = (organizationId) => {
           };
         }
         
-        // Miembro normal con user_id
+        if (isEmployee && member.user_id) {
+          // Empleado con autenticación
+          const profile = profiles.find(p => p.user_id === member.user_id);
+          return {
+            ...member,
+            user_profiles: profile || null,
+            email: member.employee_email || profile?.email || 'Sin email',
+            nombre: member.employee_name || profile?.full_name,
+            telefono: member.employee_phone,
+            codigo: member.employee_code,
+            is_employee: true // Marcar como empleado para la UI
+          };
+        }
+        
+        // Miembro normal con user_id (no empleado)
         const profile = profiles.find(p => p.user_id === member.user_id);
         return {
           ...member,
@@ -692,33 +712,110 @@ export const useCreateEmployee = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ organizationId, nombre, email, telefono, role, customRoleId, codigo, pin }) => {
+    mutationFn: async ({ organizationId, nombre, email, telefono, usuario, password, role, customRoleId }) => {
       const { data: { user } } = await supabase.auth.getUser();
       
-      // Nota: No podemos crear usuarios en Supabase Auth desde el cliente
-      // El empleado se creará sin user_id y podrá hacer login usando el código
-      // El login se manejará mediante una función que busca el empleado por código
-      // y crea una sesión temporal o usa un método alternativo
+      // Determinar el email a usar para Auth
+      if (!usuario || !usuario.trim()) {
+        throw new Error('El usuario (email o teléfono) es requerido. Si no se proporcionó, debería haberse generado automáticamente.');
+      }
       
-      // Por ahora, dejamos user_id como null
-      // El sistema de login con código manejará la autenticación
-      let authUserId = null;
+      const isEmail = usuario.includes('@');
+      let authEmail;
+      if (isEmail) {
+        authEmail = usuario.trim().toLowerCase();
+      } else {
+        // Si es teléfono, crear email con formato: telefono@empleado.creceplus.local
+        const telefonoLimpio = usuario.replace(/\D/g, '');
+        authEmail = `${telefonoLimpio}@empleado.creceplus.local`;
+      }
+      
+      // Crear usuario en Supabase Auth usando signUp
+      // Nota: Si el email confirmation está habilitado en Supabase Dashboard, el usuario necesitará confirmar
+      // Para empleados, se recomienda deshabilitar la confirmación de email en:
+      // Supabase Dashboard → Authentication → Settings → Disable "Enable email confirmations"
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: authEmail,
+        password: password,
+        options: {
+          data: {
+            full_name: nombre,
+            phone: telefono || null,
+            is_employee: true,
+            needs_password_change: true, // Flag para indicar que debe cambiar contraseña
+            employee_email: email || null,
+            employee_phone: telefono || null
+          },
+          emailRedirectTo: undefined // No enviar email de confirmación
+        }
+      });
+
+      if (authError) {
+        console.error('Error creating auth user:', authError);
+        
+        // Manejar error 429 (Too Many Requests)
+        if (authError.status === 429 || authError.message?.includes('429') || authError.message?.includes('Too Many Requests')) {
+          // Intentar extraer el tiempo de espera del mensaje o header
+          const retryAfter = authError.message?.match(/(\d+)\s+seconds?/)?.[1] || 
+                           authError.message?.match(/after\s+(\d+)/)?.[1] || 
+                           '60';
+          throw new Error(`Has realizado demasiadas solicitudes. Por seguridad, debes esperar ${retryAfter} segundos antes de crear otro empleado. Por favor, intenta nuevamente en unos momentos.`);
+        }
+        
+        // Manejar errores específicos de Supabase
+        if (authError.message && authError.message.includes('For security purposes')) {
+          // Extraer el tiempo de espera del mensaje si está disponible
+          const timeMatch = authError.message.match(/(\d+)\s+seconds?/);
+          const waitTime = timeMatch ? timeMatch[1] : '60';
+          throw new Error(`Por seguridad, debes esperar ${waitTime} segundos antes de crear otro empleado. Por favor, intenta nuevamente en unos momentos.`);
+        }
+        
+        // Otros errores comunes
+        if (authError.message && (authError.message.includes('already registered') || authError.message.includes('already exists'))) {
+          throw new Error('Este email o teléfono ya está registrado. Por favor, usa otro.');
+        }
+        
+        if (authError.message && authError.message.includes('Invalid email')) {
+          throw new Error('El formato del email no es válido. Por favor, verifica el email proporcionado.');
+        }
+        
+        throw new Error(authError.message || 'Error al crear usuario de autenticación');
+      }
+
+      const authUserId = authData.user?.id;
+      
+      if (!authUserId) {
+        throw new Error('No se pudo obtener el ID del usuario creado. El usuario debe confirmar su email primero.');
+      }
+      
+      // Nota: El usuario se crea con needs_password_change: true en user_metadata
+      // Esto se verificará en el login para solicitar cambio de contraseña
+      // Para confirmar el email automáticamente, necesitaríamos una Edge Function
+      // con permisos de admin, pero por ahora el usuario puede hacer login
+      // y se le solicitará cambiar la contraseña en el primer acceso
       
       // Crear el empleado en team_members
+      // Nota: Si el constraint check_employee_user_id requiere que is_employee = true solo cuando user_id es NULL,
+      // entonces no marcamos is_employee = true cuando tenemos user_id (empleados con autenticación)
+      // IMPORTANTE: employee_email debe coincidir con authEmail para que el login funcione correctamente
       const { data, error } = await supabase
         .from('team_members')
         .insert([{
           organization_id: organizationId,
-          user_id: authUserId, // Si se creó en Auth, usar ese ID, sino null
+          user_id: authUserId,
           role,
           custom_role_id: customRoleId || null,
           status: 'active',
           invited_by: user.id,
-          employee_code: codigo, // Código único para login futuro
-          employee_name: nombre, // Nombre del empleado
-          employee_email: email || null, // Email opcional
-          employee_phone: telefono || null, // Teléfono opcional
-          is_employee: true, // Marcar como empleado sin login
+          // Guardar información del empleado en metadata para referencia
+          employee_code: usuario, // Usar el usuario como código también
+          employee_name: nombre,
+          // Usar authEmail para que coincida con el email usado en Auth (importante para el login)
+          employee_email: authEmail, // Esto asegura que el login funcione
+          employee_phone: telefono || null,
+          // No marcar como is_employee = true si tiene user_id (el constraint lo requiere)
+          // Los empleados con autenticación se diferencian por tener user_id y estos campos
+          is_employee: false, // Cambiar a false porque tiene user_id
           joined_at: new Date().toISOString()
         }])
         .select()
@@ -726,14 +823,36 @@ export const useCreateEmployee = () => {
 
       if (error) {
         console.error('Error creating employee:', error);
+        
+        // Manejar errores específicos de constraints
+        if (error.code === '23514') {
+          // Constraint violation
+          if (error.message && error.message.includes('check_employee_user_id')) {
+            throw new Error('Error de configuración: El constraint de la base de datos no permite empleados con autenticación. Por favor, contacta al administrador del sistema.');
+          }
+          throw new Error(`Error de validación: ${error.message || 'No se pudo crear el empleado debido a una restricción de la base de datos.'}`);
+        }
+        
+        // Si falla la creación en team_members, intentar eliminar el usuario de Auth
+        // Nota: Esto requiere permisos de admin, así que solo lo intentamos
+        if (authUserId) {
+          try {
+            await supabase.functions.invoke('delete-user', {
+              body: { user_id: authUserId }
+            });
+          } catch (deleteError) {
+            // Ignorar errores de CORS o de la función Edge
+            console.warn('No se pudo eliminar el usuario de Auth (esto es normal si la función Edge no está configurada):', deleteError);
+          }
+        }
         throw new Error(error.message || 'Error al crear empleado');
       }
 
-      // Retornar el empleado creado con el código
-      // La contraseña inicial es el mismo código (se maneja en el login)
+      // Retornar el empleado creado con las credenciales
       return { 
         ...data, 
-        codigo: data.employee_code || codigo
+        usuario: usuario,
+        password: password // Devolver la contraseña para mostrarla al admin
       };
     },
     onSuccess: (data, variables) => {

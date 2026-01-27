@@ -20,6 +20,8 @@ const PlatformAnalytics = lazy(() => import('../PlatformAnalytics'));
 const TomarPedido = lazy(() => import('../TomarPedido'));
 const PanelCocina = lazy(() => import('../PanelCocina'));
 const Clientes = lazy(() => import('./Clientes'));
+const Creditos = lazy(() => import('./Creditos'));
+const Egresos = lazy(() => import('./Egresos'));
 const GestionMesas = lazy(() => import('../../components/GestionMesas'));
 const GestionToppings = lazy(() => import('../../components/GestionToppings'));
 const GestionVariaciones = lazy(() => import('../../components/GestionVariaciones'));
@@ -130,6 +132,16 @@ const Dashboard = () => (
         <Route path="clientes" element={
           <Suspense fallback={<DashboardLoader />}>
             <Clientes />
+          </Suspense>
+        } />
+        <Route path="creditos" element={
+          <Suspense fallback={<DashboardLoader />}>
+            <Creditos />
+          </Suspense>
+        } />
+        <Route path="egresos" element={
+          <Suspense fallback={<DashboardLoader />}>
+            <Egresos />
           </Suspense>
         } />
         <Route path="mesas" element={

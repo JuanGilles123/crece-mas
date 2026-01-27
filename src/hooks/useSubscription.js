@@ -183,7 +183,12 @@ export const useSubscription = () => {
       // Aplicar filtros adicionales si se proporcionan
       if (where) {
         Object.entries(where).forEach(([key, value]) => {
-          query = query.eq(key, value);
+          // Si el valor es una fecha ISO string, usar gte para filtrar desde esa fecha
+          if (key === 'created_at' && typeof value === 'string' && value.includes('T')) {
+            query = query.gte(key, value);
+          } else {
+            query = query.eq(key, value);
+          }
         });
       }
 
@@ -243,13 +248,24 @@ export const useSubscription = () => {
       }
 
       case 'createSale': {
-        const salesLimit = await checkLimit('maxSalesPerMonth');
+        // Para ventas, necesitamos filtrar por el mes actual
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        startOfMonth.setHours(0, 0, 0, 0);
+        
+        const salesLimit = await checkLimit('maxSalesPerMonth', 'sales', {
+          created_at: startOfMonth.toISOString()
+        });
+        
         return {
-          allowed: salesLimit.allowed || salesLimit.unlimited,
-          reason: !salesLimit.allowed && !salesLimit.unlimited
+          allowed: salesLimit.canPerform || salesLimit.isVIP || salesLimit.limit === null,
+          reason: !salesLimit.canPerform && !salesLimit.isVIP && salesLimit.limit !== null
             ? `Has alcanzado el límite de ${salesLimit.limit} ventas este mes`
             : null,
-          ...salesLimit
+          current: salesLimit.current || 0,
+          limit: salesLimit.limit,
+          remaining: salesLimit.remaining,
+          unlimited: salesLimit.limit === null || salesLimit.isVIP
         };
       }
 
