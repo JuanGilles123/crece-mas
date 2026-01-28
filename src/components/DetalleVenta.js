@@ -70,6 +70,14 @@ export default function DetalleVenta({ venta, onCerrar, organization }) {
     }
   };
 
+  // Agregar clase al body cuando el modal está abierto
+  React.useEffect(() => {
+    document.body.classList.add('detalle-venta-open');
+    return () => {
+      document.body.classList.remove('detalle-venta-open');
+    };
+  }, []);
+
   return (
     <AnimatePresence>
       <motion.div

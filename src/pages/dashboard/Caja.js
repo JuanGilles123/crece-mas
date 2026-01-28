@@ -18,9 +18,10 @@ import ReciboVenta from '../../components/business/ReciboVenta';
 import ConfirmacionVenta from '../../components/business/ConfirmacionVenta';
 import AperturaCajaModal from '../../components/modals/AperturaCajaModal';
 import DescuentoModal from '../../components/modals/DescuentoModal';
+import ConsultarPrecioModal from '../../components/modals/ConsultarPrecioModal';
 import ToppingsSelector from '../../components/ToppingsSelector';
 import VariacionesSelector from '../../components/VariacionesSelector';
-import { ShoppingCart, Trash2, CheckCircle, CreditCard, Banknote, Smartphone, Wallet, ArrowLeft, Save, Plus, X, UserCircle, Lock, Percent, List, ArrowRight, Package, Receipt } from 'lucide-react';
+import { ShoppingCart, Trash2, CheckCircle, CreditCard, Banknote, Smartphone, Wallet, ArrowLeft, Save, Plus, X, UserCircle, Lock, Percent, List, ArrowRight, Package, Receipt, Search, DollarSign } from 'lucide-react';
 import toast from 'react-hot-toast';
 import './Caja.css';
 
@@ -88,6 +89,7 @@ export default function Caja({
   // eslint-disable-next-line no-unused-vars
   const [mostrandoModalSeleccionCliente, setMostrandoModalSeleccionCliente] = useState(false);
   const [mostrandoModalCliente, setMostrandoModalCliente] = useState(false);
+  const [mostrandoConsultarPrecio, setMostrandoConsultarPrecio] = useState(false);
   // eslint-disable-next-line no-unused-vars
   const [busquedaCliente, setBusquedaCliente] = useState('');
   const [nuevoCliente, setNuevoCliente] = useState({
@@ -2968,7 +2970,7 @@ export default function Caja({
             <>
               {/* Buscador de pedidos */}
               <div className="caja-pedidos-search-container">
-                <span className="caja-pedidos-search-icon-outside">🔍</span>
+                <Search size={18} className="caja-pedidos-search-icon-outside" />
                 <input
                   type="text"
                   placeholder="Buscar por pedido, cliente, teléfono o mesa..."
@@ -3166,7 +3168,7 @@ export default function Caja({
           </div>
         )}
         <div className="caja-search-container">
-          <span className="caja-search-icon-outside">🔍</span>
+          <Search size={18} className="caja-search-icon-outside" />
           <input
             ref={barcodeInputRef}
             type="text"
@@ -3185,6 +3187,14 @@ export default function Caja({
               e.target.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
             }}
           />
+          <button
+            type="button"
+            className="caja-btn-consultar-precio"
+            onClick={() => setMostrandoConsultarPrecio(true)}
+            title="Consultar precio de producto"
+          >
+            <DollarSign size={18} />
+          </button>
         </div>
 
         <div className="caja-products-list">
@@ -4281,7 +4291,7 @@ export default function Caja({
             </div>
             <div className="caja-modal-body">
               <div className="caja-cliente-search-modal">
-                <span className="caja-cliente-search-icon-outside">🔍</span>
+                <Search size={18} className="caja-cliente-search-icon-outside" />
                 <input
                   type="text"
                   placeholder="Buscar cliente por nombre, documento, teléfono o email..."
@@ -4549,6 +4559,12 @@ export default function Caja({
         }}
         cart={cart}
         descuentoActual={descuento}
+      />
+
+      {/* Modal de consultar precio */}
+      <ConsultarPrecioModal
+        open={mostrandoConsultarPrecio}
+        onClose={() => setMostrandoConsultarPrecio(false)}
       />
 
       {/* Modal de apertura de caja (solo en modo venta) */}

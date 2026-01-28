@@ -27,7 +27,8 @@ import {
   Crown,
   Sparkles,
   ArrowRight,
-  Check
+  Check,
+  Search
 } from 'lucide-react';
 import './DashboardHome.css';
 
@@ -226,8 +227,8 @@ const DashboardHome = () => {
     ),
     { icon: Zap, label: 'Venta Rápida', path: '/dashboard/venta-rapida', color: '#F59E0B' },
     { icon: Calculator, label: 'Cierre de Caja', path: '/dashboard/cierre-caja', color: '#EF4444' },
-    { icon: Users, label: 'Equipo', path: '/dashboard/equipo', color: '#6366F1' },
     { icon: User, label: 'Perfil', path: '/dashboard/perfil', color: '#EC4899' },
+    { icon: Search, label: 'Consultar Precio', path: '/dashboard/consultar-precio', color: '#14B8A6' },
   ];
 
   return (

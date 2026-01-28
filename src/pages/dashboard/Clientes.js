@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import FeatureGuard from '../../components/FeatureGuard';
 import { useClientes, useCrearCliente, useActualizarCliente, useEliminarCliente } from '../../hooks/useClientes';
-import { Plus, Edit2, Trash2, X, User, Phone, Mail, MapPin, FileText } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, User, Phone, Mail, MapPin, FileText, Search } from 'lucide-react';
 import './Clientes.css';
 
 export default function Clientes() {
@@ -149,7 +149,7 @@ export default function Clientes() {
         </div>
         
         <div className="clientes-search">
-          <span className="clientes-search-icon-outside">🔍</span>
+          <Search size={18} className="clientes-search-icon-outside" />
           <input
             type="text"
             placeholder="Buscar por nombre, documento, teléfono o email..."

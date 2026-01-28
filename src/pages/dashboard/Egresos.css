@@ -482,7 +482,168 @@
   color: #ef4444;
 }
 
-/* Responsive */
+/* Responsive - Tablet (600px - 1023px) */
+@media (min-width: 600px) and (max-width: 1023px) {
+  .egresos-container {
+    padding: 1rem 0.75rem !important;
+    max-width: 100% !important;
+  }
+
+  .egresos-header {
+    margin-bottom: 1.5rem !important;
+  }
+
+  .egresos-header h1 {
+    font-size: 1.5rem !important;
+  }
+
+  .egresos-estadisticas {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 1rem !important;
+    margin-bottom: 1.5rem !important;
+  }
+
+  .egreso-stat-card {
+    padding: 1rem !important;
+    gap: 0.75rem !important;
+  }
+
+  .egreso-stat-icon {
+    width: 40px !important;
+    height: 40px !important;
+  }
+
+  .egreso-stat-value {
+    font-size: 1.25rem !important;
+  }
+
+  .egresos-tabs {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.75rem !important;
+    border-bottom: none !important;
+    margin-bottom: 1.5rem !important;
+    overflow-x: visible !important;
+    -webkit-overflow-scrolling: auto !important;
+  }
+
+  .egreso-tab {
+    padding: 0.875rem 1rem !important;
+    font-size: 0.8rem !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 8px !important;
+    background: white !important;
+    margin-bottom: 0 !important;
+    text-align: left !important;
+    justify-content: flex-start !important;
+    transition: all 0.2s !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  }
+
+  .egreso-tab:hover:not(:disabled) {
+    background: rgba(59, 130, 246, 0.05) !important;
+    border-color: #3b82f6 !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+  }
+
+  .egreso-tab.active {
+    background: rgba(37, 99, 235, 0.1) !important;
+    border: 2px solid #2563eb !important;
+    color: #2563eb !important;
+    font-weight: 600 !important;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.2) !important;
+  }
+
+  .egreso-tab.active::after {
+    display: none !important;
+  }
+
+  .egresos-content {
+    padding: 1.25rem !important;
+  }
+
+  .egresos-section-header {
+    margin-bottom: 1rem !important;
+    gap: 0.75rem !important;
+  }
+
+  .egresos-section-header h2 {
+    font-size: 1.25rem !important;
+  }
+
+  .egresos-filtros {
+    gap: 0.75rem !important;
+    margin-bottom: 1rem !important;
+  }
+
+  .egresos-search-input {
+    min-width: 200px !important;
+    padding: 0.625rem 0.875rem !important;
+    font-size: 0.875rem !important;
+  }
+
+  .egresos-select-filtro {
+    padding: 0.625rem 0.875rem !important;
+    font-size: 0.875rem !important;
+  }
+
+  .egresos-lista {
+    gap: 1rem !important;
+  }
+
+  .egreso-card {
+    padding: 1rem !important;
+  }
+
+  .egreso-card-header {
+    margin-bottom: 0.75rem !important;
+    gap: 0.75rem !important;
+  }
+
+  .egreso-card-header h3 {
+    font-size: 1.1rem !important;
+  }
+
+  .egreso-card-meta {
+    gap: 0.75rem !important;
+    font-size: 0.8rem !important;
+  }
+
+  .egreso-card-body {
+    margin-bottom: 0.75rem !important;
+  }
+
+  .egreso-card-body p {
+    font-size: 0.875rem !important;
+  }
+
+  .egreso-montos {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.75rem !important;
+    margin-top: 0.75rem !important;
+  }
+
+  .egreso-monto-value {
+    font-size: 1rem !important;
+  }
+
+  .egreso-btn {
+    padding: 0.5rem 0.875rem !important;
+    font-size: 0.8rem !important;
+  }
+
+  .egreso-btn-icon {
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  .egreso-btn-icon svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
+}
+
+/* Responsive - Mobile */
 @media (max-width: 768px) {
   .egresos-container {
     padding: 1rem;

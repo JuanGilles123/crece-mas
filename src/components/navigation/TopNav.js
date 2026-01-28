@@ -10,7 +10,11 @@ import {
   Wallet,
   Eye,
   Building2,
-  Check
+  Check,
+  UtensilsCrossed,
+  Shirt,
+  Store,
+  Package
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../services/api/supabaseClient';
@@ -253,13 +257,14 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
   };
 
   const getBusinessTypeIcon = (type) => {
-    const icons = {
-      food: '🍔',
-      clothing: '👔',
-      retail: '🏪',
-      other: '📦'
+    const iconMap = {
+      food: UtensilsCrossed,
+      clothing: Shirt,
+      retail: Store,
+      other: Package
     };
-    return icons[type] || '📦';
+    const IconComponent = iconMap[type] || Package;
+    return <IconComponent size={14} />;
   };
 
   // Verificar si algún item del grupo está activo
@@ -305,8 +310,12 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
         <div className="top-nav-container">
         {/* Logos: Crece Mas y Empresa */}
         <div className="top-nav-logo-section">
-          {/* Logo Crece Mas */}
-          <div className="top-nav-logo">
+          {/* Logo Crece Mas - clickeable para ir a inicio */}
+          <NavLink 
+            to="/dashboard" 
+            className="top-nav-logo"
+            onClick={handleItemClick}
+          >
             <img 
               src="/logo-crece.svg" 
               alt="Crece+" 
@@ -316,7 +325,7 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
                 e.target.parentElement.innerHTML = '<span style="color: #007AFF; font-size: 1.5rem; font-weight: 700;">Crece+</span>';
               }}
             />
-          </div>
+          </NavLink>
           
           {/* Logo de la empresa del usuario */}
           {organization?.logo_url && (
@@ -414,49 +423,25 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
           })}
         </div>
 
-        {/* Badge de rol y perfil con dropdown */}
+        {/* Badge de rol y perfil con dropdown - Combinado */}
         <div className="top-nav-right">
-          {userProfile && (
-            <div className={`top-nav-role-badge role-${userProfile.role}`}>
-              {userProfile.role === 'owner' && (
-                <>
-                  <Crown size={14} />
-                  <span>Propietario</span>
-                </>
-              )}
-              {userProfile.role === 'admin' && (
-                <>
-                  <Shield size={14} />
-                  <span>Administrador</span>
-                </>
-              )}
-              {userProfile.role === 'inventory_manager' && (
-                <>
-                  <Package2 size={14} />
-                  <span>Encargado</span>
-                </>
-              )}
-              {userProfile.role === 'cashier' && (
-                <>
-                  <Wallet size={14} />
-                  <span>Cajero</span>
-                </>
-              )}
-              {userProfile.role === 'viewer' && (
-                <>
-                  <Eye size={14} />
-                  <span>Visualizador</span>
-                </>
-              )}
-            </div>
-          )}
-          
           <div className="top-nav-profile-wrapper" ref={profileRef}>
             <button
-              className={`top-nav-profile ${location.pathname === '/dashboard/perfil' ? 'active' : ''}`}
+              className={`top-nav-profile ${location.pathname === '/dashboard/perfil' ? 'active' : ''} ${userProfile ? `role-${userProfile.role}` : ''}`}
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
             >
-              <User size={20} />
+              {userProfile ? (
+                <>
+                  {userProfile.role === 'owner' && <Crown size={16} />}
+                  {userProfile.role === 'admin' && <Shield size={16} />}
+                  {userProfile.role === 'inventory_manager' && <Package2 size={16} />}
+                  {userProfile.role === 'cashier' && <Wallet size={16} />}
+                  {userProfile.role === 'viewer' && <Eye size={16} />}
+                  {!['owner', 'admin', 'inventory_manager', 'cashier', 'viewer'].includes(userProfile.role) && <User size={16} />}
+                </>
+              ) : (
+                <User size={20} />
+              )}
             </button>
             
             <AnimatePresence>
@@ -496,7 +481,7 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
                                 </div>
                                 <div className="profile-dropdown-org-meta">
                                   <span>{getRoleLabel(org.role)}</span>
-                                  <span>{getBusinessTypeIcon(org.business_type)}</span>
+                                  <span style={{ display: 'inline-flex', alignItems: 'center' }}>{getBusinessTypeIcon(org.business_type)}</span>
                                 </div>
                               </div>
                             </div>
@@ -530,8 +515,12 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
   return (
     <nav className="top-nav top-nav-sidebar">
       <div className="top-nav-sidebar-container">
-        {/* Logo */}
-        <div className="top-nav-sidebar-logo">
+        {/* Logo - clickeable para ir a inicio */}
+        <NavLink 
+          to="/dashboard" 
+          className="top-nav-sidebar-logo"
+          onClick={handleItemClick}
+        >
           <img 
             src="/logo-crece.svg" 
             alt="Crece+" 
@@ -541,7 +530,7 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
               e.target.parentElement.innerHTML = '<span style="color: #007AFF; font-size: 1.5rem; font-weight: 700;">Crece+</span>';
             }}
           />
-        </div>
+        </NavLink>
 
         {/* Menús principales como iconos */}
         <div className="top-nav-sidebar-menu">

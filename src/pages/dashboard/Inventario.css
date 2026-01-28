@@ -277,6 +277,8 @@
   font-size: 20px !important;
   display: flex !important;
   align-items: center !important;
+  color: var(--text-secondary) !important;
+  flex-shrink: 0 !important;
   justify-content: center !important;
   visibility: visible !important;
   opacity: 1 !important;
@@ -355,6 +357,227 @@
 /* ============================================
    RESPONSIVE - Tablet y Móvil
    ============================================ */
+
+/* Tablets (600px - 1023px) - Aplicar estilos similares a Caja */
+@media (min-width: 600px) and (max-width: 1023px) {
+  /* Grid de productos en tablet - 3 columnas - FORZAR */
+  .inventario-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    grid-auto-rows: auto !important;
+    grid-auto-flow: row !important;
+    gap: 0.5rem !important;
+    padding: 0.5rem !important;
+    overflow: visible !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    min-width: 0 !important;
+  }
+  
+  /* Asegurar que los items del grid no tengan restricciones de ancho */
+  .inventario-grid > *,
+  .inventario-grid .inventario-card {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+  
+  .inventario-card {
+    min-height: 220px !important;
+    height: auto !important;
+    overflow: visible !important;
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0.5rem 0.375rem 0.875rem 0.375rem !important;
+    gap: 0.375rem !important;
+    border-radius: 0.5rem !important;
+  }
+  
+  .inventario-card-image {
+    width: 100% !important;
+    aspect-ratio: 1 / 1 !important;
+    min-height: 100px !important;
+    max-height: 100px !important;
+    height: 100px !important;
+    flex-shrink: 0 !important;
+    border-radius: 0.375rem !important;
+    overflow: hidden !important;
+    position: relative !important;
+    display: block !important;
+    background: var(--bg-tertiary) !important;
+  }
+  
+  /* Sobrescribir estilos inline de OptimizedProductImage */
+  .inventario-card-image[style],
+  .inventario-card-image > div[style],
+  .inventario-card-image > div[style*="width"],
+  .inventario-card-image > div[style*="height"],
+  .inventario-card-image > div[style*="minWidth"],
+  .inventario-card-image > div[style*="minHeight"] {
+    width: 100% !important;
+    height: 100px !important;
+    min-width: 100% !important;
+    min-height: 100px !important;
+    max-height: 100px !important;
+    aspect-ratio: 1 / 1 !important;
+  }
+  
+  .inventario-card-image img,
+  .inventario-card-image > img,
+  .inventario-card-image > div > img {
+    width: 100% !important;
+    height: 100px !important;
+    aspect-ratio: 1 / 1 !important;
+    object-fit: cover !important;
+    border-radius: 0.375rem !important;
+    display: block !important;
+    min-height: 100px !important;
+    max-height: 100px !important;
+  }
+  
+  /* Imagen - usar inventario-img en lugar de inventario-card-image */
+  .inventario-img {
+    width: 100% !important;
+    aspect-ratio: 1 / 1 !important;
+    min-height: 100px !important;
+    max-height: 100px !important;
+    height: 100px !important;
+    flex-shrink: 0 !important;
+    border-radius: 0.375rem !important;
+    overflow: hidden !important;
+    position: relative !important;
+    display: block !important;
+    background: var(--bg-tertiary) !important;
+    object-fit: cover !important;
+  }
+  
+  /* Contenedor de información del producto - similar a caja-product-info */
+  .inventario-info {
+    width: 100% !important;
+    min-width: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.125rem !important;
+    flex: 0 0 auto !important;
+    align-items: center !important;
+    text-align: center !important;
+    justify-content: flex-start !important;
+    overflow: visible !important;
+    padding-top: 0.375rem !important;
+    min-height: auto !important;
+    padding-bottom: 0 !important;
+  }
+  
+  .inventario-nombre {
+    font-size: 0.75rem !important;
+    line-height: 1.2 !important;
+    -webkit-line-clamp: 2 !important;
+    min-height: 1.8rem !important;
+    max-height: 1.8rem !important;
+    word-break: break-word !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    margin: 0 !important;
+    width: 100% !important;
+    display: -webkit-box !important;
+    -webkit-box-orient: vertical !important;
+    font-weight: 500 !important;
+    color: var(--text-primary) !important;
+  }
+  
+  /* Contenedor de precios */
+  .inventario-info > div[style*="display:flex"] {
+    font-size: 0.7rem !important;
+    gap: 0.5rem !important;
+    margin-bottom: 0.125rem !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+  }
+  
+  .inventario-stock {
+    font-size: 0.7rem !important;
+    margin: 0 !important;
+    margin-bottom: 0 !important;
+    width: 100% !important;
+    overflow: visible !important;
+    white-space: normal !important;
+    line-height: 1.2 !important;
+    color: var(--text-tertiary) !important;
+  }
+  
+  /* Mostrar botones de acciones en tablet */
+  .inventario-card-actions {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 0.25rem !important;
+    margin-top: 0.5rem !important;
+    justify-content: center !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  
+  .inventario-card-actions .inventario-btn-outline {
+    flex: 1 !important;
+    min-width: 80px !important;
+    max-width: 100% !important;
+    font-size: 0.75rem !important;
+    padding: 0.5rem 0.6rem !important;
+    white-space: nowrap !important;
+  }
+  
+  /* Vista de lista en tablet */
+  .inventario-lista-item {
+    padding: 1rem;
+    gap: 1rem;
+    flex-wrap: nowrap;
+    max-width: 100%;
+    overflow: hidden;
+  }
+  
+  .inventario-img-lista {
+    width: 80px;
+    height: 80px;
+    flex-shrink: 0;
+    min-width: 80px;
+  }
+  
+  .inventario-lista-info {
+    flex: 1;
+    min-width: 0;
+    max-width: calc(100% - 280px);
+    overflow: hidden;
+  }
+  
+  .inventario-nombre {
+    font-size: 1rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+  }
+  
+  .inventario-lista-precios {
+    overflow: hidden;
+    max-width: 100%;
+  }
+  
+  .inventario-lista-actions {
+    gap: 0.5rem;
+    flex-shrink: 0;
+    min-width: fit-content;
+  }
+  
+  .inventario-lista-actions .inventario-btn {
+    padding: 0.6rem 0.8rem;
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+}
 
 /* Tablets medianas y grandes (769px - 1024px) */
 @media (max-width: 1024px) and (min-width: 769px) {
@@ -457,37 +680,95 @@
     flex-shrink: 0;
   }
   
-  /* Vista de lista en tablet */
+  /* Vista de lista en tablet - Ajustado para 652px de ancho */
   .inventario-lista-item {
-    padding: 1rem;
-    gap: 1rem;
-    flex-wrap: nowrap;
+    padding: 0.5rem 0.4rem !important;
+    gap: 0.5rem !important;
+    flex-wrap: nowrap !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+    align-items: center !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
   }
   
-  .inventario-img-lista {
-    width: 80px;
-    height: 80px;
-    flex-shrink: 0;
+  .inventario-img-lista,
+  .inventario-img-lista img,
+  .inventario-img-lista > div,
+  .inventario-img-lista > div > img {
+    width: 50px !important;
+    height: 50px !important;
+    min-width: 50px !important;
+    max-width: 50px !important;
+    min-height: 50px !important;
+    max-height: 50px !important;
+    flex-shrink: 0 !important;
+    flex-grow: 0 !important;
+    object-fit: cover !important;
+    border-radius: 0.375rem !important;
   }
   
   .inventario-lista-info {
-    flex: 1;
-    min-width: 0;
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    overflow: visible !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.2rem !important;
+    padding: 0 !important;
+    width: auto !important;
   }
   
   .inventario-nombre {
-    font-size: 1rem;
+    font-size: 0.85rem !important;
+    overflow: visible !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    max-width: 100% !important;
+    font-weight: 600 !important;
+    color: var(--text-primary) !important;
+    line-height: 1.2 !important;
+    margin: 0 !important;
+    display: block !important;
+  }
+  
+  .inventario-lista-precios {
+    overflow: visible !important;
+    max-width: 100% !important;
+    display: flex !important;
+    gap: 0.5rem !important;
+    flex-wrap: wrap !important;
+    font-size: 0.75rem !important;
+    line-height: 1.2 !important;
+    margin: 0 !important;
+  }
+  
+  .inventario-stock {
+    font-size: 0.7rem !important;
+    color: var(--text-secondary) !important;
+    overflow: visible !important;
+    line-height: 1.2 !important;
+    margin: 0 !important;
   }
   
   .inventario-lista-actions {
-    gap: 0.5rem;
-    flex-shrink: 0;
+    gap: 0.25rem !important;
+    flex-shrink: 0 !important;
+    flex-grow: 0 !important;
+    min-width: 115px !important;
+    max-width: 115px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
   }
   
   .inventario-lista-actions .inventario-btn {
-    padding: 0.6rem 0.8rem;
-    font-size: 0.85rem;
-    white-space: nowrap;
+    padding: 0.4rem 0.5rem !important;
+    font-size: 0.7rem !important;
+    white-space: nowrap !important;
+    min-width: 52px !important;
+    max-width: 54px !important;
   }
 }
 
@@ -1138,24 +1419,51 @@
   }
   
   .inventario-grid {
-    grid-template-columns: 1fr;
-    gap: 1rem;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 0.4rem !important;
+    padding: 0.4rem 0 !important;
   }
+  
   .inventario-card {
-    padding: 1rem;
+    padding: 0.4rem !important;
     margin: 0;
-    border-radius: 12px;
+    border-radius: 6px;
+    gap: 0.3rem !important;
+    min-height: auto !important;
   }
+  
+  .inventario-card-image {
+    aspect-ratio: 1 / 0.5 !important;
+    min-height: 60px !important;
+    max-height: 70px !important;
+    width: 100% !important;
+  }
+  
   .inventario-card h3 {
-    font-size: 1rem;
-    line-height: 1.3;
+    font-size: 0.65rem !important;
+    line-height: 1.15 !important;
+    margin: 0 !important;
+    font-weight: 600 !important;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
+  
   .inventario-card p {
-    font-size: 0.85rem;
+    font-size: 0.6rem !important;
+    margin: 0 !important;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
+  
   .inventario-img {
-    width: 60px;
-    height: 60px;
+    width: 40px;
+    height: 40px;
     display: block;
     margin: 0 auto;
     object-fit: cover;
@@ -1182,8 +1490,9 @@
   }
   
   .inventario-img-lista {
-    width: 60px;
-    height: 60px;
+    width: 45px !important;
+    height: 45px !important;
+    min-width: 45px !important;
   }
   
   .inventario-nombre {
@@ -1587,7 +1896,9 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
   width: 100%;
+  max-width: 100%;
   box-sizing: border-box;
+  overflow: visible;
 }
 
 .inventario-lista-item:hover {
@@ -1598,6 +1909,8 @@
 .inventario-img-lista {
   width: 80px;
   height: 80px;
+  min-width: 80px;
+  max-width: 80px;
   object-fit: cover;
   border-radius: 8px;
   background: var(--bg-tertiary);
@@ -1735,11 +2048,13 @@
 }
 
 .inventario-lista-info {
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  overflow: visible;
 }
 
 .inventario-nombre {
@@ -1748,6 +2063,10 @@
   color: var(--text-primary);
   margin: 0;
   line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .inventario-lista-precios {
@@ -1755,6 +2074,8 @@
   gap: 1rem;
   flex-wrap: wrap;
   font-size: 0.9rem;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .inventario-stock {
@@ -1767,6 +2088,7 @@
   gap: 0.5rem;
   flex-shrink: 0;
   align-items: center;
+  min-width: fit-content;
 }
 
 .inventario-lista-actions .inventario-btn {

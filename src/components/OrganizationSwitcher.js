@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Building2, Check, ChevronDown } from 'lucide-react';
+import { Building2, Check, ChevronDown, UtensilsCrossed, Shirt, Store, Package } from 'lucide-react';
 import { supabase } from '../services/api/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import './OrganizationSwitcher.css';
@@ -194,7 +194,7 @@ const OrganizationSwitcher = () => {
                       </div>
                       <div className="org-option-meta">
                         <span className="role-badge">{getRoleLabel(org.role)}</span>
-                        <span className="business-type">{getBusinessTypeIcon(org.business_type)}</span>
+                        <span className="business-type" style={{ display: 'inline-flex', alignItems: 'center' }}>{getBusinessTypeIcon(org.business_type)}</span>
                       </div>
                     </div>
                   </div>
@@ -222,13 +222,14 @@ const getRoleLabel = (role) => {
 };
 
 const getBusinessTypeIcon = (type) => {
-  const icons = {
-    food: '🍔',
-    clothing: '👔',
-    retail: '🏪',
-    other: '📦'
+  const iconMap = {
+    food: UtensilsCrossed,
+    clothing: Shirt,
+    retail: Store,
+    other: Package
   };
-  return icons[type] || '📦';
+  const IconComponent = iconMap[type] || Package;
+  return <IconComponent size={14} />;
 };
 
 export default OrganizationSwitcher;
