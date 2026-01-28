@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { X, Plus, Trash2, Search, Check, Send, Download } from 'lucide-react';
+import { X, Plus, Trash2, Search, Check, Send, Download, FileText, CheckCircle, Package, Receipt, XCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCrearOrdenCompra, useActualizarOrdenCompra, useProveedores, useOrdenesCompra } from '../../hooks/useEgresos';
 import { useProductos, useActualizarProducto } from '../../hooks/useProductos';
@@ -853,12 +853,12 @@ const OrdenCompraModal = ({ open, onClose, orden = null }) => {
                   className={errors.estado ? 'error' : ''}
                   disabled={esFacturada}
                 >
-                  <option value="borrador">📝 Borrador</option>
-                  <option value="enviada">📤 Enviada</option>
-                  <option value="aprobada">✅ Aprobada</option>
-                  <option value="recibida">📦 Recibida</option>
-                  <option value="facturada">🧾 Facturada</option>
-                  <option value="cancelada">❌ Cancelada</option>
+                  <option value="borrador">Borrador</option>
+                  <option value="enviada">Enviada</option>
+                  <option value="aprobada">Aprobada</option>
+                  <option value="recibida">Recibida</option>
+                  <option value="facturada">Facturada</option>
+                  <option value="cancelada">Cancelada</option>
                 </select>
                 {errors.estado && <span className="error-message">{errors.estado.message}</span>}
               </div>
@@ -932,7 +932,7 @@ const OrdenCompraModal = ({ open, onClose, orden = null }) => {
                 </div>
                 
                 <div className="productos-busqueda-input-container">
-                  <span className="productos-busqueda-icon-outside">🔍</span>
+                  <Search size={18} className="productos-busqueda-icon-outside" />
                   <input
                     type="text"
                     className="productos-busqueda-input"
@@ -1422,12 +1422,42 @@ const OrdenCompraModal = ({ open, onClose, orden = null }) => {
               <div className="orden-estado-info">
                 <span className="orden-estado-label">Estado:</span>
                 <span className={`orden-estado-badge estado-${ordenLocal.estado}`}>
-                  {ordenLocal.estado === 'borrador' && '📝 Borrador'}
-                  {ordenLocal.estado === 'enviada' && '📤 Enviada'}
-                  {ordenLocal.estado === 'aprobada' && '✅ Aprobada'}
-                  {ordenLocal.estado === 'recibida' && '📦 Recibida'}
-                  {ordenLocal.estado === 'facturada' && '🧾 Facturada'}
-                  {ordenLocal.estado === 'cancelada' && '❌ Cancelada'}
+                  {ordenLocal.estado === 'borrador' && (
+                    <>
+                      <FileText size={14} style={{ marginRight: '4px' }} />
+                      Borrador
+                    </>
+                  )}
+                  {ordenLocal.estado === 'enviada' && (
+                    <>
+                      <Send size={14} style={{ marginRight: '4px' }} />
+                      Enviada
+                    </>
+                  )}
+                  {ordenLocal.estado === 'aprobada' && (
+                    <>
+                      <CheckCircle size={14} style={{ marginRight: '4px' }} />
+                      Aprobada
+                    </>
+                  )}
+                  {ordenLocal.estado === 'recibida' && (
+                    <>
+                      <Package size={14} style={{ marginRight: '4px' }} />
+                      Recibida
+                    </>
+                  )}
+                  {ordenLocal.estado === 'facturada' && (
+                    <>
+                      <Receipt size={14} style={{ marginRight: '4px' }} />
+                      Facturada
+                    </>
+                  )}
+                  {ordenLocal.estado === 'cancelada' && (
+                    <>
+                      <XCircle size={14} style={{ marginRight: '4px' }} />
+                      Cancelada
+                    </>
+                  )}
                 </span>
               </div>
             )}
@@ -1479,7 +1509,8 @@ const OrdenCompraModal = ({ open, onClose, orden = null }) => {
                     disabled={isSubmitting}
                     title="Marcar orden como aprobada"
                   >
-                    ✅ Aprobar Orden
+                    <CheckCircle size={16} style={{ marginRight: '6px' }} />
+                    Aprobar Orden
                   </button>
                 )}
                 {ordenLocal && ordenLocal.estado === 'aprobada' && (
@@ -1490,7 +1521,8 @@ const OrdenCompraModal = ({ open, onClose, orden = null }) => {
                     disabled={isSubmitting}
                     title="Marcar orden como recibida"
                   >
-                    📦 Marcar como Recibida
+                    <Package size={16} style={{ marginRight: '6px' }} />
+                    Marcar como Recibida
                   </button>
                 )}
                 {ordenLocal && ordenLocal.estado === 'recibida' && (
@@ -1501,7 +1533,8 @@ const OrdenCompraModal = ({ open, onClose, orden = null }) => {
                     disabled={isSubmitting}
                     title="Marcar orden como facturada"
                   >
-                    🧾 Marcar como Facturada
+                    <Receipt size={16} style={{ marginRight: '6px' }} />
+                    Marcar como Facturada
                   </button>
                 )}
                 {/* Mostrar botón de enviar si es una orden nueva */}

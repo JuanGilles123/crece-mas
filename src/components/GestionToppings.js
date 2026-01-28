@@ -1,7 +1,7 @@
 // 🍔 Componente para gestionar toppings
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Edit2, Trash2, Package, Upload } from 'lucide-react';
+import { X, Plus, Edit2, Trash2, Package, Upload, Search } from 'lucide-react';
 import { useToppings, useCrearTopping, useActualizarTopping, useEliminarTopping } from '../hooks/useToppings';
 import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
@@ -491,7 +491,7 @@ const GestionToppings = () => {
         <>
           {/* Buscador de toppings */}
           <div className="gestion-toppings-busqueda-container">
-            <span className="gestion-toppings-busqueda-icon-outside">🔍</span>
+            <Search size={18} className="gestion-toppings-busqueda-icon-outside" />
             <input
               type="text"
               placeholder="Buscar por nombre o categoría..."

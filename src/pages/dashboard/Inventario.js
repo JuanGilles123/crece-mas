@@ -1,6 +1,6 @@
 
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import './Inventario.css';
 import AgregarProductoModalV2 from '../../components/modals/AgregarProductoModalV2';
@@ -13,9 +13,10 @@ import InventarioStats from '../../components/inventario/InventarioStats';
 import InventarioFilters from '../../components/inventario/InventarioFilters';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../services/api/supabaseClient';
-import { List, Grid3X3, PackagePlus } from 'lucide-react';
+import { List, Grid3X3, PackagePlus, Search } from 'lucide-react';
 import { useProductos, useEliminarProducto } from '../../hooks/useProductos';
 import EntradaInventarioModal from '../../components/modals/EntradaInventarioModal';
+import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
 import toast from 'react-hot-toast';
 
 // Función para eliminar imagen del storage
@@ -126,26 +127,73 @@ const Inventario = () => {
     }
   }, [error]);
 
+  // Handler para cuando se escanea un código de barras
+  const handleBarcodeScanned = useCallback((barcode) => {
+    setQuery(barcode);
+    // Enfocar el input del buscador
+    if (searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, []);
+
+  // Hook para lector de códigos de barras en el buscador
+  const { 
+    inputRef: barcodeInputRef, 
+    handleKeyDown: handleBarcodeKeyDown, 
+    handleInputChange: handleBarcodeInputChange 
+  } = useBarcodeScanner(handleBarcodeScanned, {
+    minLength: 3,
+    maxTimeBetweenChars: 50,
+    autoSubmit: true
+  });
+
+  // Ref para el input de búsqueda
+  const searchInputRef = useRef(null);
+
   // Refs para detección global de código de barras (funciona aunque el cursor no esté en el buscador)
   const globalBarcodeBufferRef = useRef('');
   const globalLastCharTimeRef = useRef(null);
   const globalBarcodeTimeoutRef = useRef(null);
   const globalBarcodeProcessingRef = useRef(false);
-  const searchInputRef = useRef(null);
+
+  // Combinar refs - asignar el nodo directamente al ref del hook y al ref local
+  const combinedSearchInputRef = useCallback((node) => {
+    searchInputRef.current = node;
+    if (barcodeInputRef && node) {
+      barcodeInputRef.current = node;
+    }
+  }, [barcodeInputRef]);
 
   // Listener global para detectar códigos de barras en cualquier parte de la página
   useEffect(() => {
     const handleGlobalKeyDown = (e) => {
-      // Ignorar si el usuario está escribiendo en un input, textarea o contenteditable
       const target = e.target;
+      
+      // Verificar si hay un modal abierto o si el evento viene de dentro de un modal
+      const isInModal = target.closest('.modal-overlay, .modal-content, [class*="modal"], [class*="Modal"], [data-modal], [role="dialog"]');
+      const hasOpenModal = document.querySelector('.modal-overlay[style*="display: block"], .modal-overlay:not([style*="display: none"]), [class*="modal"][style*="display: block"]');
+      
+      // Si hay un modal abierto o el evento viene de dentro de un modal, no procesar
+      if (isInModal || hasOpenModal || modalOpen || editarModalOpen || entradaInventarioOpen) {
+        // Limpiar buffer para evitar conflictos
+        globalBarcodeBufferRef.current = '';
+        globalLastCharTimeRef.current = null;
+        if (globalBarcodeTimeoutRef.current) {
+          clearTimeout(globalBarcodeTimeoutRef.current);
+          globalBarcodeTimeoutRef.current = null;
+        }
+        return;
+      }
+
+      // Ignorar si el usuario está escribiendo en un input, textarea o contenteditable
       const isInputElement = target.tagName === 'INPUT' || 
                             target.tagName === 'TEXTAREA' || 
                             target.isContentEditable ||
                             target.closest('input') ||
                             target.closest('textarea');
       
-      // Si está en el input del buscador, dejar que se maneje normalmente
-      if (target === searchInputRef.current) {
+      // Si está en el input del buscador, dejar que el hook normal lo maneje
+      if (target === searchInputRef.current || target === barcodeInputRef?.current) {
         return;
       }
       
@@ -162,12 +210,7 @@ const Inventario = () => {
         const barcode = globalBarcodeBufferRef.current.trim();
         if (barcode.length >= 3 && !globalBarcodeProcessingRef.current) {
           globalBarcodeProcessingRef.current = true;
-          // Establecer el código en el buscador
-          setQuery(barcode);
-          // Enfocar el input del buscador
-          if (searchInputRef.current) {
-            searchInputRef.current.focus();
-          }
+          handleBarcodeScanned(barcode);
           
           // Limpiar buffer
           globalBarcodeBufferRef.current = '';
@@ -204,12 +247,7 @@ const Inventario = () => {
           const barcode = globalBarcodeBufferRef.current.trim();
           if (barcode.length >= 3 && !globalBarcodeProcessingRef.current) {
             globalBarcodeProcessingRef.current = true;
-            // Establecer el código en el buscador
-            setQuery(barcode);
-            // Enfocar el input del buscador
-            if (searchInputRef.current) {
-              searchInputRef.current.focus();
-            }
+            handleBarcodeScanned(barcode);
             
             // Limpiar buffer
             globalBarcodeBufferRef.current = '';
@@ -224,17 +262,15 @@ const Inventario = () => {
       }
     };
     
-    // Agregar listener global
     window.addEventListener('keydown', handleGlobalKeyDown);
     
-    // Limpiar al desmontar
     return () => {
       window.removeEventListener('keydown', handleGlobalKeyDown);
       if (globalBarcodeTimeoutRef.current) {
         clearTimeout(globalBarcodeTimeoutRef.current);
       }
     };
-  }, []);
+  }, [handleBarcodeScanned, barcodeInputRef, modalOpen, editarModalOpen, entradaInventarioOpen]);
 
   // Función para obtener la fecha límite según el filtro
   const getFechaDesde = (opcion) => {
@@ -271,8 +307,12 @@ const Inventario = () => {
   const filteredProducts = useMemo(() => {
     return productos.filter((producto) => {
       // Filtro de búsqueda por cualquier campo
-      const searchTerm = query.toLowerCase().trim();
-      if (searchTerm) {
+      // Si no hay búsqueda o está vacía, no filtrar por búsqueda
+      if (!query || (typeof query === 'string' && query.trim() === '')) {
+        // No filtrar por búsqueda, continuar con otros filtros
+      } else {
+        const searchTerm = query.toLowerCase().trim();
+        if (searchTerm) {
         // Campos directos del producto para buscar
         const camposDirectos = [
           producto.codigo,
@@ -314,6 +354,7 @@ const Inventario = () => {
         // Si no encuentra el término de búsqueda en ningún campo, excluir el producto
         if (!textoCompleto.includes(searchTerm)) {
           return false;
+        }
         }
       }
 
@@ -501,13 +542,18 @@ const Inventario = () => {
             </div>
             <div className="inventario-search-container">
               <div className="search-input-wrapper">
-                <span className="inventario-search-icon-outside">🔍</span>
+                <Search size={18} className="inventario-search-icon-outside" />
                 <input 
-                  ref={searchInputRef}
+                  ref={combinedSearchInputRef}
                   className="inventario-search" 
                   placeholder="Buscar por nombre, código, marca, modelo, categoría..." 
                   value={query}
-                  onChange={(e) => setQuery(e.target.value)}
+                  onChange={(e) => {
+                    setQuery(e.target.value);
+                    handleBarcodeInputChange(e);
+                  }}
+                  onKeyDown={handleBarcodeKeyDown}
+                  autoFocus={false}
                 />
               </div>
             </div>

@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { Outlet } from 'react-router-dom';
 import { DashboardSkeleton } from '../../components/ui/SkeletonLoader';
 import { 
-  BarChart3, 
   CreditCard, 
   Package, 
   User, 
@@ -53,17 +52,6 @@ const DashboardLayout = () => {
     const isSuperAdmin = user?.email === 'juanjosegilarbelaez@gmail.com';
     
     const groups = [
-      // Dashboard (siempre visible, no agrupado)
-      {
-        type: 'single',
-        to: "/dashboard",
-        icon: BarChart3,
-        label: "Inicio",
-        title: "Inicio",
-        end: true,
-        visible: hasPermission('dashboard') || true
-      },
-      
       // Grupo: Ventas y Caja
       {
         type: 'group',

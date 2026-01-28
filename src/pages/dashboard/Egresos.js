@@ -19,7 +19,12 @@ import {
   Building2,
   CreditCard,
   Edit,
-  Trash2
+  Trash2,
+  Send,
+  CheckCircle,
+  Package,
+  Receipt,
+  XCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -489,12 +494,42 @@ export default function Egresos() {
                           orden.estado === 'facturada' ? 'Orden facturada' :
                           orden.estado === 'cancelada' ? 'Orden cancelada' : ''
                         }>
-                          {orden.estado === 'borrador' && '📝 Borrador'}
-                          {orden.estado === 'enviada' && '📤 Enviada'}
-                          {orden.estado === 'aprobada' && '✅ Aprobada'}
-                          {orden.estado === 'recibida' && '📦 Recibida'}
-                          {orden.estado === 'facturada' && '🧾 Facturada'}
-                          {orden.estado === 'cancelada' && '❌ Cancelada'}
+                          {orden.estado === 'borrador' && (
+                            <>
+                              <FileText size={14} style={{ marginRight: '4px' }} />
+                              Borrador
+                            </>
+                          )}
+                          {orden.estado === 'enviada' && (
+                            <>
+                              <Send size={14} style={{ marginRight: '4px' }} />
+                              Enviada
+                            </>
+                          )}
+                          {orden.estado === 'aprobada' && (
+                            <>
+                              <CheckCircle size={14} style={{ marginRight: '4px' }} />
+                              Aprobada
+                            </>
+                          )}
+                          {orden.estado === 'recibida' && (
+                            <>
+                              <Package size={14} style={{ marginRight: '4px' }} />
+                              Recibida
+                            </>
+                          )}
+                          {orden.estado === 'facturada' && (
+                            <>
+                              <Receipt size={14} style={{ marginRight: '4px' }} />
+                              Facturada
+                            </>
+                          )}
+                          {orden.estado === 'cancelada' && (
+                            <>
+                              <XCircle size={14} style={{ marginRight: '4px' }} />
+                              Cancelada
+                            </>
+                          )}
                           {!['borrador', 'enviada', 'aprobada', 'recibida', 'facturada', 'cancelada'].includes(orden.estado) && orden.estado}
                         </span>
                         {orden.estado === 'borrador' && (

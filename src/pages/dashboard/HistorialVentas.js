@@ -23,7 +23,8 @@ import {
   CreditCard,
   Smartphone,
   Receipt,
-  ArrowRight
+  ArrowRight,
+  Trash2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import './HistorialVentas.css';
@@ -55,7 +56,7 @@ const HistorialVentas = () => {
   const handleBarcodeScanned = useCallback((barcode) => {
     // Buscar en ventas por código de barras
     setBusqueda(barcode);
-    toast('Buscando por código de barras...', { icon: '🔍' });
+    toast('Buscando por código de barras...', { icon: '🔍' }); // TODO: Reemplazar con icono
   }, []);
   
   const { inputRef: barcodeInputRef, handleKeyDown: handleBarcodeKeyDown, handleInputChange: handleBarcodeInputChange } = useBarcodeScanner(handleBarcodeScanned, {
@@ -85,16 +86,18 @@ const HistorialVentas = () => {
           .eq('organization_id', organization.id)
           .order('fecha', { ascending: false });
         
-        // Si la tabla no existe (PGRST205) o hay otro error relacionado, simplemente no cargar cambios
+        // Si la tabla no existe (PGRST205, 42P01, 404) o hay otro error relacionado, simplemente no cargar cambios
         if (error) {
-          // Códigos de error cuando la tabla no existe: PGRST205, 42P01
-          if (error.code === 'PGRST205' || error.code === '42P01' || error.message?.includes('Could not find the table')) {
+          // Códigos de error cuando la tabla no existe: PGRST205, 42P01, 404
+          if (error.code === 'PGRST205' || error.code === '42P01' || error.status === 404 || error.message?.includes('Could not find the table') || error.message?.includes('Not Found')) {
             // Tabla no existe, simplemente no cargar cambios (no es crítico)
             setVentasConCambios(new Map());
             return;
           } else {
-            // Otro tipo de error
-            console.warn('Error cargando cambios:', error);
+            // Otro tipo de error - solo loguear si no es un error de tabla no encontrada
+            if (!error.message?.includes('404') && !error.message?.includes('Not Found')) {
+              console.warn('Error cargando cambios:', error);
+            }
             setVentasConCambios(new Map());
             return;
           }
@@ -451,8 +454,8 @@ const HistorialVentas = () => {
       try {
         const { error: insertError } = await supabase.from('devoluciones').insert([registroCambio]);
         if (insertError) {
-          // Si la tabla no existe (PGRST205) o hay otro error, solo loguear
-          if (insertError.code === 'PGRST205' || insertError.code === '42P01' || insertError.message?.includes('Could not find the table')) {
+          // Si la tabla no existe (PGRST205, 42P01, 404) o hay otro error, solo loguear
+          if (insertError.code === 'PGRST205' || insertError.code === '42P01' || insertError.status === 404 || insertError.message?.includes('Could not find the table') || insertError.message?.includes('Not Found')) {
             // Tabla no existe, solo loguear (no es crítico)
             console.log('Registro de auditoría (tabla no existe):', registroCambio);
           } else {
@@ -633,8 +636,8 @@ const HistorialVentas = () => {
       try {
         const { error: insertError } = await supabase.from('devoluciones').insert([registroDevolucion]);
         if (insertError) {
-          // Si la tabla no existe (PGRST205) o hay otro error, solo loguear
-          if (insertError.code === 'PGRST205' || insertError.code === '42P01' || insertError.message?.includes('Could not find the table')) {
+          // Si la tabla no existe (PGRST205, 42P01, 404) o hay otro error, solo loguear
+          if (insertError.code === 'PGRST205' || insertError.code === '42P01' || insertError.status === 404 || insertError.message?.includes('Could not find the table') || insertError.message?.includes('Not Found')) {
             // Tabla no existe, solo loguear (no es crítico)
             console.log('Registro de auditoría de devolución (tabla no existe):', registroDevolucion);
           } else {
@@ -778,7 +781,7 @@ const HistorialVentas = () => {
         </div>
 
         <div className="filtro-fecha">
-          <span className="filtro-fecha-icon-outside">📅</span>
+          <Calendar size={18} className="filtro-fecha-icon-outside" />
           <select 
             value={filtroFecha} 
             onChange={(e) => {
@@ -1294,6 +1297,7 @@ const ModalDevolucion = ({ venta, onConfirmar, onCancelar }) => {
                   type="checkbox"
                   checked={!!seleccionado}
                   onChange={() => toggleItem(item)}
+                  onClick={(e) => e.stopPropagation()}
                 />
                 <div className="item-info">
                   <span className="item-name">{item.nombre}</span>
@@ -1315,19 +1319,45 @@ const ModalDevolucion = ({ venta, onConfirmar, onCancelar }) => {
                       >
                         -
                       </button>
-                      <input
-                        type="number"
-                        min="1"
-                        max={cantidadDisponible}
-                        value={seleccionado.qty}
-                        onChange={(e) => {
-                          const nuevaCantidad = parseInt(e.target.value) || 1;
-                          actualizarCantidad(item.id, nuevaCantidad);
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                        onFocus={(e) => e.target.select()}
-                        className="qty-input"
-                      />
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          value={String(seleccionado.qty || 1)}
+                          onChange={(e) => {
+                            const valor = e.target.value.replace(/\D/g, '');
+                            const nuevaCantidad = valor ? Math.max(1, Math.min(parseInt(valor, 10), cantidadDisponible)) : 1;
+                            actualizarCantidad(item.id, nuevaCantidad);
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          onFocus={(e) => e.target.select()}
+                          className="qty-input"
+                          style={{
+                            width: '36px',
+                            height: '24px',
+                            minWidth: '36px',
+                            maxWidth: '36px',
+                            minHeight: '24px',
+                            maxHeight: '24px',
+                            display: 'block',
+                            visibility: 'visible',
+                            opacity: 1,
+                            position: 'relative',
+                            zIndex: 10000,
+                            backgroundColor: 'white',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '4px',
+                            textAlign: 'center',
+                            fontSize: '0.9rem',
+                            fontWeight: 700,
+                            color: '#1a1a1a',
+                            WebkitTextFillColor: '#1a1a1a',
+                            padding: 0,
+                            margin: 0,
+                            lineHeight: '24px',
+                            boxSizing: 'border-box'
+                          }}
+                        />
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -1574,6 +1604,7 @@ const ModalCambio = ({ venta, onConfirmar, onCancelar }) => {
                       type="checkbox"
                       checked={!!seleccionado}
                       onChange={() => toggleItemCambio(item)}
+                      onClick={(e) => e.stopPropagation()}
                     />
                     <div className="item-info">
                       <span className="item-name">{item.nombre}</span>
@@ -1595,17 +1626,41 @@ const ModalCambio = ({ venta, onConfirmar, onCancelar }) => {
                             -
                           </button>
                           <input
-                            type="number"
-                            min="1"
-                            max={cantidadDisponible}
-                            value={seleccionado.qty}
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            value={String(seleccionado.qty || 1)}
                             onChange={(e) => {
-                              const nuevaCantidad = parseInt(e.target.value) || 1;
+                              const valor = e.target.value.replace(/\D/g, '');
+                              const nuevaCantidad = valor ? Math.max(1, Math.min(parseInt(valor, 10), cantidadDisponible)) : 1;
                               actualizarCantidadCambio(item.id, nuevaCantidad);
                             }}
                             onClick={(e) => e.stopPropagation()}
                             onFocus={(e) => e.target.select()}
                             className="qty-input"
+                            style={{
+                              width: '36px',
+                              height: '24px',
+                              minWidth: '36px',
+                              maxWidth: '36px',
+                              display: 'block',
+                              visibility: 'visible',
+                              opacity: 1,
+                              position: 'relative',
+                              zIndex: 10000,
+                              backgroundColor: 'white',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '4px',
+                              textAlign: 'center',
+                              fontSize: '0.8rem',
+                              fontWeight: 600,
+                              color: '#1a202c',
+                              WebkitTextFillColor: '#1a202c',
+                              padding: '2px 0',
+                              margin: 0,
+                              lineHeight: '20px',
+                              boxSizing: 'border-box'
+                            }}
                           />
                           <button
                             onClick={(e) => {
@@ -1671,16 +1726,40 @@ const ModalCambio = ({ venta, onConfirmar, onCancelar }) => {
                             -
                           </button>
                           <input
-                            type="number"
-                            min="1"
-                            max={item.stock_disponible || 999}
-                            value={item.qty}
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            value={String(item.qty || 1)}
                             onChange={(e) => {
-                              const nuevaCantidad = parseInt(e.target.value) || 1;
+                              const valor = e.target.value.replace(/\D/g, '');
+                              const nuevaCantidad = valor ? Math.max(1, Math.min(parseInt(valor, 10), item.stock_disponible || 999)) : 1;
                               actualizarCantidadNuevo(item.id, nuevaCantidad);
                             }}
                             onFocus={(e) => e.target.select()}
                             className="qty-input"
+                            style={{
+                              width: '36px',
+                              height: '24px',
+                              minWidth: '36px',
+                              maxWidth: '36px',
+                              display: 'block',
+                              visibility: 'visible',
+                              opacity: 1,
+                              position: 'relative',
+                              zIndex: 10000,
+                              backgroundColor: 'white',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '4px',
+                              textAlign: 'center',
+                              fontSize: '0.8rem',
+                              fontWeight: 600,
+                              color: '#1a202c',
+                              WebkitTextFillColor: '#1a202c',
+                              padding: '2px 0',
+                              margin: 0,
+                              lineHeight: '20px',
+                              boxSizing: 'border-box'
+                            }}
                           />
                           <button
                             onClick={() => actualizarCantidadNuevo(item.id, item.qty + 1)}
@@ -1690,10 +1769,14 @@ const ModalCambio = ({ venta, onConfirmar, onCancelar }) => {
                           </button>
                         </div>
                         <button
-                          onClick={() => eliminarProductoNuevo(item.id)}
-                          style={{ marginLeft: '0.5rem', padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            eliminarProductoNuevo(item.id);
+                          }}
+                          className="btn-eliminar-producto"
+                          title="Eliminar producto"
                         >
-                          Eliminar
+                          <Trash2 size={16} />
                         </button>
                       </div>
                     </div>
@@ -1729,21 +1812,23 @@ const ModalCambio = ({ venta, onConfirmar, onCancelar }) => {
               })}
             </div>
 
-            <div className="devolucion-total" style={{ marginTop: '1rem', padding: '1rem', background: '#f9fafb', borderRadius: '8px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                <span>Total productos nuevos:</span>
-                <span className="total-amount">{formatCOP(totalNuevo)}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.125rem', fontWeight: '600', color: diferencia > 0 ? '#ef4444' : diferencia < 0 ? '#10b981' : '#6b7280' }}>
-                <span>Diferencia:</span>
-                <span>
-                  {diferencia > 0 
-                    ? `Cliente paga: ${formatCOP(diferencia)}`
-                    : diferencia < 0
-                    ? `Cliente recibe: ${formatCOP(Math.abs(diferencia))}`
-                    : 'Total equivalente'
-                  }
-                </span>
+            <div className="devolucion-total" style={{ marginTop: '1rem', padding: '0.75rem', background: '#f9fafb', borderRadius: '8px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Total productos nuevos:</span>
+                  <span className="total-amount" style={{ fontSize: '0.95rem' }}>{formatCOP(totalNuevo)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.875rem', fontWeight: '600', color: diferencia > 0 ? '#ef4444' : diferencia < 0 ? '#10b981' : '#6b7280' }}>
+                  <span>Diferencia:</span>
+                  <span>
+                    {diferencia > 0 
+                      ? `Cliente paga: ${formatCOP(diferencia)}`
+                      : diferencia < 0
+                      ? `Cliente recibe: ${formatCOP(Math.abs(diferencia))}`
+                      : 'Total equivalente'
+                    }
+                  </span>
+                </div>
               </div>
             </div>
           </>

@@ -1,7 +1,7 @@
 // 🍔 Componente para seleccionar toppings al agregar producto al carrito (mejorado con categorías)
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { X, Check, Package } from 'lucide-react';
+import { X, Check, Package, Search } from 'lucide-react';
 import { useToppings } from '../hooks/useToppings';
 import { calcularPrecioConToppings } from '../utils/toppingsUtils';
 import { useImageCache } from '../hooks/useImageCache';
@@ -240,7 +240,7 @@ const ToppingsSelector = ({
           <>
             {/* Buscador de toppings */}
             <div className="toppings-busqueda-container">
-              <span className="toppings-busqueda-icon-outside">🔍</span>
+              <Search size={18} className="toppings-busqueda-icon-outside" />
               <input
                 type="text"
                 placeholder="Buscar por nombre o categoría..."

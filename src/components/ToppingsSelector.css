@@ -88,6 +88,8 @@
   font-size: 18px !important;
   display: flex !important;
   align-items: center !important;
+  color: var(--text-secondary) !important;
+  flex-shrink: 0 !important;
   justify-content: center !important;
   visibility: visible !important;
   opacity: 1 !important;

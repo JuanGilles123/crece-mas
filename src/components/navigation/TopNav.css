@@ -52,6 +52,19 @@
   align-items: center;
   justify-content: center;
   width: 100%;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  border-radius: 12px;
+}
+
+.top-nav-sidebar-logo:hover {
+  background: rgba(0, 0, 0, 0.05);
+  transform: translateX(-50%) scale(1.05);
+}
+
+.top-nav-sidebar-logo:active {
+  transform: translateX(-50%) scale(0.95);
 }
 
 .top-nav-sidebar-logo-img {
@@ -290,6 +303,19 @@
     z-index: 10003 !important; /* Por encima de todo en móvil */
     position: fixed !important;
     isolation: isolate;
+    display: flex !important;
+    flex-direction: column !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+  
+  .top-nav-dropdown-item,
+  .top-nav-profile-dropdown-item {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
   }
 }
 
@@ -338,6 +364,20 @@
   display: flex;
   align-items: center;
   height: 100%;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  border-radius: 8px;
+  justify-content: center;
+}
+
+.top-nav-logo:hover {
+  background: rgba(0, 0, 0, 0.05);
+  transform: scale(1.05);
+}
+
+.top-nav-logo:active {
+  transform: scale(0.95);
 }
 
 .top-nav-logo-img {
@@ -631,7 +671,7 @@
 }
 
 .top-nav-profile {
-  display: flex;
+  display: flex !important;
   align-items: center;
   justify-content: center;
   width: 40px;
@@ -644,6 +684,49 @@
   transition: all 0.2s ease;
   -webkit-tap-highlight-color: transparent;
   padding: 0;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative;
+  z-index: 10;
+}
+
+/* Estilos para el botón de perfil con rol */
+.top-nav-profile.role-owner {
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  color: #000;
+}
+
+.top-nav-profile.role-admin {
+  background: linear-gradient(135deg, #007AFF, #0051D5);
+  color: white;
+}
+
+.top-nav-profile.role-inventory_manager {
+  background: linear-gradient(135deg, #34C759, #248A3D);
+  color: white;
+}
+
+.top-nav-profile.role-cashier {
+  background: linear-gradient(135deg, #AF52DE, #8E3CCB);
+  color: white;
+}
+
+.top-nav-profile.role-viewer {
+  background: linear-gradient(135deg, #8E8E93, #636366);
+  color: white;
+}
+
+.top-nav-profile svg,
+.top-nav-profile > * {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  width: 20px !important;
+  height: 20px !important;
+  stroke-width: 2.5;
+  position: relative;
+  z-index: 11;
+  flex-shrink: 0;
 }
 
 .top-nav-profile:hover {
@@ -863,6 +946,17 @@
   
   .top-nav-role-badge {
     display: none;
+  }
+  
+  .top-nav-profile {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .top-nav-profile svg,
+  .top-nav-profile > * {
+    width: 18px !important;
+    height: 18px !important;
   }
 }
 

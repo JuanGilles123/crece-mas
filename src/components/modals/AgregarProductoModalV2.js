@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -11,6 +11,7 @@ import { compressProductImage } from '../../services/storage/imageCompression';
 import { useAgregarProducto } from '../../hooks/useProductos';
 import { useCurrencyInput } from '../../hooks/useCurrencyInput';
 import { Package, Scissors, UtensilsCrossed, Scale, ChevronRight, Plus, X } from 'lucide-react';
+import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
 import toast from 'react-hot-toast';
 import { PRODUCT_TYPES, ADDITIONAL_FIELDS, getProductTypeFields } from '../../utils/productTypes';
 import { getBusinessTypeConfig, getDefaultProductType, getAvailableProductTypes, shouldSkipProductTypeSelector } from '../../constants/businessTypes';
@@ -216,13 +217,33 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
     }
   }, [selectedType, setValue, precioCompraInput, stockInput]);
 
+  // Handler para cuando se escanea un código de barras en el campo código
+  const handleBarcodeScanned = useCallback((barcode) => {
+    setValue('codigo', barcode, { shouldValidate: true });
+    if (codigoInputRef.current) {
+      codigoInputRef.current.focus();
+    }
+  }, [setValue]);
+
+  // Hook para lector de códigos de barras en el campo código
+  const { 
+    inputRef: barcodeInputRef, 
+    handleKeyDown: handleBarcodeKeyDown, 
+    handleInputChange: handleBarcodeInputChange 
+  } = useBarcodeScanner(handleBarcodeScanned, {
+    minLength: 3,
+    maxTimeBetweenChars: 50,
+    autoSubmit: true,
+    clearInput: false // No limpiar el input después de escanear
+  });
+
   // Refs para detección global de código de barras (funciona aunque el cursor no esté en el campo código)
   const globalBarcodeBufferRef = useRef('');
   const globalLastCharTimeRef = useRef(null);
   const globalBarcodeTimeoutRef = useRef(null);
   const globalBarcodeProcessingRef = useRef(false);
 
-  // Listener global para detectar códigos de barras en cualquier parte del modal
+  // Listener global para detectar códigos de barras cuando el modal está abierto
   useEffect(() => {
     // Solo activar si el modal está abierto
     if (!open) {
@@ -230,30 +251,7 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
     }
 
     const handleGlobalKeyDown = (e) => {
-      // Verificar si algún input está enfocado (incluyendo el campo código)
-      const activeElement = document.activeElement;
-      const isInputFocused = activeElement && (
-        activeElement.tagName === 'INPUT' || 
-        activeElement.tagName === 'TEXTAREA' || 
-        activeElement.isContentEditable ||
-        activeElement === codigoInputRef.current
-      );
-      
-      // Si algún input está enfocado, NO procesar como código de barras
-      // Esto permite que cuando el usuario está escribiendo o escaneando en un input,
-      // los caracteres se ingresen normalmente sin interferencia
-      if (isInputFocused) {
-        // Limpiar el buffer para evitar conflictos
-        globalBarcodeBufferRef.current = '';
-        globalLastCharTimeRef.current = null;
-        if (globalBarcodeTimeoutRef.current) {
-          clearTimeout(globalBarcodeTimeoutRef.current);
-          globalBarcodeTimeoutRef.current = null;
-        }
-        return;
-      }
-      
-      // Ignorar si el evento viene de un input, textarea o contenteditable
+      // Ignorar si el usuario está escribiendo en un input, textarea o contenteditable
       const target = e.target;
       const isInputElement = target.tagName === 'INPUT' || 
                             target.tagName === 'TEXTAREA' || 
@@ -261,6 +259,12 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
                             target.closest('input') ||
                             target.closest('textarea');
       
+      // Si está en el input del código, dejar que el hook normal lo maneje
+      if (target === codigoInputRef.current || target === barcodeInputRef?.current) {
+        return;
+      }
+      
+      // Si está en otro input, no procesar como código de barras
       if (isInputElement) {
         return;
       }
@@ -273,12 +277,7 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
         const barcode = globalBarcodeBufferRef.current.trim();
         if (barcode.length >= 3 && !globalBarcodeProcessingRef.current) {
           globalBarcodeProcessingRef.current = true;
-          // Establecer el código en el campo código
-          setValue('codigo', barcode, { shouldValidate: true });
-          // Enfocar el input del código
-          if (codigoInputRef.current) {
-            codigoInputRef.current.focus();
-          }
+          handleBarcodeScanned(barcode);
           
           // Limpiar buffer
           globalBarcodeBufferRef.current = '';
@@ -296,8 +295,8 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
       if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
         const now = Date.now();
         
-        // Si pasó mucho tiempo desde el último carácter, resetear buffer
-        if (globalLastCharTimeRef.current && (now - globalLastCharTimeRef.current) > 150) {
+        // Si pasó mucho tiempo desde el último carácter, resetear buffer (usuario escribiendo manualmente)
+        if (globalLastCharTimeRef.current && (now - globalLastCharTimeRef.current) > 100) {
           globalBarcodeBufferRef.current = '';
         }
         
@@ -311,16 +310,12 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
         }
         
         // Si después de un tiempo no hay más caracteres, procesar como código de barras
+        // Reducido a 80ms para detección más rápida (los escáneres suelen ser < 50ms entre caracteres)
         globalBarcodeTimeoutRef.current = setTimeout(() => {
           const barcode = globalBarcodeBufferRef.current.trim();
           if (barcode.length >= 3 && !globalBarcodeProcessingRef.current) {
             globalBarcodeProcessingRef.current = true;
-            // Establecer el código en el campo código
-            setValue('codigo', barcode, { shouldValidate: true });
-            // Enfocar el input del código
-            if (codigoInputRef.current) {
-              codigoInputRef.current.focus();
-            }
+            handleBarcodeScanned(barcode);
             
             // Limpiar buffer
             globalBarcodeBufferRef.current = '';
@@ -329,16 +324,14 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
             // Resetear flag después de un delay
             setTimeout(() => {
               globalBarcodeProcessingRef.current = false;
-            }, 500);
+            }, 300);
           }
-        }, 150);
+        }, 80);
       }
     };
     
-    // Agregar listener global
     window.addEventListener('keydown', handleGlobalKeyDown);
     
-    // Limpiar al desmontar o cuando se cierre el modal
     return () => {
       window.removeEventListener('keydown', handleGlobalKeyDown);
       if (globalBarcodeTimeoutRef.current) {
@@ -349,7 +342,7 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
       globalLastCharTimeRef.current = null;
       globalBarcodeProcessingRef.current = false;
     };
-  }, [open, setValue]);
+  }, [open, handleBarcodeScanned, barcodeInputRef]);
 
   if (!open) return null;
 
@@ -715,11 +708,16 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
               {...register('codigo', {
                 onChange: (e) => {
                   codigoInputRef.current = e.target;
+                  handleBarcodeInputChange(e);
                 }
               })}
               ref={(e) => {
                 codigoInputRef.current = e;
+                if (barcodeInputRef) {
+                  barcodeInputRef.current = e;
+                }
               }}
+              onKeyDown={handleBarcodeKeyDown}
               className={`input-form ${errors.codigo ? 'error' : ''}`}
               placeholder="Ej: SKU123"
             />

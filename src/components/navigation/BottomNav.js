@@ -2,14 +2,14 @@ import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  BarChart3, 
   CreditCard, 
   Package, 
   User, 
   TrendingUp,
   ClipboardList,
   Menu,
-  X
+  X,
+  Search
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSubscription } from '../../hooks/useSubscription';
@@ -26,9 +26,8 @@ const BottomNav = ({ menuGroups, onItemClick }) => {
                              organization?.pedidos_habilitados && 
                              hasFeature('pedidos');
   
-  // Obtener los 5 menús principales para la barra inferior
+  // Obtener los menús principales para la barra inferior (sin Inicio, el logo es clickeable)
   const mainItems = [
-    { to: '/dashboard', icon: BarChart3, label: 'Inicio' },
     { to: '/dashboard/caja', icon: CreditCard, label: 'Caja' },
     { to: '/dashboard/inventario', icon: Package, label: 'Inventario' },
     // Mostrar Pedidos si está habilitado, sino mostrar Reportes
@@ -37,6 +36,7 @@ const BottomNav = ({ menuGroups, onItemClick }) => {
       : [{ to: '/dashboard/resumen-ventas', icon: TrendingUp, label: 'Reportes' }]
     ),
     { to: '/dashboard/perfil', icon: User, label: 'Perfil' },
+    { to: '/dashboard/consultar-precio', icon: Search, label: 'Consultar Precio' },
   ];
 
   const toggleNav = () => {

@@ -343,6 +343,42 @@ h4 {
   }
 }
 
+/* === AJUSTES PARA TABLET === */
+@media (min-width: 600px) and (max-width: 1023px) {
+  /* Reducir tamaño de checkboxes en tablet */
+  input[type="checkbox"],
+  .checkbox-label input[type="checkbox"],
+  .checkbox input[type="checkbox"],
+  .module-checkbox,
+  .variacion-opcion-checkbox input[type="checkbox"],
+  .variacion-checkbox-option input[type="checkbox"],
+  .variacion-option input[type="checkbox"],
+  .permission-item input[type="checkbox"],
+  .productos-busqueda-checkbox,
+  .caja-factura-checkbox,
+  .caja-iva-checkbox,
+  .proveedor-modal .checkbox-label input[type="checkbox"],
+  .business-feature-checkbox input[type="checkbox"] {
+    width: 16px !important;
+    height: 16px !important;
+    min-width: 16px !important;
+    min-height: 16px !important;
+    max-width: 16px !important;
+    max-height: 16px !important;
+  }
+  
+  /* Ajustar checkboxes personalizados */
+  .module-checkbox {
+    width: 16px !important;
+    height: 16px !important;
+  }
+  
+  .variacion-opcion-checkbox {
+    width: 16px !important;
+    height: 16px !important;
+  }
+}
+
 /* === PRINT STYLES === */
 @media print {
   .no-print,

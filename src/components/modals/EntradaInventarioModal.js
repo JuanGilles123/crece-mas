@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Search, Check, Building2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useProductos, useActualizarProducto } from '../../hooks/useProductos';
 import { useProveedores, useCrearGastoVariable, useCrearCreditoProveedor } from '../../hooks/useEgresos';
+import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
 import OptimizedProductImage from '../../components/business/OptimizedProductImage';
 import ProveedorModal from './ProveedorModal';
 import toast from 'react-hot-toast';
@@ -29,9 +30,145 @@ const EntradaInventarioModal = ({ open, onClose }) => {
   const [metodoPago, setMetodoPago] = useState('transferencia');
   const [fechaPago, setFechaPago] = useState(new Date().toISOString().split('T')[0]);
   
+  // Handler para cuando se escanea un código de barras en el buscador
+  const handleBarcodeScanned = useCallback((barcode) => {
+    setBusqueda(barcode);
+    // Asegurar que el modal de búsqueda esté abierto
+    if (!mostrarBusqueda) {
+      setMostrarBusqueda(true);
+    }
+    // Enfocar el input del buscador
+    if (busquedaInputRef.current) {
+      busquedaInputRef.current.focus();
+    }
+  }, [mostrarBusqueda]);
+
+  // Hook para lector de códigos de barras en el buscador
+  const { 
+    inputRef: barcodeInputRef, 
+    handleKeyDown: handleBarcodeKeyDown, 
+    handleInputChange: handleBarcodeInputChange 
+  } = useBarcodeScanner(handleBarcodeScanned, {
+    minLength: 3,
+    maxTimeBetweenChars: 50,
+    autoSubmit: true
+  });
+
+  // Ref para el input de búsqueda
+  const busquedaInputRef = useRef(null);
+
+  // Refs para detección global de código de barras (funciona aunque el cursor no esté en el buscador)
+  const globalBarcodeBufferRef = useRef('');
+  const globalLastCharTimeRef = useRef(null);
+  const globalBarcodeTimeoutRef = useRef(null);
+  const globalBarcodeProcessingRef = useRef(false);
+
+  // Listener global para detectar códigos de barras cuando el modal está abierto
+  useEffect(() => {
+    // Solo activar si el modal está abierto
+    if (!open) {
+      return;
+    }
+
+    const handleGlobalKeyDown = (e) => {
+      // Ignorar si el usuario está escribiendo en un input, textarea o contenteditable
+      const target = e.target;
+      const isInputElement = target.tagName === 'INPUT' || 
+                            target.tagName === 'TEXTAREA' || 
+                            target.isContentEditable ||
+                            target.closest('input') ||
+                            target.closest('textarea');
+      
+      // Si está en el input del buscador, dejar que el hook normal lo maneje
+      if (target === busquedaInputRef.current || target === barcodeInputRef?.current) {
+        return;
+      }
+      
+      // Si está en otro input, no procesar como código de barras
+      if (isInputElement) {
+        return;
+      }
+      
+      // Si es Enter o Tab, podría ser el final del código de barras
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const barcode = globalBarcodeBufferRef.current.trim();
+        if (barcode.length >= 3 && !globalBarcodeProcessingRef.current) {
+          globalBarcodeProcessingRef.current = true;
+          handleBarcodeScanned(barcode);
+          
+          // Limpiar buffer
+          globalBarcodeBufferRef.current = '';
+          globalLastCharTimeRef.current = null;
+          
+          // Resetear flag después de un delay
+          setTimeout(() => {
+            globalBarcodeProcessingRef.current = false;
+          }, 500);
+        }
+        return;
+      }
+      
+      // Si es un carácter imprimible
+      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const now = Date.now();
+        
+        // Si pasó mucho tiempo desde el último carácter, resetear buffer
+        if (globalLastCharTimeRef.current && (now - globalLastCharTimeRef.current) > 150) {
+          globalBarcodeBufferRef.current = '';
+        }
+        
+        // Agregar carácter al buffer
+        globalBarcodeBufferRef.current += e.key;
+        globalLastCharTimeRef.current = now;
+        
+        // Limpiar timeout anterior
+        if (globalBarcodeTimeoutRef.current) {
+          clearTimeout(globalBarcodeTimeoutRef.current);
+        }
+        
+        // Si después de un tiempo no hay más caracteres, procesar como código de barras
+        globalBarcodeTimeoutRef.current = setTimeout(() => {
+          const barcode = globalBarcodeBufferRef.current.trim();
+          if (barcode.length >= 3 && !globalBarcodeProcessingRef.current) {
+            globalBarcodeProcessingRef.current = true;
+            handleBarcodeScanned(barcode);
+            
+            // Limpiar buffer
+            globalBarcodeBufferRef.current = '';
+            globalLastCharTimeRef.current = null;
+            
+            // Resetear flag después de un delay
+            setTimeout(() => {
+              globalBarcodeProcessingRef.current = false;
+            }, 500);
+          }
+        }, 150);
+      }
+    };
+    
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown);
+      if (globalBarcodeTimeoutRef.current) {
+        clearTimeout(globalBarcodeTimeoutRef.current);
+      }
+      // Limpiar buffer cuando se cierre el modal
+      globalBarcodeBufferRef.current = '';
+      globalLastCharTimeRef.current = null;
+      globalBarcodeProcessingRef.current = false;
+    };
+  }, [open, handleBarcodeScanned, barcodeInputRef]);
+
   // Filtrar productos para búsqueda
   const productosFiltrados = useMemo(() => {
-    if (!busqueda.trim()) return productos;
+    // Si no hay búsqueda o está vacía, mostrar todos los productos
+    if (!busqueda || (typeof busqueda === 'string' && busqueda.trim() === '')) {
+      return productos;
+    }
     
     const termino = busqueda.toLowerCase();
     return productos.filter(producto => {
@@ -548,12 +685,23 @@ const EntradaInventarioModal = ({ open, onClose }) => {
                 </button>
               </div>
               <div className="productos-busqueda-input-container">
-                <span className="productos-busqueda-icon-outside">🔍</span>
+                <Search size={18} className="productos-busqueda-icon-outside" />
                 <input
+                  ref={(node) => {
+                    busquedaInputRef.current = node;
+                    if (barcodeInputRef && node) {
+                      barcodeInputRef.current = node;
+                    }
+                  }}
                   type="text"
                   placeholder="Buscar por nombre, código, descripción..."
                   value={busqueda}
-                  onChange={(e) => setBusqueda(e.target.value)}
+                  onChange={(e) => {
+                    const newValue = e.target.value;
+                    setBusqueda(newValue);
+                    handleBarcodeInputChange(e);
+                  }}
+                  onKeyDown={handleBarcodeKeyDown}
                   className="productos-busqueda-input"
                 />
               </div>
@@ -570,15 +718,9 @@ const EntradaInventarioModal = ({ open, onClose }) => {
                         className={`productos-busqueda-card ${yaAgregado ? 'agregado' : ''} ${estaSeleccionado ? 'seleccionado' : ''}`}
                         onClick={() => !yaAgregado && toggleProductoSeleccion(producto.id)}
                       >
-                        {!yaAgregado && (
-                          <div className="productos-busqueda-checkbox-container">
-                            <input
-                              type="checkbox"
-                              checked={estaSeleccionado}
-                              onChange={() => toggleProductoSeleccion(producto.id)}
-                              onClick={(e) => e.stopPropagation()}
-                              className="productos-busqueda-checkbox"
-                            />
+                        {!yaAgregado && estaSeleccionado && (
+                          <div className="productos-busqueda-check-badge">
+                            <Check size={16} />
                           </div>
                         )}
                         {yaAgregado && (
