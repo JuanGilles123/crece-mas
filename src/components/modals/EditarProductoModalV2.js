@@ -111,16 +111,20 @@ const deleteImageFromStorage = async (imagePath) => {
   }
 };
 
-const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) => {
+const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, varianteActivaId = null, soloEditarVariantes = false }) => {
   const { userProfile } = useAuth();
   const { hasFeature } = useSubscription();
   const [formStep, setFormStep] = useState(1); // 1: básico + imagen, 2: opcionales del tipo, 3: adicionales
   const [imagen, setImagen] = useState(null);
+  const [imagenUrl, setImagenUrl] = useState('');
   const [subiendo, setSubiendo] = useState(false);
   const [comprimiendo, setComprimiendo] = useState(false);
   const [additionalFields, setAdditionalFields] = useState([]);
   const [variacionesConfig, setVariacionesConfig] = useState([]);
   const [productosVinculados, setProductosVinculados] = useState([]);
+  const [variantesProducto, setVariantesProducto] = useState([]);
+  const [guardandoVariantes, setGuardandoVariantes] = useState(false);
+  const modoSoloVariantes = soloEditarVariantes && varianteActivaId;
   const fileInputRef = useRef();
   const codigoInputRef = useRef(null);
 
@@ -186,6 +190,11 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
   useEffect(() => {
     if (open) {
       setFormStep(1);
+    } else {
+      // Permitir recargar valores aunque sea el mismo producto al reabrir
+      ultimoProductoIdRef.current = null;
+      setImagen(null);
+      setImagenUrl('');
     }
   }, [open]);
 
@@ -202,12 +211,24 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
       setValue('stock', producto.stock?.toString() || '');
       setValue('tipo', producto.tipo || 'fisico');
       setValue('fecha_vencimiento', producto.fecha_vencimiento || '');
+      if (producto.imagen && (producto.imagen.startsWith('http://') || producto.imagen.startsWith('https://') || producto.imagen.startsWith('data:'))) {
+        setImagenUrl(producto.imagen);
+      } else {
+        setImagenUrl('');
+      }
       
       // Cargar variaciones_config si existe
       if (metadata.variaciones_config && Array.isArray(metadata.variaciones_config)) {
         setVariacionesConfig(metadata.variaciones_config);
       } else {
         setVariacionesConfig([]);
+      }
+
+      // Cargar variantes de color/tono
+      if (producto.variantes && Array.isArray(producto.variantes)) {
+        setVariantesProducto(producto.variantes);
+      } else {
+        setVariantesProducto([]);
       }
       
       // Cargar productos_vinculados si existe
@@ -253,7 +274,7 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
   // Listener global para detectar códigos de barras en cualquier parte del modal
   useEffect(() => {
     // Solo activar si el modal está abierto
-    if (!open) {
+    if (!open || modoSoloVariantes) {
       return;
     }
 
@@ -360,7 +381,7 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
       globalLastCharTimeRef.current = null;
       globalBarcodeProcessingRef.current = false;
     };
-  }, [open, setValue]);
+  }, [open, setValue, modoSoloVariantes]);
 
   const handleBack = () => {
     if (formStep > 1) {
@@ -426,6 +447,102 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
     setValue(fieldId, '');
   };
 
+  const agregarVariante = () => {
+    setVariantesProducto(prev => ([
+      ...prev,
+      { id: null, nombre: '', codigo: '', stock: 0, producto_id: producto.id }
+    ]));
+  };
+
+  const actualizarVariante = (index, campo, valor) => {
+    setVariantesProducto(prev => prev.map((vari, idx) => (
+      idx === index ? { ...vari, [campo]: valor } : vari
+    )));
+  };
+
+  const eliminarVariante = async (index) => {
+    const variante = variantesProducto[index];
+    if (!variante) return;
+
+    if (variante.id) {
+      if (!window.confirm('¿Eliminar esta variante?')) return;
+      const { error } = await supabase
+        .from('product_variants')
+        .delete()
+        .eq('id', variante.id);
+      if (error) {
+        console.error('Error eliminando variante:', error);
+        toast.error('No se pudo eliminar la variante');
+        return;
+      }
+    }
+
+    setVariantesProducto(prev => prev.filter((_, idx) => idx !== index));
+    toast.success('Variante eliminada');
+  };
+
+  const guardarVariantes = async () => {
+    if (!producto?.id || !producto?.organization_id) return;
+    setGuardandoVariantes(true);
+
+    try {
+      const variantesLimpias = variantesProducto.map(vari => ({
+        ...vari,
+        nombre: (vari.nombre || '').trim(),
+        codigo: (vari.codigo || '').trim() || null,
+        stock: vari.stock === '' || vari.stock === null || vari.stock === undefined ? 0 : Number(vari.stock),
+        producto_id: producto.id,
+        organization_id: producto.organization_id
+      }));
+
+      for (const variante of variantesLimpias) {
+        if (!variante.nombre) {
+          toast.error('Todas las variantes deben tener nombre');
+          setGuardandoVariantes(false);
+          return;
+        }
+      }
+
+      const nuevas = variantesLimpias.filter(v => !v.id).map(({ id, ...rest }) => rest);
+      const existentes = variantesLimpias.filter(v => v.id);
+
+      if (nuevas.length > 0) {
+        const { error: insertError } = await supabase
+          .from('product_variants')
+          .insert(nuevas);
+        if (insertError) throw insertError;
+      }
+
+      for (const variante of existentes) {
+        const { error: updateError } = await supabase
+          .from('product_variants')
+          .update({
+            nombre: variante.nombre,
+            codigo: variante.codigo,
+            stock: variante.stock
+          })
+          .eq('id', variante.id);
+        if (updateError) throw updateError;
+      }
+
+      const { data: variantesActualizadas, error: refreshError } = await supabase
+        .from('product_variants')
+        .select('*')
+        .eq('producto_id', producto.id);
+
+      if (!refreshError) {
+        setVariantesProducto(variantesActualizadas || []);
+      }
+
+      toast.success('Variantes actualizadas');
+    } catch (error) {
+      console.error('Error guardando variantes:', error);
+      toast.error('No se pudieron guardar las variantes');
+    } finally {
+      setGuardandoVariantes(false);
+    }
+  };
+
   const handlePrecioCompraChange = (e) => {
     const formatted = precioCompraInput.handleChange(e);
     setValue('precioCompra', formatted || '', { shouldValidate: true });
@@ -444,6 +561,7 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
   const handleImagenChange = e => {
     if (e.target.files && e.target.files[0]) {
       setImagen(e.target.files[0]);
+      setImagenUrl('');
     }
   };
 
@@ -478,11 +596,13 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
         if (errorUpload) throw errorUpload;
 
         // Eliminar imagen anterior si existe
-        if (producto.imagen) {
+        if (producto.imagen && !producto.imagen.startsWith('http://') && !producto.imagen.startsWith('https://') && !producto.imagen.startsWith('data:')) {
           await deleteImageFromStorage(producto.imagen);
         }
 
         imagenPath = nombreArchivo;
+      } else if (imagenUrl && imagenUrl.trim() !== '') {
+        imagenPath = imagenUrl.trim();
       }
 
       const typeFields = getProductTypeFields(selectedType);
@@ -535,6 +655,7 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
           onSuccess: () => {
             reset();
             setImagen(null);
+            setImagenUrl('');
             setAdditionalFields([]);
             setVariacionesConfig([]);
             setProductosVinculados([]);
@@ -569,6 +690,12 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
   if (typeFields.optional.length > 0) stepLabels.push('Opcionales');
   if (Object.keys(ADDITIONAL_FIELDS).length > 0) stepLabels.push('Adicionales');
 
+  const codigoRegister = register('codigo', {
+    onChange: (e) => {
+      codigoInputRef.current = e.target;
+    }
+  });
+
   return (
     <div className="modal-bg">
       <div className="modal-card">
@@ -580,34 +707,36 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
         </div>
         
         {/* Indicador de pasos */}
-        <div className="form-steps-indicator">
-          {stepLabels.map((label, index) => {
-            const stepNum = index + 1;
-            const isActive = formStep === stepNum;
-            const isCompleted = formStep > stepNum;
-            return (
-              <div key={stepNum} className={`step-indicator ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}`}>
-                <div 
-                  className="step-number" 
-                  onClick={() => handleStepClick(stepNum)}
-                  style={{ cursor: 'pointer' }}
-                  title={`Ir a: ${label}`}
-                >
-                  {isCompleted ? '✓' : stepNum}
+        {!modoSoloVariantes && (
+          <div className="form-steps-indicator">
+            {stepLabels.map((label, index) => {
+              const stepNum = index + 1;
+              const isActive = formStep === stepNum;
+              const isCompleted = formStep > stepNum;
+              return (
+                <div key={stepNum} className={`step-indicator ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}`}>
+                  <div 
+                    className="step-number" 
+                    onClick={() => handleStepClick(stepNum)}
+                    style={{ cursor: 'pointer' }}
+                    title={`Ir a: ${label}`}
+                  >
+                    {isCompleted ? '✓' : stepNum}
+                  </div>
+                  <span 
+                    className="step-label"
+                    onClick={() => handleStepClick(stepNum)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    {label}
+                  </span>
                 </div>
-                <span 
-                  className="step-label"
-                  onClick={() => handleStepClick(stepNum)}
-                  style={{ cursor: 'pointer' }}
-                >
-                  {label}
-                </span>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
         
-        {subiendo ? (
+        {subiendo && !modoSoloVariantes ? (
           <div style={{ textAlign: 'center', padding: '2rem' }}>
             {comprimiendo ? (
               <div>
@@ -623,19 +752,18 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
             )}
           </div>
         ) : (
-          <form className="form-producto form-producto-centro" onSubmit={handleSubmit(onSubmit)}>
+          <>
+          {!modoSoloVariantes && (
+            <form className="form-producto form-producto-centro" onSubmit={handleSubmit(onSubmit)}>
             {/* Paso 1: Campos básicos + Imagen */}
             {formStep === 1 && (
               <div className="form-step-content">
                 <h3 className="step-title">Información Básica e Imagen</h3>
                 <label>Código <span style={{ color: '#ef4444' }}>*</span></label>
                 <input
-                  {...register('codigo', {
-                    onChange: (e) => {
-                      codigoInputRef.current = e.target;
-                    }
-                  })}
+                  {...codigoRegister}
                   ref={(e) => {
+                    codigoRegister.ref(e);
                     codigoInputRef.current = e;
                   }}
                   className={`input-form ${errors.codigo ? 'error' : ''}`}
@@ -699,8 +827,14 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
                       inputMode="numeric"
                       className={`input-form ${errors.stock ? 'error' : ''}`}
                       placeholder="Cantidad en stock"
+                      disabled={variantesProducto.length > 0}
                     />
                     {errors.stock && <span className="error-message">{errors.stock.message}</span>}
+                    {variantesProducto.length > 0 && (
+                      <span className="error-message" style={{ color: '#6b7280' }}>
+                        El stock general se calcula con la sumatoria de variantes.
+                      </span>
+                    )}
                   </>
                 )}
 
@@ -744,6 +878,20 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
                     <input type="file" accept="image/*" onChange={handleImagenChange} ref={fileInputRef} style={{ display: 'none' }} disabled={!puedeSubirImagenes} />
                   </div>
 
+                  <label style={{ marginTop: '0.5rem' }}>
+                    URL de imagen <span style={{ color: '#6b7280', fontWeight: 400 }}>(Opcional)</span>
+                  </label>
+                  <input
+                    className="input-form"
+                    placeholder="https://..."
+                    value={imagenUrl}
+                    onChange={(e) => setImagenUrl(e.target.value)}
+                    disabled={Boolean(imagen)}
+                  />
+                  <p className="step-description" style={{ marginTop: '0.4rem', fontSize: '0.8rem', color: '#6b7280' }}>
+                    Si pegas una URL, se usará esa imagen sin subir archivo.
+                  </p>
+
                   {imagen && (
                     <div className="image-preview" style={{ marginBottom: '1rem' }}>
                       <img src={URL.createObjectURL(imagen)} alt="Preview" />
@@ -757,7 +905,20 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
                     </div>
                   )}
 
-                  {producto?.imagen && !imagen && (
+                  {!imagen && imagenUrl && (
+                    <div className="image-preview" style={{ marginBottom: '1rem' }}>
+                      <img src={imagenUrl} alt="Preview" />
+                      <button
+                        type="button"
+                        className="remove-image-btn"
+                        onClick={() => setImagenUrl('')}
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  )}
+
+                  {producto?.imagen && !imagen && !imagenUrl && (
                     <div className="image-preview" style={{ marginBottom: '1rem' }}>
                       <OptimizedProductImage
                         imagePath={producto.imagen}
@@ -934,7 +1095,105 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
                 }
               })()}
             </div>
-          </form>
+            </form>
+          )}
+
+          <div className="form-step-content" style={{ marginTop: '1.5rem' }}>
+            <h3 className="step-title">Variantes (color/tono)</h3>
+            {modoSoloVariantes && (
+              <p className="step-description" style={{ color: '#f59e0b' }}>
+                Edición limitada a variantes porque se ingresó por código de variante.
+              </p>
+            )}
+            {!modoSoloVariantes && (
+              <p className="step-description">Define stock y código de barras por variante.</p>
+            )}
+
+            {modoSoloVariantes && producto && (
+              <div style={{ border: '1px solid #e5e7eb', borderRadius: '0.5rem', padding: '0.75rem', background: '#f9fafb', marginBottom: '1rem' }}>
+                <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Producto</div>
+                <div style={{ display: 'grid', gap: '0.25rem', fontSize: '0.95rem' }}>
+                  <div><strong>Código:</strong> {producto.codigo || '-'}</div>
+                  <div><strong>Nombre:</strong> {producto.nombre || '-'}</div>
+                  <div><strong>Precio venta:</strong> {producto.precio_venta ?? '-'}</div>
+                  <div><strong>Stock total:</strong> {producto.stock ?? '-'}</div>
+                </div>
+              </div>
+            )}
+
+            {variantesProducto.length === 0 && (
+              <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
+                No hay variantes registradas.
+              </p>
+            )}
+
+            <div style={{ display: 'grid', gap: '0.75rem' }}>
+              {variantesProducto.map((vari, index) => {
+                const bloqueada = varianteActivaId && vari.id && vari.id !== varianteActivaId;
+                return (
+                  <div key={vari.id || `nueva-${index}`} style={{ display: 'grid', gap: '0.5rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem', padding: '0.75rem', opacity: bloqueada ? 0.5 : 1 }}>
+                    <div style={{ display: 'grid', gap: '0.5rem' }}>
+                      <label>Nombre (color/tono)</label>
+                      <input
+                        className="input-form"
+                        value={vari.nombre || ''}
+                        onChange={(e) => actualizarVariante(index, 'nombre', e.target.value)}
+                        disabled={bloqueada}
+                      />
+                    </div>
+                    <div style={{ display: 'grid', gap: '0.5rem' }}>
+                      <label>Código de barras (opcional)</label>
+                      <input
+                        className="input-form"
+                        value={vari.codigo || ''}
+                        onChange={(e) => actualizarVariante(index, 'codigo', e.target.value)}
+                        disabled={bloqueada}
+                      />
+                    </div>
+                    <div style={{ display: 'grid', gap: '0.5rem' }}>
+                      <label>Stock</label>
+                      <input
+                        className="input-form"
+                        inputMode="numeric"
+                        value={vari.stock ?? 0}
+                        onChange={(e) => actualizarVariante(index, 'stock', e.target.value)}
+                        disabled={bloqueada}
+                      />
+                    </div>
+                    {!bloqueada && (
+                      <button
+                        type="button"
+                        className="inventario-btn inventario-btn-outline eliminar"
+                        onClick={() => eliminarVariante(index)}
+                      >
+                        Eliminar variante
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {!modoSoloVariantes && (
+              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
+                <button type="button" className="inventario-btn inventario-btn-secondary" onClick={agregarVariante}>
+                  + Agregar variante
+                </button>
+                <button type="button" className="inventario-btn inventario-btn-primary" onClick={guardarVariantes} disabled={guardandoVariantes}>
+                  {guardandoVariantes ? 'Guardando...' : 'Guardar variantes'}
+                </button>
+              </div>
+            )}
+
+            {modoSoloVariantes && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                <button type="button" className="inventario-btn inventario-btn-primary" onClick={guardarVariantes} disabled={guardandoVariantes}>
+                  {guardandoVariantes ? 'Guardando...' : 'Guardar variantes'}
+                </button>
+              </div>
+            )}
+          </div>
+          </>
         )}
       </div>
     </div>

@@ -6,6 +6,7 @@ import { X, Plus, Trash2, Search, Check, Send, Download, FileText, CheckCircle, 
 import { useAuth } from '../../context/AuthContext';
 import { useCrearOrdenCompra, useActualizarOrdenCompra, useProveedores, useOrdenesCompra } from '../../hooks/useEgresos';
 import { useProductos, useActualizarProducto } from '../../hooks/useProductos';
+import { supabase } from '../../services/api/supabaseClient';
 import './ProveedorModal.css';
 import './OrdenCompraModal.css';
 
@@ -45,16 +46,55 @@ const OrdenCompraModal = ({ open, onClose, orden = null }) => {
   const [busquedaProducto, setBusquedaProducto] = useState('');
   const [productosSeleccionados, setProductosSeleccionados] = useState([]);
   
+  const catalogoProductos = useMemo(() => {
+    const items = [];
+    productos.forEach((producto) => {
+      const metadata = producto.metadata || {};
+      items.push({
+        key: `producto:${producto.id}`,
+        tipo_item: 'producto',
+        producto_id: producto.id,
+        variante_id: null,
+        nombre: producto.nombre,
+        codigo: producto.codigo || '',
+        descripcion: producto.descripcion || '',
+        metadata,
+        precio_compra: producto.precio_compra || 0,
+        precio_venta: producto.precio_venta || 0,
+        stock: producto.stock || 0,
+        variante_nombre: ''
+      });
+
+      (producto.variantes || []).forEach((vari) => {
+        items.push({
+          key: `variante:${vari.id}`,
+          tipo_item: 'variante',
+          producto_id: producto.id,
+          variante_id: vari.id,
+          nombre: `${producto.nombre} - ${vari.nombre || 'Variante'}`,
+          codigo: vari.codigo || '',
+          descripcion: producto.descripcion || '',
+          metadata,
+          precio_compra: producto.precio_compra || 0,
+          precio_venta: producto.precio_venta || 0,
+          stock: vari.stock ?? 0,
+          variante_nombre: vari.nombre || ''
+        });
+      });
+    });
+    return items;
+  }, [productos]);
+
   // Filtrar productos localmente cuando hay búsqueda
   const productosFiltrados = useMemo(() => {
-    if (!busquedaProducto.trim()) return productos;
+    if (!busquedaProducto.trim()) return catalogoProductos;
     
     const termino = busquedaProducto.toLowerCase();
-    return productos.filter(producto => {
-      const nombre = (producto.nombre || '').toLowerCase();
-      const codigo = (producto.codigo || '').toLowerCase();
-      const descripcion = (producto.descripcion || '').toLowerCase();
-      const metadata = producto.metadata || {};
+    return catalogoProductos.filter(item => {
+      const nombre = (item.nombre || '').toLowerCase();
+      const codigo = (item.codigo || '').toLowerCase();
+      const descripcion = (item.descripcion || '').toLowerCase();
+      const metadata = item.metadata || {};
       
       return (
         nombre.includes(termino) ||
@@ -67,7 +107,7 @@ const OrdenCompraModal = ({ open, onClose, orden = null }) => {
         (metadata.talla && metadata.talla.toLowerCase().includes(termino))
       );
     });
-  }, [productos, busquedaProducto]);
+  }, [catalogoProductos, busquedaProducto]);
   
   // Productos a mostrar en el selector
   const productosParaSeleccionar = productosFiltrados;
@@ -158,7 +198,8 @@ const OrdenCompraModal = ({ open, onClose, orden = null }) => {
         const itemsConRecepcion = (ordenParaCargar.items || []).map(item => ({
           ...item,
           cantidad_recibida: item.cantidad_recibida || item.cantidad || 0,
-          precio_unitario_recibido: item.precio_unitario_recibido || item.precio_unitario || 0
+          precio_unitario_recibido: item.precio_unitario_recibido || item.precio_unitario || 0,
+          selector_key: item.variante_id ? `variante:${item.variante_id}` : (item.producto_id ? `producto:${item.producto_id}` : '')
         }));
         setItems(itemsConRecepcion);
       } else {
@@ -204,6 +245,8 @@ const OrdenCompraModal = ({ open, onClose, orden = null }) => {
   const agregarItem = () => {
     const nuevoItem = {
       producto_id: null,
+      variante_id: null,
+      selector_key: '',
       nombre_producto: '',
       descripcion: '',
       cantidad: '1',
@@ -282,30 +325,43 @@ const OrdenCompraModal = ({ open, onClose, orden = null }) => {
       nuevosItems[index].subtotal = subtotalItem.toFixed(2);
     }
 
-    // Si se seleccionó un producto, actualizar nombre y precio
-    if (campo === 'producto_id' && valor) {
-      const producto = productos.find(p => p.id === valor);
-      if (producto) {
-        nuevosItems[index].nombre_producto = producto.nombre;
-        nuevosItems[index].precio_unitario = (producto.precio_compra || producto.precio_venta || 0).toString();
-        // Recalcular subtotal
-        const cantidad = parseFloat(nuevosItems[index].cantidad) || 0;
-        
-        // Manejar precio_unitario: puede ser string o número
-        const precioUnitarioStr = typeof nuevosItems[index].precio_unitario === 'string' 
-          ? nuevosItems[index].precio_unitario 
-          : String(nuevosItems[index].precio_unitario || 0);
-        const precioUnitario = parseFloat(precioUnitarioStr.replace(/[^\d.-]/g, '') || 0);
-        
-        // Manejar descuento: puede ser string o número
-        const descuentoStr = typeof nuevosItems[index].descuento === 'string' 
-          ? nuevosItems[index].descuento 
-          : String(nuevosItems[index].descuento || 0);
-        const descuentoItem = parseFloat(descuentoStr.replace(/[^\d.-]/g, '') || 0);
-        
-        const subtotalItem = (cantidad * precioUnitario) - descuentoItem;
-        nuevosItems[index].subtotal = subtotalItem.toFixed(2);
+    // Si se seleccionó un producto/variante, actualizar nombre y precio
+    if (campo === 'selector_key') {
+      if (!valor) {
+        nuevosItems[index].producto_id = null;
+        nuevosItems[index].variante_id = null;
+        nuevosItems[index].nombre_producto = '';
+        nuevosItems[index].descripcion = '';
+        nuevosItems[index].codigo = '';
+        nuevosItems[index].tipo_item = '';
+        nuevosItems[index].variante_nombre = '';
+      } else {
+        const itemCatalogo = catalogoProductos.find(p => p.key === valor);
+        if (itemCatalogo) {
+          nuevosItems[index].selector_key = valor;
+          nuevosItems[index].producto_id = itemCatalogo.producto_id;
+          nuevosItems[index].variante_id = itemCatalogo.variante_id || null;
+          nuevosItems[index].nombre_producto = itemCatalogo.nombre;
+          nuevosItems[index].descripcion = itemCatalogo.descripcion || '';
+          nuevosItems[index].codigo = itemCatalogo.codigo || '';
+          nuevosItems[index].tipo_item = itemCatalogo.tipo_item;
+          nuevosItems[index].variante_nombre = itemCatalogo.variante_nombre || '';
+          nuevosItems[index].precio_unitario = (itemCatalogo.precio_compra || itemCatalogo.precio_venta || 0).toString();
+        }
       }
+
+      // Recalcular subtotal
+      const cantidad = parseFloat(nuevosItems[index].cantidad) || 0;
+      const precioUnitarioStr = typeof nuevosItems[index].precio_unitario === 'string' 
+        ? nuevosItems[index].precio_unitario 
+        : String(nuevosItems[index].precio_unitario || 0);
+      const precioUnitario = parseFloat(precioUnitarioStr.replace(/[^\d.-]/g, '') || 0);
+      const descuentoStr = typeof nuevosItems[index].descuento === 'string' 
+        ? nuevosItems[index].descuento 
+        : String(nuevosItems[index].descuento || 0);
+      const descuentoItem = parseFloat(descuentoStr.replace(/[^\d.-]/g, '') || 0);
+      const subtotalItem = (cantidad * precioUnitario) - descuentoItem;
+      nuevosItems[index].subtotal = subtotalItem.toFixed(2);
     }
 
     setItems(nuevosItems);
@@ -331,15 +387,30 @@ const OrdenCompraModal = ({ open, onClose, orden = null }) => {
         ? item.cantidad_recibida 
         : item.cantidad;
       
-      // Calcular nuevo stock (sumar cantidad recibida al stock actual)
-      const stockActual = producto.stock || 0;
-      const nuevoStock = producto.tipo === 'servicio' ? null : (stockActual + cantidadRecibida);
+      let stockActual = producto.stock || 0;
+      let nuevoStock = producto.tipo === 'servicio' ? null : (stockActual + cantidadRecibida);
       
       // Preparar datos para actualizar
       const updates = {
-        precio_compra: precioCompraRecibido,
-        stock: nuevoStock
+        precio_compra: precioCompraRecibido
       };
+
+      if (item.variante_id) {
+        const variante = (producto.variantes || []).find(v => v.id === item.variante_id);
+        const stockVariante = variante?.stock ?? 0;
+        const nuevoStockVariante = producto.tipo === 'servicio' ? null : (stockVariante + cantidadRecibida);
+        stockActual = stockVariante;
+        nuevoStock = nuevoStockVariante;
+        const { error: varianteError } = await supabase
+          .from('product_variants')
+          .update({ stock: nuevoStockVariante })
+          .eq('id', item.variante_id);
+        if (varianteError) {
+          throw varianteError;
+        }
+      } else {
+        updates.stock = nuevoStock;
+      }
       
       // Actualizar producto
       try {
@@ -356,9 +427,12 @@ const OrdenCompraModal = ({ open, onClose, orden = null }) => {
           : 0;
         
         // Agregar a la lista para mostrar modal de precios de venta
+        const nombreDetalle = item.variante_id
+          ? `${producto.nombre} - ${(producto.variantes || []).find(v => v.id === item.variante_id)?.nombre || 'Variante'}`
+          : producto.nombre;
         productosActualizar.push({
           id: producto.id,
-          nombre: producto.nombre,
+          nombre: nombreDetalle,
           precio_compra_anterior: precioCompraAnterior,
           precio_compra_nuevo: precioCompraRecibido,
           precio_venta_actual: precioVentaActual,
@@ -433,6 +507,7 @@ const OrdenCompraModal = ({ open, onClose, orden = null }) => {
         return {
           producto_id: item.producto_id || null,
           nombre_producto: item.nombre_producto || 'Producto sin nombre',
+          variante_id: item.variante_id || null,
           descripcion: item.descripcion || null,
           cantidad: parseFloat(item.cantidad) || 0,
           unidad_medida: item.unidad_medida || 'unidad',
@@ -950,14 +1025,14 @@ const OrdenCompraModal = ({ open, onClose, orden = null }) => {
                     </div>
                   ) : (
                     productosParaSeleccionar.map((producto) => {
-                      const estaSeleccionado = productosSeleccionados.some(p => p.id === producto.id);
+                      const estaSeleccionado = productosSeleccionados.some(p => p.key === producto.key);
                       return (
                         <div
-                          key={producto.id}
+                          key={producto.key}
                           className={`producto-busqueda-item ${estaSeleccionado ? 'seleccionado' : ''}`}
                           onClick={() => {
                             if (estaSeleccionado) {
-                              setProductosSeleccionados(productosSeleccionados.filter(p => p.id !== producto.id));
+                              setProductosSeleccionados(productosSeleccionados.filter(p => p.key !== producto.key));
                             } else {
                               setProductosSeleccionados([...productosSeleccionados, producto]);
                             }
@@ -992,9 +1067,14 @@ const OrdenCompraModal = ({ open, onClose, orden = null }) => {
                       onClick={() => {
                         productosSeleccionados.forEach(producto => {
                           const nuevoItem = {
-                            producto_id: producto.id,
+                            producto_id: producto.producto_id,
+                            variante_id: producto.variante_id || null,
+                            selector_key: producto.key,
                             nombre_producto: producto.nombre,
                             descripcion: producto.descripcion || '',
+                            codigo: producto.codigo || '',
+                            tipo_item: producto.tipo_item,
+                            variante_nombre: producto.variante_nombre || '',
                             cantidad: '1',
                             unidad_medida: 'unidad',
                             precio_unitario: (producto.precio_compra || producto.precio_venta || 0).toString(),
@@ -1061,8 +1141,8 @@ const OrdenCompraModal = ({ open, onClose, orden = null }) => {
                       <tr key={index}>
                         <td className="col-producto">
                           <select
-                            value={item.producto_id || ''}
-                            onChange={(e) => actualizarItem(index, 'producto_id', e.target.value)}
+                            value={item.selector_key || (item.variante_id ? `variante:${item.variante_id}` : (item.producto_id ? `producto:${item.producto_id}` : ''))}
+                            onChange={(e) => actualizarItem(index, 'selector_key', e.target.value)}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter' || e.key === 'Tab') {
                                 e.preventDefault();
@@ -1074,8 +1154,8 @@ const OrdenCompraModal = ({ open, onClose, orden = null }) => {
                             disabled={esSoloLectura}
                           >
                             <option value="">-</option>
-                            {productos.map(prod => (
-                              <option key={prod.id} value={prod.id}>
+                            {catalogoProductos.map(prod => (
+                              <option key={prod.key} value={prod.key}>
                                 {prod.nombre} {prod.codigo ? `(${prod.codigo})` : ''}
                               </option>
                             ))}

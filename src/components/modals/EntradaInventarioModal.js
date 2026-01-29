@@ -8,6 +8,7 @@ import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
 import OptimizedProductImage from '../../components/business/OptimizedProductImage';
 import ProveedorModal from './ProveedorModal';
 import toast from 'react-hot-toast';
+import { supabase } from '../../services/api/supabaseClient';
 import './EntradaInventarioModal.css';
 
 const EntradaInventarioModal = ({ open, onClose }) => {
@@ -163,19 +164,61 @@ const EntradaInventarioModal = ({ open, onClose }) => {
     };
   }, [open, handleBarcodeScanned, barcodeInputRef]);
 
+  const catalogoProductos = useMemo(() => {
+    const items = [];
+    productos.forEach((producto) => {
+      const metadata = producto.metadata || {};
+      items.push({
+        key: `producto:${producto.id}`,
+        tipo_item: 'producto',
+        producto_id: producto.id,
+        variante_id: null,
+        nombre: producto.nombre,
+        codigo: producto.codigo || '',
+        descripcion: producto.descripcion || '',
+        imagen: producto.imagen || '',
+        metadata,
+        tipo_producto: producto.tipo,
+        precio_compra: producto.precio_compra || 0,
+        precio_venta: producto.precio_venta || 0,
+        stock: producto.stock || 0
+      });
+
+      (producto.variantes || []).forEach((vari) => {
+        items.push({
+          key: `variante:${vari.id}`,
+          tipo_item: 'variante',
+          producto_id: producto.id,
+          variante_id: vari.id,
+          nombre: `${producto.nombre} - ${vari.nombre || 'Variante'}`,
+          codigo: vari.codigo || '',
+          descripcion: producto.descripcion || '',
+          imagen: producto.imagen || '',
+          metadata,
+          tipo_producto: producto.tipo,
+          precio_compra: producto.precio_compra || 0,
+          precio_venta: producto.precio_venta || 0,
+          stock: vari.stock ?? 0,
+          variante_nombre: vari.nombre || ''
+        });
+      });
+    });
+    return items;
+  }, [productos]);
+
   // Filtrar productos para búsqueda
   const productosFiltrados = useMemo(() => {
     // Si no hay búsqueda o está vacía, mostrar todos los productos
     if (!busqueda || (typeof busqueda === 'string' && busqueda.trim() === '')) {
-      return productos;
+      return catalogoProductos;
     }
     
     const termino = busqueda.toLowerCase();
-    return productos.filter(producto => {
-      const nombre = (producto.nombre || '').toLowerCase();
-      const codigo = (producto.codigo || '').toLowerCase();
-      const descripcion = (producto.descripcion || '').toLowerCase();
-      const metadata = producto.metadata || {};
+    return catalogoProductos.filter(item => {
+      const nombre = (item.nombre || '').toLowerCase();
+      const codigo = (item.codigo || '').toLowerCase();
+      const descripcion = (item.descripcion || '').toLowerCase();
+      const metadata = item.metadata || {};
       
       return (
         nombre.includes(termino) ||
@@ -186,7 +229,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
         (metadata.categoria && metadata.categoria.toLowerCase().includes(termino))
       );
     });
-  }, [productos, busqueda]);
+  }, [catalogoProductos, busqueda]);
   
   // Formatear moneda
   const formatearMoneda = (valor) => {
@@ -204,12 +247,12 @@ const EntradaInventarioModal = ({ open, onClose }) => {
   };
   
   // Toggle selección de producto en búsqueda
-  const toggleProductoSeleccion = (productoId) => {
+  const toggleProductoSeleccion = (itemKey) => {
     setProductosParaAgregar(prev => {
-      if (prev.includes(productoId)) {
-        return prev.filter(id => id !== productoId);
+      if (prev.includes(itemKey)) {
+        return prev.filter(id => id !== itemKey);
       } else {
-        return [...prev, productoId];
+        return [...prev, itemKey];
       }
     });
   };
@@ -222,8 +265,8 @@ const EntradaInventarioModal = ({ open, onClose }) => {
     }
 
     const productosAAgregar = productosFiltrados.filter(p => 
-      productosParaAgregar.includes(p.id) && 
-      !productosSeleccionados.find(ps => ps.id === p.id)
+      productosParaAgregar.includes(p.key) && 
+      !productosSeleccionados.find(ps => ps.key === p.key)
     );
 
     if (productosAAgregar.length === 0) {
@@ -231,26 +274,30 @@ const EntradaInventarioModal = ({ open, onClose }) => {
       return;
     }
 
-    const nuevosProductos = productosAAgregar.map(producto => {
-      const precioCompra = producto.precio_compra || 0;
-      const precioVenta = producto.precio_venta || 0;
+    const nuevosProductos = productosAAgregar.map(item => {
+      const precioCompra = item.precio_compra || 0;
+      const precioVenta = item.precio_venta || 0;
       // Calcular porcentaje inicial basado en precios actuales
       const porcentajeInicial = precioCompra > 0 
         ? ((precioVenta - precioCompra) / precioCompra) * 100 
         : 0;
       
       return {
-        id: producto.id,
-        nombre: producto.nombre,
-        codigo: producto.codigo || '',
+        key: item.key,
+        producto_id: item.producto_id,
+        variante_id: item.variante_id || null,
+        tipo_item: item.tipo_item,
+        nombre: item.nombre,
+        codigo: item.codigo || '',
+        variante_nombre: item.variante_nombre || '',
         precio_compra_actual: precioCompra,
         precio_compra_nuevo: precioCompra,
         precio_venta_actual: precioVenta,
         precio_venta_nuevo: precioVenta,
         porcentaje_ganancia: porcentajeInicial,
-        stock_actual: producto.stock || 0,
+        stock_actual: item.stock || 0,
         cantidad_agregar: 0,
-        stock_nuevo: producto.stock || 0
+        stock_nuevo: item.stock || 0
       };
     });
 
@@ -262,7 +309,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
   // Seleccionar/deseleccionar todos
   const toggleSeleccionarTodos = () => {
     const productosDisponibles = productosFiltrados.filter(p => 
-      !productosSeleccionados.find(ps => ps.id === p.id)
+      !productosSeleccionados.find(ps => ps.key === p.key)
     );
     
     if (productosDisponibles.length === 0) {
@@ -271,20 +318,20 @@ const EntradaInventarioModal = ({ open, onClose }) => {
     }
 
     const todosSeleccionados = productosDisponibles.every(p => 
-      productosParaAgregar.includes(p.id)
+      productosParaAgregar.includes(p.key)
     );
 
     if (todosSeleccionados) {
       setProductosParaAgregar([]);
     } else {
-      setProductosParaAgregar(productosDisponibles.map(p => p.id));
+      setProductosParaAgregar(productosDisponibles.map(p => p.key));
     }
   };
   
   // Eliminar producto de la lista
-  const eliminarProducto = (id) => {
+  const eliminarProducto = (key) => {
     if (window.confirm('¿Estás seguro de que deseas eliminar este producto de la lista?')) {
-      setProductosSeleccionados(productosSeleccionados.filter(p => p.id !== id));
+      setProductosSeleccionados(productosSeleccionados.filter(p => p.key !== key));
       toast.success('Producto eliminado de la lista');
     }
   };
@@ -301,7 +348,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
       return;
     }
     
-    setProductosActualizando(prev => new Set(prev).add(producto.id));
+    setProductosActualizando(prev => new Set(prev).add(producto.key));
     
     try {
       const updates = {};
@@ -319,27 +366,37 @@ const EntradaInventarioModal = ({ open, onClose }) => {
       // Actualizar stock (sumar cantidad_agregar al stock actual)
       if (producto.cantidad_agregar > 0) {
         const nuevoStock = (producto.stock_actual || 0) + producto.cantidad_agregar;
-        updates.stock = nuevoStock;
+        if (producto.variante_id) {
+          const { error: varianteError } = await supabase
+            .from('product_variants')
+            .update({ stock: nuevoStock })
+            .eq('id', producto.variante_id);
+          if (varianteError) {
+            throw varianteError;
+          }
+        } else {
+          updates.stock = nuevoStock;
+        }
       }
       
       // Solo actualizar si hay cambios
       if (Object.keys(updates).length > 0) {
         await actualizarProducto.mutateAsync({
-          id: producto.id,
+          id: producto.producto_id,
           updates
         });
         
         // Actualizar el producto en la lista con los nuevos valores
         setProductosSeleccionados(productosSeleccionados.map(p => {
-          if (p.id === producto.id) {
+          if (p.key === producto.key) {
             return {
               ...p,
               precio_compra_actual: updates.precio_compra !== undefined ? updates.precio_compra : p.precio_compra_actual,
               precio_compra_nuevo: updates.precio_compra !== undefined ? updates.precio_compra : p.precio_compra_nuevo,
               precio_venta_actual: updates.precio_venta !== undefined ? updates.precio_venta : p.precio_venta_actual,
               precio_venta_nuevo: updates.precio_venta !== undefined ? updates.precio_venta : p.precio_venta_nuevo,
-              stock_actual: updates.stock !== undefined ? updates.stock : p.stock_actual,
-              stock_nuevo: updates.stock !== undefined ? updates.stock : p.stock_nuevo,
+              stock_actual: updates.stock !== undefined ? updates.stock : (producto.cantidad_agregar > 0 ? (p.stock_actual || 0) + producto.cantidad_agregar : p.stock_actual),
+              stock_nuevo: updates.stock !== undefined ? updates.stock : (producto.cantidad_agregar > 0 ? (p.stock_actual || 0) + producto.cantidad_agregar : p.stock_nuevo),
               cantidad_agregar: 0 // Resetear cantidad después de actualizar
             };
           }
@@ -356,7 +413,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
     } finally {
       setProductosActualizando(prev => {
         const nuevo = new Set(prev);
-        nuevo.delete(producto.id);
+        nuevo.delete(producto.key);
         return nuevo;
       });
     }
@@ -378,9 +435,9 @@ const EntradaInventarioModal = ({ open, onClose }) => {
   };
 
   // Actualizar campo de un producto
-  const actualizarCampo = (id, campo, valor) => {
+  const actualizarCampo = (itemKey, campo, valor) => {
     setProductosSeleccionados(productosSeleccionados.map(p => {
-      if (p.id === id) {
+      if (p.key === itemKey) {
         const actualizado = { ...p, [campo]: valor };
         
         // Si se actualiza cantidad_agregar, calcular stock_nuevo
@@ -475,16 +532,26 @@ const EntradaInventarioModal = ({ open, onClose }) => {
         // Actualizar stock si hay cantidad agregada
         if (producto.cantidad_agregar > 0) {
           // Solo actualizar stock para productos físicos o comida
-          const productoOriginal = productos.find(p => p.id === producto.id);
+          const productoOriginal = productos.find(p => p.id === producto.producto_id);
           if (productoOriginal && (productoOriginal.tipo === 'fisico' || productoOriginal.tipo === 'comida')) {
-            updates.stock = producto.stock_nuevo;
+            if (producto.variante_id) {
+              const { error: varianteError } = await supabase
+                .from('product_variants')
+                .update({ stock: producto.stock_nuevo })
+                .eq('id', producto.variante_id);
+              if (varianteError) {
+                throw varianteError;
+              }
+            } else {
+              updates.stock = producto.stock_nuevo;
+            }
           }
         }
         
         // Solo actualizar si hay cambios
         if (Object.keys(updates).length > 0) {
           await actualizarProducto.mutateAsync({
-            id: producto.id,
+            id: producto.producto_id,
             updates
           });
         }
@@ -671,7 +738,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
                         cursor: 'pointer'
                       }}
                     >
-                      {productosFiltrados.filter(p => !productosSeleccionados.find(ps => ps.id === p.id)).every(p => productosParaAgregar.includes(p.id)) && productosFiltrados.filter(p => !productosSeleccionados.find(ps => ps.id === p.id)).length > 0
+                      {productosFiltrados.filter(p => !productosSeleccionados.find(ps => ps.key === p.key)).every(p => productosParaAgregar.includes(p.key)) && productosFiltrados.filter(p => !productosSeleccionados.find(ps => ps.key === p.key)).length > 0
                         ? 'Deseleccionar todos'
                         : 'Seleccionar todos'}
                     </button>
@@ -710,13 +777,13 @@ const EntradaInventarioModal = ({ open, onClose }) => {
                   <p className="productos-busqueda-empty">No se encontraron productos</p>
                 ) : (
                   productosFiltrados.map((producto) => {
-                    const yaAgregado = productosSeleccionados.find(p => p.id === producto.id);
-                    const estaSeleccionado = productosParaAgregar.includes(producto.id);
+                    const yaAgregado = productosSeleccionados.find(p => p.key === producto.key);
+                    const estaSeleccionado = productosParaAgregar.includes(producto.key);
                     return (
                       <div
-                        key={producto.id}
+                        key={producto.key}
                         className={`productos-busqueda-card ${yaAgregado ? 'agregado' : ''} ${estaSeleccionado ? 'seleccionado' : ''}`}
-                        onClick={() => !yaAgregado && toggleProductoSeleccion(producto.id)}
+                        onClick={() => !yaAgregado && toggleProductoSeleccion(producto.key)}
                       >
                         {!yaAgregado && estaSeleccionado && (
                           <div className="productos-busqueda-check-badge">
@@ -810,7 +877,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
                 </thead>
                 <tbody>
                   {productosSeleccionados.map((producto) => (
-                    <tr key={producto.id}>
+                    <tr key={producto.key}>
                       <td className="col-producto">
                         <div className="producto-info">
                           <strong>{producto.nombre}</strong>
@@ -823,7 +890,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
                         <input
                           type="text"
                           value={formatearMoneda(producto.precio_compra_nuevo)}
-                          onChange={(e) => actualizarPrecio(producto.id, 'precio_compra_nuevo', e.target.value)}
+                          onChange={(e) => actualizarPrecio(producto.key, 'precio_compra_nuevo', e.target.value)}
                           placeholder="0"
                           className="input-moneda"
                         />
@@ -832,7 +899,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
                         <input
                           type="number"
                           value={producto.porcentaje_ganancia || ''}
-                          onChange={(e) => actualizarPorcentaje(producto.id, e.target.value)}
+                          onChange={(e) => actualizarPorcentaje(producto.key, e.target.value)}
                           placeholder="0"
                           step="0.1"
                           className="input-porcentaje"
@@ -843,7 +910,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
                         <input
                           type="text"
                           value={formatearMoneda(producto.precio_venta_nuevo)}
-                          onChange={(e) => actualizarPrecio(producto.id, 'precio_venta_nuevo', e.target.value)}
+                          onChange={(e) => actualizarPrecio(producto.key, 'precio_venta_nuevo', e.target.value)}
                           placeholder="0"
                           className="input-moneda"
                         />
@@ -852,7 +919,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
                         <input
                           type="number"
                           value={producto.cantidad_agregar || ''}
-                          onChange={(e) => actualizarCampo(producto.id, 'cantidad_agregar', parseFloat(e.target.value) || 0)}
+                          onChange={(e) => actualizarCampo(producto.key, 'cantidad_agregar', parseFloat(e.target.value) || 0)}
                           placeholder="0"
                           min="0"
                           step="0.01"
@@ -869,12 +936,12 @@ const EntradaInventarioModal = ({ open, onClose }) => {
                         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                           <button
                             type="button"
-                            className={`btn-save-item ${productosActualizando.has(producto.id) ? 'disabled' : ''}`}
+                            className={`btn-save-item ${productosActualizando.has(producto.key) ? 'disabled' : ''}`}
                             onClick={() => handleActualizarProductoIndividual(producto)}
                             title="Actualizar este producto"
-                            disabled={productosActualizando.has(producto.id)}
+                            disabled={productosActualizando.has(producto.key)}
                           >
-                            {productosActualizando.has(producto.id) ? (
+                            {productosActualizando.has(producto.key) ? (
                               <div className="spinner-icon" />
                             ) : (
                               <span className="icon-save">✓</span>
@@ -882,10 +949,10 @@ const EntradaInventarioModal = ({ open, onClose }) => {
                           </button>
                           <button
                             type="button"
-                            className={`btn-remove-item ${productosActualizando.has(producto.id) ? 'disabled' : ''}`}
-                            onClick={() => eliminarProducto(producto.id)}
+                            className={`btn-remove-item ${productosActualizando.has(producto.key) ? 'disabled' : ''}`}
+                            onClick={() => eliminarProducto(producto.key)}
                             title="Eliminar de la lista"
-                            disabled={productosActualizando.has(producto.id)}
+                            disabled={productosActualizando.has(producto.key)}
                           >
                             <span className="icon-trash">×</span>
                           </button>
