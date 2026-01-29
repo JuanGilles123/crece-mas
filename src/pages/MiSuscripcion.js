@@ -52,16 +52,40 @@ const MiSuscripcion = () => {
     
     setLoadingStats(true);
     try {
-      const [products, sales, users] = await Promise.all([
-        checkLimit('maxProducts'),
-        checkLimit('maxSalesPerMonth'),
-        checkLimit('maxUsers')
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      monthStart.setHours(0, 0, 0, 0);
+      const monthStartIso = monthStart.toISOString();
+
+      const [products, sales, usersLimit, teamMembers] = await Promise.all([
+        checkLimit('maxProducts', 'products'),
+        checkLimit('maxSalesPerMonth', 'sales', { created_at: monthStartIso }),
+        checkLimit('maxUsers', 'team_members'),
+        supabase
+          .from('team_members')
+          .select('id', { count: 'exact', head: true })
+          .eq('organization_id', organization.id)
+          .eq('status', 'active')
       ]);
 
+      const currentUsers = (teamMembers?.count || 0) + 1; // incluir owner
+      const normalize = (result) => {
+        if (!result) return { current: 0, limit: null, unlimited: true };
+        const unlimited = result.isVIP || result.limit === null || result.limit === undefined || result.limit === -1;
+        return {
+          current: result.current || 0,
+          limit: result.limit ?? null,
+          unlimited
+        };
+      };
+
       setUsageStats({
-        products,
-        sales,
-        users
+        products: normalize(products),
+        sales: normalize(sales),
+        users: {
+          ...normalize(usersLimit),
+          current: currentUsers
+        }
       });
     } catch (error) {
       console.error('Error loading stats:', error);

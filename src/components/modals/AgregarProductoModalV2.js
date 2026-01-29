@@ -15,12 +15,13 @@ import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
 import toast from 'react-hot-toast';
 import { PRODUCT_TYPES, ADDITIONAL_FIELDS, getProductTypeFields } from '../../utils/productTypes';
 import { getBusinessTypeConfig, getDefaultProductType, getAvailableProductTypes, shouldSkipProductTypeSelector } from '../../constants/businessTypes';
+import { generateStoragePath, validateFilename } from '../../utils/fileUtils';
 import VariacionesConfig from '../VariacionesConfig';
 import ProductosVinculados from '../ProductosVinculados';
 import './AgregarProductoModalV2.css';
 
 // Función para crear esquema de validación dinámico
-const createProductSchema = (productType) => {
+const createProductSchema = (productType, defaultPermiteToppings = true) => {
   const baseSchema = {
     codigo: z.string().min(1, 'El código es requerido').max(50, 'El código es muy largo'),
     nombre: z.string().min(1, 'El nombre es requerido').max(100, 'El nombre es muy largo'),
@@ -62,7 +63,7 @@ const createProductSchema = (productType) => {
   baseSchema.calorias = z.string().optional();
   baseSchema.porcion = z.string().optional();
   baseSchema.variaciones = z.string().optional();
-  baseSchema.permite_toppings = z.boolean().optional().default(true);
+  baseSchema.permite_toppings = z.boolean().optional().default(defaultPermiteToppings);
 
   return z.object(baseSchema).superRefine((data, ctx) => {
     const precioCompra = data.precioCompra ? parseFloat(data.precioCompra.replace(/[^\d]/g, '')) : 0;
@@ -158,8 +159,12 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
   // React Query mutation
   const agregarProductoMutation = useAgregarProducto();
 
+  const defaultPermiteToppings = organization?.business_type === 'food';
+
   // Crear esquema dinámico
-  const productSchema = selectedType ? createProductSchema(selectedType) : z.object({});
+  const productSchema = selectedType
+    ? createProductSchema(selectedType, defaultPermiteToppings)
+    : z.object({});
 
   // React Hook Form
   const {
@@ -195,7 +200,7 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
       calorias: '',
       porcion: '',
       variaciones: '',
-      permite_toppings: true
+      permite_toppings: defaultPermiteToppings
     }
   });
 
@@ -221,6 +226,7 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
   const handleBarcodeScanned = useCallback((barcode) => {
     setValue('codigo', barcode, { shouldValidate: true });
     if (codigoInputRef.current) {
+      codigoInputRef.current.value = barcode;
       codigoInputRef.current.focus();
     }
   }, [setValue]);
@@ -477,16 +483,24 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
     let imagenPath = null;
 
     try {
+      // Validar que organization_id esté presente (requerido por RLS) - ANTES de cualquier operación
+      const organizationId = userProfile?.organization_id;
+      if (!organizationId) {
+        throw new Error('No se encontró organization_id. Por favor, verifica que tu perfil esté correctamente configurado.');
+      }
+
       if (imagen && puedeSubirImagenes) {
+        // Validar el nombre del archivo antes de comprimir
+        const validation = validateFilename(imagen.name);
+        if (!validation.isValid) {
+          throw new Error(validation.error);
+        }
+
         setComprimiendo(true);
         const imagenComprimida = await compressProductImage(imagen);
         setComprimiendo(false);
 
-        const organizationId = userProfile?.organization_id;
-        if (!organizationId) {
-          throw new Error('No se encontró organization_id');
-        }
-        const nombreArchivo = `${organizationId}/${Date.now()}_${imagenComprimida.name}`;
+        const nombreArchivo = generateStoragePath(organizationId, imagenComprimida.name);
         const { error: errorUpload } = await supabase.storage.from('productos').upload(nombreArchivo, imagenComprimida);
         if (errorUpload) throw errorUpload;
         imagenPath = nombreArchivo;
@@ -496,8 +510,8 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
       
       // Campos que existen en la tabla productos
       const productoData = {
-        user_id: user.id,
-        organization_id: userProfile?.organization_id,
+        user_id: user?.id,
+        organization_id: organizationId, // Usar la variable validada
         codigo: data.codigo,
         nombre: data.nombre,
         precio_venta: Number(data.precioVenta.replace(/\D/g, '')),
@@ -532,7 +546,9 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
       if (data.variaciones) metadata.variaciones = data.variaciones;
       
       // Agregar permite_toppings al metadata
-      metadata.permite_toppings = data.permite_toppings !== undefined ? data.permite_toppings : true;
+      metadata.permite_toppings = data.permite_toppings !== undefined
+        ? data.permite_toppings
+        : defaultPermiteToppings;
       
       // Agregar variaciones_config si hay variaciones configuradas
       if (variacionesConfig && variacionesConfig.length > 0) {
@@ -574,7 +590,18 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
         },
         onError: (error) => {
           console.error('Error agregando producto:', error);
-          toast.error(error?.message || 'Error al guardar el producto.');
+          let errorMessage = 'Error al guardar el producto.';
+          
+          // Mensajes de error más específicos
+          if (error.message?.includes('row-level security') || error.message?.includes('violates row-level security')) {
+            errorMessage = 'No tienes permisos para agregar productos. Verifica que estés asociado a una organización.';
+          } else if (error.message?.includes('organization_id')) {
+            errorMessage = 'Error: No se encontró organization_id. Por favor, verifica tu perfil.';
+          } else if (error?.message) {
+            errorMessage = error.message;
+          }
+          
+          toast.error(errorMessage);
         }
       });
     } catch (err) {
@@ -790,7 +817,7 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
                 type="checkbox"
                 id="permite_toppings"
                 {...register('permite_toppings')}
-                defaultChecked={true}
+                defaultChecked={defaultPermiteToppings}
                 style={{ width: '18px', height: '18px', cursor: 'pointer' }}
               />
               <label htmlFor="permite_toppings" style={{ cursor: 'pointer', fontWeight: 500, fontSize: '0.95rem' }}>

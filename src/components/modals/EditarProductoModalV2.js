@@ -13,6 +13,7 @@ import { useCurrencyInput } from '../../hooks/useCurrencyInput';
 import { Plus, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PRODUCT_TYPES, ADDITIONAL_FIELDS, getProductTypeFields } from '../../utils/productTypes';
+import { generateStoragePath, validateFilename } from '../../utils/fileUtils';
 import OptimizedProductImage from '../../components/business/OptimizedProductImage';
 import VariacionesConfig from '../VariacionesConfig';
 import ProductosVinculados from '../ProductosVinculados';
@@ -458,6 +459,12 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
 
     try {
       if (imagen && puedeSubirImagenes) {
+        // Validar el nombre del archivo antes de comprimir
+        const validation = validateFilename(imagen.name);
+        if (!validation.isValid) {
+          throw new Error(validation.error);
+        }
+
         setComprimiendo(true);
         const imagenComprimida = await compressProductImage(imagen);
         setComprimiendo(false);
@@ -466,7 +473,7 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado }) =
         if (!organizationId) {
           throw new Error('No se encontró organization_id');
         }
-        const nombreArchivo = `${organizationId}/${Date.now()}_${imagenComprimida.name}`;
+        const nombreArchivo = generateStoragePath(organizationId, imagenComprimida.name);
         const { error: errorUpload } = await supabase.storage.from('productos').upload(nombreArchivo, imagenComprimida);
         if (errorUpload) throw errorUpload;
 

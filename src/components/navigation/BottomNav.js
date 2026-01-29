@@ -9,7 +9,7 @@ import {
   ClipboardList,
   Menu,
   X,
-  Search
+  Tag
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSubscription } from '../../hooks/useSubscription';
@@ -36,7 +36,7 @@ const BottomNav = ({ menuGroups, onItemClick }) => {
       : [{ to: '/dashboard/resumen-ventas', icon: TrendingUp, label: 'Reportes' }]
     ),
     { to: '/dashboard/perfil', icon: User, label: 'Perfil' },
-    { to: '/dashboard/consultar-precio', icon: Search, label: 'Consultar Precio' },
+    { to: '/dashboard/consultar-precio', icon: Tag, label: 'Consultar Precio' },
   ];
 
   const toggleNav = () => {

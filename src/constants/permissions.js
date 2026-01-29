@@ -31,6 +31,7 @@ export const MODULES = {
       EDIT: { id: 'inventario.edit', label: 'Editar productos', description: 'Modificar productos existentes' },
       DELETE: { id: 'inventario.delete', label: 'Eliminar productos', description: 'Eliminar productos del sistema' },
       IMPORT: { id: 'inventario.import', label: 'Importar CSV', description: 'Importar productos desde archivo' },
+      REVIEW_DIFFERENCES: { id: 'inventario.review_differences', label: 'Ver diferencias de revisión', description: 'Ver diferencias detectadas en revisión de inventario' },
     }
   },
   
@@ -128,7 +129,7 @@ export const PREDEFINED_ROLES = {
       // Ventas
       'ventas.view', 'ventas.create', 'ventas.delete', 'ventas.export',
       // Inventario
-      'inventario.view', 'inventario.create', 'inventario.edit', 'inventario.delete', 'inventario.import',
+      'inventario.view', 'inventario.create', 'inventario.edit', 'inventario.delete', 'inventario.import', 'inventario.review_differences',
       // Cierre
       'cierre.view', 'cierre.create', 'cierre.edit', 'cierre.delete',
       // Estadísticas

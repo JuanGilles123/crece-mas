@@ -34,6 +34,43 @@
   }
 }
 
+@media (max-width: 655px) {
+  .perfil-sidebar {
+    padding: 8px;
+  }
+
+  .perfil-nav {
+    flex-direction: column;
+    overflow-x: visible;
+    padding: 0;
+    gap: 0.5rem;
+  }
+
+  .perfil-nav-item {
+    width: 100%;
+    justify-content: flex-start;
+    white-space: normal;
+  }
+
+  .perfil-header {
+    overflow: visible;
+  }
+
+  .perfil-user-details {
+    overflow: visible;
+  }
+
+  .perfil-user-email {
+    overflow: visible;
+    text-overflow: unset;
+    white-space: normal;
+  }
+
+  .perfil-content {
+    overflow: visible;
+  }
+}
+
 /* Header del perfil - iOS Card */
 .perfil-header {
   display: flex;
@@ -595,7 +632,7 @@
     visibility: visible !important;
     opacity: 1 !important;
     flex-wrap: wrap !important;
-    justify-content: center !important;
+    justify-content: flex-start !important;
     align-items: center !important;
   }
 
@@ -614,7 +651,8 @@
     cursor: pointer !important;
     position: relative !important;
     z-index: 10 !important;
-    justify-content: center !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
     align-items: center !important;
   }
 
@@ -766,13 +804,17 @@
   
   .perfil-nav {
     flex-direction: row;
-    overflow-x: auto;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    overflow-x: visible;
     padding: 0 1rem;
+    gap: 0.5rem;
   }
   
   .perfil-nav-item {
-    white-space: nowrap;
-    min-width: max-content;
+    white-space: normal;
+    min-width: 0;
+    flex: 1 1 auto;
   }
 }
 
@@ -886,9 +928,10 @@
   }
   
   .perfil-sidebar {
-    order: 2;
+    order: 1;
     border-right: none;
-    border-top: 1px solid var(--border-primary);
+    border-top: none;
+    border-bottom: 1px solid var(--border-primary);
     padding: 0.5rem 0;
     width: 100%;
     max-width: 100%;
@@ -922,7 +965,7 @@
   }
   
   .perfil-main {
-    order: 1;
+    order: 2;
     padding: 0;
     overflow: visible;
     width: 100%;
