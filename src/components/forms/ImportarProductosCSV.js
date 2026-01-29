@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../../services/api/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import * as XLSX from 'xlsx';
@@ -14,6 +14,10 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
   const [error, setError] = useState('');
   const [preview, setPreview] = useState(null);
   const [inconsistencias, setInconsistencias] = useState([]);
+  const [modoRevision, setModoRevision] = useState(false);
+  const [productosRevision, setProductosRevision] = useState([]);
+  const [variantesRevision, setVariantesRevision] = useState([]);
+  const [seleccionadosRevision, setSeleccionadosRevision] = useState([]);
 
   // Función para procesar imagen desde Excel
   const procesarImagenExcel = async (imagenData, nombreProducto) => {
@@ -22,22 +26,18 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
     }
 
     try {
-      // Si es una URL o ruta, la convertimos a archivo
+      // Si es una URL o data URL, guardar directamente sin subir
+      if (typeof imagenData === 'string') {
+        const imagenTexto = imagenData.trim();
+        if (imagenTexto.startsWith('http') || imagenTexto.startsWith('data:')) {
+          return imagenTexto;
+        }
+      }
+
+      // Si es un archivo, procesarlo y subirlo a storage
       let archivoImagen;
       
-      if (typeof imagenData === 'string') {
-        // Si es una URL o ruta de archivo
-        if (imagenData.startsWith('http') || imagenData.startsWith('data:')) {
-          // Es una URL o data URL
-          const response = await fetch(imagenData);
-          const blob = await response.blob();
-          archivoImagen = new File([blob], `${nombreProducto}.jpg`, { type: blob.type });
-        } else {
-          // Es una ruta de archivo local, no podemos procesarla
-          console.warn('No se puede procesar ruta de archivo local:', imagenData);
-          return null;
-        }
-      } else if (imagenData instanceof File) {
+      if (imagenData instanceof File) {
         // Ya es un archivo
         archivoImagen = imagenData;
       } else {
@@ -92,6 +92,10 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
       setArchivo(file);
       setError('');
       setResultado(null);
+      setModoRevision(false);
+      setProductosRevision([]);
+      setVariantesRevision([]);
+      setSeleccionadosRevision([]);
       
       if (isCSV) {
         previewCSV(file);
@@ -151,14 +155,14 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
 
           // Buscar la fila con los headers (validación ultra flexible)
           let headerRowIndex = -1;
-          const requiredHeaders = ['nombre', 'precio_compra', 'precio_venta', 'stock'];
+          const requiredHeadersBusqueda = ['nombre', 'precio_compra', 'precio_venta', 'stock'];
           
           for (let i = 0; i < jsonData.length; i++) {
             const row = jsonData[i];
             if (Array.isArray(row)) {
               const headers = row.map(h => String(h || '').toLowerCase().trim());
               // Verificar si esta fila contiene al menos 2 de los 4 headers requeridos
-              const foundHeaders = requiredHeaders.filter(required => 
+              const foundHeaders = requiredHeadersBusqueda.filter(required => 
                 headers.some(header => 
                   header.includes(required) || 
                   header.includes(required.replace('_', ' ')) ||
@@ -181,21 +185,32 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
           }
 
           const headers = jsonData[headerRowIndex];
-          // Verificar headers requeridos (validación muy flexible)
-          const missingHeaders = requiredHeaders.filter(required => 
-            !headers.some(header => 
-              String(header || '').toLowerCase().includes(required) ||
-              String(header || '').toLowerCase().includes(required.replace('_', ' ')) ||
-              String(header || '').toLowerCase().includes(required.replace('_', ''))
-            )
-          );
-          // Solo mostrar advertencia si faltan más de 2 headers críticos
-          if (missingHeaders.length > 2) {
-            console.warn('Advertencia Excel: Faltan headers:', missingHeaders.join(', '));
+          const normalizarHeader = (valor) => String(valor || '')
+            .toLowerCase()
+            .replace(/\*/g, '')
+            .replace(/[_\s\-()]/g, '');
+          const headersNormalizados = headers.map(normalizarHeader);
+          const requiredHeaders = ['codigo', 'nombre', 'tipo', 'preciocompra', 'precioventa', 'stock'];
+          const missingHeaders = requiredHeaders.filter(req => !headersNormalizados.some(h => h.includes(req)));
+          if (missingHeaders.length > 0) {
+            resolve({
+              productos: [],
+              inconsistencias: [{
+                fila: headerRowIndex + 1,
+                producto: 'Encabezados',
+                problemas: missingHeaders.map((campo) => ({
+                  campo,
+                  mensaje: 'Columna requerida no encontrada en el archivo',
+                  valor: ''
+                }))
+              }]
+            });
+            return;
           }
-
           const productos = [];
           const inconsistenciasEncontradas = [];
+          const variantesEncontradas = [];
+          const codigosEnArchivo = new Set();
           // Procesar solo las filas después de los headers
           for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
             const row = jsonData[i];
@@ -205,7 +220,11 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
               inconsistenciasEncontradas.push({
                 fila: numeroFila,
                 producto: 'Fila vacía',
-                problemas: ['La fila está vacía o no tiene datos']
+                problemas: [{
+                  campo: 'fila',
+                  mensaje: 'La fila está vacía o no tiene datos',
+                  valor: ''
+                }]
               });
               continue;
             }
@@ -214,15 +233,59 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
             headers.forEach((header, index) => {
               producto[header] = row[index] || '';
             });
-            // Buscar campos requeridos de forma flexible (incluyendo nombres exactos del Excel)
-            const nombre = producto.nombre || producto.name || producto.Nombre || producto.Name || producto.NOMBRE || '';
-            const tipo = (producto.tipo || producto.Tipo || producto.TIPO || 'fisico').toLowerCase();
-            const precioCompra = producto.precio_compra || producto.precio_compra || producto.Precio_Compra || producto.price_compra || 
-                                producto['PRECIO DE COMPRA'] || producto['PRECIO DE COMPRA '] || producto['PRECIO COMPRA **'] || '';
-            const precioVenta = producto.precio_venta || producto.precio_venta || producto.Precio_Venta || producto.price_venta || 
-                               producto['PRECIO DE VENTA'] || producto['PRECIO VENTA *'] || '';
-            const stock = producto.stock || producto.Stock || producto.cantidad || producto.Cantidad || producto.STOCK || '';
-            const imagen = producto.imagen || producto.Imagen || producto.IMAGEN || producto['IMAGEN(OPCIONAL)'] || '';
+            const buscarCampoFlexibleLocal = (obj, posiblesNombres) => {
+              // Exacto
+              for (const nombre of posiblesNombres) {
+                if (obj[nombre] !== undefined && obj[nombre] !== null && String(obj[nombre]).trim() !== '') {
+                  return String(obj[nombre]).trim();
+                }
+              }
+              // Normalizado
+              const clavesObjeto = Object.keys(obj);
+              for (const nombreBuscado of posiblesNombres) {
+                const nombreNormalizado = nombreBuscado.toLowerCase().replace(/[_\s-*()]/g, '');
+                for (const clave of clavesObjeto) {
+                  const claveNormalizada = clave.toLowerCase().replace(/[_\s-*()]/g, '');
+                  if (claveNormalizada === nombreNormalizado || claveNormalizada.includes(nombreNormalizado) || nombreNormalizado.includes(claveNormalizada)) {
+                    const valor = obj[clave];
+                    if (valor !== undefined && valor !== null && String(valor).trim() !== '') {
+                      return String(valor).trim();
+                    }
+                  }
+                }
+              }
+              return '';
+            };
+
+            const buscarCampoExactoLocal = (obj, posiblesNombres) => {
+              const clavesObjeto = Object.keys(obj);
+              for (const nombreBuscado of posiblesNombres) {
+                const nombreNormalizado = nombreBuscado.toLowerCase().replace(/[_\s-*()]/g, '');
+                for (const clave of clavesObjeto) {
+                  const claveNormalizada = clave.toLowerCase().replace(/[_\s-*()]/g, '');
+                  if (claveNormalizada === nombreNormalizado) {
+                    const valor = obj[clave];
+                    if (valor !== undefined && valor !== null && String(valor).trim() !== '') {
+                      return String(valor).trim();
+                    }
+                  }
+                }
+              }
+              return '';
+            };
+
+            const codigoRaw = buscarCampoFlexibleLocal(producto, ['codigo', 'codigo_producto', 'sku', 'barcode', 'codigo_barras']) || '';
+            const nombre = buscarCampoFlexibleLocal(producto, ['nombre', 'name', 'producto', 'product', 'descripcion', 'description']) || '';
+            const tipoRaw = buscarCampoFlexibleLocal(producto, ['tipo', 'type', 'categoria', 'category']) || 'fisico';
+            const tipo = tipoRaw.toLowerCase();
+            const precioCompra = buscarCampoFlexibleLocal(producto, ['precio_compra', 'precio compra', 'costo', 'cost']) || '';
+            const precioVenta = buscarCampoFlexibleLocal(producto, ['precio_venta', 'precio venta', 'precio', 'price']) || '';
+            const stock = buscarCampoFlexibleLocal(producto, ['stock', 'cantidad', 'quantity', 'inventario', 'inventory']) || '';
+            const imagen = buscarCampoFlexibleLocal(producto, ['imagen', 'image', 'imagen_url', 'url_imagen']) || '';
+            const fechaVencimiento = buscarCampoFlexibleLocal(producto, ['fecha_vencimiento', 'fecha vencimiento', 'vencimiento']) || '';
+            const varianteNombre = buscarCampoExactoLocal(producto, ['variante_nombre', 'variante nombre', 'variante']) || '';
+            const varianteCodigo = buscarCampoExactoLocal(producto, ['variante_codigo', 'variante codigo']) || '';
+            const varianteStock = buscarCampoExactoLocal(producto, ['variante_stock', 'variante stock']) || '';
             
             // Validar tipo de producto
             const tiposValidos = ['fisico', 'servicio', 'comida', 'accesorio'];
@@ -230,59 +293,106 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
             
             // Acumular problemas encontrados
             const problemas = [];
+            const agregarProblema = (campo, mensaje, valor) => {
+              problemas.push({ campo, mensaje, valor: valor ?? '' });
+            };
             
             // Validar campos requeridos según tipo
+            if (tipoRaw && !tiposValidos.includes(tipo)) {
+              agregarProblema('tipo', `El tipo "${tipoRaw}" no es válido. Usa: ${tiposValidos.join(', ')}`, tipoRaw);
+            }
+            if (!codigoRaw || String(codigoRaw).trim() === '') {
+              agregarProblema('codigo', 'El código del producto es obligatorio', codigoRaw);
+            }
+            
             if (!nombre || nombre.trim() === '') {
-              problemas.push('El nombre del producto es obligatorio');
+              agregarProblema('nombre', 'El nombre del producto es obligatorio', nombre);
             }
             
             if (!precioVenta || precioVenta.toString().trim() === '') {
-              problemas.push('El precio de venta es obligatorio');
+              agregarProblema('precio_venta', 'El precio de venta es obligatorio', precioVenta);
             }
             
             // Validar campos condicionales según tipo
             if ((tipoValido === 'fisico' || tipoValido === 'comida' || tipoValido === 'accesorio') && (!precioCompra || precioCompra.toString().trim() === '')) {
-              problemas.push(`El precio de compra es obligatorio para productos tipo "${tipoValido}"`);
+              agregarProblema('precio_compra', `El precio de compra es obligatorio para productos tipo "${tipoValido}"`, precioCompra);
             }
             
-            if ((tipoValido === 'fisico' || tipoValido === 'comida') && (stock === '' || stock.toString().trim() === '')) {
-              problemas.push(`El stock es obligatorio para productos tipo "${tipoValido}"`);
+            const tieneVariante = Boolean(
+              (varianteNombre && String(varianteNombre).trim() !== '') ||
+              (varianteCodigo && String(varianteCodigo).trim() !== '') ||
+              (varianteStock && String(varianteStock).trim() !== '')
+            );
+            
+            if ((tipoValido === 'fisico' || tipoValido === 'comida') && !tieneVariante && (stock === '' || stock.toString().trim() === '')) {
+              agregarProblema('stock', `El stock es obligatorio para productos tipo "${tipoValido}" cuando no hay variantes`, stock);
+            }
+
+            if (tieneVariante && (!varianteNombre || String(varianteNombre).trim() === '')) {
+              agregarProblema('variante_nombre', 'El nombre de la variante es obligatorio cuando se usan variantes', varianteNombre);
+            }
+
+            if (tieneVariante && (varianteStock === '' || String(varianteStock).trim() === '')) {
+              agregarProblema('variante_stock', 'El stock de la variante es obligatorio cuando se usan variantes', varianteStock);
             }
 
             // Convertir números
             const precioCompraNum = parseFloat(precioCompra);
             const precioVentaNum = parseFloat(precioVenta);
             const stockNum = parseInt(stock);
+            const varianteStockNum = parseInt(varianteStock);
             
             // Validaciones numéricas
             if (precioCompra && precioCompra.toString().trim() !== '' && isNaN(precioCompraNum)) {
-              problemas.push(`El precio de compra "${precioCompra}" no es un número válido`);
+              agregarProblema('precio_compra', `El precio de compra "${precioCompra}" no es un número válido`, precioCompra);
             }
             
             if (precioVenta && precioVenta.toString().trim() !== '' && isNaN(precioVentaNum)) {
-              problemas.push(`El precio de venta "${precioVenta}" no es un número válido`);
+              agregarProblema('precio_venta', `El precio de venta "${precioVenta}" no es un número válido`, precioVenta);
             }
             
             if (stock && stock.toString().trim() !== '' && isNaN(stockNum)) {
-              problemas.push(`El stock "${stock}" no es un número válido`);
+              agregarProblema('stock', `El stock "${stock}" no es un número válido`, stock);
+            }
+
+            if (varianteStock && String(varianteStock).trim() !== '' && isNaN(varianteStockNum)) {
+              agregarProblema('variante_stock', `El stock de variante "${varianteStock}" no es un número válido`, varianteStock);
             }
             
             // Validar que no sean negativos
             if (!isNaN(precioCompraNum) && precioCompraNum < 0) {
-              problemas.push('El precio de compra no puede ser negativo');
+              agregarProblema('precio_compra', 'El precio de compra no puede ser negativo', precioCompra);
             }
             
             if (!isNaN(precioVentaNum) && precioVentaNum < 0) {
-              problemas.push('El precio de venta no puede ser negativo');
+              agregarProblema('precio_venta', 'El precio de venta no puede ser negativo', precioVenta);
             }
             
             if (!isNaN(stockNum) && stockNum < 0) {
-              problemas.push('El stock no puede ser negativo');
+              agregarProblema('stock', 'El stock no puede ser negativo', stock);
+            }
+
+            if (!isNaN(varianteStockNum) && varianteStockNum < 0) {
+              agregarProblema('variante_stock', 'El stock de variante no puede ser negativo', varianteStock);
             }
             
+            // Validar fecha vencimiento (si existe)
+            if (fechaVencimiento && !/^\d{4}-\d{2}-\d{2}$/.test(String(fechaVencimiento).trim())) {
+              agregarProblema('fecha_vencimiento', 'La fecha de vencimiento debe estar en formato YYYY-MM-DD', fechaVencimiento);
+            }
+
+            // Validar códigos duplicados dentro del archivo
+            const codigoFinal = (codigoRaw && String(codigoRaw).trim() !== '')
+              ? String(codigoRaw).trim()
+              : '';
+
+            if (codigosEnArchivo.has(codigoFinal)) {
+              agregarProblema('codigo', `El código "${codigoFinal}" está duplicado en el archivo`, codigoFinal);
+            }
+
             // Validar que precio de venta >= precio de compra
             if (!isNaN(precioCompraNum) && !isNaN(precioVentaNum) && precioVentaNum < precioCompraNum) {
-              problemas.push(`El precio de venta (${precioVentaNum}) no puede ser menor que el precio de compra (${precioCompraNum})`);
+              agregarProblema('precio_venta', `El precio de venta (${precioVentaNum}) no puede ser menor que el precio de compra (${precioCompraNum})`, precioVenta);
             }
             
             // Si hay problemas, agregar a inconsistencias y continuar
@@ -306,8 +416,12 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
               tipo: tipoValido,
               precio_venta: precioVentaFinal,
               organization_id: userProfile?.organization_id,
-              codigo: producto['CODIGO PRODUCTO'] || producto.codigo || producto.Codigo || producto['CODIGO *'] || 'PROD-' + Date.now() + '-' + i,
-              imagen: imagen || null // Guardamos la imagen original para procesar después
+              user_id: userProfile?.user_id || null,
+              codigo: codigoFinal,
+              imagen: imagen || null, // Guardamos la imagen original para procesar después
+              fecha_vencimiento: fechaVencimiento || null,
+              __rowNumber: numeroFila,
+              __productKey: codigoFinal
             };
             
             // Agregar precio_compra solo si tiene valor (obligatorio para fisico, comida, accesorio)
@@ -316,7 +430,9 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
             }
             
             // Agregar stock solo si tiene valor o es obligatorio
-            if (stockFinal > 0 || tipoValido === 'fisico' || tipoValido === 'comida') {
+            if (tieneVariante) {
+              productoFinal.stock = 0;
+            } else if (stockFinal > 0 || tipoValido === 'fisico' || tipoValido === 'comida') {
               productoFinal.stock = stockFinal || 0;
             } else if (tipoValido === 'accesorio' && stockFinal >= 0) {
               productoFinal.stock = stockFinal; // Opcional para accesorio
@@ -334,19 +450,25 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
               }
             });
             
-            // Agregar fecha_vencimiento si existe
-            if (producto.fecha_vencimiento || producto['FECHA VENCIMIENTO (OPCIONAL)'] || producto['FECHA_VENCIMIENTO']) {
-              const fecha = producto.fecha_vencimiento || producto['FECHA VENCIMIENTO (OPCIONAL)'] || producto['FECHA_VENCIMIENTO'];
-              if (fecha && fecha.toString().trim() !== '') {
-                metadata.fecha_vencimiento = fecha.toString().trim();
-              }
-            }
+            // fecha_vencimiento ya se guarda en columna directa (no metadata)
             
             // Agregar metadata solo si tiene campos
             if (Object.keys(metadata).length > 0) {
               productoFinal.metadata = metadata;
             }
             productos.push(productoFinal);
+            codigosEnArchivo.add(codigoFinal);
+
+            if (tieneVariante) {
+              variantesEncontradas.push({
+                productKey: codigoFinal,
+                nombre: String(varianteNombre || '').trim(),
+                codigo: String(varianteCodigo || '').trim() || null,
+                stock: !isNaN(varianteStockNum) ? varianteStockNum : 0,
+                fila: numeroFila,
+                producto: nombre || codigoFinal
+              });
+            }
           }
           
           if (productos.length === 0) {
@@ -385,7 +507,7 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
             })
           );
 
-          resolve({ productos: productosConImagenes, inconsistencias: inconsistenciasEncontradas });
+          resolve({ productos: productosConImagenes, inconsistencias: inconsistenciasEncontradas, variantes: variantesEncontradas });
         } catch (error) {
           reject(error);
         }
@@ -425,6 +547,23 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
     return '';
   };
 
+  const buscarCampoExacto = (obj, posiblesNombres) => {
+    const clavesObjeto = Object.keys(obj);
+    for (const nombreBuscado of posiblesNombres) {
+      const nombreNormalizado = nombreBuscado.toLowerCase().replace(/[_\s-*()]/g, '');
+      for (const clave of clavesObjeto) {
+        const claveNormalizada = clave.toLowerCase().replace(/[_\s-*()]/g, '');
+        if (claveNormalizada === nombreNormalizado) {
+          const valor = obj[clave];
+          if (valor !== undefined && valor !== null && String(valor).trim() !== '') {
+            return String(valor).trim();
+          }
+        }
+      }
+    }
+    return '';
+  };
+
   const parseCSV = async (text) => {
     const lines = text.split('\n').filter(line => line.trim());
     if (lines.length < 2) {
@@ -433,13 +572,13 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
 
     // Buscar la línea con los headers (validación ultra flexible)
     let headerLineIndex = -1;
-    const requiredHeaders = ['nombre', 'precio_compra', 'precio_venta', 'stock'];
+    const requiredHeadersBusqueda = ['nombre', 'precio_compra', 'precio_venta', 'stock'];
     
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].toLowerCase();
       const headers = line.split(',').map(h => h.trim().replace(/"/g, '').toLowerCase());
       // Verificar si esta línea contiene al menos 2 de los 4 headers requeridos
-      const foundHeaders = requiredHeaders.filter(required => 
+      const foundHeaders = requiredHeadersBusqueda.filter(required => 
         headers.some(header => 
           header.includes(required) || 
           header.includes(required.replace('_', ' ')) ||
@@ -500,6 +639,28 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
       normalized = normalized.replace(/^_+|_+$/g, '');
       return normalized;
     });
+
+    const normalizarHeader = (valor) => String(valor || '')
+      .toLowerCase()
+      .replace(/\*/g, '')
+      .replace(/[_\s\-()]/g, '');
+    const headersNormalizados = headers.map(normalizarHeader);
+    const requiredHeaders = ['codigo', 'nombre', 'tipo', 'preciocompra', 'precioventa', 'stock'];
+    const missingHeaders = requiredHeaders.filter(req => !headersNormalizados.some(h => h.includes(req)));
+    if (missingHeaders.length > 0) {
+      return {
+        productos: [],
+        inconsistencias: [{
+          fila: headerLineIndex + 1,
+          producto: 'Encabezados',
+          problemas: missingHeaders.map((campo) => ({
+            campo,
+            mensaje: 'Columna requerida no encontrada en el archivo',
+            valor: ''
+          }))
+        }]
+      };
+    }
     
     // Debug: mostrar headers detectados
     console.log('=== HEADERS DETECTADOS ===');
@@ -515,6 +676,8 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
 
     const productos = [];
     const inconsistenciasEncontradas = [];
+    const variantesEncontradas = [];
+    const codigosEnArchivo = new Set();
     // Procesar solo las líneas después de los headers
     for (let i = headerLineIndex + 1; i < lines.length; i++) {
       const numeroFila = i + 1; // Fila real en CSV (1-indexed)
@@ -542,7 +705,11 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
         inconsistenciasEncontradas.push({
           fila: numeroFila,
           producto: 'Fila con columnas incorrectas',
-          problemas: [`La fila tiene ${values.length} columnas pero se esperan ${headers.length} columnas. Headers esperados: ${headersRaw.join(', ')}`]
+          problemas: [{
+            campo: 'fila',
+            mensaje: `La fila tiene ${values.length} columnas pero se esperan ${headers.length} columnas. Headers esperados: ${headersRaw.join(', ')}`,
+            valor: ''
+          }]
         });
         continue;
       }
@@ -572,11 +739,13 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
       // Buscar campos de forma flexible usando los headers normalizados
       if (debugMode) console.log(`\nBuscando campos para fila ${numeroFila}:`);
       
+      const codigoRaw = buscarCampoFlexible(producto, ['codigo', 'codigo_producto', 'sku', 'barcode', 'codigo_barras'], debugMode) || '';
       // Buscar nombre (puede ser: nombre, name, producto, product, etc.)
       const nombre = buscarCampoFlexible(producto, ['nombre', 'name', 'producto', 'product', 'descripcion', 'description'], debugMode) || '';
       
       // Buscar tipo
-      const tipo = (buscarCampoFlexible(producto, ['tipo', 'type', 'categoria', 'category'], debugMode) || 'fisico').toLowerCase();
+      const tipoRaw = buscarCampoFlexible(producto, ['tipo', 'type', 'categoria', 'category'], debugMode) || 'fisico';
+      const tipo = tipoRaw.toLowerCase();
       
       // Buscar precio de compra (puede ser: precio_compra, precio compra, costo, cost, etc.)
       const precioCompra = buscarCampoFlexible(producto, ['precio_compra', 'costo', 'cost'], debugMode) || '';
@@ -589,6 +758,10 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
       
       // Buscar imagen
       const imagen = buscarCampoFlexible(producto, ['imagen', 'image', 'imagen_url', 'url_imagen'], debugMode) || '';
+      const fechaVencimiento = buscarCampoFlexible(producto, ['fecha_vencimiento', 'fecha vencimiento', 'vencimiento'], debugMode) || '';
+      const varianteNombre = buscarCampoExacto(producto, ['variante_nombre', 'variante nombre', 'variante']) || '';
+      const varianteCodigo = buscarCampoExacto(producto, ['variante_codigo', 'variante codigo']) || '';
+      const varianteStock = buscarCampoExacto(producto, ['variante_stock', 'variante stock']) || '';
       
       // Debug: mostrar valores encontrados para las primeras filas o si hay problemas
       if (debugMode || (!nombre || !stock)) {
@@ -606,59 +779,106 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
       
       // Acumular problemas encontrados
       const problemas = [];
+      const agregarProblema = (campo, mensaje, valor) => {
+        problemas.push({ campo, mensaje, valor: valor ?? '' });
+      };
       
       // Validar campos requeridos según tipo
+      if (tipoRaw && !tiposValidos.includes(tipo)) {
+        agregarProblema('tipo', `El tipo "${tipoRaw}" no es válido. Usa: ${tiposValidos.join(', ')}`, tipoRaw);
+      }
+      if (!codigoRaw || String(codigoRaw).trim() === '') {
+        agregarProblema('codigo', 'El código del producto es obligatorio', codigoRaw);
+      }
+
       if (!nombre || nombre.trim() === '') {
-        problemas.push('El nombre del producto es obligatorio');
+        agregarProblema('nombre', 'El nombre del producto es obligatorio', nombre);
       }
       
       if (!precioVenta || precioVenta.toString().trim() === '') {
-        problemas.push('El precio de venta es obligatorio');
+        agregarProblema('precio_venta', 'El precio de venta es obligatorio', precioVenta);
       }
       
       // Validar campos condicionales según tipo
       if ((tipoValido === 'fisico' || tipoValido === 'comida' || tipoValido === 'accesorio') && (!precioCompra || precioCompra.toString().trim() === '')) {
-        problemas.push(`El precio de compra es obligatorio para productos tipo "${tipoValido}"`);
+        agregarProblema('precio_compra', `El precio de compra es obligatorio para productos tipo "${tipoValido}"`, precioCompra);
       }
       
-      if ((tipoValido === 'fisico' || tipoValido === 'comida') && (stock === '' || stock.toString().trim() === '')) {
-        problemas.push(`El stock es obligatorio para productos tipo "${tipoValido}"`);
+      const tieneVariante = Boolean(
+        (varianteNombre && String(varianteNombre).trim() !== '') ||
+        (varianteCodigo && String(varianteCodigo).trim() !== '') ||
+        (varianteStock && String(varianteStock).trim() !== '')
+      );
+      
+      if ((tipoValido === 'fisico' || tipoValido === 'comida') && !tieneVariante && (stock === '' || stock.toString().trim() === '')) {
+        agregarProblema('stock', `El stock es obligatorio para productos tipo "${tipoValido}" cuando no hay variantes`, stock);
+      }
+
+      if (tieneVariante && (!varianteNombre || String(varianteNombre).trim() === '')) {
+        agregarProblema('variante_nombre', 'El nombre de la variante es obligatorio cuando se usan variantes', varianteNombre);
+      }
+
+      if (tieneVariante && (varianteStock === '' || String(varianteStock).trim() === '')) {
+        agregarProblema('variante_stock', 'El stock de la variante es obligatorio cuando se usan variantes', varianteStock);
       }
 
       // Convertir números
       const precioCompraNum = parseFloat(precioCompra);
       const precioVentaNum = parseFloat(precioVenta);
       const stockNum = parseInt(stock);
+      const varianteStockNum = parseInt(varianteStock);
       
       // Validar que sean números válidos
       if (precioCompra && precioCompra.toString().trim() !== '' && isNaN(precioCompraNum)) {
-        problemas.push(`El precio de compra "${precioCompra}" no es un número válido`);
+        agregarProblema('precio_compra', `El precio de compra "${precioCompra}" no es un número válido`, precioCompra);
       }
       
       if (precioVenta && precioVenta.toString().trim() !== '' && isNaN(precioVentaNum)) {
-        problemas.push(`El precio de venta "${precioVenta}" no es un número válido`);
+        agregarProblema('precio_venta', `El precio de venta "${precioVenta}" no es un número válido`, precioVenta);
       }
       
       if (stock && stock.toString().trim() !== '' && isNaN(stockNum)) {
-        problemas.push(`El stock "${stock}" no es un número válido`);
+        agregarProblema('stock', `El stock "${stock}" no es un número válido`, stock);
+      }
+
+      if (varianteStock && String(varianteStock).trim() !== '' && isNaN(varianteStockNum)) {
+        agregarProblema('variante_stock', `El stock de variante "${varianteStock}" no es un número válido`, varianteStock);
       }
 
       // Validar que no sean negativos
       if (!isNaN(precioCompraNum) && precioCompraNum < 0) {
-        problemas.push('El precio de compra no puede ser negativo');
+        agregarProblema('precio_compra', 'El precio de compra no puede ser negativo', precioCompra);
       }
       
       if (!isNaN(precioVentaNum) && precioVentaNum < 0) {
-        problemas.push('El precio de venta no puede ser negativo');
+        agregarProblema('precio_venta', 'El precio de venta no puede ser negativo', precioVenta);
       }
       
       if (!isNaN(stockNum) && stockNum < 0) {
-        problemas.push('El stock no puede ser negativo');
+        agregarProblema('stock', 'El stock no puede ser negativo', stock);
+      }
+
+      if (!isNaN(varianteStockNum) && varianteStockNum < 0) {
+        agregarProblema('variante_stock', 'El stock de variante no puede ser negativo', varianteStock);
       }
       
+      // Validar fecha vencimiento (si existe)
+      if (fechaVencimiento && !/^\d{4}-\d{2}-\d{2}$/.test(String(fechaVencimiento).trim())) {
+        agregarProblema('fecha_vencimiento', 'La fecha de vencimiento debe estar en formato YYYY-MM-DD', fechaVencimiento);
+      }
+
+      // Validar códigos duplicados dentro del archivo
+      const codigoFinal = (codigoRaw && String(codigoRaw).trim() !== '')
+        ? String(codigoRaw).trim()
+        : '';
+      
+      if (codigosEnArchivo.has(codigoFinal)) {
+        agregarProblema('codigo', `El código "${codigoFinal}" está duplicado en el archivo`, codigoFinal);
+      }
+
       // Validar que precio de venta >= precio de compra
       if (!isNaN(precioCompraNum) && !isNaN(precioVentaNum) && precioVentaNum < precioCompraNum) {
-        problemas.push(`El precio de venta (${precioVentaNum}) no puede ser menor que el precio de compra (${precioCompraNum})`);
+        agregarProblema('precio_venta', `El precio de venta (${precioVentaNum}) no puede ser menor que el precio de compra (${precioCompraNum})`, precioVenta);
       }
       
       // Si hay problemas, agregar a inconsistencias y continuar
@@ -682,8 +902,12 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
         tipo: tipoValido,
         precio_venta: precioVentaFinal,
         organization_id: userProfile?.organization_id,
-        codigo: producto.codigo || producto.Codigo || producto.CODIGO || producto['CODIGO *'] || 'PROD-' + Date.now() + '-' + i,
-        imagen: imagen || null // Guardamos la imagen original para procesar después
+        user_id: userProfile?.user_id || null,
+        codigo: codigoFinal,
+        imagen: imagen || null, // Guardamos la imagen original para procesar después
+        fecha_vencimiento: fechaVencimiento || null,
+        __rowNumber: numeroFila,
+        __productKey: codigoFinal
       };
       
       // Agregar precio_compra solo si tiene valor (obligatorio para fisico, comida, accesorio)
@@ -692,7 +916,9 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
       }
       
       // Agregar stock solo si tiene valor o es obligatorio
-      if (stockFinal > 0 || tipoValido === 'fisico' || tipoValido === 'comida') {
+      if (tieneVariante) {
+        productoFinal.stock = 0;
+      } else if (stockFinal > 0 || tipoValido === 'fisico' || tipoValido === 'comida') {
         productoFinal.stock = stockFinal || 0;
       } else if (tipoValido === 'accesorio' && stockFinal >= 0) {
         productoFinal.stock = stockFinal; // Opcional para accesorio
@@ -710,19 +936,25 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
         }
       });
       
-      // Agregar fecha_vencimiento si existe
-      if (producto.fecha_vencimiento || producto['FECHA VENCIMIENTO (OPCIONAL)'] || producto['FECHA_VENCIMIENTO']) {
-        const fecha = producto.fecha_vencimiento || producto['FECHA VENCIMIENTO (OPCIONAL)'] || producto['FECHA_VENCIMIENTO'];
-        if (fecha && fecha.toString().trim() !== '') {
-          metadata.fecha_vencimiento = fecha.toString().trim();
-        }
-      }
+      // fecha_vencimiento ya se guarda en columna directa (no metadata)
       
       // Agregar metadata solo si tiene campos
       if (Object.keys(metadata).length > 0) {
         productoFinal.metadata = metadata;
       }
       productos.push(productoFinal);
+      codigosEnArchivo.add(codigoFinal);
+
+      if (tieneVariante) {
+        variantesEncontradas.push({
+          productKey: codigoFinal,
+          nombre: String(varianteNombre || '').trim(),
+          codigo: String(varianteCodigo || '').trim() || null,
+          stock: !isNaN(varianteStockNum) ? varianteStockNum : 0,
+          fila: numeroFila,
+          producto: nombre || codigoFinal
+        });
+      }
     }
     
     // Procesar imágenes de todos los productos
@@ -753,7 +985,7 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
     );
     
     // Retornar productos e inconsistencias
-    return { productos: productosConImagenes, inconsistencias: inconsistenciasEncontradas };
+    return { productos: productosConImagenes, inconsistencias: inconsistenciasEncontradas, variantes: variantesEncontradas };
   };
 
   const handleImportar = async () => {
@@ -776,29 +1008,35 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
       const isExcel = archivo.name.endsWith('.xlsx') || archivo.name.endsWith('.xls');
       
       let productos;
+      let variantes = [];
       
       let resultado;
       
-      if (isExcel) {
-        resultado = await parseExcel(archivo);
-      } else if (isCSV) {
-        const text = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = (e) => resolve(e.target.result);
-          reader.onerror = reject;
-          reader.readAsText(archivo);
-        });
-        resultado = await parseCSV(text);
+      if (!modoRevision) {
+        if (isExcel) {
+          resultado = await parseExcel(archivo);
+        } else if (isCSV) {
+          const text = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = reject;
+            reader.readAsText(archivo);
+          });
+          resultado = await parseCSV(text);
+        } else {
+          throw new Error('Formato de archivo no soportado.');
+        }
       } else {
-        throw new Error('Formato de archivo no soportado.');
+        resultado = { productos: productosRevision, variantes: variantesRevision, inconsistencias };
       }
       
       // Extraer productos e inconsistencias del resultado
       productos = resultado.productos || [];
+      variantes = resultado.variantes || [];
       const inconsistenciasParseadas = resultado.inconsistencias || [];
       
       // Guardar inconsistencias en el estado
-      if (inconsistenciasParseadas.length > 0) {
+      if (inconsistenciasParseadas.length > 0 && !modoRevision) {
         setInconsistencias(inconsistenciasParseadas);
       }
       
@@ -811,13 +1049,77 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
         throw new Error('No se encontraron productos válidos en el archivo.');
       }
 
-      // Insertar productos en lotes
+      if (!modoRevision) {
+        const filasConErrores = new Set((inconsistenciasParseadas || []).map((inc) => inc.fila));
+        setProductosRevision(productos);
+        setVariantesRevision(variantes);
+        setSeleccionadosRevision(productos.filter(p => !filasConErrores.has(p.__rowNumber)).map(p => p.__rowNumber));
+        setModoRevision(true);
+        setProcesando(false);
+        return;
+      }
+
+      const productosFiltrados = productos.filter(p => seleccionadosRevision.includes(p.__rowNumber));
+      const productKeysSeleccionados = new Set(productosFiltrados.map(p => p.__productKey));
+      const variantesFiltradas = (variantes || []).filter(v => productKeysSeleccionados.has(String(v.productKey).trim()));
+      productos = productosFiltrados;
+      variantes = variantesFiltradas;
+
+      const erroresSubida = [];
+      const productosInsertados = [];
+      const productosActualizados = [];
+      const productosPayload = productos.map(({ __rowNumber, __productKey, ...rest }) => rest);
+
+      // Buscar productos existentes por código en la organización
+      const codigosProductos = productosPayload
+        .map((p) => String(p.codigo || '').trim())
+        .filter(Boolean);
+      const productosExistentesMap = new Map();
+      const chunkSize = 200;
+      for (let i = 0; i < codigosProductos.length; i += chunkSize) {
+        const chunk = codigosProductos.slice(i, i + chunkSize);
+        const { data: existentes, error: errorExistentes } = await supabase
+          .from('productos')
+          .select('id,codigo')
+          .eq('organization_id', userProfile.organization_id)
+          .in('codigo', chunk);
+        if (errorExistentes) {
+          throw errorExistentes;
+        }
+        (existentes || []).forEach((prod) => {
+          if (prod.codigo) {
+            productosExistentesMap.set(String(prod.codigo).trim(), prod.id);
+          }
+        });
+      }
+
+      const nuevos = [];
+      const nuevosMeta = [];
+      const actualizar = [];
+      const actualizarMeta = [];
+
+      productosPayload.forEach((payload, index) => {
+        const meta = productos[index];
+        const codigo = String(payload.codigo || '').trim();
+        const existenteId = productosExistentesMap.get(codigo);
+        if (existenteId) {
+          actualizar.push({ id: existenteId, payload });
+          actualizarMeta.push(meta);
+        } else {
+          nuevos.push(payload);
+          nuevosMeta.push(meta);
+        }
+      });
+
+      // Insertar productos nuevos en lotes
       const batchSize = 10;
       let insertados = 0;
+      let actualizados = 0;
       let errores = 0;
 
-      for (let i = 0; i < productos.length; i += batchSize) {
-        const batch = productos.slice(i, i + batchSize);
+      for (let i = 0; i < nuevos.length; i += batchSize) {
+        const batch = nuevos.slice(i, i + batchSize);
+        const batchMeta = nuevosMeta.slice(i, i + batchSize);
         
         const { data, error } = await supabase
           .from('productos')
@@ -826,17 +1128,225 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
 
         if (error) {
           console.error('Error insertando lote:', error);
-          errores += batch.length;
+          // Reintentar individualmente para identificar fila/campo exacto
+          for (let j = 0; j < batch.length; j++) {
+            const productoPayload = batch[j];
+            const productoMeta = batchMeta[j];
+            const { data: dataOne, error: errorOne } = await supabase
+              .from('productos')
+              .insert(productoPayload)
+              .select();
+
+            if (errorOne) {
+              const fieldMatch = errorOne.message?.match(/column "([^"]+)"/i);
+              const campo = fieldMatch ? fieldMatch[1] : 'desconocido';
+              erroresSubida.push({
+                fila: productoMeta.__rowNumber || '-',
+                producto: productoMeta.nombre || productoMeta.codigo || 'Producto sin nombre',
+                problemas: [{
+                  campo,
+                  mensaje: errorOne.message || 'Error desconocido',
+                  valor: ''
+                }]
+              });
+              errores += 1;
+            } else if (dataOne && dataOne.length > 0) {
+              insertados += dataOne.length;
+              productosInsertados.push(...dataOne);
+            }
+          }
         } else {
           insertados += data.length;
+          productosInsertados.push(...data);
         }
+      }
+
+      // Actualizar productos existentes
+      for (let i = 0; i < actualizar.length; i++) {
+        const { id, payload } = actualizar[i];
+        const meta = actualizarMeta[i];
+        const updatePayload = { ...payload };
+        delete updatePayload.organization_id;
+        delete updatePayload.user_id;
+        const { data: dataUpdate, error: errorUpdate } = await supabase
+          .from('productos')
+          .update(updatePayload)
+          .eq('id', id)
+          .select();
+        if (errorUpdate) {
+          const fieldMatch = errorUpdate.message?.match(/column "([^"]+)"/i);
+          const campo = fieldMatch ? fieldMatch[1] : 'desconocido';
+          erroresSubida.push({
+            fila: meta.__rowNumber || '-',
+            producto: meta.nombre || meta.codigo || 'Producto sin nombre',
+            problemas: [{
+              campo,
+              mensaje: errorUpdate.message || 'Error desconocido',
+              valor: ''
+            }]
+          });
+          errores += 1;
+        } else if (dataUpdate && dataUpdate.length > 0) {
+          actualizados += dataUpdate.length;
+          productosActualizados.push(...dataUpdate);
+        }
+      }
+
+      // Insertar variantes si existen
+      let variantesInsertadas = 0;
+      if (variantes.length > 0) {
+        const productoIdMap = new Map(productosExistentesMap);
+        productosInsertados.forEach((prod) => {
+          if (prod.codigo) {
+            productoIdMap.set(String(prod.codigo).trim(), prod.id);
+          }
+        });
+
+        const variantesPayload = variantes
+          .map((vari) => {
+            const productoId = productoIdMap.get(String(vari.productKey).trim());
+            if (!productoId) {
+              erroresSubida.push({
+                fila: vari.fila || '-',
+                producto: vari.producto || vari.productKey || 'Variante',
+                problemas: ['No se encontró el producto para asociar esta variante']
+              });
+              return null;
+            }
+            return {
+              payload: {
+                organization_id: userProfile?.organization_id,
+                producto_id: productoId,
+                nombre: vari.nombre,
+                codigo: vari.codigo || null,
+                stock: vari.stock ?? 0
+              },
+              meta: {
+                fila: vari.fila,
+                producto: vari.producto || vari.productKey,
+                nombre: vari.nombre
+              }
+            };
+          })
+          .filter(Boolean);
+
+        // Preparar mapa de variantes existentes
+        const productoIds = Array.from(new Set(variantesPayload.map((v) => v.payload.producto_id)));
+        const variantesExistentesMap = new Map();
+        for (let i = 0; i < productoIds.length; i += chunkSize) {
+          const chunk = productoIds.slice(i, i + chunkSize);
+          const { data: variantesExistentes, error: errorVarExist } = await supabase
+            .from('product_variants')
+            .select('id,producto_id,nombre,codigo,organization_id')
+            .eq('organization_id', userProfile.organization_id)
+            .in('producto_id', chunk);
+          if (errorVarExist) {
+            throw errorVarExist;
+          }
+          (variantesExistentes || []).forEach((vari) => {
+            if (vari.codigo) {
+              variantesExistentesMap.set(`codigo:${String(vari.codigo).trim()}`, vari.id);
+            }
+            if (vari.producto_id && vari.nombre) {
+              variantesExistentesMap.set(`nombre:${vari.producto_id}:${String(vari.nombre).trim().toLowerCase()}`, vari.id);
+            }
+          });
+        }
+
+        const variantesParaInsertar = [];
+        const variantesParaActualizar = [];
+        variantesPayload.forEach((item) => {
+          const codigo = item.payload.codigo ? String(item.payload.codigo).trim() : '';
+          const nombreKey = `nombre:${item.payload.producto_id}:${String(item.payload.nombre || '').trim().toLowerCase()}`;
+          const codigoKey = codigo ? `codigo:${codigo}` : '';
+          const varianteId = codigoKey && variantesExistentesMap.has(codigoKey)
+            ? variantesExistentesMap.get(codigoKey)
+            : (variantesExistentesMap.has(nombreKey) ? variantesExistentesMap.get(nombreKey) : null);
+          if (varianteId) {
+            variantesParaActualizar.push({ id: varianteId, payload: item.payload, meta: item.meta });
+          } else {
+            variantesParaInsertar.push(item);
+          }
+        });
+
+        for (let i = 0; i < variantesParaInsertar.length; i += batchSize) {
+          const batch = variantesParaInsertar.slice(i, i + batchSize);
+          const batchPayload = batch.map((item) => item.payload);
+          const { data: dataVar, error: errorVar } = await supabase
+            .from('product_variants')
+            .insert(batchPayload)
+            .select();
+
+          if (errorVar) {
+            console.error('Error insertando variantes:', errorVar);
+            for (let j = 0; j < batch.length; j++) {
+              const variPayload = batch[j].payload;
+              const variMeta = batch[j].meta;
+              const { data: dataOne, error: errorOne } = await supabase
+                .from('product_variants')
+                .insert(variPayload)
+                .select();
+              if (errorOne) {
+                const fieldMatch = errorOne.message?.match(/column "([^"]+)"/i);
+                const campo = fieldMatch ? fieldMatch[1] : 'desconocido';
+              erroresSubida.push({
+                fila: variMeta.fila || '-',
+                producto: variMeta.producto || variMeta.nombre || 'Variante',
+                problemas: [{
+                  campo,
+                  mensaje: errorOne.message || 'Error desconocido',
+                  valor: ''
+                }]
+              });
+                errores += 1;
+              } else if (dataOne && dataOne.length > 0) {
+                variantesInsertadas += dataOne.length;
+              }
+            }
+          } else if (dataVar) {
+            variantesInsertadas += dataVar.length;
+          }
+        }
+
+        for (let i = 0; i < variantesParaActualizar.length; i++) {
+          const { id, payload, meta } = variantesParaActualizar[i];
+          const updatePayload = { ...payload };
+          delete updatePayload.organization_id;
+          const { data: dataUpdate, error: errorUpdate } = await supabase
+            .from('product_variants')
+            .update(updatePayload)
+            .eq('id', id)
+            .select();
+          if (errorUpdate) {
+            const fieldMatch = errorUpdate.message?.match(/column "([^"]+)"/i);
+            const campo = fieldMatch ? fieldMatch[1] : 'desconocido';
+            erroresSubida.push({
+              fila: meta.fila || '-',
+              producto: meta.producto || meta.nombre || 'Variante',
+              problemas: [{
+                campo,
+                mensaje: errorUpdate.message || 'Error desconocido',
+                valor: ''
+              }]
+            });
+            errores += 1;
+          } else if (dataUpdate && dataUpdate.length > 0) {
+            // No mostrar contador separado por ahora
+          }
+        }
+      }
+
+      if (erroresSubida.length > 0) {
+        setInconsistencias(prev => [...prev, ...erroresSubida]);
       }
 
       setResultado({
         total: productos.length,
         insertados,
+        actualizados,
         errores,
-        productos: productos.slice(0, 5) // Primeros 5 para preview
+        productos: productos.slice(0, 5), // Primeros 5 para preview
+        variantes: variantesInsertadas
       });
 
       if (insertados > 0 && onProductosImportados) {
@@ -868,6 +1378,21 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
     document.body.removeChild(link);
   };
 
+  useEffect(() => {
+    if (!open) {
+      setArchivo(null);
+      setProcesando(false);
+      setResultado(null);
+      setError('');
+      setPreview(null);
+      setInconsistencias([]);
+      setModoRevision(false);
+      setProductosRevision([]);
+      setVariantesRevision([]);
+      setSeleccionadosRevision([]);
+    }
+  }, [open]);
+
   if (!open) return null;
 
   return (
@@ -894,6 +1419,8 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
               <h4>📝 Instrucciones:</h4>
               <ul>
                 <li><strong>NO modifiques</strong> los títulos (celdas bloqueadas)</li>
+                <li><strong>Campos requeridos:</strong> codigo, nombre, tipo, precio_compra, precio_venta, stock</li>
+                <li><strong>Si usas variantes:</strong> llena variante_nombre y variante_stock (stock global puede quedar vacío)</li>
                 <li><strong>Completa</strong> los datos en las filas vacías</li>
                 <li><strong>Usa números</strong> para precios y stock</li>
                 <li><strong>Excel:</strong> Guarda como .xlsx antes de importar</li>
@@ -935,6 +1462,75 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
             </div>
           )}
 
+          {modoRevision && productosRevision.length > 0 && (
+            <div className="importar-csv-section">
+              <h3>✅ Revisión antes de subir</h3>
+              <p>Selecciona cuáles productos deseas subir. Los que tengan errores no se pueden seleccionar.</p>
+              <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem' }}>
+                <button
+                  type="button"
+                  className="importar-csv-btn importar-csv-btn-secondary"
+                  onClick={() => {
+                    const filasConErrores = new Set((inconsistencias || []).map((inc) => inc.fila));
+                    setSeleccionadosRevision(productosRevision.filter(p => !filasConErrores.has(p.__rowNumber)).map(p => p.__rowNumber));
+                  }}
+                >
+                  Seleccionar todos
+                </button>
+                <button
+                  type="button"
+                  className="importar-csv-btn importar-csv-btn-secondary"
+                  onClick={() => setSeleccionadosRevision([])}
+                >
+                  Limpiar selección
+                </button>
+                <button
+                  type="button"
+                  className="importar-csv-btn importar-csv-btn-secondary"
+                  onClick={() => {
+                    setModoRevision(false);
+                    setProductosRevision([]);
+                    setVariantesRevision([]);
+                    setSeleccionadosRevision([]);
+                  }}
+                >
+                  Volver a revisar archivo
+                </button>
+              </div>
+              <div className="importar-csv-inconsistencias-list">
+                {productosRevision.map((prod, idx) => {
+                  const tieneError = inconsistencias.some(inc => inc.fila === prod.__rowNumber);
+                  return (
+                    <div key={`${prod.__rowNumber}-${idx}`} className="importar-csv-inconsistencia-item">
+                      <div className="importar-csv-inconsistencia-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <strong>Fila {prod.__rowNumber}:</strong> {prod.nombre || prod.codigo}
+                          {tieneError && <span style={{ color: '#ef4444', marginLeft: '0.5rem' }}>Con errores</span>}
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={seleccionadosRevision.includes(prod.__rowNumber)}
+                          onChange={() => {
+                            if (tieneError) return;
+                            setSeleccionadosRevision(prev => (
+                              prev.includes(prod.__rowNumber)
+                                ? prev.filter(id => id !== prod.__rowNumber)
+                                : [...prev, prod.__rowNumber]
+                            ));
+                          }}
+                          disabled={tieneError}
+                        />
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+                        Código: {prod.codigo} · Precio venta: {prod.precio_venta}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {error && inconsistencias.length === 0 && (
             <div className="importar-csv-error">
               ❌ {error}
@@ -952,9 +1548,18 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
                       <strong>Fila {inc.fila}:</strong> {inc.producto}
                     </div>
                     <ul className="importar-csv-inconsistencia-problemas">
-                      {inc.problemas.map((problema, pIndex) => (
-                        <li key={pIndex}>• {problema}</li>
-                      ))}
+                      {inc.problemas.map((problema, pIndex) => {
+                        if (typeof problema === 'string') {
+                          return <li key={pIndex}>• {problema}</li>;
+                        }
+                        const campo = problema.campo ? `Campo "${problema.campo}"` : 'Campo';
+                        const valor = problema.valor !== undefined && problema.valor !== '' ? ` (valor: ${problema.valor})` : '';
+                        return (
+                          <li key={pIndex}>
+                            • {campo}: {problema.mensaje}{valor}
+                          </li>
+                        );
+                      })}
                     </ul>
                   </div>
                 ))}
@@ -974,10 +1579,22 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
                   <span className="importar-csv-stat-label">Insertados:</span>
                   <span className="importar-csv-stat-value success">{resultado.insertados}</span>
                 </div>
+                {resultado.actualizados > 0 && (
+                  <div className="importar-csv-stat">
+                    <span className="importar-csv-stat-label">Actualizados:</span>
+                    <span className="importar-csv-stat-value">{resultado.actualizados}</span>
+                  </div>
+                )}
                 {resultado.errores > 0 && (
                   <div className="importar-csv-stat">
                     <span className="importar-csv-stat-label">Errores:</span>
                     <span className="importar-csv-stat-value error">{resultado.errores}</span>
+                  </div>
+                )}
+                {resultado.variantes !== undefined && (
+                  <div className="importar-csv-stat">
+                    <span className="importar-csv-stat-label">Variantes insertadas:</span>
+                    <span className="importar-csv-stat-value">{resultado.variantes}</span>
                   </div>
                 )}
               </div>
@@ -1007,7 +1624,7 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
               onClick={handleImportar}
               disabled={!archivo || procesando}
             >
-              {procesando ? '⏳ Procesando...' : '📊 Importar Productos'}
+              {procesando ? '⏳ Procesando...' : (modoRevision ? '📤 Subir seleccionados' : '🔎 Revisar archivo')}
             </button>
             <button 
               className="importar-csv-btn importar-csv-btn-secondary"
