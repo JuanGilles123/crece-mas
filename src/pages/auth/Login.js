@@ -113,6 +113,7 @@ const Login = () => {
     setLoading(false);
   };
 
+
   return (
     <div className={styles.container}>
       <TerminosModal open={showTerms} onClose={()=>setShowTerms(false)} />
@@ -139,8 +140,13 @@ const Login = () => {
           transition={{ duration: 0.6 }}
         >
           <div className={styles.logo}>
-            <TrendingUp size={40} />
-            <h1>Crece+</h1>
+            <img
+              src="/logo-crece.svg"
+              alt="Crece+"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
           </div>
           <h2>¡Bienvenido de vuelta!</h2>
           <p>Accede a tu panel de control y continúa gestionando tu negocio de manera eficiente.</p>
