@@ -7,7 +7,7 @@ import { ClipboardList } from 'lucide-react';
 import './ImportarProductosCSV.css';
 
 const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
-  const { user, userProfile } = useAuth();
+  const { userProfile } = useAuth();
   const [archivo, setArchivo] = useState(null);
   const [procesando, setProcesando] = useState(false);
   const [resultado, setResultado] = useState(null);
@@ -45,11 +45,23 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
         return null;
       }
 
+      // Validar el nombre del archivo antes de comprimir
+      const { validateFilename, generateStoragePath } = await import('../../utils/fileUtils');
+      const validation = validateFilename(archivoImagen.name);
+      if (!validation.isValid) {
+        throw new Error(validation.error);
+      }
+
       // Comprimir la imagen
       const imagenComprimida = await compressProductImage(archivoImagen);
       
-      // Subir a Supabase Storage
-      const nombreArchivo = `${user.id}/${Date.now()}_${imagenComprimida.name}`;
+      // Subir a Supabase Storage usando organization_id (requerido por RLS)
+      const organizationId = userProfile?.organization_id;
+      if (!organizationId) {
+        console.error('No se encontró organization_id para subir imagen');
+        return null;
+      }
+      const nombreArchivo = generateStoragePath(organizationId, imagenComprimida.name);
       const { error: errorUpload } = await supabase.storage
         .from('productos')
         .upload(nombreArchivo, imagenComprimida);

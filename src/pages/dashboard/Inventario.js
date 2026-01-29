@@ -13,7 +13,7 @@ import InventarioStats from '../../components/inventario/InventarioStats';
 import InventarioFilters from '../../components/inventario/InventarioFilters';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../services/api/supabaseClient';
-import { List, Grid3X3, PackagePlus, Search } from 'lucide-react';
+import { List, Grid3X3, PackagePlus, Search, RefreshCw } from 'lucide-react';
 import { useProductos, useEliminarProducto } from '../../hooks/useProductos';
 import EntradaInventarioModal from '../../components/modals/EntradaInventarioModal';
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
@@ -51,7 +51,7 @@ const Inventario = () => {
   const moneda = user?.user_metadata?.moneda || 'COP';
 
   // React Query hooks - usar organization?.id en lugar de user?.id
-  const { data: productos = [], isLoading: cargando, error } = useProductos(organization?.id);
+  const { data: productos = [], isLoading: cargando, error, refetch, isFetching } = useProductos(organization?.id);
   const eliminarProductoMutation = useEliminarProducto();
 
   // Precargar imágenes cuando se cargan los productos
@@ -511,6 +511,14 @@ const Inventario = () => {
           <div className="inventario-header-wrapper">
             <div className="inventario-actions">
               <button className="inventario-btn inventario-btn-primary" onClick={() => setModalOpen(true)}>Nuevo producto</button>
+              <button
+                className="inventario-btn inventario-btn-secondary"
+                onClick={() => refetch()}
+                disabled={isFetching}
+                title="Actualizar inventario"
+              >
+                <RefreshCw size={18} className={isFetching ? 'spin' : ''} />
+              </button>
               <button 
                 className="inventario-btn inventario-btn-secondary" 
                 onClick={() => setEntradaInventarioOpen(true)}

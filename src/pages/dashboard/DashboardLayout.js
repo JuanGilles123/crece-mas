@@ -132,6 +132,21 @@ const DashboardLayout = () => {
             icon: Package,
             label: "Productos",
             title: "Gestión de Inventario",
+            end: true,
+            visible: hasPermission('inventory') || true
+          },
+          {
+            to: "/dashboard/inventario/revisiones",
+            icon: ClipboardList,
+            label: "Revisiones",
+            title: "Revisión de Inventario",
+            visible: hasPermission('inventory') || true
+          },
+          {
+            to: "/dashboard/inventario/inicial",
+            icon: Package,
+            label: "Inventario inicial",
+            title: "Registro inicial colaborativo",
             visible: hasPermission('inventory') || true
           },
           {

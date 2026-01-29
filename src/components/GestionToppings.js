@@ -10,6 +10,7 @@ import { canUseToppings } from '../utils/toppingsUtils';
 import { getCategoriaOptions } from '../constants/toppingCategories';
 import { supabase } from '../services/api/supabaseClient';
 import { compressProductImage } from '../services/storage/imageCompression';
+import { validateFilename } from '../utils/fileUtils';
 import OptimizedProductImage from './business/OptimizedProductImage';
 import toast from 'react-hot-toast';
 import './GestionToppings.css';
@@ -161,14 +162,19 @@ const ToppingModal = ({ open, onClose, topping, onSave, organizationId, isServic
     // Si hay nueva imagen y tiene permiso, subirla con compresión
     if (imagen && puedeSubirImagenes && organizationId) {
       try {
+        // Validar el nombre del archivo antes de comprimir
+        const validation = validateFilename(imagen.name);
+        if (!validation.isValid) {
+          throw new Error(validation.error);
+        }
+
         setComprimiendo(true);
         // Aplicar la misma compresión que se usa en productos
         const imagenComprimida = await compressProductImage(imagen);
         setComprimiendo(false);
 
-        // Limpiar el nombre del archivo (remover caracteres especiales)
-        const nombreLimpio = imagenComprimida.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-        const nombreArchivo = `toppings/${organizationId}/${Date.now()}_${nombreLimpio}`;
+        // Usar el nombre original (ya validado)
+        const nombreArchivo = `toppings/${organizationId}/${Date.now()}_${imagenComprimida.name}`;
 
         const { error: errorUpload } = await supabase.storage
           .from('productos')

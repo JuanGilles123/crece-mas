@@ -76,6 +76,16 @@ export const useAgregarProducto = () => {
 
   return useMutation({
     mutationFn: async (productoData) => {
+      // Log para debugging (solo en desarrollo)
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Insertando producto con datos:', {
+          user_id: productoData.user_id,
+          organization_id: productoData.organization_id,
+          codigo: productoData.codigo,
+          nombre: productoData.nombre
+        });
+      }
+
       const { data, error } = await supabase
         .from('productos')
         .insert([productoData])
@@ -83,6 +93,11 @@ export const useAgregarProducto = () => {
 
       if (error) {
         console.error('Error adding producto:', error);
+        console.error('Datos enviados:', productoData);
+        // Proporcionar mensajes de error más específicos
+        if (error.message?.includes('row-level security') || error.message?.includes('violates row-level security')) {
+          throw new Error('No tienes permisos para agregar productos. Verifica que estés asociado a una organización y que tengas los permisos necesarios. Si el problema persiste, ejecuta el script SETUP_PRODUCTOS_RLS.sql en Supabase.');
+        }
         throw new Error(error.message || 'Error al agregar producto');
       }
 

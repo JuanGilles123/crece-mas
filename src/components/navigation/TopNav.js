@@ -400,13 +400,12 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
                       >
                         {group.items.map((item) => {
                           const ItemIcon = item.icon;
-                          const isItemActive = location.pathname === item.to;
-                          
                           return (
                             <NavLink
                               key={item.to}
                               to={item.to}
-                              className={`top-nav-dropdown-item ${isItemActive ? 'active' : ''}`}
+                              end={item.end}
+                              className={({ isActive }) => `top-nav-dropdown-item ${isActive ? 'active' : ''}`}
                               onClick={handleItemClick}
                             >
                               <ItemIcon size={16} />
@@ -597,13 +596,12 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
                       >
                         {group.items.map((item) => {
                           const ItemIcon = item.icon;
-                          const isItemActive = location.pathname === item.to;
-                          
                           return (
                             <NavLink
                               key={item.to}
                               to={item.to}
-                              className={`top-nav-sidebar-dropdown-item ${isItemActive ? 'active' : ''}`}
+                              end={item.end}
+                              className={({ isActive }) => `top-nav-sidebar-dropdown-item ${isActive ? 'active' : ''}`}
                               onClick={handleItemClick}
                             >
                               <ItemIcon size={18} />

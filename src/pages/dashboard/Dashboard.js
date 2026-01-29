@@ -7,6 +7,8 @@ import styles from './Dashboard.module.css';
 const DashboardHome = lazy(() => import('./DashboardHome'));
 const Caja = lazy(() => import('./Caja'));
 const Inventario = lazy(() => import('./Inventario'));
+const InventarioRevisiones = lazy(() => import('./InventarioRevisiones'));
+const InventarioInicial = lazy(() => import('./InventarioInicial'));
 const ConsultarPrecio = lazy(() => import('./ConsultarPrecio'));
 const ResumenVentas = lazy(() => import('./ResumenVentas'));
 const Perfil = lazy(() => import('./Perfil'));
@@ -88,6 +90,16 @@ const Dashboard = () => (
         <Route path="inventario" element={
           <Suspense fallback={<DashboardLoader />}>
             <Inventario />
+          </Suspense>
+        } />
+        <Route path="inventario/revisiones" element={
+          <Suspense fallback={<DashboardLoader />}>
+            <InventarioRevisiones />
+          </Suspense>
+        } />
+        <Route path="inventario/inicial" element={
+          <Suspense fallback={<DashboardLoader />}>
+            <InventarioInicial />
           </Suspense>
         } />
         <Route path="consultar-precio" element={

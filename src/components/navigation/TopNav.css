@@ -277,19 +277,26 @@
 /* Asegurar que los dropdowns estén por encima de otros elementos */
 @media (max-width: 768px) {
   .top-nav {
-    z-index: 10000 !important;
+    z-index: 99998 !important;
     position: relative;
+    overflow: visible !important;
   }
   
   .top-nav-container {
     position: relative;
-    z-index: 10000;
+    z-index: 99998;
     overflow: visible !important;
   }
   
   .top-nav-menu {
     position: relative;
-    z-index: 10000;
+    z-index: 99998;
+    overflow: visible !important;
+  }
+
+  .top-nav-mobile {
+    position: relative;
+    z-index: 99998;
     overflow: visible !important;
   }
   
@@ -300,7 +307,7 @@
   
   .top-nav-dropdown-menu,
   .top-nav-profile-dropdown {
-    z-index: 10003 !important; /* Por encima de todo en móvil */
+    z-index: 99999 !important; /* Por encima de todo en móvil */
     position: fixed !important;
     isolation: isolate;
     display: flex !important;

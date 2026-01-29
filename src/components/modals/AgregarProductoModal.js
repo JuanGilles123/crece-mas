@@ -13,6 +13,7 @@ import { useAgregarProducto } from '../../hooks/useProductos';
 import { useCurrencyInput } from '../../hooks/useCurrencyInput';
 import { Package, Scissors } from 'lucide-react';
 import { getDefaultProductType, shouldSkipProductTypeSelector } from '../../constants/businessTypes';
+import { generateStoragePath, validateFilename } from '../../utils/fileUtils';
 import toast from 'react-hot-toast';
 
 // Esquema de validación con Zod
@@ -161,6 +162,12 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
     try {
       // Si hay imagen y tiene permiso, subirla
       if (imagen && puedeSubirImagenes) {
+        // Validar el nombre del archivo antes de comprimir
+        const validation = validateFilename(imagen.name);
+        if (!validation.isValid) {
+          throw new Error(validation.error);
+        }
+
         setComprimiendo(true);
         // Comprimir imagen antes de subir
         const imagenComprimida = await compressProductImage(imagen);
@@ -171,7 +178,7 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
         if (!organizationId) {
           throw new Error('No se encontró organization_id');
         }
-        const nombreArchivo = `${organizationId}/${Date.now()}_${imagenComprimida.name}`;
+        const nombreArchivo = generateStoragePath(organizationId, imagenComprimida.name);
         const { error: errorUpload } = await supabase.storage.from('productos').upload(nombreArchivo, imagenComprimida);
         if (errorUpload) throw errorUpload;
         imagenPath = nombreArchivo;

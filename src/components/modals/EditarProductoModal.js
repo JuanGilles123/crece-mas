@@ -3,6 +3,7 @@ import { supabase } from '../../services/api/supabaseClient';
 import '../../pages/dashboard/Inventario.css';
 import { useAuth } from '../../context/AuthContext';
 import { compressProductImage } from '../../services/storage/imageCompression';
+import { generateStoragePath, validateFilename } from '../../utils/fileUtils';
 import { useCurrencyInput } from '../../hooks/useCurrencyInput';
 // Función para eliminar imagen del storage
 const deleteImageFromStorage = async (imagePath) => {
@@ -91,6 +92,12 @@ const EditarProductoModal = ({ open, onClose, producto, onProductoEditado }) => 
 
       // Si hay nueva imagen, comprimirla y subirla
       if (imagen) {
+        // Validar el nombre del archivo antes de comprimir
+        const validation = validateFilename(imagen.name);
+        if (!validation.isValid) {
+          throw new Error(validation.error);
+        }
+
         setComprimiendo(true);
         const imagenComprimida = await compressProductImage(imagen);
         setComprimiendo(false);
@@ -100,7 +107,7 @@ const EditarProductoModal = ({ open, onClose, producto, onProductoEditado }) => 
         if (!organizationId) {
           throw new Error('No se encontró organization_id');
         }
-        const nombreArchivo = `${organizationId}/${Date.now()}_${imagenComprimida.name}`;
+        const nombreArchivo = generateStoragePath(organizationId, imagenComprimida.name);
         const { error: errorUpload } = await supabase.storage.from('productos').upload(nombreArchivo, imagenComprimida);
         if (errorUpload) throw errorUpload;
 

@@ -915,7 +915,7 @@
 }
 
 /* Móviles (max-width: 768px) */
-@media (max-width: 768px) {
+@media (max-width: 655px) {
   .inventario-main {
     padding: 1rem 0.8rem;
     overflow-x: hidden;
@@ -2165,6 +2165,105 @@
   color: var(--text-primary);
 }
 
+/* Revisiones inventario - responsive */
+.inventario-revisiones-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.inventario-revisiones-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.inventario-revisiones-actions .inventario-btn {
+  min-width: 180px;
+  min-height: 44px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .inventario-revisiones-actions {
+    width: 100%;
+  }
+  .inventario-revisiones-actions .inventario-btn {
+    width: 100%;
+    justify-content: center;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 655px) {
+  .inventario-revisiones-actions {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .inventario-revisiones-actions .inventario-btn {
+    width: min(260px, 100%);
+  }
+}
+
+@media (max-width: 900px) {
+  .inventario-inicial-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .inventario-inicial-grid > div {
+    width: 100%;
+  }
+}
+
+.inventario-inicial-grid {
+  width: 100%;
+  min-width: 0;
+}
+
+.inventario-inicial-card {
+  max-width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 655px) {
+  .inventario-inicial-grid {
+    gap: 1rem;
+  }
+  .inventario-inicial-grid .inventario-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .inventario-inicial-form input,
+  .inventario-inicial-form select {
+    width: 100%;
+  }
+  .inventario-inicial-table {
+    max-height: 55vh;
+    overflow-x: auto;
+  }
+  .inventario-inicial-grid table {
+    font-size: 0.85rem;
+    min-width: 720px;
+  }
+}
+
+.inventario-inicial-table table {
+  width: 100%;
+}
+
+.inventario-inicial-table {
+  width: 100%;
+  max-width: 100%;
+}
+
+.inventario-inicial-form {
+  min-width: 0;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -2183,6 +2282,19 @@
     opacity: 1;
     transform: scale(1) translateY(0);
   }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin {
+  animation: spin 0.9s linear infinite;
 }
 
 /* Modal responsive */
