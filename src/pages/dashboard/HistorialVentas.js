@@ -72,6 +72,53 @@ const HistorialVentas = () => {
   const [historialCambios, setHistorialCambios] = useState([]);
   const [cargandoHistorial, setCargandoHistorial] = useState(false);
 
+  const obtenerCreditoRelacionado = useCallback(async (ventaActual) => {
+    if (!organization?.id || !ventaActual?.id) return null;
+
+    let query = supabase
+      .from('creditos')
+      .select('*')
+      .eq('organization_id', organization.id);
+
+    if (ventaActual.credito_id) {
+      query = query.eq('id', ventaActual.credito_id);
+    } else {
+      query = query.eq('venta_id', ventaActual.id);
+    }
+
+    const { data, error } = await query.maybeSingle();
+    if (error) {
+      console.error('Error obteniendo crédito relacionado:', error);
+      return null;
+    }
+
+    return data || null;
+  }, [organization?.id]);
+
+  const actualizarCreditoPorVenta = useCallback(async (ventaActual, nuevoTotal) => {
+    const credito = await obtenerCreditoRelacionado(ventaActual);
+    if (!credito) return { actualizado: false, credito: null };
+
+    const totalActualizado = parseFloat(nuevoTotal || 0);
+    const montoPagadoActual = parseFloat(credito.monto_pagado || 0);
+    const montoPagadoAjustado = Math.min(montoPagadoActual, totalActualizado);
+
+    const { error } = await supabase
+      .from('creditos')
+      .update({
+        monto_total: totalActualizado,
+        monto_pagado: montoPagadoAjustado
+      })
+      .eq('id', credito.id);
+
+    if (error) {
+      console.error('Error actualizando crédito:', error);
+      return { actualizado: false, credito };
+    }
+
+    return { actualizado: true, credito };
+  }, [obtenerCreditoRelacionado]);
+
   // Cargar cambios para todas las ventas
   const [ventasConCambios, setVentasConCambios] = useState(new Map());
   
@@ -332,6 +379,12 @@ const HistorialVentas = () => {
     setMostrandoCambio(true);
   };
 
+  const obtenerKeyItem = (item) => {
+    const id = item?.id || item?.producto_id || '';
+    const variante = item?.variant_id || '';
+    return `${id}::${variante}`;
+  };
+
   const procesarCambio = async (venta, itemsACambiar, itemsNuevos, metodoPago = null, montoEntregado = null) => {
     try {
       
@@ -365,9 +418,9 @@ const HistorialVentas = () => {
       const itemsActualizados = [];
       const itemsACambiarMap = new Map();
       
-      // Crear mapa de items a cambiar por ID
+      // Crear mapa de items a cambiar por ID + variante
       itemsACambiar.forEach(item => {
-        const key = item.id;
+        const key = obtenerKeyItem(item);
         if (itemsACambiarMap.has(key)) {
           itemsACambiarMap.set(key, itemsACambiarMap.get(key) + item.qty);
         } else {
@@ -377,7 +430,7 @@ const HistorialVentas = () => {
 
       // Procesar items originales (excluir los que se cambian)
       itemsOriginales.forEach(item => {
-        const cantidadACambiar = itemsACambiarMap.get(item.id) || 0;
+        const cantidadACambiar = itemsACambiarMap.get(obtenerKeyItem(item)) || 0;
         const cantidadOriginal = item.qty || 0;
         const cantidadRestante = cantidadOriginal - cantidadACambiar;
 
@@ -391,8 +444,9 @@ const HistorialVentas = () => {
 
       // Agregar los nuevos productos
       itemsNuevos.forEach(nuevoItem => {
-        // Buscar si ya existe este producto en la venta
-        const itemExistente = itemsActualizados.find(i => i.id === nuevoItem.id);
+        // Buscar si ya existe este producto/variante en la venta
+        const keyNuevo = obtenerKeyItem(nuevoItem);
+        const itemExistente = itemsActualizados.find(i => obtenerKeyItem(i) === keyNuevo);
         if (itemExistente) {
           // Si existe, aumentar la cantidad
           itemExistente.qty = (itemExistente.qty || 0) + nuevoItem.qty;
@@ -403,7 +457,10 @@ const HistorialVentas = () => {
             nombre: nuevoItem.nombre,
             precio_venta: nuevoItem.precio_venta,
             precio: nuevoItem.precio_venta,
-            qty: nuevoItem.qty
+            qty: nuevoItem.qty,
+            variant_id: nuevoItem.variant_id || null,
+            variant_nombre: nuevoItem.variant_nombre || null,
+            variant_codigo: nuevoItem.variant_codigo || null
           });
         }
       });
@@ -478,10 +535,63 @@ const HistorialVentas = () => {
         throw new Error('Error al actualizar la venta');
       }
 
+      let creditoActualizado = true;
+      let pagoCambioRegistrado = true;
+      const esVentaCredito = ventaActual.es_credito === true || ventaActual.metodo_pago === 'Credito' || !!ventaActual.credito_id;
+
+      if (esVentaCredito) {
+        try {
+          const { actualizado, credito } = await actualizarCreditoPorVenta(ventaActual, nuevoTotal);
+          creditoActualizado = actualizado || !credito;
+
+          if (credito && diferencia > 0 && metodoPago) {
+            const { error: errorPagoCambio } = await supabase
+              .from('pagos_creditos')
+              .insert([{
+                organization_id: organization.id,
+                credito_id: credito.id,
+                monto: diferencia,
+                metodo_pago: metodoPago,
+                notas: `Pago por cambio de productos en venta ${ventaActual.numero_venta || ventaActual.id}`,
+                user_id: userProfile?.user_id || null
+              }]);
+
+            if (errorPagoCambio) {
+              console.error('Error registrando pago por cambio:', errorPagoCambio);
+              pagoCambioRegistrado = false;
+            }
+          }
+        } catch (errorCredito) {
+          console.error('Error actualizando crédito por cambio:', errorCredito);
+          creditoActualizado = false;
+        }
+      }
+
       // Restaurar stock de productos devueltos
       let stockRestaurado = 0;
       for (const item of itemsACambiar) {
         try {
+          if (item.variant_id) {
+            const { data: variante, error: varianteError } = await supabase
+              .from('product_variants')
+              .select('stock')
+              .eq('id', item.variant_id)
+              .single();
+
+            if (!varianteError && variante) {
+              const nuevoStock = (variante.stock || 0) + item.qty;
+              const { error: errorUpdateStock } = await supabase
+                .from('product_variants')
+                .update({ stock: nuevoStock })
+                .eq('id', item.variant_id);
+
+              if (!errorUpdateStock) {
+                stockRestaurado++;
+              }
+            }
+            continue;
+          }
+
           const { data: producto, error: errorProducto } = await supabase
             .from('productos')
             .select('stock')
@@ -508,6 +618,27 @@ const HistorialVentas = () => {
       let stockReducido = 0;
       for (const item of itemsNuevos) {
         try {
+          if (item.variant_id) {
+            const { data: variante, error: varianteError } = await supabase
+              .from('product_variants')
+              .select('stock')
+              .eq('id', item.variant_id)
+              .single();
+
+            if (!varianteError && variante) {
+              const nuevoStock = Math.max(0, (variante.stock || 0) - item.qty);
+              const { error: errorUpdateStock } = await supabase
+                .from('product_variants')
+                .update({ stock: nuevoStock })
+                .eq('id', item.variant_id);
+
+              if (!errorUpdateStock) {
+                stockReducido++;
+              }
+            }
+            continue;
+          }
+
           const { data: producto, error: errorProducto } = await supabase
             .from('productos')
             .select('stock')
@@ -543,6 +674,10 @@ const HistorialVentas = () => {
       if (!stocksActualizados) {
         mensaje += ` (Stocks: ${stockRestaurado}/${itemsACambiar.length} restaurados, ${stockReducido}/${itemsNuevos.length} reducidos)`;
       }
+
+      if (esVentaCredito && (!creditoActualizado || !pagoCambioRegistrado)) {
+        mensaje += ' (Revisa créditos: no se pudo actualizar todo correctamente)';
+      }
       
       toast.success(mensaje);
       setMostrandoCambio(false);
@@ -577,9 +712,9 @@ const HistorialVentas = () => {
       const itemsActualizados = [];
       const itemsDevolverMap = new Map();
       
-      // Crear mapa de items a devolver por ID
+      // Crear mapa de items a devolver por ID + variante
       itemsDevolver.forEach(item => {
-        const key = item.id;
+        const key = obtenerKeyItem(item);
         if (itemsDevolverMap.has(key)) {
           itemsDevolverMap.set(key, itemsDevolverMap.get(key) + item.qty);
         } else {
@@ -589,7 +724,7 @@ const HistorialVentas = () => {
 
       // Procesar cada item de la venta original
       itemsOriginales.forEach(item => {
-        const cantidadADevolver = itemsDevolverMap.get(item.id) || 0;
+        const cantidadADevolver = itemsDevolverMap.get(obtenerKeyItem(item)) || 0;
         const cantidadOriginal = item.qty || 0;
         const cantidadRestante = cantidadOriginal - cantidadADevolver;
 
@@ -662,10 +797,45 @@ const HistorialVentas = () => {
         throw new Error('Error al actualizar la venta');
       }
 
+      let creditoActualizado = true;
+      const esVentaCredito = ventaActual.es_credito === true || ventaActual.metodo_pago === 'Credito' || !!ventaActual.credito_id;
+
+      if (esVentaCredito) {
+        try {
+          const { actualizado, credito } = await actualizarCreditoPorVenta(ventaActual, esDevolucionCompleta ? 0 : nuevoTotal);
+          creditoActualizado = actualizado || !credito;
+        } catch (errorCredito) {
+          console.error('Error actualizando crédito por devolución:', errorCredito);
+          creditoActualizado = false;
+        }
+      }
+
       // 5. Restaurar stock de productos devueltos
       let stockRestaurado = 0;
       for (const item of itemsDevolver) {
         try {
+          if (item.variant_id) {
+            const { data: variante, error: varianteError } = await supabase
+              .from('product_variants')
+              .select('stock')
+              .eq('id', item.variant_id)
+              .single();
+
+            if (!varianteError && variante) {
+              const nuevoStock = (variante.stock || 0) + item.qty;
+              const { error: errorUpdateStock } = await supabase
+                .from('product_variants')
+                .update({ stock: nuevoStock })
+                .eq('id', item.variant_id);
+
+              if (!errorUpdateStock) {
+                stockRestaurado++;
+                console.log(`Stock restaurado (variante): ${item.nombre} - ${variante.stock} -> ${nuevoStock}`);
+              }
+            }
+            continue;
+          }
+
           const { data: producto, error: errorProducto } = await supabase
             .from('productos')
             .select('stock')
@@ -701,10 +871,11 @@ const HistorialVentas = () => {
         const mensaje = esDevolucionCompleta 
           ? `Devolución completa procesada. Venta anulada. Total revertido: ${formatCOP(totalDevolucion)}`
           : `Devolución parcial procesada. ${itemsDevolver.length} producto(s) devuelto(s). Total ajustado: ${formatCOP(ventaActual.total)} → ${formatCOP(nuevoTotal)}`;
-        
-        toast.success(mensaje);
+
+        toast.success(creditoActualizado ? mensaje : `${mensaje} (Revisa créditos: no se pudo actualizar)`);
       } else if (stockRestaurado > 0) {
-        toast.success(`Devolución parcial: ${stockRestaurado} de ${itemsDevolver.length} producto(s) procesado(s). La venta fue actualizada pero algunos stocks no se pudieron restaurar.`);
+        const mensaje = `Devolución parcial: ${stockRestaurado} de ${itemsDevolver.length} producto(s) procesado(s). La venta fue actualizada pero algunos stocks no se pudieron restaurar.`;
+        toast.success(creditoActualizado ? mensaje : `${mensaje} (Revisa créditos: no se pudo actualizar)`);
       } else {
         toast.error('Error: No se pudo restaurar el stock de los productos. La venta fue actualizada pero revisa el stock manualmente.');
         return;

@@ -202,6 +202,11 @@ export default function DetalleVenta({ venta, onCerrar, organization }) {
                         <span className="detalle-venta-item-nombre">{item.nombre || 'Producto'}</span>
                         <span className="detalle-venta-item-total">{formatCOP(totalItem)}</span>
                       </div>
+                      {item.variant_nombre && (
+                        <div className="detalle-venta-item-precio" style={{ color: '#6b7280' }}>
+                          Variante: {item.variant_nombre}
+                        </div>
+                      )}
                       {tieneToppings && (
                         <div className="detalle-venta-item-toppings">
                           <strong>Toppings:</strong>

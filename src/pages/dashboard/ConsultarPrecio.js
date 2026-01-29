@@ -12,16 +12,29 @@ const ConsultarPrecio = () => {
   const { data: productos = [], isLoading } = useProductos(organization?.id);
   const [query, setQuery] = useState('');
   const [productoEncontrado, setProductoEncontrado] = useState(null);
+  const [varianteEncontrada, setVarianteEncontrada] = useState(null);
 
   // Función para buscar producto
   const buscarProducto = useCallback((termino) => {
     if (!termino || termino.trim() === '') {
       setProductoEncontrado(null);
+      setVarianteEncontrada(null);
       return;
     }
 
     const terminoLower = termino.toLowerCase().trim();
     
+    const variante = productos
+      .flatMap(producto => producto.variantes || [])
+      .find(vari => vari.codigo && vari.codigo.toLowerCase() === terminoLower);
+
+    if (variante) {
+      const productoVariante = productos.find(p => p.id === variante.producto_id);
+      setProductoEncontrado(productoVariante || null);
+      setVarianteEncontrada(variante);
+      return;
+    }
+
     // Buscar por código de barras (búsqueda exacta)
     let producto = productos.find(p => 
       p.codigo && p.codigo.toLowerCase() === terminoLower
@@ -37,6 +50,7 @@ const ConsultarPrecio = () => {
     }
 
     setProductoEncontrado(producto || null);
+    setVarianteEncontrada(null);
   }, [productos]);
 
   // Handler para cuando se escanea un código de barras
@@ -258,6 +272,20 @@ const ConsultarPrecio = () => {
             <div className="consultar-precio-product-info">
               <h2 className="consultar-precio-product-name">{productoEncontrado.nombre}</h2>
               
+              {varianteEncontrada && (
+                <div className="consultar-precio-product-code">
+                  <Package size={16} />
+                  <span>Variante: {varianteEncontrada.nombre}</span>
+                </div>
+              )}
+              
+              {varianteEncontrada?.codigo && (
+                <div className="consultar-precio-product-code">
+                  <Package size={16} />
+                  <span>Código variante: {varianteEncontrada.codigo}</span>
+                </div>
+              )}
+
               {productoEncontrado.codigo && (
                 <div className="consultar-precio-product-code">
                   <Package size={16} />
@@ -308,17 +336,20 @@ const ConsultarPrecio = () => {
                   <Package size={16} />
                   <span>Stock Disponible</span>
                 </div>
-                <div className={`consultar-precio-stock-value ${
-                  productoEncontrado.stock === 0 
-                    ? 'sin-stock' 
-                    : productoEncontrado.stock < 10 
-                    ? 'stock-bajo' 
-                    : 'stock-ok'
-                }`}>
-                  {productoEncontrado.stock !== null && productoEncontrado.stock !== undefined
-                    ? productoEncontrado.stock
-                    : 'N/A'}
-                </div>
+                {(() => {
+                  const stockActual = varianteEncontrada ? varianteEncontrada.stock : productoEncontrado.stock;
+                  return (
+                    <div className={`consultar-precio-stock-value ${
+                      stockActual === 0 
+                        ? 'sin-stock' 
+                        : stockActual < 10 
+                        ? 'stock-bajo' 
+                        : 'stock-ok'
+                    }`}>
+                      {stockActual !== null && stockActual !== undefined ? stockActual : 'N/A'}
+                    </div>
+                  );
+                })()}
               </div>
 
               {productoEncontrado.tipo && (

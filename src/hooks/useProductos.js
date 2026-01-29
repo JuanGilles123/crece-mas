@@ -12,7 +12,7 @@ export const useProductos = (organizationId) => {
       // Select campos necesarios incluyendo created_at y metadata para filtros y métricas
       const { data, error } = await supabase
         .from('productos')
-        .select('id, nombre, precio_venta, precio_compra, stock, imagen, codigo, tipo, created_at, metadata')
+        .select('id, organization_id, nombre, precio_venta, precio_compra, stock, imagen, codigo, tipo, created_at, metadata')
         .eq('organization_id', organizationId)
         .order('created_at', { ascending: false })
         .limit(200); // Reducido de 300 a 200 para mejor performance inicial
@@ -21,7 +21,30 @@ export const useProductos = (organizationId) => {
         console.error('Error fetching productos:', error);
         throw new Error('Error al cargar productos');
       }
-      return data || [];
+      const productos = data || [];
+
+      const { data: variantesData, error: variantesError } = await supabase
+        .from('product_variants')
+        .select('*')
+        .eq('organization_id', organizationId);
+
+      if (variantesError) {
+        console.error('Error fetching product variants:', variantesError);
+        return productos.map(producto => ({ ...producto, variantes: [] }));
+      }
+
+      const variantesMap = new Map();
+      (variantesData || []).forEach(vari => {
+        if (!variantesMap.has(vari.producto_id)) {
+          variantesMap.set(vari.producto_id, []);
+        }
+        variantesMap.get(vari.producto_id).push(vari);
+      });
+
+      return productos.map(producto => ({
+        ...producto,
+        variantes: variantesMap.get(producto.id) || []
+      }));
     },
     enabled: !!organizationId,
     staleTime: 15 * 60 * 1000, // Aumentado a 15 minutos

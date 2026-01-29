@@ -13,7 +13,7 @@ const CierreCaja = () => {
   const [cotizacionesHoy, setCotizacionesHoy] = useState([]); // Cotizaciones informativas (no cuentan en totales)
   const [ventasCreditoHoy, setVentasCreditoHoy] = useState([]); // Ventas a crédito informativas (no cuentan en totales)
   const [pagosCreditoHoy, setPagosCreditoHoy] = useState([]); // Pagos de créditos recibidos hoy
-  const [desglosePagosCredito, setDesglosePagosCredito] = useState({ efectivo: 0, transferencias: 0, tarjeta: 0 });
+  const [, setDesglosePagosCredito] = useState({ efectivo: 0, transferencias: 0, tarjeta: 0 });
   const [totalPagosCredito, setTotalPagosCredito] = useState(0);
   const [totalPagosTotales, setTotalPagosTotales] = useState(0);
   const [totalAbonos, setTotalAbonos] = useState(0);
@@ -48,7 +48,7 @@ const CierreCaja = () => {
       // Obtener la apertura activa para obtener el monto inicial
       const { data: aperturaActiva, error: errorApertura } = await supabase
         .from('aperturas_caja')
-        .select('monto_inicial')
+        .select('monto_inicial, created_at')
         .eq('organization_id', userProfile.organization_id)
         .is('cierre_id', null)
         .eq('estado', 'abierta')
@@ -63,36 +63,33 @@ const CierreCaja = () => {
         setMontoInicialApertura(aperturaActiva?.monto_inicial || 0);
       }
 
-      const inicioHoy = new Date();
-      inicioHoy.setHours(0, 0, 0, 0);
-
-      // 1. Verificar si ya existe un cierre de caja para hoy
-      const { data: cierresHoy, error: errorCierres } = await supabase
+      // 1. Obtener el último cierre de caja (sin limitar por día)
+      const { data: ultimoCierre, error: errorCierres } = await supabase
         .from('cierres_caja')
         .select('created_at')
         .eq('organization_id', userProfile.organization_id)
-        .gte('created_at', inicioHoy.toISOString())
         .order('created_at', { ascending: false })
-        .limit(1);
+        .limit(1)
+        .maybeSingle();
 
       if (errorCierres) throw errorCierres;
 
-      // Actualizar estado de si ya hay un cierre hoy
-      const hayUltioCierre = cierresHoy && cierresHoy.length > 0;
+      // Actualizar estado de si ya hay un cierre previo
+      const hayUltioCierre = !!ultimoCierre?.created_at;
       setYaCerrado(hayUltioCierre);
 
       let ventasQuery = supabase
         .from('ventas')
         .select('*')
         .eq('organization_id', userProfile.organization_id)
-        .gte('created_at', inicioHoy.toISOString())
         // Excluir cotizaciones: no deben contar en el cierre de caja hasta que se conviertan en ventas
         .neq('metodo_pago', 'COTIZACION');
 
-      // 2. Si ya hay un cierre hoy, solo mostrar ventas posteriores al último cierre
+      // 2. Si ya hay un cierre, solo mostrar ventas posteriores al último cierre
       if (hayUltioCierre) {
-        const ultimoCierre = cierresHoy[0].created_at;
-        ventasQuery = ventasQuery.gt('created_at', ultimoCierre);
+        ventasQuery = ventasQuery.gt('created_at', ultimoCierre.created_at);
+      } else if (aperturaActiva?.created_at) {
+        ventasQuery = ventasQuery.gte('created_at', aperturaActiva.created_at);
       }
 
       const { data, error } = await ventasQuery.order('created_at', { ascending: false });
@@ -120,20 +117,20 @@ const CierreCaja = () => {
       const total = ventasReales.reduce((sum, venta) => sum + (venta.total || 0), 0);
       setTotalSistema(total);
       
-      // Cargar pagos de créditos recibidos hoy (usar inicioHoy ya declarado arriba)
+      // Cargar pagos de créditos recibidos desde el último cierre (o apertura)
       let pagosCreditoQuery = supabase
         .from('pagos_creditos')
         .select(`
           *,
           credito:creditos(id, monto_total, monto_pagado, monto_pendiente, estado, cliente:clientes(nombre, documento))
         `)
-        .eq('organization_id', userProfile.organization_id)
-        .gte('created_at', inicioHoy.toISOString());
+        .eq('organization_id', userProfile.organization_id);
       
-      // Si ya hay un cierre hoy, solo mostrar pagos posteriores al último cierre
+      // Si ya hay un cierre, solo mostrar pagos posteriores al último cierre
       if (hayUltioCierre) {
-        const ultimoCierre = cierresHoy[0].created_at;
-        pagosCreditoQuery = pagosCreditoQuery.gt('created_at', ultimoCierre);
+        pagosCreditoQuery = pagosCreditoQuery.gt('created_at', ultimoCierre.created_at);
+      } else if (aperturaActiva?.created_at) {
+        pagosCreditoQuery = pagosCreditoQuery.gte('created_at', aperturaActiva.created_at);
       }
       
       const { data: pagosCreditoHoy = [], error: errorPagosCredito } = await pagosCreditoQuery
@@ -319,20 +316,17 @@ const CierreCaja = () => {
 
       // Cargar cotizaciones por separado (solo informativas, no cuentan en totales)
       try {
-        const inicioHoy = new Date();
-        inicioHoy.setHours(0, 0, 0, 0);
-        
         let cotizacionesQuery = supabase
           .from('ventas')
           .select('*')
           .eq('organization_id', userProfile.organization_id)
-          .gte('created_at', inicioHoy.toISOString())
           .eq('metodo_pago', 'COTIZACION');
 
-        // Si ya hay un cierre hoy, solo mostrar cotizaciones posteriores al último cierre
+        // Si ya hay un cierre, solo mostrar cotizaciones posteriores al último cierre
         if (hayUltioCierre) {
-          const ultimoCierre = cierresHoy[0].created_at;
-          cotizacionesQuery = cotizacionesQuery.gt('created_at', ultimoCierre);
+          cotizacionesQuery = cotizacionesQuery.gt('created_at', ultimoCierre.created_at);
+        } else if (aperturaActiva?.created_at) {
+          cotizacionesQuery = cotizacionesQuery.gte('created_at', aperturaActiva.created_at);
         }
 
         const { data: cotizacionesData, error: cotizacionesError } = await cotizacionesQuery
@@ -348,7 +342,7 @@ const CierreCaja = () => {
       }
     } catch (error) {
       console.error('Error cargando ventas:', error);
-      setMensaje({ tipo: 'error', texto: 'Error al cargar las ventas del día' });
+      setMensaje({ tipo: 'error', texto: 'Error al cargar las ventas' });
     } finally {
       setCargando(false);
     }
@@ -599,7 +593,7 @@ Generado por Crece+ 🚀
         >
           <Calculator size={48} />
         </motion.div>
-        <p>Cargando ventas del día...</p>
+        <p>Cargando ventas...</p>
       </div>
     );
   }
@@ -624,7 +618,7 @@ Generado por Crece+ 🚀
         >
           <CheckCircle size={20} />
           <span>
-            <strong>Cierre realizado:</strong> Ya se realizó el cierre de caja de hoy. 
+            <strong>Cierre realizado:</strong> Ya se realizó un cierre de caja. 
             {' '}Las ventas nuevas se mostrarán aquí para el próximo cierre.
           </span>
         </motion.div>

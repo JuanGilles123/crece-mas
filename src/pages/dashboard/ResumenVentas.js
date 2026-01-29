@@ -38,6 +38,7 @@ import { Bar, Doughnut } from 'react-chartjs-2';
 import { format, subDays, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import toast from 'react-hot-toast';
+import * as XLSX from 'xlsx';
 
 ChartJS.register(
   CategoryScale,
@@ -73,6 +74,9 @@ const ResumenVentas = () => {
     metodoPago: 'todos',
     cliente: 'todos'
   });
+  const [mostrandoExportar, setMostrandoExportar] = useState(false);
+  const [exportFechaInicio, setExportFechaInicio] = useState('');
+  const [exportFechaFin, setExportFechaFin] = useState('');
 
   const cargando = cargandoVentas || cargandoProductos || cargandoEquipo || cargandoClientes;
 
@@ -83,6 +87,46 @@ const ResumenVentas = () => {
       currency: 'COP',
       minimumFractionDigits: 0
     }).format(amount);
+  };
+
+  const formatearValorVariacion = (value) => {
+    if (Array.isArray(value)) {
+      return value.join(', ');
+    }
+    if (typeof value === 'boolean') {
+      return value ? 'Si' : 'No';
+    }
+    if (value === null || value === undefined) {
+      return '';
+    }
+    if (typeof value === 'object') {
+      return JSON.stringify(value);
+    }
+    return String(value);
+  };
+
+  const obtenerVariacionesItem = (item) => {
+    const variaciones = item?.variaciones || item?.variaciones_seleccionadas;
+    if (!variaciones || typeof variaciones !== 'object') return '';
+    return Object.entries(variaciones)
+      .map(([key, value]) => {
+        const valorFormateado = formatearValorVariacion(value);
+        if (!valorFormateado) return null;
+        return `${key}: ${valorFormateado}`;
+      })
+      .filter(Boolean)
+      .join(' | ');
+  };
+
+  const obtenerToppingsItem = (item) => {
+    const toppings = item?.toppings || item?.toppings_seleccionados || [];
+    if (!Array.isArray(toppings) || toppings.length === 0) return '';
+    return toppings.map((topping) => {
+      if (typeof topping === 'string') return topping;
+      if (topping?.nombre) return topping.nombre;
+      if (topping?.id) return topping.id;
+      return String(topping);
+    }).join(', ');
   };
 
   // Función para normalizar nombre de vendedor (definida antes de su uso)
@@ -144,6 +188,15 @@ const ResumenVentas = () => {
     return Array.from(vendedoresMap.values()).sort((a, b) => 
       a.nombre.localeCompare(b.nombre)
     );
+  }, [vendedoresDisponibles, normalizarNombreVendedor]);
+
+  const obtenerNombreVendedor = useCallback((venta) => {
+    if (!venta?.user_id) {
+      return 'Vendedor desconocido';
+    }
+    const vendedor = vendedoresDisponibles.find(v => v.id === venta.user_id);
+    const nombreOriginal = vendedor?.nombre || venta.usuario_nombre || 'Vendedor desconocido';
+    return normalizarNombreVendedor(nombreOriginal);
   }, [vendedoresDisponibles, normalizarNombreVendedor]);
 
   // Extraer datos reales para filtros
@@ -332,6 +385,178 @@ const ResumenVentas = () => {
     return ventasFiltradas;
   }, [ventas, filtros, productos, vendedoresDisponiblesNormalizados]);
 
+  const filtrarVentasConRango = useCallback((fechaInicio, fechaFin) => {
+    let ventasFiltradas = ventas;
+
+    if (fechaInicio) {
+      const fechaInicioDate = new Date(fechaInicio);
+      fechaInicioDate.setHours(0, 0, 0, 0);
+      ventasFiltradas = ventasFiltradas.filter(venta => {
+        const fechaVenta = new Date(venta.created_at);
+        fechaVenta.setHours(0, 0, 0, 0);
+        return fechaVenta >= fechaInicioDate;
+      });
+    }
+
+    if (fechaFin) {
+      const fechaFinDate = new Date(fechaFin);
+      fechaFinDate.setHours(23, 59, 59, 999);
+      ventasFiltradas = ventasFiltradas.filter(venta =>
+        new Date(venta.created_at) <= fechaFinDate
+      );
+    }
+
+    if (filtros.categoria !== 'todas') {
+      ventasFiltradas = ventasFiltradas.filter(venta => {
+        if (!venta.items || !Array.isArray(venta.items)) return false;
+        return venta.items.some(item => {
+          const producto = productos.find(p => p.id === item.id || p.codigo === item.codigo);
+          return producto?.metadata?.categoria === filtros.categoria;
+        });
+      });
+    }
+
+    if (filtros.vendedor !== 'todos') {
+      const vendedorSeleccionado = vendedoresDisponiblesNormalizados.find(
+        v => v.id === filtros.vendedor
+      );
+      if (vendedorSeleccionado) {
+        ventasFiltradas = ventasFiltradas.filter(venta =>
+          vendedorSeleccionado.idsOriginales.includes(venta.user_id)
+        );
+      }
+    }
+
+    if (filtros.metodoPago !== 'todos') {
+      ventasFiltradas = ventasFiltradas.filter(venta => {
+        if (!venta.metodo_pago) return false;
+
+        let metodoVenta = venta.metodo_pago;
+        if (metodoVenta === 'Mixto' || metodoVenta?.startsWith('Mixto (')) {
+          metodoVenta = 'Mixto';
+        }
+
+        const metodoVentaNormalizado = metodoVenta.toLowerCase().trim();
+        const filtroNormalizado = filtros.metodoPago.toLowerCase().trim();
+        return metodoVentaNormalizado === filtroNormalizado;
+      });
+    }
+
+    if (filtros.cliente !== 'todos') {
+      ventasFiltradas = ventasFiltradas.filter(venta =>
+        venta.cliente_id === filtros.cliente
+      );
+    }
+
+    return ventasFiltradas;
+  }, [ventas, filtros, productos, vendedoresDisponiblesNormalizados]);
+
+  const construirArchivoVentas = (ventasOrigen, etiqueta) => {
+    if (!ventasOrigen || ventasOrigen.length === 0) {
+      toast.error('No hay ventas para exportar');
+      return;
+    }
+
+    const filas = ventasOrigen.flatMap((venta) => {
+      const fechaVenta = venta.created_at || venta.fecha;
+      const fechaObj = fechaVenta ? new Date(fechaVenta) : null;
+      const fecha = fechaObj ? fechaObj.toLocaleDateString('es-CO') : '';
+      const hora = fechaObj ? fechaObj.toLocaleTimeString('es-CO') : '';
+      const clienteNombre = venta.cliente?.nombre || venta.cliente_nombre || '';
+      const clienteDocumento = venta.cliente?.documento || '';
+      const vendedorNombre = obtenerNombreVendedor(venta);
+      const descuento = venta.descuento || {};
+      const items = Array.isArray(venta.items) ? venta.items : [];
+
+      const base = {
+        'Venta ID': venta.id || '',
+        'Numero Venta': venta.numero_venta || '',
+        'Fecha': fecha,
+        'Hora': hora,
+        'Vendedor': vendedorNombre,
+        'Cliente': clienteNombre,
+        'Documento Cliente': clienteDocumento,
+        'Metodo Pago': venta.metodo_pago || '',
+        'Total Venta': parseFloat(venta.total || 0),
+        'Subtotal Venta': parseFloat(venta.subtotal || 0),
+        'Descuento Tipo': descuento.tipo || '',
+        'Descuento Valor': descuento.valor || '',
+        'Descuento Monto': parseFloat(descuento.monto || 0),
+        'Pago Cliente': parseFloat(venta.pago_cliente || 0),
+        'Detalle Pago Mixto': venta.detalles_pago_mixto ? JSON.stringify(venta.detalles_pago_mixto) : '',
+        'Es Credito': venta.es_credito ? 'Si' : 'No',
+        'Credito ID': venta.credito_id || '',
+        'Notas Venta': venta.notas || ''
+      };
+
+      if (items.length === 0) {
+        return [{
+          ...base,
+          'Item ID': '',
+          'Item Codigo': '',
+          'Item Nombre': '',
+          'Cantidad': '',
+          'Precio Unitario': '',
+          'Precio Total Item': '',
+          'Categoria': '',
+          'Variaciones': '',
+          'Toppings': '',
+          'Notas Item': ''
+        }];
+      }
+
+      return items.map((item) => {
+        const productoId = item.id || item.producto_id;
+        const codigo = item.codigo || '';
+        const cantidad = item.qty || item.cantidad || 1;
+        const precioUnitario = parseFloat(item.precio_venta || item.precio_unitario || item.precio || 0);
+        const precioTotal = parseFloat(item.precio_total || (precioUnitario * cantidad));
+        const producto = productos.find(p => p.id === productoId || p.codigo === codigo);
+        const categoria = producto?.metadata?.categoria || '';
+
+        return {
+          ...base,
+          'Item ID': productoId || '',
+          'Item Codigo': codigo,
+          'Item Nombre': item.nombre || item.producto_nombre || 'Producto desconocido',
+          'Cantidad': cantidad,
+          'Precio Unitario': precioUnitario,
+          'Precio Total Item': precioTotal,
+          'Categoria': categoria,
+          'Variante Nombre': item.variant_nombre || '',
+          'Variante Codigo': item.variant_codigo || '',
+          'Variaciones': obtenerVariacionesItem(item),
+          'Toppings': obtenerToppingsItem(item),
+          'Notas Item': item.notas || item.notas_item || ''
+        };
+      });
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(filas);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Ventas');
+    const fechaArchivo = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+    XLSX.writeFile(workbook, `ventas_detalladas_${etiqueta}_${fechaArchivo}.xlsx`);
+  };
+
+  const exportarVentasConRango = () => {
+    if (exportFechaInicio && exportFechaFin) {
+      const inicio = new Date(exportFechaInicio);
+      const fin = new Date(exportFechaFin);
+      if (inicio > fin) {
+        toast.error('La fecha de inicio no puede ser mayor que la fecha final');
+        return;
+      }
+    }
+
+    const ventasFiltradas = filtrarVentasConRango(exportFechaInicio, exportFechaFin);
+    const etiqueta = exportFechaInicio || exportFechaFin
+      ? `${exportFechaInicio || 'inicio'}_a_${exportFechaFin || 'hoy'}`
+      : 'completo';
+    construirArchivoVentas(ventasFiltradas, etiqueta);
+    setMostrandoExportar(false);
+  };
+
   // Obtener productos más vendidos
   const obtenerProductosMasVendidos = useMemo(() => {
     const ventasFiltradas = filtrarVentas();
@@ -372,6 +597,38 @@ const ResumenVentas = () => {
     return Object.values(productosVendidos)
       .sort((a, b) => b.cantidad - a.cantidad)
       .slice(0, 10);
+  }, [filtrarVentas]);
+
+  const obtenerVariantesMasVendidas = useMemo(() => {
+    const ventasFiltradas = filtrarVentas();
+    const variantesMap = {};
+
+    ventasFiltradas.forEach(venta => {
+      if (venta.items && Array.isArray(venta.items)) {
+        venta.items.forEach(item => {
+          const nombreVariante = item.variant_nombre;
+          if (!nombreVariante) return;
+          const cantidad = item.qty || 1;
+          const precioVenta = parseFloat(item.precio_venta || item.precio || 0);
+          const total = precioVenta * cantidad;
+
+          if (variantesMap[nombreVariante]) {
+            variantesMap[nombreVariante].cantidad += cantidad;
+            variantesMap[nombreVariante].total += total;
+          } else {
+            variantesMap[nombreVariante] = {
+              nombre: nombreVariante,
+              cantidad,
+              total
+            };
+          }
+        });
+      }
+    });
+
+    return Object.values(variantesMap)
+      .sort((a, b) => b.cantidad - a.cantidad)
+      .slice(0, 5);
   }, [filtrarVentas]);
 
   // Calcular métricas del período anterior para comparación
@@ -661,7 +918,7 @@ const ResumenVentas = () => {
               className="resumen-ventas-btn resumen-ventas-btn-outline"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              onClick={() => toast.info('Función de exportación próximamente')}
+              onClick={() => setMostrandoExportar(true)}
             >
               <Download size={16} />
               Exportar
@@ -679,6 +936,49 @@ const ResumenVentas = () => {
           )}
         </motion.div>
       </motion.div>
+
+      {mostrandoExportar && (
+        <div className="resumen-ventas-modal-overlay">
+          <div className="resumen-ventas-modal">
+            <h3>Exportar ventas</h3>
+            <p>Selecciona un rango de fechas para exportar.</p>
+            <div className="resumen-ventas-modal-fields">
+              <label>
+                Fecha inicio
+                <input
+                  type="date"
+                  value={exportFechaInicio}
+                  onChange={(e) => setExportFechaInicio(e.target.value)}
+                />
+              </label>
+              <label>
+                Fecha fin
+                <input
+                  type="date"
+                  value={exportFechaFin}
+                  onChange={(e) => setExportFechaFin(e.target.value)}
+                />
+              </label>
+            </div>
+            <div className="resumen-ventas-modal-actions">
+              <button
+                type="button"
+                className="resumen-ventas-btn resumen-ventas-btn-outline"
+                onClick={() => setMostrandoExportar(false)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="resumen-ventas-btn resumen-ventas-btn-primary"
+                onClick={exportarVentasConRango}
+              >
+                Exportar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Selector de vistas */}
       <div className="resumen-ventas-vistas">
@@ -1160,6 +1460,30 @@ const ResumenVentas = () => {
             )}
           </div>
         </motion.div>
+
+        {obtenerVariantesMasVendidas.length > 0 && (
+          <motion.div 
+            className="resumen-ventas-ranking"
+            variants={itemVariants}
+          >
+            <h3 className="resumen-ventas-ranking-title">
+              <Package size={20} />
+              Variantes más vendidas
+            </h3>
+            <div className="resumen-ventas-ranking-content">
+              <ul className="resumen-ventas-ranking-list">
+                {obtenerVariantesMasVendidas.map((variante, index) => (
+                  <li key={`${variante.nombre}-${index}`} className="resumen-ventas-ranking-item">
+                    <span className="resumen-ventas-ranking-position">{index + 1}.</span>
+                    <span className="resumen-ventas-ranking-nombre">{variante.nombre}</span>
+                    <span className="resumen-ventas-ranking-cantidad">{variante.cantidad} uds</span>
+                    <span className="resumen-ventas-ranking-total">{formatCOP(variante.total)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </motion.div>
+        )}
 
         {/* Ventas por método de pago */}
         {obtenerVentasPorMetodoPago.length > 0 && (

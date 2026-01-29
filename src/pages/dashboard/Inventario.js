@@ -13,11 +13,12 @@ import InventarioStats from '../../components/inventario/InventarioStats';
 import InventarioFilters from '../../components/inventario/InventarioFilters';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../services/api/supabaseClient';
-import { List, Grid3X3, PackagePlus, Search, RefreshCw } from 'lucide-react';
+import { List, Grid3X3, PackagePlus, Search, RefreshCw, Download } from 'lucide-react';
 import { useProductos, useEliminarProducto } from '../../hooks/useProductos';
 import EntradaInventarioModal from '../../components/modals/EntradaInventarioModal';
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
 import toast from 'react-hot-toast';
+import * as XLSX from 'xlsx';
 
 // Función para eliminar imagen del storage
 const deleteImageFromStorage = async (imagePath) => {
@@ -44,9 +45,12 @@ const Inventario = () => {
   const [csvModalOpen, setCsvModalOpen] = useState(false);
   const [entradaInventarioOpen, setEntradaInventarioOpen] = useState(false);
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
+  const [varianteSeleccionadaId, setVarianteSeleccionadaId] = useState(null);
   const [modoLista, setModoLista] = useState(false);
   const [query, setQuery] = useState('');
   const [filters, setFilters] = useState({});
+  const [seleccionados, setSeleccionados] = useState([]);
+  const [eliminandoSeleccionados, setEliminandoSeleccionados] = useState(false);
   // Suponiendo que el usuario tiene moneda en user.user_metadata.moneda
   const moneda = user?.user_metadata?.moneda || 'COP';
 
@@ -127,14 +131,36 @@ const Inventario = () => {
     }
   }, [error]);
 
+  useEffect(() => {
+    setSeleccionados(prev => prev.filter(id => productos.some(p => p.id === id)));
+  }, [productos]);
+
   // Handler para cuando se escanea un código de barras
   const handleBarcodeScanned = useCallback((barcode) => {
+    const barcodeLower = barcode?.toLowerCase?.().trim?.() || '';
+    if (barcodeLower) {
+      const varianteEncontrada = productos
+        .flatMap(producto => producto.variantes || [])
+        .find(vari => vari.codigo && vari.codigo.toLowerCase() === barcodeLower);
+
+      if (varianteEncontrada) {
+        const productoVariante = productos.find(p => p.id === varianteEncontrada.producto_id);
+        if (productoVariante) {
+          setProductoSeleccionado(productoVariante);
+          setVarianteSeleccionadaId(varianteEncontrada.id);
+          setEditarModalOpen(true);
+          return;
+        }
+      }
+    }
+
+    setVarianteSeleccionadaId(null);
     setQuery(barcode);
     // Enfocar el input del buscador
     if (searchInputRef.current) {
       searchInputRef.current.focus();
     }
-  }, []);
+  }, [productos]);
 
   // Hook para lector de códigos de barras en el buscador
   const { 
@@ -344,8 +370,14 @@ const Inventario = () => {
           metadata.porcion
         ];
         
+        const variantes = producto.variantes || [];
+        const camposVariantes = variantes.flatMap(vari => [
+          vari.nombre,
+          vari.codigo
+        ]);
+
         // Combinar todos los campos en un solo string para buscar
-        const todosLosCampos = [...camposDirectos, ...camposMetadata]
+        const todosLosCampos = [...camposDirectos, ...camposMetadata, ...camposVariantes]
           .filter(campo => campo !== null && campo !== undefined && campo !== '')
           .map(campo => String(campo).toLowerCase());
         
@@ -461,6 +493,63 @@ const Inventario = () => {
     // React Query invalidará automáticamente la cache y recargará los productos
     setEditarModalOpen(false);
     setProductoSeleccionado(null);
+    refetch();
+  };
+
+  const idsFiltrados = useMemo(() => filteredProducts.map(p => p.id), [filteredProducts]);
+  const todosSeleccionados = idsFiltrados.length > 0 && idsFiltrados.every(id => seleccionados.includes(id));
+
+  const toggleSeleccion = (id) => {
+    setSeleccionados(prev => (
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    ));
+  };
+
+  const toggleSeleccionarTodos = () => {
+    setSeleccionados(prev => {
+      if (todosSeleccionados) {
+        return prev.filter(id => !idsFiltrados.includes(id));
+      }
+      const merged = new Set([...prev, ...idsFiltrados]);
+      return Array.from(merged);
+    });
+  };
+
+  const handleEliminarSeleccionados = async () => {
+    if (seleccionados.length === 0) {
+      toast.error('No hay productos seleccionados');
+      return;
+    }
+    const confirmar = window.confirm(`¿Eliminar ${seleccionados.length} producto(s) seleccionados? Esta acción no se puede deshacer.`);
+    if (!confirmar) return;
+
+    setEliminandoSeleccionados(true);
+    try {
+      const productosAEliminar = productos.filter(p => seleccionados.includes(p.id));
+      for (const producto of productosAEliminar) {
+        if (producto.imagen && !producto.imagen.startsWith('http://') && !producto.imagen.startsWith('https://') && !producto.imagen.startsWith('data:')) {
+          await deleteImageFromStorage(producto.imagen);
+        }
+      }
+
+      const { error: deleteError } = await supabase
+        .from('productos')
+        .delete()
+        .in('id', seleccionados);
+
+      if (deleteError) {
+        throw deleteError;
+      }
+
+      setSeleccionados([]);
+      toast.success('Productos eliminados');
+      refetch();
+    } catch (err) {
+      console.error('Error eliminando seleccionados:', err);
+      toast.error('No se pudieron eliminar los productos seleccionados');
+    } finally {
+      setEliminandoSeleccionados(false);
+    }
   };
 
   // Eliminar producto
@@ -492,6 +581,123 @@ const Inventario = () => {
   const handleProductosImportados = () => {
     // React Query invalidará automáticamente la cache y recargará los productos
     setCsvModalOpen(false);
+  };
+
+  const exportarInventarioExcel = () => {
+    if (!filteredProducts || filteredProducts.length === 0) {
+      toast.error('No hay productos para exportar');
+      return;
+    }
+
+    const formatearVariacionesConfig = (variacionesConfig) => {
+      if (!Array.isArray(variacionesConfig) || variacionesConfig.length === 0) {
+        return {
+          nombres: '',
+          tipos: '',
+          obligatorios: '',
+          seleccionMultiple: '',
+          maximos: '',
+          opciones: ''
+        };
+      }
+
+      const nombres = [];
+      const tipos = [];
+      const obligatorios = [];
+      const seleccionMultiple = [];
+      const maximos = [];
+      const opciones = [];
+
+      variacionesConfig.forEach((variacion) => {
+        nombres.push(variacion?.nombre || variacion?.id || 'Variacion');
+        tipos.push(variacion?.tipo || '');
+        obligatorios.push(variacion?.requerido ? 'Si' : 'No');
+        seleccionMultiple.push(variacion?.seleccion_multiple ? 'Si' : 'No');
+        maximos.push(variacion?.max_selecciones ? String(variacion.max_selecciones) : '');
+
+        const opcionesLista = Array.isArray(variacion?.opciones)
+          ? variacion.opciones
+              .map((op) => (typeof op === 'string' ? op : op?.nombre || op?.valor || op?.label || ''))
+              .filter(Boolean)
+          : [];
+        opciones.push(opcionesLista.join(', '));
+      });
+
+      return {
+        nombres: nombres.join(' || '),
+        tipos: tipos.join(' || '),
+        obligatorios: obligatorios.join(' || '),
+        seleccionMultiple: seleccionMultiple.join(' || '),
+        maximos: maximos.join(' || '),
+        opciones: opciones.join(' || ')
+      };
+    };
+
+    const filas = filteredProducts.flatMap((producto) => {
+      const metadata = producto.metadata || {};
+      const variacionesConfig = metadata.variaciones_config || null;
+      const variacionesFormateadas = formatearVariacionesConfig(variacionesConfig);
+      const variantesProducto = producto.variantes || [];
+
+      const baseRow = {
+        'Producto ID': producto.id || '',
+        'Codigo': producto.codigo || '',
+        'Nombre': producto.nombre || '',
+        'Tipo': producto.tipo || '',
+        'Precio Compra': producto.precio_compra ?? '',
+        'Precio Venta': producto.precio_venta ?? '',
+        'Stock': producto.stock ?? '',
+        'Fecha Vencimiento': producto.fecha_vencimiento || '',
+        'Categoria': metadata.categoria || '',
+        'Descripcion': metadata.descripcion || '',
+        'Marca': metadata.marca || '',
+        'Modelo': metadata.modelo || '',
+        'Color': metadata.color || '',
+        'Talla': metadata.talla || '',
+        'Material': metadata.material || '',
+        'Peso': metadata.peso || '',
+        'Unidad Peso': metadata.unidad_peso || '',
+        'Dimensiones': metadata.dimensiones || '',
+        'Duracion': metadata.duracion || '',
+        'Ingredientes': metadata.ingredientes || '',
+        'Alergenos': metadata.alergenos || '',
+        'Calorias': metadata.calorias || '',
+        'Porcion': metadata.porcion || '',
+        'Variaciones': metadata.variaciones || '',
+        'Variacion Nombre': variacionesFormateadas.nombres,
+        'Variacion Tipo': variacionesFormateadas.tipos,
+        'Variacion Obligatorio': variacionesFormateadas.obligatorios,
+        'Variacion Seleccion Multiple': variacionesFormateadas.seleccionMultiple,
+        'Variacion Maximo Selecciones': variacionesFormateadas.maximos,
+        'Variacion Opciones': variacionesFormateadas.opciones,
+        'Permite Toppings': metadata.permite_toppings ? 'Si' : 'No',
+        'Imagen': producto.imagen || '',
+        'Creado': producto.created_at ? new Date(producto.created_at).toLocaleString('es-CO') : '',
+        'Actualizado': producto.updated_at ? new Date(producto.updated_at).toLocaleString('es-CO') : ''
+      };
+
+      if (!variantesProducto.length) {
+        return [{
+          ...baseRow,
+          'Variante Nombre': '',
+          'Variante Codigo': '',
+          'Variante Stock': ''
+        }];
+      }
+
+      return variantesProducto.map((vari) => ({
+        ...baseRow,
+        'Variante Nombre': vari.nombre || '',
+        'Variante Codigo': vari.codigo || '',
+        'Variante Stock': vari.stock ?? ''
+      }));
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(filas);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Inventario');
+    const fechaArchivo = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+    XLSX.writeFile(workbook, `inventario_detallado_${fechaArchivo}.xlsx`);
   };
 
   return (
@@ -544,6 +750,44 @@ const Inventario = () => {
               >
                 <button className="inventario-btn inventario-btn-secondary" onClick={() => setCsvModalOpen(true)}>Importar CSV</button>
               </FeatureGuard>
+              <FeatureGuard
+                feature="exportData"
+                recommendedPlan="professional"
+                showInline={false}
+                fallback={
+                  <button 
+                    className="inventario-btn inventario-btn-secondary" 
+                    onClick={() => toast.error('La exportación de datos está disponible en el plan Estándar')}
+                    style={{ opacity: 0.5, cursor: 'not-allowed' }}
+                    title="🔒 Plan Estándar"
+                  >
+                    <Download size={18} />
+                    Exportar
+                  </button>
+                }
+              >
+                <button className="inventario-btn inventario-btn-secondary" onClick={exportarInventarioExcel}>
+                  <Download size={18} />
+                  Exportar
+                </button>
+              </FeatureGuard>
+              <label className="inventario-select-all">
+                <input
+                  type="checkbox"
+                  checked={todosSeleccionados}
+                  onChange={toggleSeleccionarTodos}
+                />
+                Seleccionar todo
+              </label>
+              {seleccionados.length > 0 && (
+                <button
+                  className="inventario-btn inventario-btn-outline eliminar"
+                  onClick={handleEliminarSeleccionados}
+                  disabled={eliminandoSeleccionados}
+                >
+                  {eliminandoSeleccionados ? 'Eliminando...' : `Eliminar seleccionados (${seleccionados.length})`}
+                </button>
+              )}
               <button className="inventario-btn inventario-btn-secondary inventario-btn-view-toggle" onClick={() => setModoLista(m => !m)}>
                 {modoLista ? <Grid3X3 size={18} /> : <List size={18} />}
               </button>
@@ -605,6 +849,13 @@ const Inventario = () => {
                 }}
                 layout
               >
+                <div className="inventario-select-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={seleccionados.includes(prod.id)}
+                    onChange={() => toggleSeleccion(prod.id)}
+                  />
+                </div>
                 <OptimizedProductImage 
                   imagePath={prod.imagen} 
                   alt={prod.nombre} 
@@ -666,6 +917,13 @@ const Inventario = () => {
                 }}
                 layout
               >
+                <div className="inventario-select-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={seleccionados.includes(prod.id)}
+                    onChange={() => toggleSeleccion(prod.id)}
+                  />
+                </div>
                 <OptimizedProductImage 
                   imagePath={prod.imagen} 
                   alt={prod.nombre} 
@@ -709,8 +967,11 @@ const Inventario = () => {
         onClose={() => {
           setEditarModalOpen(false);
           setProductoSeleccionado(null);
+          setVarianteSeleccionadaId(null);
         }} 
         producto={productoSeleccionado}
+        varianteActivaId={varianteSeleccionadaId}
+        soloEditarVariantes={!!varianteSeleccionadaId}
         onProductoEditado={handleProductoEditado}
       />
       <ImportarProductosCSV 

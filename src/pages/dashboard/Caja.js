@@ -119,6 +119,9 @@ export default function Caja({
   const [productoParaToppings, setProductoParaToppings] = useState(null);
   const [mostrandoVariacionesSelector, setMostrandoVariacionesSelector] = useState(false);
   const [productoParaVariaciones, setProductoParaVariaciones] = useState(null);
+  const [mostrandoVarianteSelector, setMostrandoVarianteSelector] = useState(false);
+  const [productoParaVariante, setProductoParaVariante] = useState(null);
+  const [varianteSeleccionada, setVarianteSeleccionada] = useState(null);
   // eslint-disable-next-line no-unused-vars
   const [toppingsSeleccionados, setToppingsSeleccionados] = useState([]);
   const [variacionesSeleccionadas, setVariacionesSeleccionadas] = useState({});
@@ -759,17 +762,25 @@ export default function Caja({
 
   const addToCartRef = useRef(null);
   
-  function addToCart(producto) {
+  function addToCart(producto, variante = null) {
     // Si se agrega un producto manualmente (no desde un pedido), resetear el flag
     if (!esModoPedido) {
       setVieneDePedidos(false);
     }
+    const variantes = producto?.variantes || [];
+    if (variantes.length > 0 && !variante) {
+      setProductoParaVariante(producto);
+      setMostrandoVarianteSelector(true);
+      return;
+    }
+
     // Verificar stock disponible
-    const stockDisponible = producto.stock;
-    const itemEnCarrito = cart.find(item => item.id === producto.id);
-    const cantidadEnCarrito = itemEnCarrito ? itemEnCarrito.qty : 0;
+    const stockDisponible = variante?.stock ?? producto.stock;
+    const cantidadEnCarrito = cart
+      .filter(item => item.id === producto.id && (item.variant_id || null) === (variante?.id || null))
+      .reduce((sum, item) => sum + (item.qty || 0), 0);
     
-    if (cantidadEnCarrito >= stockDisponible) {
+    if (stockDisponible !== null && stockDisponible !== undefined && cantidadEnCarrito >= stockDisponible) {
       toast.error(`No hay suficiente stock. Disponible: ${parseFloat(stockDisponible).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`);
       return;
     }
@@ -778,7 +789,7 @@ export default function Caja({
     const esTopping = producto.es_topping || (typeof producto.id === 'string' && producto.id.startsWith('topping_'));
     if (esTopping) {
       // Agregar directamente al carrito sin toppings adicionales
-      agregarProductoConToppingsYVariaciones(producto, [], {});
+      agregarProductoConToppingsYVariaciones(producto, [], {}, variante);
       return;
     }
 
@@ -794,6 +805,7 @@ export default function Caja({
     if (tieneVariaciones) {
       setProductoParaVariaciones(producto);
       setProductoParaToppings(producto); // Guardar producto para después de variaciones
+      setVarianteSeleccionada(variante);
       setMostrandoVariacionesSelector(true);
       return;
     }
@@ -801,10 +813,11 @@ export default function Caja({
     // Si permite toppings, mostrar selector de toppings
     if (permiteToppings) {
       setProductoParaToppings(producto);
+      setVarianteSeleccionada(variante);
       setMostrandoToppingsSelector(true);
     } else {
       // Si no permite toppings, agregar directamente al carrito
-      agregarProductoConToppingsYVariaciones(producto, [], {});
+      agregarProductoConToppingsYVariaciones(producto, [], {}, variante);
     }
   }
   
@@ -813,9 +826,28 @@ export default function Caja({
   
   // Hook para detectar código de barras
   const handleBarcodeScanned = useCallback((barcode) => {
+    const barcodeLower = barcode?.toLowerCase?.().trim?.() || '';
+    if (!barcodeLower) return;
+
+    const varianteEncontrada = productos
+      .flatMap(producto => producto.variantes || [])
+      .find(vari => vari.codigo && vari.codigo.toLowerCase() === barcodeLower);
+
+    if (varianteEncontrada) {
+      const productoVariante = productos.find(p => p.id === varianteEncontrada.producto_id);
+      if (productoVariante && addToCartRef.current) {
+        addToCartRef.current(productoVariante, varianteEncontrada);
+        setTimeout(() => {
+          setQuery('');
+        }, 100);
+        toast.success(`Producto agregado: ${productoVariante.nombre} (${varianteEncontrada.nombre})`);
+        return;
+      }
+    }
+
     // Buscar producto por código de barras exacto
     const producto = productos.find(p => 
-      p.codigo && p.codigo.toLowerCase() === barcode.toLowerCase()
+      p.codigo && p.codigo.toLowerCase() === barcodeLower
     );
     
     if (producto && addToCartRef.current) {
@@ -940,32 +972,18 @@ export default function Caja({
   }, [handleBarcodeScanned]);
   
   // Función para agregar producto al carrito después de seleccionar toppings y variaciones
-  const agregarProductoConToppingsYVariaciones = (producto, toppings = [], variaciones = {}) => {
+  const agregarProductoConToppingsYVariaciones = (producto, toppings = [], variaciones = {}, variante = null) => {
     // Si se agrega un producto manualmente (no desde un pedido), resetear el flag
     if (!esModoPedido) {
       setVieneDePedidos(false);
     }
     // Verificar stock disponible
-    const stockDisponible = producto.stock;
-    const itemEnCarrito = cart.find(item => {
-      // Comparar por ID, toppings y variaciones para determinar si es el mismo item
-      if (item.id !== producto.id) return false;
-      
-      // Comparar toppings
-      const toppingsItem = JSON.stringify((item.toppings || []).map(t => t.id || t).sort());
-      const toppingsNuevo = JSON.stringify(toppings.map(t => t.id || t).sort());
-      if (toppingsItem !== toppingsNuevo) return false;
-      
-      // Comparar variaciones
-      const variacionesItem = JSON.stringify(item.variaciones || {});
-      const variacionesNuevo = JSON.stringify(variaciones);
-      if (variacionesItem !== variacionesNuevo) return false;
-      
-      return true;
-    });
-    const cantidadEnCarrito = itemEnCarrito ? itemEnCarrito.qty : 0;
+    const stockDisponible = variante?.stock ?? producto.stock;
+    const cantidadEnCarrito = cart
+      .filter(item => item.id === producto.id && (item.variant_id || null) === (variante?.id || null))
+      .reduce((sum, item) => sum + (item.qty || 0), 0);
     
-    if (cantidadEnCarrito >= stockDisponible) {
+    if (stockDisponible !== null && stockDisponible !== undefined && cantidadEnCarrito >= stockDisponible) {
       toast.error(`No hay suficiente stock. Disponible: ${parseFloat(stockDisponible).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`);
       return;
     }
@@ -973,6 +991,7 @@ export default function Caja({
     setCart((prev) => {
       const idx = prev.findIndex((i) => {
         if (i.id !== producto.id) return false;
+        if ((i.variant_id || null) !== (variante?.id || null)) return false;
         const toppingsItem = JSON.stringify((i.toppings || []).map(t => t.id || t).sort());
         const toppingsNuevo = JSON.stringify(toppings.map(t => t.id || t).sort());
         if (toppingsItem !== toppingsNuevo) return false;
@@ -998,16 +1017,21 @@ export default function Caja({
         qty: 1,
         toppings: toppings,
         variaciones: variaciones,
+        variant_id: variante?.id || null,
+        variant_nombre: variante?.nombre || null,
+        variant_codigo: variante?.codigo || null,
+        variant_stock: variante?.stock ?? null,
         notas: null // Inicializar notas como null
       }, ...prev];
     });
   }
   
   // Función para actualizar notas de un item del carrito
-  const actualizarNotasItem = (itemId, notas, itemIndex, toppings, variaciones) => {
+  const actualizarNotasItem = (itemId, notas, itemIndex, toppings, variaciones, variantId) => {
     setCart((prev) => prev.map((item, index) => {
       // Comparar por ID, toppings, variaciones e índice para identificar el item correcto
       if (item.id !== itemId) return item;
+      if ((item.variant_id || null) !== (variantId || null)) return item;
       
       const toppingsItem = JSON.stringify((item.toppings || []).map(t => t.id || t).sort());
       const toppingsParam = JSON.stringify((toppings || []).map(t => t.id || t).sort());
@@ -1026,38 +1050,39 @@ export default function Caja({
     }));
   };
 
-  const inc = (id) => {
-    console.log('INC llamado para id:', id);
+  const obtenerStockDisponibleItem = (item) => {
+    if (!item) return null;
+    if (item.variant_id) {
+      const producto = productos.find(p => String(p.id) === String(item.id));
+      const variante = producto?.variantes?.find(v => String(v.id) === String(item.variant_id));
+      return variante?.stock ?? item.variant_stock ?? null;
+    }
+    const producto = productos.find(p => String(p.id) === String(item.id));
+    return producto?.stock ?? null;
+  };
+
+  const inc = (itemIndex) => {
+    console.log('INC llamado para index:', itemIndex);
     console.log('Cart actual:', cart);
     console.log('Productos disponibles:', productos);
-    
-    const itemEnCarrito = cart.find(item => String(item.id) === String(id));
+
+    const itemEnCarrito = cart[itemIndex];
     console.log('Item en carrito encontrado:', itemEnCarrito);
     
     if (!itemEnCarrito) {
-      console.error('Item no encontrado en carrito para id:', id);
+      console.error('Item no encontrado en carrito para index:', itemIndex);
       return;
     }
-    
-    const producto = productos.find(p => String(p.id) === String(id));
-    console.log('Producto encontrado:', producto);
-    
-    if (itemEnCarrito && producto && producto.stock !== undefined && itemEnCarrito.qty >= producto.stock) {
-      toast.error(`No hay suficiente stock. Disponible: ${parseFloat(producto.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`);
+
+    const stockDisponible = obtenerStockDisponibleItem(itemEnCarrito);
+    if (stockDisponible !== null && stockDisponible !== undefined && itemEnCarrito.qty >= stockDisponible) {
+      toast.error(`No hay suficiente stock. Disponible: ${parseFloat(stockDisponible).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`);
       return;
     }
     
     setCart((prev) => {
-      const itemIndex = prev.findIndex(i => String(i.id) === String(id));
-      console.log('Índice del item en carrito:', itemIndex);
-      
-      if (itemIndex === -1) {
-        console.error('Item no encontrado en carrito durante actualización');
-        return prev; // No hacer nada si no se encuentra el item
-      }
-      
-      const updated = prev.map((i) => {
-        if (String(i.id) === String(id)) {
+      const updated = prev.map((i, idx) => {
+        if (idx === itemIndex) {
           const nuevaCantidad = (i.qty || 0) + 1;
           console.log('Incrementando cantidad de', i.qty, 'a', nuevaCantidad);
           return { ...i, qty: nuevaCantidad };
@@ -1070,11 +1095,11 @@ export default function Caja({
     });
   };
   
-  const dec = (id) => {
-    console.log('DEC llamado para id:', id);
+  const dec = (itemIndex) => {
+    console.log('DEC llamado para index:', itemIndex);
     setCart((prev) => {
-      const updated = prev.map((i) => 
-        i.id === id ? { ...i, qty: (i.qty || 0) - 1 } : i
+      const updated = prev.map((i, idx) => 
+        idx === itemIndex ? { ...i, qty: (i.qty || 0) - 1 } : i
       );
       // Eliminar productos con cantidad 0 o menor
       const filtered = updated.filter((i) => i.qty > 0);
@@ -1083,34 +1108,34 @@ export default function Caja({
     });
   };
 
-  const updateQty = (id, newQty) => {
-    const producto = productos.find(p => p.id === id);
+  const updateQty = (itemIndex, newQty) => {
+    const itemEnCarrito = cart[itemIndex];
     const qty = parseInt(newQty, 10);
     
     if (isNaN(qty) || qty < 1) {
       // Si no es un número válido o es menor a 1, eliminar del carrito
-      setCart((prev) => prev.filter((i) => i.id !== id));
+      setCart((prev) => prev.filter((_, idx) => idx !== itemIndex));
       return;
     }
     
-    if (producto && qty > producto.stock) {
-      toast.error(`No hay suficiente stock. Disponible: ${parseFloat(producto.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`);
+    const stockDisponible = obtenerStockDisponibleItem(itemEnCarrito);
+    if (stockDisponible !== null && stockDisponible !== undefined && qty > stockDisponible) {
+      toast.error(`No hay suficiente stock. Disponible: ${parseFloat(stockDisponible).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`);
       // Mantener la cantidad anterior si excede el stock
-      const itemEnCarrito = cart.find(item => item.id === id);
       if (itemEnCarrito) {
-        setCart((prev) => prev.map((i) => 
-          i.id === id ? { ...i, qty: itemEnCarrito.qty } : i
+        setCart((prev) => prev.map((i, idx) => 
+          idx === itemIndex ? { ...i, qty: itemEnCarrito.qty } : i
         ));
       }
       return;
     }
     
-    setCart((prev) => prev.map((i) => 
-      i.id === id ? { ...i, qty: qty } : i
+    setCart((prev) => prev.map((i, idx) => 
+      idx === itemIndex ? { ...i, qty: qty } : i
     ));
   };
 
-  const removeItem = (id) => setCart((prev) => prev.filter((i) => i.id !== id));
+  const removeItem = (itemIndex) => setCart((prev) => prev.filter((_, idx) => idx !== itemIndex));
 
   const handleNuevaVenta = () => {
     setPedidoIdActual(null);
@@ -2012,7 +2037,26 @@ export default function Caja({
             }
           }
           
-          if (producto && producto.stock !== null && producto.stock !== undefined) {
+          if (item.variant_id) {
+            const { data: variante, error: varianteError } = await supabase
+              .from('product_variants')
+              .select('stock')
+              .eq('id', item.variant_id)
+              .single();
+
+            if (!varianteError && variante && variante.stock !== null && variante.stock !== undefined) {
+              const nuevoStock = variante.stock - item.qty;
+              const { error: stockError } = await supabase
+                .from('product_variants')
+                .update({ stock: nuevoStock })
+                .eq('id', item.variant_id);
+
+              if (stockError) {
+                console.error(`Error al actualizar el stock de la variante ${item.variant_nombre || item.nombre}:`, stockError);
+                toast.error(`Error al actualizar el stock de ${item.nombre}. La venta se guardó pero el stock de la variante no se actualizó.`);
+              }
+            }
+          } else if (producto && producto.stock !== null && producto.stock !== undefined) {
             const nuevoStock = producto.stock - item.qty;
             const { error: stockError } = await supabase
               .from('productos')
@@ -2345,8 +2389,28 @@ export default function Caja({
           setProcesandoVenta(false);
           return;
         }
-        
-        if (producto.stock !== null && producto.stock !== undefined && item.qty > producto.stock) {
+
+        if (item.variant_id) {
+          const variante = producto.variantes?.find(v => v.id === item.variant_id);
+          let stockVariante = variante?.stock;
+
+          if (stockVariante === null || stockVariante === undefined) {
+            const { data: varianteDb, error: varianteError } = await supabase
+              .from('product_variants')
+              .select('stock')
+              .eq('id', item.variant_id)
+              .single();
+            if (!varianteError) {
+              stockVariante = varianteDb?.stock;
+            }
+          }
+
+          if (stockVariante !== null && stockVariante !== undefined && item.qty > stockVariante) {
+            toast.error(`No hay suficiente stock para ${item.nombre} (${item.variant_nombre || 'Variante'}). Disponible: ${parseFloat(stockVariante).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`);
+            setProcesandoVenta(false);
+            return;
+          }
+        } else if (producto.stock !== null && producto.stock !== undefined && item.qty > producto.stock) {
           toast.error(`No hay suficiente stock para ${item.nombre}. Disponible: ${parseFloat(producto.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`);
           setProcesandoVenta(false);
           return;
@@ -2603,7 +2667,26 @@ export default function Caja({
             }
           }
           
-          if (producto && producto.stock !== null && producto.stock !== undefined) {
+          if (item.variant_id) {
+            const { data: variante, error: varianteError } = await supabase
+              .from('product_variants')
+              .select('stock')
+              .eq('id', item.variant_id)
+              .single();
+
+            if (!varianteError && variante && variante.stock !== null && variante.stock !== undefined) {
+              const nuevoStock = variante.stock - item.qty;
+              const { error: stockError } = await supabase
+                .from('product_variants')
+                .update({ stock: nuevoStock })
+                .eq('id', item.variant_id);
+
+              if (stockError) {
+                console.error(`Error al actualizar el stock de la variante ${item.variant_nombre || item.nombre}:`, stockError);
+                toast.error(`Error al actualizar el stock de ${item.nombre}. La venta se guardó pero el stock de la variante no se actualizó.`);
+              }
+            }
+          } else if (producto && producto.stock !== null && producto.stock !== undefined) {
             const nuevoStock = producto.stock - item.qty;
             const { error: stockError } = await supabase
               .from('productos')
@@ -3410,6 +3493,12 @@ export default function Caja({
                     </div>
                     <div className="caja-cart-item-info">
                       <p className="caja-cart-item-name">{item.nombre}</p>
+                      {item.variant_nombre && (
+                        <div className="caja-cart-item-variantes">
+                          <span className="caja-cart-item-variaciones-label">Variante: </span>
+                          <span className="caja-cart-item-variaciones-list">{item.variant_nombre}</span>
+                        </div>
+                      )}
                       {item.toppings && Array.isArray(item.toppings) && item.toppings.length > 0 && (
                         <div className="caja-cart-item-toppings">
                           <span className="caja-cart-item-toppings-label">Extras: </span>
@@ -3448,7 +3537,7 @@ export default function Caja({
                           <textarea
                             placeholder="Notas para este producto..."
                             value={item.notas || ''}
-                            onChange={(e) => actualizarNotasItem(item.id, e.target.value, index, item.toppings, item.variaciones)}
+                            onChange={(e) => actualizarNotasItem(item.id, e.target.value, index, item.toppings, item.variaciones, item.variant_id)}
                             className="caja-cart-item-notas-input"
                             rows={1}
                           style={{
@@ -3471,7 +3560,7 @@ export default function Caja({
                       <div className="caja-cart-item-controls">
                         <button 
                           className="caja-qty-btn caja-qty-btn-minus"
-                          onClick={() => dec(item.id)}
+                          onClick={() => dec(index)}
                           aria-label="Disminuir cantidad"
                         >
                           <span className="caja-qty-icon">−</span>
@@ -3494,8 +3583,8 @@ export default function Caja({
                             
                             // Permitir campo vacío temporalmente mientras se escribe
                             if (value === '') {
-                              setCart((prev) => prev.map((i) => 
-                                i.id === item.id ? { ...i, qty: '' } : i
+                              setCart((prev) => prev.map((i, idx) => 
+                                idx === index ? { ...i, qty: '' } : i
                               ));
                               return;
                             }
@@ -3503,7 +3592,7 @@ export default function Caja({
                             const numValue = parseInt(value, 10);
                             
                             if (!isNaN(numValue) && numValue >= 1) {
-                              updateQty(item.id, numValue);
+                              updateQty(index, numValue);
                             }
                           }}
                           onBlur={(e) => {
@@ -3512,16 +3601,16 @@ export default function Caja({
                             
                             if (value === '' || isNaN(numValue) || numValue < 1) {
                               // Si está vacío o es inválido, restaurar cantidad anterior o eliminar
-                              const itemEnCarrito = cart.find(i => i.id === item.id);
+                              const itemEnCarrito = cart[index];
                               if (itemEnCarrito && typeof itemEnCarrito.qty === 'number' && itemEnCarrito.qty >= 1) {
-                                setCart((prev) => prev.map((i) => 
-                                  i.id === item.id ? { ...i, qty: itemEnCarrito.qty } : i
+                                setCart((prev) => prev.map((i, idx) => 
+                                  idx === index ? { ...i, qty: itemEnCarrito.qty } : i
                                 ));
                               } else {
-                                removeItem(item.id);
+                                removeItem(index);
                               }
                             } else {
-                              updateQty(item.id, numValue);
+                              updateQty(index, numValue);
                             }
                           }}
                           onKeyDown={(e) => {
@@ -3534,7 +3623,7 @@ export default function Caja({
                         />
                         <button 
                           className="caja-qty-btn caja-qty-btn-plus"
-                          onClick={() => inc(item.id)}
+                          onClick={() => inc(index)}
                           aria-label="Aumentar cantidad"
                         >
                           <span className="caja-qty-icon">+</span>
@@ -3572,7 +3661,7 @@ export default function Caja({
                     </div>
                     <button 
                       className="caja-remove-btn"
-                      onClick={() => removeItem(item.id)}
+                      onClick={() => removeItem(index)}
                       style={{ display: 'none' }}
                     >
                       <Trash2 size={16} />
@@ -3817,6 +3906,12 @@ export default function Caja({
                       </div>
                       <div className="caja-mobile-cart-item-info">
                         <p className="caja-mobile-cart-item-name">{item.nombre}</p>
+                        {item.variant_nombre && (
+                          <div className="caja-mobile-cart-item-variantes">
+                            <span className="caja-mobile-cart-item-variaciones-label">Variante: </span>
+                            <span className="caja-mobile-cart-item-variaciones-list">{item.variant_nombre}</span>
+                          </div>
+                        )}
                         {item.toppings && Array.isArray(item.toppings) && item.toppings.length > 0 && (
                           <div className="caja-mobile-cart-item-toppings">
                             <span className="caja-mobile-cart-item-toppings-label">Extras: </span>
@@ -3855,7 +3950,7 @@ export default function Caja({
                             <textarea
                               placeholder="Notas para este producto..."
                               value={item.notas || ''}
-                              onChange={(e) => actualizarNotasItem(item.id, e.target.value, index, item.toppings, item.variaciones)}
+                              onChange={(e) => actualizarNotasItem(item.id, e.target.value, index, item.toppings, item.variaciones, item.variant_id)}
                               className="caja-mobile-cart-item-notas-input"
                               rows={1}
                             style={{
@@ -3881,7 +3976,7 @@ export default function Caja({
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              dec(item.id);
+                              dec(index);
                             }}
                             aria-label="Disminuir cantidad"
                           >
@@ -3918,8 +4013,8 @@ export default function Caja({
                               
                               // Permitir campo vacío temporalmente mientras se escribe
                               if (value === '') {
-                                setCart((prev) => prev.map((i) => 
-                                  i.id === item.id ? { ...i, qty: '' } : i
+                                setCart((prev) => prev.map((i, idx) => 
+                                  idx === index ? { ...i, qty: '' } : i
                                 ));
                                 return;
                               }
@@ -3927,7 +4022,7 @@ export default function Caja({
                               const numValue = parseInt(value, 10);
                               
                               if (!isNaN(numValue) && numValue >= 1) {
-                                updateQty(item.id, numValue);
+                                updateQty(index, numValue);
                               }
                             }}
                             onBlur={(e) => {
@@ -3936,16 +4031,16 @@ export default function Caja({
                               
                               if (value === '' || isNaN(numValue) || numValue < 1) {
                                 // Si está vacío o es inválido, restaurar cantidad anterior o eliminar
-                                const itemEnCarrito = cart.find(i => i.id === item.id);
+                                const itemEnCarrito = cart[index];
                                 if (itemEnCarrito && typeof itemEnCarrito.qty === 'number' && itemEnCarrito.qty >= 1) {
-                                  setCart((prev) => prev.map((i) => 
-                                    i.id === item.id ? { ...i, qty: itemEnCarrito.qty } : i
+                                  setCart((prev) => prev.map((i, idx) => 
+                                    idx === index ? { ...i, qty: itemEnCarrito.qty } : i
                                   ));
                                 } else {
-                                  removeItem(item.id);
+                                  removeItem(index);
                                 }
                               } else {
-                                updateQty(item.id, numValue);
+                                updateQty(index, numValue);
                               }
                             }}
                             onKeyDown={(e) => {
@@ -3966,17 +4061,15 @@ export default function Caja({
                               if (e.nativeEvent && e.nativeEvent.stopImmediatePropagation) {
                                 e.nativeEvent.stopImmediatePropagation();
                               }
-                              const itemId = item.id;
-                              console.log('Llamando a inc con id:', itemId);
-                              inc(itemId);
+                              console.log('Llamando a inc con index:', index);
+                              inc(index);
                             }}
                             onTouchEnd={(e) => {
                               console.log('=== TouchEnd en botón + ===');
                               e.preventDefault();
                               e.stopPropagation();
-                              const itemId = item.id;
-                              console.log('Llamando a inc desde TouchEnd con id:', itemId);
-                              inc(itemId);
+                              console.log('Llamando a inc desde TouchEnd con index:', index);
+                              inc(index);
                             }}
                             aria-label="Aumentar cantidad"
                             type="button"
@@ -4035,7 +4128,7 @@ export default function Caja({
                           e.stopPropagation();
                           e.nativeEvent.stopImmediatePropagation();
                           console.log('Botón eliminar clickeado');
-                          removeItem(item.id);
+                          removeItem(index);
                         }}
                         aria-label="Eliminar producto"
                         style={{ pointerEvents: 'auto', zIndex: 5 }}
@@ -4158,6 +4251,52 @@ export default function Caja({
         />
       )}
 
+      {/* Selector de variante (color/tono) */}
+      {mostrandoVarianteSelector && productoParaVariante && (
+        <div className="caja-modal-overlay" onClick={() => {
+          setMostrandoVarianteSelector(false);
+          setProductoParaVariante(null);
+          setVarianteSeleccionada(null);
+        }}>
+          <div className="caja-modal-content caja-variant-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="caja-modal-header">
+              <h3>Selecciona una variante</h3>
+              <button className="caja-modal-close" onClick={() => {
+                setMostrandoVarianteSelector(false);
+                setProductoParaVariante(null);
+                setVarianteSeleccionada(null);
+              }}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="caja-variant-selector">
+              <div className="caja-variant-product">
+                <span>Producto:</span>
+                <strong>{productoParaVariante.nombre || '-'}</strong>
+              </div>
+              <div className="caja-variant-list">
+                {(productoParaVariante.variantes || []).map((vari) => (
+                  <button
+                    key={vari.id}
+                    className="caja-variant-item"
+                    onClick={() => {
+                      setMostrandoVarianteSelector(false);
+                      setProductoParaVariante(null);
+                      addToCart(productoParaVariante, vari);
+                    }}
+                  >
+                    <div className="caja-variant-name">{vari.nombre || 'Variante'}</div>
+                    <div className="caja-variant-stock">
+                      Stock: <strong>{vari.stock ?? 'N/A'}</strong>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Selector de variaciones */}
       {mostrandoVariacionesSelector && productoParaVariaciones && (
         <VariacionesSelector
@@ -4167,6 +4306,7 @@ export default function Caja({
             setProductoParaVariaciones(null);
             setProductoParaToppings(null);
             setVariacionesSeleccionadas({});
+            setVarianteSeleccionada(null);
           }}
           producto={productoParaVariaciones}
           onConfirm={(variaciones) => {
@@ -4179,7 +4319,8 @@ export default function Caja({
             const esTopping = producto?.es_topping || (producto && typeof producto.id === 'string' && producto.id.startsWith('topping_'));
             if (esTopping) {
               // Agregar directamente al carrito sin toppings adicionales
-              agregarProductoConToppingsYVariaciones(producto, [], variaciones);
+              agregarProductoConToppingsYVariaciones(producto, [], variaciones, varianteSeleccionada);
+              setVarianteSeleccionada(null);
             } else {
               // Verificar si el producto permite toppings (por defecto true si no está definido)
               const permiteToppings = producto?.metadata?.permite_toppings !== undefined 
@@ -4196,7 +4337,8 @@ export default function Caja({
                 }
               } else {
                 // Si no permite toppings, agregar directamente al carrito
-                agregarProductoConToppingsYVariaciones(producto, [], variaciones);
+                agregarProductoConToppingsYVariaciones(producto, [], variaciones, varianteSeleccionada);
+                setVarianteSeleccionada(null);
               }
             }
           }}
@@ -4212,6 +4354,7 @@ export default function Caja({
             setProductoParaToppings(null);
             setToppingsSeleccionados([]);
             setVariacionesSeleccionadas({});
+            setVarianteSeleccionada(null);
           }}
           producto={productoParaToppings}
           precioBase={productoParaToppings.precio_venta}
@@ -4222,12 +4365,14 @@ export default function Caja({
             agregarProductoConToppingsYVariaciones(
               productoParaToppings,
               toppings,
-              variacionesSeleccionadas
+              variacionesSeleccionadas,
+              varianteSeleccionada
             );
             setMostrandoToppingsSelector(false);
             setProductoParaToppings(null);
             setToppingsSeleccionados([]);
             setVariacionesSeleccionadas({});
+            setVarianteSeleccionada(null);
           }}
         />
       )}

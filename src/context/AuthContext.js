@@ -102,7 +102,16 @@ export function AuthProvider({ children }) {
             owner_email: ownerEmail
           };
           
-          setOrganization(orgWithOwnerEmail);          // Actualizar el perfil con el rol efectivo y organization_id si viene de team_members
+          setOrganization(orgWithOwnerEmail);
+
+          if (orgWithOwnerEmail?.logo_url) {
+            localStorage.setItem('last_org_logo_url', orgWithOwnerEmail.logo_url);
+            localStorage.setItem('last_org_name', orgWithOwnerEmail.name || '');
+          } else if (orgWithOwnerEmail?.name) {
+            localStorage.setItem('last_org_name', orgWithOwnerEmail.name);
+          }
+
+          // Actualizar el perfil con el rol efectivo y organization_id si viene de team_members
           if (effectiveRole !== profile.role || orgId !== profile.organization_id) {
             const updatedProfile = {
               ...profile,

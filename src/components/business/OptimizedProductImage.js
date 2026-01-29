@@ -17,24 +17,30 @@ const OptimizedProductImage = ({ imagePath, src, alt, className, onError }) => {
     if (onError) onError(e);
   }, [onError]);
 
+  const hasFixedSizeClass = className && (className.includes('inventario-img') || className.includes('inventario-img-lista'));
+
   // Si no hay ruta de imagen, mostrar placeholder inmediatamente
   if (!actualImagePath || actualImagePath.trim() === '' || actualImagePath === 'null' || actualImagePath === 'undefined') {
+    const placeholderStyle = {
+      display: 'block',
+      backgroundColor: '#f3f4f6',
+      borderRadius: '8px',
+      color: '#666',
+      fontSize: '12px',
+      position: 'relative',
+      overflow: 'hidden'
+    };
+    if (!hasFixedSizeClass) {
+      placeholderStyle.width = '100%';
+      placeholderStyle.height = '100%';
+      placeholderStyle.minWidth = '100%';
+      placeholderStyle.minHeight = '100%';
+    }
+
     return (
       <div 
         className={className} 
-        style={{
-          display: 'block',
-          width: '100%',
-          height: '100%',
-          minWidth: '100%',
-          minHeight: '100%',
-          backgroundColor: '#f3f4f6',
-          borderRadius: '8px',
-          color: '#666',
-          fontSize: '12px',
-          position: 'relative',
-          overflow: 'hidden'
-        }}
+        style={placeholderStyle}
       >
         <div style={{
           position: 'absolute',
@@ -93,22 +99,26 @@ const OptimizedProductImage = ({ imagePath, src, alt, className, onError }) => {
   const finalImageUrl = cachedUrl || imageUrl;
 
   if (error || !finalImageUrl) {
+    const placeholderStyle = {
+      display: 'block',
+      backgroundColor: '#f3f4f6',
+      borderRadius: '8px',
+      color: '#666',
+      fontSize: '12px',
+      position: 'relative',
+      overflow: 'hidden'
+    };
+    if (!hasFixedSizeClass) {
+      placeholderStyle.width = '100%';
+      placeholderStyle.height = '100%';
+      placeholderStyle.minWidth = '100%';
+      placeholderStyle.minHeight = '100%';
+    }
+
     return (
       <div 
         className={className} 
-        style={{
-          display: 'block',
-          width: '100%',
-          height: '100%',
-          minWidth: '100%',
-          minHeight: '100%',
-          backgroundColor: '#f3f4f6',
-          borderRadius: '8px',
-          color: '#666',
-          fontSize: '12px',
-          position: 'relative',
-          overflow: 'hidden'
-        }}
+        style={placeholderStyle}
       >
         <div style={{
           position: 'absolute',

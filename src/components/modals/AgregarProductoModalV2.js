@@ -124,11 +124,13 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
   const [formStep, setFormStep] = useState(1); // 1: básico + imagen, 2: opcionales del tipo, 3: adicionales
   const [selectedType, setSelectedType] = useState(skipTypeSelector ? defaultProductType : null);
   const [imagen, setImagen] = useState(null);
+  const [imagenUrl, setImagenUrl] = useState('');
   const [subiendo, setSubiendo] = useState(false);
   const [comprimiendo, setComprimiendo] = useState(false);
   const [additionalFields, setAdditionalFields] = useState([]);
   const [variacionesConfig, setVariacionesConfig] = useState([]);
   const [productosVinculados, setProductosVinculados] = useState([]);
+  const [variantesProducto, setVariantesProducto] = useState([]);
   const fileInputRef = useRef();
   const codigoInputRef = useRef(null);
 
@@ -139,6 +141,11 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
     if (open) {
       // Siempre resetear al paso 1 cuando se abre el modal
       setFormStep(1);
+      setVariacionesConfig([]);
+      setProductosVinculados([]);
+      setVariantesProducto([]);
+      setImagen(null);
+      setImagenUrl('');
       
       if (skipTypeSelector && defaultProductType) {
         setSelectedType(defaultProductType);
@@ -173,7 +180,8 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
     formState: { errors, isSubmitting },
     reset,
     setValue,
-    watch
+    watch,
+    clearErrors
   } = useForm({
     resolver: selectedType ? zodResolver(productSchema) : undefined,
     defaultValues: {
@@ -222,6 +230,14 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
     }
   }, [selectedType, setValue, precioCompraInput, stockInput]);
 
+  useEffect(() => {
+    if (variantesProducto.length > 0) {
+      setValue('stock', '0', { shouldValidate: true });
+      stockInput.setValue('0');
+      clearErrors('stock');
+    }
+  }, [variantesProducto.length, setValue, stockInput, clearErrors]);
+
   // Handler para cuando se escanea un código de barras en el campo código
   const handleBarcodeScanned = useCallback((barcode) => {
     setValue('codigo', barcode, { shouldValidate: true });
@@ -230,6 +246,23 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
       codigoInputRef.current.focus();
     }
   }, [setValue]);
+
+  const agregarVariante = () => {
+    setVariantesProducto(prev => ([
+      ...prev,
+      { nombre: '', codigo: '', stock: 0 }
+    ]));
+  };
+
+  const actualizarVariante = (index, campo, valor) => {
+    setVariantesProducto(prev => prev.map((vari, idx) => (
+      idx === index ? { ...vari, [campo]: valor } : vari
+    )));
+  };
+
+  const eliminarVariante = (index) => {
+    setVariantesProducto(prev => prev.filter((_, idx) => idx !== index));
+  };
 
   // Hook para lector de códigos de barras en el campo código
   const { 
@@ -369,6 +402,7 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
         setSelectedType(null);
         reset();
         setImagen(null);
+        setImagenUrl('');
         setAdditionalFields([]);
       }
     } else {
@@ -383,8 +417,6 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
       e.stopPropagation();
     }
     
-    const typeFields = selectedType ? getProductTypeFields(selectedType) : { required: [], optional: [] };
-    
     // Validar paso actual antes de avanzar
     if (formStep === 1) {
       // Validar campos básicos
@@ -397,15 +429,8 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
         return;
       }
       
-      // Si tiene campos opcionales del tipo, ir a paso 2, sino saltar a paso 3
-      if (typeFields.optional.length > 0) {
-        setFormStep(2);
-      } else if (Object.keys(ADDITIONAL_FIELDS).length > 0) {
-        setFormStep(3);
-      } else {
-        // Si no hay más pasos, no hacer nada (el botón cambiará a "Agregar Producto")
-        return;
-      }
+      // Ir a paso 2 (opciones/variantes)
+      setFormStep(2);
     } else if (formStep === 2) {
       // De opcionales del tipo a adicionales
       if (Object.keys(ADDITIONAL_FIELDS).length > 0) {
@@ -454,6 +479,7 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
   const handleImagenChange = e => {
     if (e.target.files && e.target.files[0]) {
       setImagen(e.target.files[0]);
+      setImagenUrl('');
     }
   };
 
@@ -504,10 +530,14 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
         const { error: errorUpload } = await supabase.storage.from('productos').upload(nombreArchivo, imagenComprimida);
         if (errorUpload) throw errorUpload;
         imagenPath = nombreArchivo;
+      } else if (imagenUrl && imagenUrl.trim() !== '') {
+        imagenPath = imagenUrl.trim();
       }
 
       const typeFields = getProductTypeFields(selectedType);
       
+      const tieneVariantes = variantesProducto.length > 0;
+
       // Campos que existen en la tabla productos
       const productoData = {
         user_id: user?.id,
@@ -518,9 +548,11 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
         precio_compra: typeFields.required.includes('precio_compra') || data.precioCompra
           ? (Number(data.precioCompra?.replace(/\D/g, '') || '0') || 0)
           : 0,
-        stock: typeFields.required.includes('stock') || data.stock
-          ? (Number(data.stock?.replace(/\D/g, '') || '0') || null)
-          : null,
+        stock: tieneVariantes
+          ? 0
+          : (typeFields.required.includes('stock') || data.stock
+            ? (Number(data.stock?.replace(/\D/g, '') || '0') || null)
+            : null),
         fecha_vencimiento: data.fecha_vencimiento || null,
         imagen: imagenPath,
         tipo: selectedType
@@ -565,45 +597,56 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
         productoData.metadata = metadata;
       }
 
-      agregarProductoMutation.mutate(productoData, {
-        onSuccess: () => {
-          reset();
-          setImagen(null);
-          // Resetear al tipo por defecto si aplica, o a null si debe mostrar selector
-          if (skipTypeSelector && defaultProductType) {
-            setSelectedType(defaultProductType);
-            setStep('basic');
-          } else {
-            setSelectedType(null);
-            setStep('selectType');
-          }
-          // Siempre resetear al paso 1
-          setFormStep(1);
-          setAdditionalFields([]);
-          setVariacionesConfig([]);
-          setProductosVinculados([]);
-          precioCompraInput.reset();
-          precioVentaInput.reset();
-          stockInput.reset();
-          onClose();
-          if (onProductoAgregado) onProductoAgregado();
-        },
-        onError: (error) => {
-          console.error('Error agregando producto:', error);
-          let errorMessage = 'Error al guardar el producto.';
-          
-          // Mensajes de error más específicos
-          if (error.message?.includes('row-level security') || error.message?.includes('violates row-level security')) {
-            errorMessage = 'No tienes permisos para agregar productos. Verifica que estés asociado a una organización.';
-          } else if (error.message?.includes('organization_id')) {
-            errorMessage = 'Error: No se encontró organization_id. Por favor, verifica tu perfil.';
-          } else if (error?.message) {
-            errorMessage = error.message;
-          }
-          
-          toast.error(errorMessage);
+      const productoCreado = await agregarProductoMutation.mutateAsync(productoData);
+
+      if (tieneVariantes) {
+        const variantesLimpias = variantesProducto.map(vari => ({
+          organization_id: organizationId,
+          producto_id: productoCreado.id,
+          nombre: (vari.nombre || '').trim(),
+          codigo: (vari.codigo || '').trim() || null,
+          stock: vari.stock === '' || vari.stock === null || vari.stock === undefined ? 0 : Number(vari.stock)
+        }));
+
+        const invalidas = variantesLimpias.some(v => !v.nombre);
+        if (invalidas) {
+          toast.error('Todas las variantes deben tener nombre');
+          setSubiendo(false);
+          return;
         }
-      });
+
+        const { error: variantesError } = await supabase
+          .from('product_variants')
+          .insert(variantesLimpias);
+
+        if (variantesError) {
+          console.error('Error guardando variantes:', variantesError);
+          toast.error('El producto se creó, pero no se pudieron guardar las variantes.');
+        }
+      }
+
+      reset();
+      setImagen(null);
+      setImagenUrl('');
+      // Resetear al tipo por defecto si aplica, o a null si debe mostrar selector
+      if (skipTypeSelector && defaultProductType) {
+        setSelectedType(defaultProductType);
+        setStep('basic');
+      } else {
+        setSelectedType(null);
+        setStep('selectType');
+      }
+      // Siempre resetear al paso 1
+      setFormStep(1);
+      setAdditionalFields([]);
+      setVariacionesConfig([]);
+      setProductosVinculados([]);
+      setVariantesProducto([]);
+      precioCompraInput.reset();
+      precioVentaInput.reset();
+      stockInput.reset();
+      onClose();
+      if (onProductoAgregado) onProductoAgregado();
     } catch (err) {
       console.error('Error:', err);
       toast.error(err?.message || 'Error al guardar el producto.');
@@ -661,7 +704,7 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
   
   // Calcular labels de pasos (ahora solo 3 pasos: básico+imagen, opcionales, adicionales)
   const stepLabels = ['Básico + Imagen'];
-  if (typeFields.optional.length > 0) stepLabels.push('Opcionales');
+  stepLabels.push('Opciones y variantes');
   if (Object.keys(ADDITIONAL_FIELDS).length > 0) stepLabels.push('Adicionales');
 
   return (
@@ -806,8 +849,14 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
                   inputMode="numeric"
                   className={`input-form ${errors.stock ? 'error' : ''}`}
                   placeholder="Cantidad en stock"
+                  disabled={variantesProducto.length > 0}
                 />
                 {errors.stock && <span className="error-message">{errors.stock.message}</span>}
+                {variantesProducto.length > 0 && (
+                  <span className="error-message" style={{ color: '#6b7280' }}>
+                    El stock general se calcula con la sumatoria de variantes.
+                  </span>
+                )}
               </>
             )}
 
@@ -852,6 +901,20 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
                 <input type="file" accept="image/*" onChange={handleImagenChange} ref={fileInputRef} style={{ display: 'none' }} disabled={!puedeSubirImagenes} />
               </div>
 
+              <label style={{ marginTop: '0.5rem' }}>
+                URL de imagen <span style={{ color: '#6b7280', fontWeight: 400 }}>(Opcional)</span>
+              </label>
+              <input
+                className="input-form"
+                placeholder="https://..."
+                value={imagenUrl}
+                onChange={(e) => setImagenUrl(e.target.value)}
+                disabled={Boolean(imagen)}
+              />
+              <p className="step-description" style={{ marginTop: '0.4rem', fontSize: '0.8rem', color: '#6b7280' }}>
+                Si pegas una URL, se usará esa imagen sin subir archivo.
+              </p>
+
               {imagen && (
                 <div className="image-preview">
                   <img src={URL.createObjectURL(imagen)} alt="Preview" />
@@ -864,16 +927,29 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
                   </button>
                 </div>
               )}
+
+              {!imagen && imagenUrl && (
+                <div className="image-preview">
+                  <img src={imagenUrl} alt="Preview" />
+                  <button
+                    type="button"
+                    className="remove-image-btn"
+                    onClick={() => setImagenUrl('')}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
             </div>
 
             </div>
             )}
 
-            {/* Paso 2: Campos opcionales del tipo */}
-            {formStep === 2 && typeFields.optional.length > 0 && (
+            {/* Paso 2: Opciones, variaciones y variantes */}
+            {formStep === 2 && (
               <div className="form-step-content">
-                <h3 className="step-title">Información Adicional del {productType?.label}</h3>
-                <p className="step-description">Estos campos son opcionales pero pueden ser útiles</p>
+                <h3 className="step-title">Opciones y Variantes</h3>
+                <p className="step-description">Configura variaciones del cliente y variantes con stock.</p>
                 {typeFields.optional.map(fieldId => {
               const fieldConfig = ADDITIONAL_FIELDS[fieldId];
               if (!fieldConfig) return null;
@@ -908,13 +984,71 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
               );
             })}
               
-              {/* Configuración de variaciones (solo para productos de comida) */}
-              {selectedType === 'comida' && (
-                <VariacionesConfig
-                  variaciones={variacionesConfig}
-                  onChange={setVariacionesConfig}
-                />
-              )}
+              {/* Configuración de variaciones */}
+              <VariacionesConfig
+                variaciones={variacionesConfig}
+                onChange={setVariacionesConfig}
+              />
+
+              {/* Variantes con stock y código */}
+              <div style={{ marginTop: '1rem' }}>
+                <h3 className="step-title" style={{ fontSize: '1.1rem' }}>Variantes con stock (color, talla, presentación...)</h3>
+                <p className="step-description">Cada variante puede tener su propio stock y código de barras.</p>
+
+                {variantesProducto.length === 0 && (
+                  <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
+                    No hay variantes registradas.
+                  </p>
+                )}
+
+                <div style={{ display: 'grid', gap: '0.75rem' }}>
+                  {variantesProducto.map((vari, index) => (
+                    <div key={`variante-${index}`} style={{ display: 'grid', gap: '0.5rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem', padding: '0.75rem' }}>
+                      <div style={{ display: 'grid', gap: '0.5rem' }}>
+                        <label>Nombre (color/tono)</label>
+                        <input
+                          className="input-form"
+                          value={vari.nombre || ''}
+                          onChange={(e) => actualizarVariante(index, 'nombre', e.target.value)}
+                        />
+                      </div>
+                      <div style={{ display: 'grid', gap: '0.5rem' }}>
+                        <label>Código de barras (opcional)</label>
+                        <input
+                          className="input-form"
+                          value={vari.codigo || ''}
+                          onChange={(e) => actualizarVariante(index, 'codigo', e.target.value)}
+                        />
+                      </div>
+                      <div style={{ display: 'grid', gap: '0.5rem' }}>
+                        <label>Stock</label>
+                        <input
+                          className="input-form"
+                          inputMode="numeric"
+                          value={vari.stock ?? 0}
+                          onChange={(e) => actualizarVariante(index, 'stock', e.target.value)}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        className="inventario-btn inventario-btn-outline eliminar"
+                        onClick={() => eliminarVariante(index)}
+                      >
+                        Eliminar variante
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  className="inventario-btn inventario-btn-secondary"
+                  style={{ marginTop: '0.75rem' }}
+                  onClick={agregarVariante}
+                >
+                  + Agregar variante
+                </button>
+              </div>
               
               {/* Productos vinculados */}
               <ProductosVinculados
@@ -1005,8 +1139,7 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
                 Cancelar
               </button>
               {(() => {
-                const typeFields = selectedType ? getProductTypeFields(selectedType) : { required: [], optional: [] };
-                const hasStep2 = typeFields.optional.length > 0;
+                const hasStep2 = true;
                 const hasStep3 = Object.keys(ADDITIONAL_FIELDS).length > 0;
                 const isLastStep = (formStep === 1 && !hasStep2 && !hasStep3) ||
                                   (formStep === 2 && !hasStep3) ||

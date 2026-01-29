@@ -41,6 +41,16 @@ export const useImageCache = (imagePath) => {
       return;
     }
 
+    const imagePathTrimmed = imagePath.trim();
+    if (imagePathTrimmed.startsWith('http://') || imagePathTrimmed.startsWith('https://') || imagePathTrimmed.startsWith('data:')) {
+      if (mountedRef.current) {
+        setImageUrl(imagePathTrimmed);
+        setLoading(false);
+        setError(false);
+      }
+      return;
+    }
+
     // Función para generar URL de imagen (debe estar definida antes de usarse)
     const generateImageUrl = async () => {
       try {

@@ -356,14 +356,14 @@ const DashboardHome = () => {
                           <span>Exportar datos</span>
                         </li>
                       </ul>
+                      <button 
+                        className="upgrade-button"
+                        onClick={() => navigate('/pricing')}
+                      >
+                        Ver Planes
+                        <ArrowRight size={18} />
+                      </button>
                     </div>
-                    <button 
-                      className="upgrade-button"
-                      onClick={() => navigate('/pricing')}
-                    >
-                      Ver Planes
-                      <ArrowRight size={18} />
-                    </button>
                   </div>
                 )}
                 
@@ -385,14 +385,14 @@ const DashboardHome = () => {
                           <span>Personalización avanzada</span>
                         </li>
                       </ul>
+                      <button 
+                        className="upgrade-button"
+                        onClick={() => navigate('/pricing')}
+                      >
+                        Ver Planes
+                        <ArrowRight size={18} />
+                      </button>
                     </div>
-                    <button 
-                      className="upgrade-button"
-                      onClick={() => navigate('/pricing')}
-                    >
-                      Ver Planes
-                      <ArrowRight size={18} />
-                    </button>
                   </div>
                 )}
               </div>

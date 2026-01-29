@@ -216,9 +216,10 @@ ${venta.cliente ? `\n👤 Cliente: ${venta.cliente.nombre}` : ''}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📦 PRODUCTOS:
-${venta.items.map(item => 
-  `• ${item.nombre} (x${item.qty}) - ${formatCOP(item.qty * item.precio_venta)}`
-).join('\n')}
+${venta.items.map(item => {
+  const variante = item.variant_nombre ? ` (${item.variant_nombre})` : '';
+  return `• ${item.nombre}${variante} (x${item.qty}) - ${formatCOP(item.qty * item.precio_venta)}`;
+}).join('\n')}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -836,6 +837,11 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
                           }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                               <span style={{ fontWeight: '500' }}>{item.nombre}</span>
+                              {item.variant_nombre && (
+                                <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>
+                                  Variante: {item.variant_nombre}
+                                </div>
+                              )}
                               {tieneVariaciones && (
                                 <div style={{
                                   marginTop: '0.25rem',

@@ -1897,8 +1897,44 @@
   transition: all 0.3s ease;
   width: 100%;
   max-width: 100%;
+  position: relative;
   box-sizing: border-box;
   overflow: visible;
+}
+
+.inventario-select-checkbox {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: 8px;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.inventario-select-checkbox input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.inventario-select-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  padding: 0 0.25rem;
+}
+
+.inventario-select-all input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
 }
 
 .inventario-lista-item:hover {

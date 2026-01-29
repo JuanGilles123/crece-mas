@@ -58,9 +58,35 @@ export const useProductosPaginados = (userId, options = {}) => {
 
       const total = count || 0;
       const hasMore = (from + pageSize) < total;
+      const productos = data || [];
+
+      let productosConVariantes = productos;
+      if (productos.length > 0) {
+        const ids = productos.map(p => p.id);
+        const { data: variantesData, error: variantesError } = await supabase
+          .from('product_variants')
+          .select('*')
+          .in('producto_id', ids);
+
+        if (variantesError) {
+          console.error('Error fetching product variants:', variantesError);
+        } else {
+          const variantesMap = new Map();
+          (variantesData || []).forEach(vari => {
+            if (!variantesMap.has(vari.producto_id)) {
+              variantesMap.set(vari.producto_id, []);
+            }
+            variantesMap.get(vari.producto_id).push(vari);
+          });
+          productosConVariantes = productos.map(producto => ({
+            ...producto,
+            variantes: variantesMap.get(producto.id) || []
+          }));
+        }
+      }
 
       return {
-        data: data || [],
+        data: productosConVariantes,
         total,
         hasMore,
         currentPage: pageParam,
@@ -130,9 +156,35 @@ export const useProductosInfinite = (userId, options = {}) => {
 
       const total = count || 0;
       const hasMore = (from + pageSize) < total;
+      const productos = data || [];
+
+      let productosConVariantes = productos;
+      if (productos.length > 0) {
+        const ids = productos.map(p => p.id);
+        const { data: variantesData, error: variantesError } = await supabase
+          .from('product_variants')
+          .select('*')
+          .in('producto_id', ids);
+
+        if (variantesError) {
+          console.error('Error fetching product variants:', variantesError);
+        } else {
+          const variantesMap = new Map();
+          (variantesData || []).forEach(vari => {
+            if (!variantesMap.has(vari.producto_id)) {
+              variantesMap.set(vari.producto_id, []);
+            }
+            variantesMap.get(vari.producto_id).push(vari);
+          });
+          productosConVariantes = productos.map(producto => ({
+            ...producto,
+            variantes: variantesMap.get(producto.id) || []
+          }));
+        }
+      }
 
       return {
-        data: data || [],
+        data: productosConVariantes,
         total,
         hasMore,
         currentPage: pageParam,
