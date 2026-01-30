@@ -2,11 +2,15 @@ import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Filter, X, Check } from 'lucide-react';
 import { ADDITIONAL_FIELDS } from '../../utils/productTypes';
+import { useAuth } from '../../context/AuthContext';
 import './InventarioFilters.css';
 
 const InventarioFilters = ({ productos, onFilterChange, filters }) => {
+  const { user } = useAuth();
   const [showFilters, setShowFilters] = useState(false);
   const [activeFilterId, setActiveFilterId] = useState(null);
+  const umbralStockBajo = Number(user?.user_metadata?.umbralStockBajo ?? 10);
+  const umbralStockBajoSeguro = Number.isFinite(umbralStockBajo) && umbralStockBajo > 0 ? umbralStockBajo : 10;
 
   // Definir campos filtrables con su configuración
   const filterableFields = useMemo(() => {
@@ -64,7 +68,7 @@ const InventarioFilters = ({ productos, onFilterChange, filters }) => {
         field: 'stock',
         range: true,
         quickOptions: [
-          { value: 'bajo', label: 'Stock Bajo (<10)', type: 'condition' },
+          { value: 'bajo', label: `Stock Bajo (<${umbralStockBajoSeguro})`, type: 'condition' },
           { value: 'sin', label: 'Sin Stock', type: 'condition' },
           { value: 'con', label: 'Con Stock', type: 'condition' }
         ],
@@ -177,7 +181,7 @@ const InventarioFilters = ({ productos, onFilterChange, filters }) => {
     });
 
     return fields;
-  }, [productos]);
+  }, [productos, umbralStockBajoSeguro]);
 
   // Obtener campos ya usados en filtros
   const usedFields = useMemo(() => {

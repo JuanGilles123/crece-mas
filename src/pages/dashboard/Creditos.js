@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useCreditos, useEstadisticasCreditos, useCrearPagoCredito, useEliminarPagoCredito, usePagosCredito } from '../../hooks/useCreditos';
 import { 
@@ -36,6 +37,7 @@ function formatCOP(value) {
 
 export default function Creditos() {
   const { organization } = useAuth();
+  const location = useLocation();
   const [filtroEstado, setFiltroEstado] = useState('todos');
   const [busqueda, setBusqueda] = useState('');
   const [creditoSeleccionado, setCreditoSeleccionado] = useState(null);
@@ -52,6 +54,18 @@ export default function Creditos() {
   const { data: estadisticas } = useEstadisticasCreditos(organization?.id);
   const crearPagoMutation = useCrearPagoCredito();
   const eliminarPagoMutation = useEliminarPagoCredito();
+  const lastAppliedSearchRef = useRef(null);
+
+  useEffect(() => {
+    if (lastAppliedSearchRef.current === location.search) return;
+    lastAppliedSearchRef.current = location.search;
+    const params = new URLSearchParams(location.search);
+    const estadoParam = params.get('estado');
+    const estadosValidos = ['todos', 'pendiente', 'parcial', 'pagado', 'vencido'];
+    if (estadoParam && estadosValidos.includes(estadoParam)) {
+      setFiltroEstado(estadoParam);
+    }
+  }, [location.search]);
 
   // Filtrar créditos por búsqueda
   const creditosFiltrados = useMemo(() => {
