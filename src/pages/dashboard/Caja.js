@@ -398,7 +398,7 @@ export default function Caja({
   }, [isWideScreen, pedidosPendientesPago.length, mostrandoPedidosPendientes]);
 
   // Cargar productos usando React Query (optimizado con cache)
-  const { data: productosData = [], isLoading: productosLoading } = useProductos(organization?.id);
+  const { data: productosData = [], isLoading: productosLoading, refetch: refetchProductos } = useProductos(organization?.id);
   
   // Cargar toppings para mostrarlos como productos individuales
   const { data: toppingsData = [], isLoading: toppingsLoading } = useToppings(organization?.id);
@@ -2859,14 +2859,7 @@ export default function Caja({
       }, 1500);
       
       // Recargar productos para actualizar stock
-      const { data: productosActualizados, error: productosError } = await supabase
-        .from('productos')
-        .select('*')
-        .eq('user_id', user.id);
-      
-      if (!productosError) {
-        setProductos(productosActualizados || []);
-      }
+      await refetchProductos();
       
     } catch (error) {
       toast.error(`Error al procesar la venta: ${error.message}`);

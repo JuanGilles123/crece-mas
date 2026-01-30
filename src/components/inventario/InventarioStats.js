@@ -1,9 +1,13 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Package, DollarSign, TrendingUp, AlertTriangle, Box, Percent } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 import './InventarioStats.css';
 
 const InventarioStats = ({ productos }) => {
+  const { user } = useAuth();
+  const umbralStockBajo = Number(user?.user_metadata?.umbralStockBajo ?? 10);
+  const umbralStockBajoSeguro = Number.isFinite(umbralStockBajo) && umbralStockBajo > 0 ? umbralStockBajo : 10;
   // Calcular métricas
   const totalProductos = productos.length;
   
@@ -11,8 +15,8 @@ const InventarioStats = ({ productos }) => {
   const productosConStock = productos.filter(p => p.stock !== null && p.stock !== undefined);
   const totalStock = productosConStock.reduce((sum, p) => sum + (p.stock || 0), 0);
   
-  // Stock bajo (menor a 10 unidades)
-  const stockBajo = productosConStock.filter(p => (p.stock || 0) < 10);
+  // Stock bajo (menor al umbral configurado)
+  const stockBajo = productosConStock.filter(p => (p.stock || 0) < umbralStockBajoSeguro);
   const cantidadStockBajo = stockBajo.length;
   
   // Sin stock
@@ -84,7 +88,7 @@ const InventarioStats = ({ productos }) => {
     },
     {
       id: 'stock-bajo',
-      label: 'Stock Bajo',
+      label: `Stock Bajo (<${umbralStockBajoSeguro})`,
       value: cantidadStockBajo,
       icon: AlertTriangle,
       color: 'warning',

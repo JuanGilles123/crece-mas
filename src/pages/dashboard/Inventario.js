@@ -1,6 +1,7 @@
 
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import './Inventario.css';
 import AgregarProductoModalV2 from '../../components/modals/AgregarProductoModalV2';
@@ -40,6 +41,7 @@ const deleteImageFromStorage = async (imagePath) => {
 
 const Inventario = () => {
   const { user, organization } = useAuth();
+  const location = useLocation();
   const [modalOpen, setModalOpen] = useState(false);
   const [editarModalOpen, setEditarModalOpen] = useState(false);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
@@ -53,10 +55,22 @@ const Inventario = () => {
   const [eliminandoSeleccionados, setEliminandoSeleccionados] = useState(false);
   // Suponiendo que el usuario tiene moneda en user.user_metadata.moneda
   const moneda = user?.user_metadata?.moneda || 'COP';
+  const umbralStockBajo = Number(user?.user_metadata?.umbralStockBajo ?? 10);
+  const umbralStockBajoSeguro = Number.isFinite(umbralStockBajo) && umbralStockBajo > 0 ? umbralStockBajo : 10;
 
   // React Query hooks - usar organization?.id en lugar de user?.id
   const { data: productos = [], isLoading: cargando, error, refetch, isFetching } = useProductos(organization?.id);
   const eliminarProductoMutation = useEliminarProducto();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const stockParam = params.get('stock');
+    if (stockParam === 'bajo') {
+      setFilters(prev => ({ ...prev, stock_condition: 'bajo' }));
+    } else if (stockParam === 'sin') {
+      setFilters(prev => ({ ...prev, stock_condition: 'sin' }));
+    }
+  }, [location.search]);
 
   // Precargar imágenes cuando se cargan los productos
   useEffect(() => {
@@ -463,7 +477,7 @@ const Inventario = () => {
           // Condiciones especiales
           if (fieldId === 'stock') {
             const stock = Number(productValue || 0);
-            if (filterValue === 'bajo' && (stock >= 10 || stock === null)) return false;
+            if (filterValue === 'bajo' && (stock > umbralStockBajoSeguro || stock === null)) return false;
             if (filterValue === 'sin' && stock !== 0) return false;
             if (filterValue === 'con' && (stock === 0 || stock === null)) return false;
           } else if (fieldId === 'alta_utilidad') {
@@ -474,7 +488,7 @@ const Inventario = () => {
 
       return true;
     });
-  }, [productos, query, filters]);
+  }, [productos, query, filters, umbralStockBajoSeguro]);
 
   // Guardar producto en Supabase (ahora manejado por React Query en AgregarProductoModal)
   const handleAgregarProducto = async (nuevo) => {

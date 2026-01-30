@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { 
   useGastosFijos, 
@@ -56,6 +57,7 @@ function formatCOP(value) {
 
 export default function Egresos() {
   const { organization } = useAuth();
+  const location = useLocation();
   const [pestañaActiva, setPestañaActiva] = useState('resumen');
   const [filtroEstado, setFiltroEstado] = useState('todos');
   const [busqueda, setBusqueda] = useState('');
@@ -80,6 +82,67 @@ export default function Egresos() {
   const { data: creditosProveedores = [], isLoading: loadingCreditos } = useCreditosProveedores(organization?.id, {
     estado: filtroEstado !== 'todos' ? filtroEstado : undefined
   });
+  const lastAppliedSearchRef = useRef(null);
+
+  const { tabParam, estadoParam, alertaParam } = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    return {
+      tabParam: params.get('tab'),
+      estadoParam: params.get('estado'),
+      alertaParam: params.get('alerta')
+    };
+  }, [location.search]);
+
+  useEffect(() => {
+    if (lastAppliedSearchRef.current === location.search) return;
+    lastAppliedSearchRef.current = location.search;
+    const tabsValidas = [
+      'resumen',
+      'gastos-fijos',
+      'gastos-variables',
+      'proveedores',
+      'ordenes-compra',
+      'creditos-proveedores'
+    ];
+    if (tabParam && tabsValidas.includes(tabParam)) {
+      setPestañaActiva(tabParam);
+    }
+
+    const estadosValidos = ['todos', 'pendiente', 'parcial', 'pagado', 'vencido'];
+    if (estadoParam && estadosValidos.includes(estadoParam)) {
+      setFiltroEstado(estadoParam);
+    }
+
+    if (alertaParam === 'proveedores') {
+      setPestañaActiva('creditos-proveedores');
+      setFiltroEstado('todos');
+    }
+  }, [tabParam, estadoParam, alertaParam, location.search]);
+
+  const creditosProveedoresMostrados = useMemo(() => {
+    if (!(alertaParam === 'proveedores' && filtroEstado === 'todos')) {
+      return creditosProveedores;
+    }
+    const ahora = new Date();
+    const inicioHoy = new Date(ahora);
+    inicioHoy.setHours(0, 0, 0, 0);
+    const limite = new Date(inicioHoy);
+    limite.setDate(limite.getDate() + 2);
+    limite.setHours(23, 59, 59, 999);
+
+    return creditosProveedores.filter(credito => {
+      if (Number(credito.monto_pendiente || 0) <= 0) return false;
+      const estado = (credito.estado || '').toLowerCase();
+      if (!credito.fecha_vencimiento) return estado === 'vencido';
+      const fecha = new Date(credito.fecha_vencimiento);
+      if (estado === 'vencido' || fecha < inicioHoy) return true;
+      return fecha >= inicioHoy && fecha <= limite;
+    });
+  }, [alertaParam, filtroEstado, creditosProveedores]);
+
+  const creditosProveedoresCount = alertaParam === 'proveedores'
+    ? creditosProveedoresMostrados.length
+    : creditosProveedores.length;
 
   // Filtrar datos por búsqueda
   const proveedoresFiltrados = useMemo(() => {
@@ -215,7 +278,7 @@ export default function Egresos() {
           onClick={() => setPestañaActiva('creditos-proveedores')}
         >
           <CreditCard size={16} />
-          Créditos Proveedores ({creditosProveedores.length})
+          Créditos Proveedores ({creditosProveedoresCount})
         </button>
       </div>
 
@@ -611,14 +674,14 @@ export default function Egresos() {
               <div className="egresos-loading">
                 <p>Cargando créditos...</p>
               </div>
-            ) : creditosProveedores.length === 0 ? (
+            ) : creditosProveedoresMostrados.length === 0 ? (
               <div className="egresos-empty">
                 <CreditCard size={48} color="#9ca3af" />
                 <p>No se encontraron créditos con proveedores</p>
               </div>
             ) : (
               <div className="egresos-lista">
-                {creditosProveedores.map(credito => (
+                {creditosProveedoresMostrados.map(credito => (
                   <div key={credito.id} className="egreso-card">
                     <div className="egreso-card-header">
                       <div>

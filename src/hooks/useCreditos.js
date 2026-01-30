@@ -20,7 +20,14 @@ export const useCreditos = (organizationId, filters = {}) => {
         
         // Aplicar filtros
         if (filters.estado) {
-          query = query.eq('estado', filters.estado);
+          if (filters.estado === 'vencido') {
+            const hoy = new Date().toISOString().split('T')[0];
+            query = query
+              .or(`estado.eq.vencido,fecha_vencimiento.lt.${hoy}`)
+              .in('estado', ['pendiente', 'parcial', 'vencido']);
+          } else {
+            query = query.eq('estado', filters.estado);
+          }
         }
         
         if (filters.cliente_id) {
@@ -75,11 +82,30 @@ export const useCreditos = (organizationId, filters = {}) => {
         }
         
         // Combinar datos
-        return creditosData.map(credito => ({
+        const creditosCombinados = creditosData.map(credito => ({
           ...credito,
           cliente: credito.cliente_id ? (clientesMap.get(credito.cliente_id) || null) : null,
           venta: credito.venta_id ? (ventasMap.get(credito.venta_id) || null) : null
         }));
+
+        if (filters.estado) {
+          if (filters.estado === 'vencido') {
+            const hoy = new Date();
+            hoy.setHours(0, 0, 0, 0);
+            return creditosCombinados.filter(credito => {
+              const estado = (credito.estado || '').toLowerCase();
+              if (estado === 'vencido' || estado === 'parcial') return true;
+              if (!credito.fecha_vencimiento) return false;
+              const fecha = new Date(credito.fecha_vencimiento);
+              return fecha < hoy && estado === 'pendiente';
+            });
+          }
+          return creditosCombinados.filter(
+            credito => (credito.estado || '').toLowerCase() === filters.estado
+          );
+        }
+
+        return creditosCombinados;
       } catch (error) {
         console.error('Error en useCreditos:', error);
         return [];
