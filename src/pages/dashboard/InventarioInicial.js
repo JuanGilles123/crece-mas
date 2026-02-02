@@ -68,9 +68,11 @@ const InventarioInicial = () => {
     [moneda]
   );
 
-  const fetchBatches = useCallback(async () => {
+  const fetchBatches = useCallback(async ({ silent = false } = {}) => {
     if (!organization?.id) return;
-    setLoading(true);
+    if (!silent) {
+      setLoading(true);
+    }
     try {
       const { data, error } = await supabase
         .from('inventory_import_batches')
@@ -81,15 +83,21 @@ const InventarioInicial = () => {
       setBatches(data || []);
     } catch (err) {
       console.error('Error cargando lotes:', err);
-      toast.error('No se pudieron cargar los lotes');
+      if (!silent) {
+        toast.error('No se pudieron cargar los lotes');
+      }
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }, [organization?.id]);
 
-  const fetchItems = useCallback(async (batchId) => {
+  const fetchItems = useCallback(async (batchId, { silent = false } = {}) => {
     if (!organization?.id || !batchId) return;
-    setItemsLoading(true);
+    if (!silent) {
+      setItemsLoading(true);
+    }
     try {
       const { data, error } = await supabase
         .from('inventory_import_items')
@@ -99,12 +107,18 @@ const InventarioInicial = () => {
         .order('created_at', { ascending: false });
       if (error) throw error;
       setItems(data || []);
-      setSelectedItems(new Set());
+      if (!silent) {
+        setSelectedItems(new Set());
+      }
     } catch (err) {
       console.error('Error cargando items:', err);
-      toast.error('No se pudieron cargar los items');
+      if (!silent) {
+        toast.error('No se pudieron cargar los items');
+      }
     } finally {
-      setItemsLoading(false);
+      if (!silent) {
+        setItemsLoading(false);
+      }
     }
   }, [organization?.id]);
 
@@ -122,9 +136,9 @@ const InventarioInicial = () => {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      fetchBatches();
+      fetchBatches({ silent: true });
       if (selectedBatch?.id) {
-        fetchItems(selectedBatch.id);
+        fetchItems(selectedBatch.id, { silent: true });
       }
     }, 10000);
     return () => clearInterval(interval);
@@ -775,15 +789,41 @@ const InventarioInicial = () => {
                   <option value="accesorio">Accesorio</option>
                 </select>
                 <div style={{ display: 'grid', gap: '0.5rem' }}>
-                  <label style={{ fontSize: '0.85rem' }}>
-                    Imagen del producto {hasFeature('productImages') ? '(opcional)' : '(plan requerido)'}
-                  </label>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <label style={{ fontSize: '0.85rem' }}>
+                      Imagen del producto {hasFeature('productImages') ? '(opcional)' : '(plan requerido)'}
+                    </label>
+                    <button
+                      type="button"
+                      className="inventario-btn inventario-btn-primary"
+                      onClick={() => {
+                        if (!hasFeature('productImages')) {
+                          toast.error('Actualiza al plan Estándar para subir imágenes');
+                          return;
+                        }
+                        imageInputRef.current?.click();
+                      }}
+                      disabled={!hasFeature('productImages')}
+                      style={{
+                        padding: '0.35rem 0.6rem',
+                        fontSize: '0.82rem',
+                        gap: '0.35rem',
+                        height: '32px',
+                        whiteSpace: 'nowrap',
+                        ...(!hasFeature('productImages') ? { opacity: 0.5, cursor: 'not-allowed' } : {})
+                      }}
+                    >
+                      <FolderOpen size={14} />
+                      {imageFile ? imageFile.name : currentImagePath ? 'Cambiar imagen' : 'Cargar'}
+                    </button>
+                  </div>
                   <input
                     type="file"
                     accept="image/*"
                     ref={imageInputRef}
                     onChange={(e) => setImageFile(e.target.files?.[0] || null)}
                     disabled={!hasFeature('productImages')}
+                    style={{ display: 'none' }}
                   />
                   {currentImagePath && !imageFile && (
                     <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>

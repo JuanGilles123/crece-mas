@@ -7,7 +7,7 @@ import { ClipboardList } from 'lucide-react';
 import './ImportarProductosCSV.css';
 
 const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
-  const { userProfile } = useAuth();
+  const { userProfile, organization } = useAuth();
   const [archivo, setArchivo] = useState(null);
   const [procesando, setProcesando] = useState(false);
   const [resultado, setResultado] = useState(null);
@@ -211,6 +211,7 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
           const inconsistenciasEncontradas = [];
           const variantesEncontradas = [];
           const codigosEnArchivo = new Set();
+          const defaultPermiteToppings = organization?.business_type === 'food';
           // Procesar solo las filas después de los headers
           for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
             const row = jsonData[i];
@@ -286,6 +287,20 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
             const varianteNombre = buscarCampoExactoLocal(producto, ['variante_nombre', 'variante nombre', 'variante']) || '';
             const varianteCodigo = buscarCampoExactoLocal(producto, ['variante_codigo', 'variante codigo']) || '';
             const varianteStock = buscarCampoExactoLocal(producto, ['variante_stock', 'variante stock']) || '';
+            const stockMinimoRaw = buscarCampoFlexibleLocal(producto, [
+              'stock_minimo',
+              'stock minimo',
+              'min_stock',
+              'stock_min',
+              'umbral_stock_bajo'
+            ]) || '';
+            const permiteToppingsRaw = buscarCampoFlexibleLocal(producto, [
+              'permite_toppings',
+              'permite_topping',
+              'toppings',
+              'permite_adicionales',
+              'permite_adicional'
+            ]) || '';
             
             // Validar tipo de producto
             const tiposValidos = ['fisico', 'servicio', 'comida', 'accesorio'];
@@ -449,6 +464,20 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
                 metadata[campo] = valor.toString().trim();
               }
             });
+
+            if (permiteToppingsRaw && permiteToppingsRaw.toString().trim() !== '') {
+              const normalized = permiteToppingsRaw.toString().trim().toLowerCase();
+              metadata.permite_toppings = ['1', 'true', 'si', 'sí', 'yes', 'y'].includes(normalized);
+            } else {
+              metadata.permite_toppings = defaultPermiteToppings;
+            }
+
+            if (stockMinimoRaw && stockMinimoRaw.toString().trim() !== '') {
+              const umbralProducto = Number(stockMinimoRaw);
+              if (Number.isFinite(umbralProducto) && umbralProducto > 0) {
+                metadata.umbral_stock_bajo = umbralProducto;
+              }
+            }
             
             // fecha_vencimiento ya se guarda en columna directa (no metadata)
             
@@ -678,6 +707,7 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
     const inconsistenciasEncontradas = [];
     const variantesEncontradas = [];
     const codigosEnArchivo = new Set();
+    const defaultPermiteToppings = organization?.business_type === 'food';
     // Procesar solo las líneas después de los headers
     for (let i = headerLineIndex + 1; i < lines.length; i++) {
       const numeroFila = i + 1; // Fila real en CSV (1-indexed)
@@ -762,6 +792,16 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
       const varianteNombre = buscarCampoExacto(producto, ['variante_nombre', 'variante nombre', 'variante']) || '';
       const varianteCodigo = buscarCampoExacto(producto, ['variante_codigo', 'variante codigo']) || '';
       const varianteStock = buscarCampoExacto(producto, ['variante_stock', 'variante stock']) || '';
+      const stockMinimoRaw = buscarCampoFlexible(
+        producto,
+        ['stock_minimo', 'stock minimo', 'min_stock', 'stock_min', 'umbral_stock_bajo'],
+        debugMode
+      ) || '';
+      const permiteToppingsRaw = buscarCampoFlexible(
+        producto,
+        ['permite_toppings', 'permite_topping', 'toppings', 'permite_adicionales', 'permite_adicional'],
+        debugMode
+      ) || '';
       
       // Debug: mostrar valores encontrados para las primeras filas o si hay problemas
       if (debugMode || (!nombre || !stock)) {
@@ -935,6 +975,20 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
           metadata[campo] = valor.toString().trim();
         }
       });
+
+      if (permiteToppingsRaw && permiteToppingsRaw.toString().trim() !== '') {
+        const normalized = permiteToppingsRaw.toString().trim().toLowerCase();
+        metadata.permite_toppings = ['1', 'true', 'si', 'sí', 'yes', 'y'].includes(normalized);
+      } else {
+        metadata.permite_toppings = defaultPermiteToppings;
+      }
+
+      if (stockMinimoRaw && stockMinimoRaw.toString().trim() !== '') {
+        const umbralProducto = Number(stockMinimoRaw);
+        if (Number.isFinite(umbralProducto) && umbralProducto > 0) {
+          metadata.umbral_stock_bajo = umbralProducto;
+        }
+      }
       
       // fecha_vencimiento ya se guarda en columna directa (no metadata)
       
@@ -1420,6 +1474,8 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
               <ul>
                 <li><strong>NO modifiques</strong> los títulos (celdas bloqueadas)</li>
                 <li><strong>Campos requeridos:</strong> codigo, nombre, tipo, precio_compra, precio_venta, stock</li>
+                <li><strong>Campo opcional:</strong> permite_toppings (si/no, true/false, 1/0)</li>
+                <li><strong>Campo opcional:</strong> stock_minimo (número, umbral por producto)</li>
                 <li><strong>Si usas variantes:</strong> llena variante_nombre y variante_stock (stock global puede quedar vacío)</li>
                 <li><strong>Completa</strong> los datos en las filas vacías</li>
                 <li><strong>Usa números</strong> para precios y stock</li>

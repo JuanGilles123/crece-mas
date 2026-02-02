@@ -13,29 +13,30 @@
 
 # TÍTULOS (NO MODIFICAR)
 # Campos requeridos: codigo, nombre, tipo, precio_compra, precio_venta, stock
-codigo,nombre,tipo,precio_compra,precio_venta,stock,categoria,descripcion,imagen,fecha_vencimiento,variante_nombre,variante_codigo,variante_stock,marca,modelo,color,talla,material
+# Campos opcionales: permite_toppings (si/no, true/false, 1/0), stock_minimo (número)
+codigo,nombre,tipo,precio_compra,precio_venta,stock,stock_minimo,categoria,descripcion,imagen,fecha_vencimiento,variante_nombre,variante_codigo,variante_stock,marca,modelo,color,talla,material,permite_toppings
 
 # ========================================
 # EJEMPLOS DE PRODUCTOS (BORRA ESTAS FILAS)
 # ========================================
 
-"SKU-001","Camisa Polo Azul","fisico",25000,45000,10,"Ropa","Camisa de algodón 100% color azul marino talla M","","","","","","","MarcaX","Modelo-Polo","Azul","M","Algodón"
-"SKU-002","Zapatos Deportivos Nike","fisico",80000,150000,5,"Calzado","Zapatos deportivos para running talla 42","","","","","","","Nike","AirRun","Negro","42","Sintético"
-"SKU-003","Base Maquillaje","fisico",30000,60000,"","Cosmética","Base líquida para rostro","","","Tono 01","SKU-003-T01",12,"MarcaY","BasePro","Tono 01","",""
-"SKU-003","Base Maquillaje","fisico",30000,60000,"","Cosmética","Base líquida para rostro","","","Tono 02","SKU-003-T02",8,"MarcaY","BasePro","Tono 02","",""
-"SKU-004","Servicio Manicure","servicio",0,50000,"","","Servicio de manicure","","","","","","","","","",""
+"SKU-001","Camisa Polo Azul","fisico",25000,45000,10,5,"Ropa","Camisa de algodón 100% color azul marino talla M","","","","","","","MarcaX","Modelo-Polo","Azul","M","Algodón","no"
+"SKU-002","Zapatos Deportivos Nike","fisico",80000,150000,5,3,"Calzado","Zapatos deportivos para running talla 42","","","","","","","Nike","AirRun","Negro","42","Sintético","no"
+"SKU-003","Base Maquillaje","fisico",30000,60000,"",8,"Cosmética","Base líquida para rostro","","","Tono 01","SKU-003-T01",12,"MarcaY","BasePro","Tono 01","","","no"
+"SKU-003","Base Maquillaje","fisico",30000,60000,"",8,"Cosmética","Base líquida para rostro","","","Tono 02","SKU-003-T02",8,"MarcaY","BasePro","Tono 02","","","no"
+"SKU-004","Servicio Manicure","servicio",0,50000,"",,"","Servicio de manicure","","","","","","","","","","","no"
 
 # ========================================
 # TUS PRODUCTOS (AGREGA AQUÍ TUS DATOS)
 # ========================================
 
-"","","","","","","","","","","","","","","","","",""
-"","","","","","","","","","","","","","","","","",""
-"","","","","","","","","","","","","","","","","",""
-"","","","","","","","","","","","","","","","","",""
-"","","","","","","","","","","","","","","","","",""
-"","","","","","","","","","","","","","","","","",""
-"","","","","","","","","","","","","","","","","",""
-"","","","","","","","","","","","","","","","","",""
-"","","","","","","","","","","","","","","","","",""
-"","","","","","","","","","","","","","","","","",""
+"","","","","","","","","","","","","","","","","","","",""
+"","","","","","","","","","","","","","","","","","","",""
+"","","","","","","","","","","","","","","","","","","",""
+"","","","","","","","","","","","","","","","","","","",""
+"","","","","","","","","","","","","","","","","","","",""
+"","","","","","","","","","","","","","","","","","","",""
+"","","","","","","","","","","","","","","","","","","",""
+"","","","","","","","","","","","","","","","","","","",""
+"","","","","","","","","","","","","","","","","","","",""
+"","","","","","","","","","","","","","","","","","","",""

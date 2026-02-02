@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -43,6 +43,13 @@ const BottomNav = ({ menuGroups, onItemClick }) => {
     setIsVisible(!isVisible);
   };
 
+  useEffect(() => {
+    document.body.classList.toggle('bottom-nav-open', isVisible);
+    return () => {
+      document.body.classList.remove('bottom-nav-open');
+    };
+  }, [isVisible]);
+
   const handleItemClick = (e) => {
     // Prevenir que el evento se propague y cause errores de serialización
     try {
@@ -60,7 +67,7 @@ const BottomNav = ({ menuGroups, onItemClick }) => {
     <>
       {/* Botón flotante para mostrar/ocultar */}
       <motion.button
-        className="bottom-nav-toggle"
+        className={`bottom-nav-toggle ${isVisible ? 'open' : ''}`}
         onClick={toggleNav}
         whileTap={{ scale: 0.9 }}
         initial={{ scale: 0 }}

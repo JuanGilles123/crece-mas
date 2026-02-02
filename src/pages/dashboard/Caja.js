@@ -182,6 +182,21 @@ export default function Caja({
       setShowCartMobile(false);
     }
   }, [cart.length, showCartMobile]);
+
+  useEffect(() => {
+    document.body.classList.toggle('cart-open', showCartMobile);
+    return () => {
+      document.body.classList.remove('cart-open');
+    };
+  }, [showCartMobile]);
+
+  useEffect(() => {
+    const modalAbierto = mostrandoVariacionesSelector || mostrandoVarianteSelector || mostrandoToppingsSelector;
+    document.body.classList.toggle('modal-open', modalAbierto);
+    return () => {
+      document.body.classList.remove('modal-open');
+    };
+  }, [mostrandoVariacionesSelector, mostrandoVarianteSelector, mostrandoToppingsSelector]);
   
   // Hooks para clientes
   // eslint-disable-next-line no-unused-vars
@@ -511,9 +526,24 @@ export default function Caja({
     return productos;
   }, [productosData, toppingsData, organization?.id]);
 
+  const areProductosIguales = (a, b) => {
+    if (a === b) return true;
+    if (!Array.isArray(a) || !Array.isArray(b)) return false;
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i += 1) {
+      const left = a[i];
+      const right = b[i];
+      if (!left || !right) return false;
+      if (String(left.id) !== String(right.id)) return false;
+      if (left.stock !== right.stock) return false;
+      if (left.precio_venta !== right.precio_venta) return false;
+    }
+    return true;
+  };
+
   // Actualizar productos y estado de carga solo cuando cambien los datos combinados
   useEffect(() => {
-    setProductos(productosCombinados);
+    setProductos((prev) => (areProductosIguales(prev, productosCombinados) ? prev : productosCombinados));
     setCargando(productosLoading || toppingsLoading);
   }, [productosCombinados, productosLoading, toppingsLoading]);
 
@@ -762,6 +792,14 @@ export default function Caja({
 
   const addToCartRef = useRef(null);
   
+  const normalizeStockValue = (value) => Number(value ?? 0) || 0;
+
+  const getStockDisponibleProducto = (producto, variante = null) => {
+    if (!producto || producto.tipo === 'servicio') return null;
+    if (variante) return normalizeStockValue(variante.stock);
+    return normalizeStockValue(producto.stock);
+  };
+
   function addToCart(producto, variante = null) {
     // Si se agrega un producto manualmente (no desde un pedido), resetear el flag
     if (!esModoPedido) {
@@ -775,7 +813,7 @@ export default function Caja({
     }
 
     // Verificar stock disponible
-    const stockDisponible = variante?.stock ?? producto.stock;
+    const stockDisponible = getStockDisponibleProducto(producto, variante);
     const cantidadEnCarrito = cart
       .filter(item => item.id === producto.id && (item.variant_id || null) === (variante?.id || null))
       .reduce((sum, item) => sum + (item.qty || 0), 0);
@@ -978,7 +1016,7 @@ export default function Caja({
       setVieneDePedidos(false);
     }
     // Verificar stock disponible
-    const stockDisponible = variante?.stock ?? producto.stock;
+    const stockDisponible = getStockDisponibleProducto(producto, variante);
     const cantidadEnCarrito = cart
       .filter(item => item.id === producto.id && (item.variant_id || null) === (variante?.id || null))
       .reduce((sum, item) => sum + (item.qty || 0), 0);
@@ -1055,10 +1093,12 @@ export default function Caja({
     if (item.variant_id) {
       const producto = productos.find(p => String(p.id) === String(item.id));
       const variante = producto?.variantes?.find(v => String(v.id) === String(item.variant_id));
-      return variante?.stock ?? item.variant_stock ?? null;
+      if (producto?.tipo === 'servicio') return null;
+      return normalizeStockValue(variante?.stock ?? item.variant_stock);
     }
     const producto = productos.find(p => String(p.id) === String(item.id));
-    return producto?.stock ?? null;
+    if (producto?.tipo === 'servicio') return null;
+    return normalizeStockValue(producto?.stock);
   };
 
   const inc = (itemIndex) => {
@@ -3300,7 +3340,7 @@ export default function Caja({
                 />
                 <div className="caja-product-info">
                   <p className="caja-product-name">{producto.nombre}</p>
-                  <p className="caja-product-stock">Stock: {producto.stock !== null && producto.stock !== undefined ? parseFloat(producto.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : 'N/A'}</p>
+                  <p className="caja-product-stock">Stock: {producto.stock !== null && producto.stock !== undefined ? parseFloat(producto.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '0'}</p>
                 </div>
                 <span className="caja-product-price">{formatCOP(producto.precio_venta)}</span>
               </div>
@@ -4280,7 +4320,7 @@ export default function Caja({
                   >
                     <div className="caja-variant-name">{vari.nombre || 'Variante'}</div>
                     <div className="caja-variant-stock">
-                      Stock: <strong>{vari.stock ?? 'N/A'}</strong>
+                      Stock: <strong>{vari.stock ?? '0'}</strong>
                     </div>
                   </button>
                 ))}

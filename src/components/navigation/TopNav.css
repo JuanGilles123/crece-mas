@@ -42,6 +42,13 @@
   overflow: visible; /* Permitir que tooltips sobresalgan */
 }
 
+.top-nav-sidebar-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .top-nav-sidebar-logo {
   position: absolute;
   top: 1rem;
@@ -126,12 +133,9 @@
 }
 
 .top-nav-notification-btn {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  border: 1px solid var(--border-primary);
-  background: var(--bg-card);
-  color: #111827 !important;
+  border: none;
+  background: transparent;
+  color: inherit;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -140,21 +144,26 @@
   position: relative;
 }
 
-.top-nav-notification-btn svg {
-  width: 18px;
-  height: 18px;
-  visibility: visible !important;
-  opacity: 1 !important;
-  display: block !important;
-  color: #111827 !important;
-  stroke: #111827 !important;
-  fill: none !important;
-  stroke-width: 2.2 !important;
-  z-index: 2;
-}
-
 .top-nav-notification-btn:hover {
   background: var(--bg-hover);
+}
+
+.top-nav-notification-btn.has-notifications svg {
+  animation: notification-bell 1.4s ease-in-out infinite;
+  transform-origin: top center;
+}
+
+@keyframes notification-bell {
+  0%, 100% { transform: rotate(0deg); }
+  10% { transform: rotate(10deg); }
+  20% { transform: rotate(-10deg); }
+  30% { transform: rotate(8deg); }
+  40% { transform: rotate(-8deg); }
+  50% { transform: rotate(4deg); }
+  60% { transform: rotate(-4deg); }
+  70% { transform: rotate(2deg); }
+  80% { transform: rotate(-2deg); }
+  90% { transform: rotate(0deg); }
 }
 
 .top-nav-notification-badge {
@@ -186,8 +195,9 @@
   position: fixed;
   right: 24px;
   top: 60px;
-  width: 320px;
-  max-height: 60vh;
+  width: min(320px, calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 120px);
   overflow-y: auto;
   background: var(--bg-card);
   border: 1px solid var(--border-primary);
@@ -202,6 +212,7 @@
   right: auto;
   left: 86px;
 }
+
 
 .top-nav-notification-overlay {
   position: fixed;
@@ -232,6 +243,14 @@
 
 .top-nav-notification-section {
   padding: 0.25rem 0;
+}
+
+.top-nav-notification-items {
+  padding-left: 1.6rem;
+}
+
+.top-nav-notification-item-detail {
+  padding: 0.55rem 0.8rem;
 }
 
 .top-nav-notification-section-title {
@@ -445,7 +464,7 @@
 }
 
 /* Ocultar sidebar en móvil */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .top-nav-sidebar {
     display: none;
   }
@@ -456,14 +475,35 @@
 }
 
 /* Mostrar sidebar solo en desktop */
-@media (min-width: 769px) {
+@media (min-width: 1025px) {
   .top-nav-mobile {
     display: none;
   }
 }
 
 /* Asegurar que los dropdowns estén por encima de otros elementos */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
+  body.menu-dropdown-open .top-nav-menu {
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+  }
+
+  body.menu-dropdown-open .top-nav-container,
+  body.menu-dropdown-open .top-nav-mobile {
+    overflow: visible !important;
+  }
+
+  body.modal-open .top-nav,
+  body.cart-open .top-nav {
+    pointer-events: none;
+    z-index: 1 !important;
+  }
+
+  body.modal-open .top-nav *,
+  body.cart-open .top-nav * {
+    pointer-events: none;
+  }
+
   .top-nav {
     z-index: 99998 !important;
     position: relative;
@@ -546,13 +586,10 @@
   height: 100%;
   padding-right: 20px;
   margin-right: 8px;
-  border-right: 1px solid rgba(0, 0, 0, 0.1);
   min-width: fit-content;
 }
 
-.dark .top-nav-logo-section {
-  border-right-color: rgba(255, 255, 255, 0.1);
-}
+/* Sin línea divisoria entre logo y menú */
 
 /* Logo Crece Mas */
 .top-nav-logo {
@@ -735,7 +772,7 @@
   padding: 8px;
   min-width: 200px;
   max-width: 280px;
-  z-index: 10001;
+  z-index: 999999;
   border: 1px solid rgba(0, 0, 0, 0.1);
   overflow: hidden;
   max-height: calc(100vh - 80px);
@@ -1155,23 +1192,14 @@
   }
 
   .top-nav-notification-btn {
-    width: 36px;
-    height: 36px;
-  }
-
-  .top-nav-notification-btn svg {
-    width: 18px !important;
-    height: 18px !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    display: block !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    background-image: none !important;
   }
 
   .top-nav-notification-btn {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23111827' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 8a6 6 0 10-12 0c0 7-3 8-3 8h18s-3-1-3-8'/%3E%3Cpath d='M13.73 21a2 2 0 01-3.46 0'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size: 18px 18px;
+    background-image: none;
   }
 }
 
@@ -1215,25 +1243,13 @@
   }
 
   .top-nav-notification-btn {
-    width: 36px;
-    height: 36px;
     visibility: visible !important;
     opacity: 1 !important;
     display: flex !important;
-    background: #fff !important;
-    border-color: #e5e7eb !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    color: #111827 !important;
-  }
-
-  .top-nav-notification-btn svg {
-    width: 18px !important;
-    height: 18px !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    display: block !important;
-    stroke: #111827 !important;
-    color: #111827 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none;
+    background-image: none !important;
   }
 
   .top-nav-notifications-menu {
@@ -1327,6 +1343,13 @@
   .top-nav-item svg,
   .top-nav-dropdown-button svg {
     margin: 0;
+    width: 14px !important;
+    height: 14px !important;
+  }
+
+  .top-nav-notification-btn svg {
+    width: 14px !important;
+    height: 14px !important;
   }
   
   .top-nav-right {
@@ -1340,10 +1363,6 @@
   .top-nav-dropdown-menu {
     min-width: 180px;
     max-width: calc(100vw - 24px);
-    left: auto !important;
-    right: auto !important;
-    top: auto !important;
-    bottom: auto !important;
     transform: translateX(0);
     max-height: calc(100vh - 100px);
     z-index: 30000;
@@ -1355,6 +1374,14 @@
     opacity: 1 !important;
     z-index: 10002;
   }
+
+  .top-nav-notification-btn {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    background-image: none !important;
+  }
+
   
   .top-nav-profile {
     width: 36px;
@@ -1448,7 +1475,6 @@
   .top-nav-dropdown-menu {
     min-width: 160px;
     max-width: calc(100vw - 16px);
-    right: 8px !important;
     max-height: calc(100vh - 120px);
   }
   

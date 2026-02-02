@@ -1,38 +1,50 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Package, DollarSign, TrendingUp, AlertTriangle, Box, Percent } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import './InventarioStats.css';
 
 const InventarioStats = ({ productos }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const umbralStockBajo = Number(user?.user_metadata?.umbralStockBajo ?? 10);
   const umbralStockBajoSeguro = Number.isFinite(umbralStockBajo) && umbralStockBajo > 0 ? umbralStockBajo : 10;
   // Calcular métricas
   const totalProductos = productos.length;
   
-  // Productos con stock
-  const productosConStock = productos.filter(p => p.stock !== null && p.stock !== undefined);
-  const totalStock = productosConStock.reduce((sum, p) => sum + (p.stock || 0), 0);
+  const productosInventario = productos.filter(p => p.tipo !== 'servicio');
+  const totalStock = productosInventario.reduce((sum, p) => sum + (Number(p.stock ?? 0) || 0), 0);
   
-  // Stock bajo (menor al umbral configurado)
-  const stockBajo = productosConStock.filter(p => (p.stock || 0) < umbralStockBajoSeguro);
+  const getUmbralProducto = (producto) => {
+    const umbralProducto = Number(producto?.metadata?.umbral_stock_bajo);
+    if (Number.isFinite(umbralProducto) && umbralProducto > 0) {
+      return umbralProducto;
+    }
+    return umbralStockBajoSeguro;
+  };
+
+  // Stock bajo (según umbral por producto o general)
+  const stockBajo = productosInventario.filter(p => {
+    const stock = Number(p.stock ?? 0) || 0;
+    return stock > 0 && stock <= getUmbralProducto(p);
+  });
   const cantidadStockBajo = stockBajo.length;
   
   // Sin stock
-  const sinStock = productosConStock.filter(p => (p.stock || 0) === 0);
+  const sinStock = productosInventario.filter(p => (Number(p.stock ?? 0) || 0) === 0);
   const cantidadSinStock = sinStock.length;
   
   // Costo total en stock (precio_compra * stock)
-  const costoEnStock = productosConStock.reduce((sum, p) => {
-    const stock = p.stock || 0;
+  const costoEnStock = productosInventario.reduce((sum, p) => {
+    const stock = Number(p.stock ?? 0) || 0;
     const precioCompra = p.precio_compra || 0;
     return sum + (stock * precioCompra);
   }, 0);
   
   // Valor de venta en stock (precio_venta * stock)
-  const valorVentaEnStock = productosConStock.reduce((sum, p) => {
-    const stock = p.stock || 0;
+  const valorVentaEnStock = productosInventario.reduce((sum, p) => {
+    const stock = Number(p.stock ?? 0) || 0;
     const precioVenta = p.precio_venta || 0;
     return sum + (stock * precioVenta);
   }, 0);
@@ -88,11 +100,12 @@ const InventarioStats = ({ productos }) => {
     },
     {
       id: 'stock-bajo',
-      label: `Stock Bajo (<${umbralStockBajoSeguro})`,
+      label: 'Stock Bajo',
       value: cantidadStockBajo,
       icon: AlertTriangle,
       color: 'warning',
-      format: (val) => val.toLocaleString('es-CO')
+      format: (val) => val.toLocaleString('es-CO'),
+      onClick: () => navigate('/dashboard/inventario?stock=bajo')
     },
     {
       id: 'sin-stock',
@@ -100,7 +113,8 @@ const InventarioStats = ({ productos }) => {
       value: cantidadSinStock,
       icon: AlertTriangle,
       color: 'danger',
-      format: (val) => val.toLocaleString('es-CO')
+      format: (val) => val.toLocaleString('es-CO'),
+      onClick: () => navigate('/dashboard/inventario?stock=sin')
     }
   ];
 
@@ -117,6 +131,8 @@ const InventarioStats = ({ productos }) => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: index * 0.05 }}
               whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
+              onClick={stat.onClick}
+              style={stat.onClick ? { cursor: 'pointer' } : undefined}
             >
               <div className="inventario-stat-icon-wrapper">
                 <Icon size={24} className="inventario-stat-icon" />

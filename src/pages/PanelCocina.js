@@ -429,17 +429,23 @@ const PedidoCard = ({ pedido, onCambiarEstado, onVerDetalles }) => {
 
       <div className="pedido-card-items-preview">
         <p className="pedido-items-count">{itemsCount} {itemsCount === 1 ? 'item' : 'items'}</p>
-        {pedido.items && pedido.items.slice(0, 3).map((item, idx) => (
-          <span key={idx} className="pedido-item-preview">
-            {item.cantidad}x {item.producto?.nombre || 'Producto'}
+        {pedido.notas && (
+          <div className="pedido-card-notas">
+            📝 {pedido.notas}
+          </div>
+        )}
+        {pedido.items && pedido.items.map((item, idx) => (
+          <div key={idx} className="pedido-item-detail">
+            <div className="pedido-item-detail-line">
+              {item.cantidad}x {item.producto?.nombre || 'Producto'}
+            </div>
             {item.toppings && item.toppings.length > 0 && (
-              <span className="pedido-item-toppings-preview">
-                {' | '}+ {item.toppings.map(t => t.nombre || t).join(', ')}
-              </span>
+              <div className="pedido-item-detail-sub">
+                + {item.toppings.map(t => t.nombre || t).join(', ')}
+              </div>
             )}
             {item.variaciones_seleccionadas && Object.keys(item.variaciones_seleccionadas).length > 0 && (
-              <span className="pedido-item-variaciones-preview">
-                {' | '}
+              <div className="pedido-item-detail-sub">
                 {Object.entries(item.variaciones_seleccionadas).map(([key, value], i) => {
                   // Buscar el label de la variación y opción
                   const variacionConfig = item.producto?.metadata?.variaciones_config?.find(v => 
@@ -459,16 +465,15 @@ const PedidoCard = ({ pedido, onCambiarEstado, onVerDetalles }) => {
                     </span>
                   );
                 })}
-              </span>
+              </div>
             )}
             {item.notas_item && (
-              <span className="pedido-item-notas-preview"> • {item.notas_item}</span>
+              <div className="pedido-item-detail-sub">
+                📝 {item.notas_item}
+              </div>
             )}
-          </span>
+          </div>
         ))}
-        {itemsCount > 3 && (
-          <span className="pedido-item-more">+{itemsCount - 3} más</span>
-        )}
       </div>
 
       <div className="pedido-card-actions-cocina">

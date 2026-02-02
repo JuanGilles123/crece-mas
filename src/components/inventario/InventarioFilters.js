@@ -11,7 +11,6 @@ const InventarioFilters = ({ productos, onFilterChange, filters }) => {
   const [activeFilterId, setActiveFilterId] = useState(null);
   const umbralStockBajo = Number(user?.user_metadata?.umbralStockBajo ?? 10);
   const umbralStockBajoSeguro = Number.isFinite(umbralStockBajo) && umbralStockBajo > 0 ? umbralStockBajo : 10;
-
   // Definir campos filtrables con su configuración
   const filterableFields = useMemo(() => {
     const fields = [
@@ -68,7 +67,7 @@ const InventarioFilters = ({ productos, onFilterChange, filters }) => {
         field: 'stock',
         range: true,
         quickOptions: [
-          { value: 'bajo', label: `Stock Bajo (<${umbralStockBajoSeguro})`, type: 'condition' },
+          { value: 'bajo', label: `Stock Bajo (<=${umbralStockBajoSeguro})`, type: 'condition' },
           { value: 'sin', label: 'Sin Stock', type: 'condition' },
           { value: 'con', label: 'Con Stock', type: 'condition' }
         ],
@@ -95,6 +94,9 @@ const InventarioFilters = ({ productos, onFilterChange, filters }) => {
         field: 'fecha_vencimiento',
         range: true,
         metadata: false,
+        quickOptions: [
+          { value: 'proximo', label: 'Próximos a vencer (7 días)' }
+        ],
         compact: true
       },
       // Campos calculados

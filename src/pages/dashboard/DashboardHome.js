@@ -121,6 +121,9 @@ const DashboardHome = () => {
     };
   }, [metricasVentas, metricasEgresos]);
 
+  const umbralStockBajo = Number(user?.user_metadata?.umbralStockBajo ?? 10);
+  const umbralStockBajoSeguro = Number.isFinite(umbralStockBajo) && umbralStockBajo > 0 ? umbralStockBajo : 10;
+
   useEffect(() => {
     const cargarMetricas = async () => {
       if (!userProfile?.organization_id) return;
@@ -132,12 +135,14 @@ const DashboardHome = () => {
           .select('*', { count: 'exact', head: true })
           .eq('organization_id', userProfile.organization_id);
 
-        // Productos con stock bajo (menos de 10)
+        // Productos con stock bajo (según umbral general)
         const { count: bajoStock } = await supabase
           .from('productos')
           .select('*', { count: 'exact', head: true })
           .eq('organization_id', userProfile.organization_id)
-          .lt('stock', 10);
+          .neq('tipo', 'servicio')
+          .gt('stock', 0)
+          .lte('stock', umbralStockBajoSeguro);
 
         // Productos próximos a vencer (dentro de 7 días)
         const hoy = new Date().toISOString().split('T')[0];
@@ -164,7 +169,7 @@ const DashboardHome = () => {
     };
 
     cargarMetricas();
-  }, [userProfile?.organization_id]);
+  }, [userProfile?.organization_id, umbralStockBajoSeguro]);
 
   const formatCOP = (value) => {
     return new Intl.NumberFormat('es-CO', {
@@ -243,7 +248,7 @@ const DashboardHome = () => {
         <h2><Zap size={18} /> Accesos</h2>
         <div className="accesos-vertical">
           {accesosRapidos.map((acceso, index) => (
-            <motion.div
+            <motion.button
               key={index}
               className="acceso-item"
               variants={cardVariants}
@@ -251,10 +256,12 @@ const DashboardHome = () => {
               whileTap={{ scale: 0.95 }}
               onClick={() => navigate(acceso.path)}
               style={{ '--card-color': acceso.color }}
+              type="button"
+              aria-label={acceso.label}
             >
               <acceso.icon size={24} />
               <span>{acceso.label}</span>
-            </motion.div>
+            </motion.button>
           ))}
         </div>
       </motion.div>
@@ -539,7 +546,7 @@ const DashboardHome = () => {
               className="metrica-card alerta"
               whileHover={{ scale: 1.05, y: -5 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => navigate('/dashboard/inventario')}
+              onClick={() => navigate('/dashboard/inventario?stock=bajo')}
               style={{ cursor: 'pointer' }}
             >
               <AlertTriangle size={32} />
@@ -551,7 +558,7 @@ const DashboardHome = () => {
               className="metrica-card vencimiento"
               whileHover={{ scale: 1.05, y: -5 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => navigate('/dashboard/inventario')}
+              onClick={() => navigate('/dashboard/inventario?vencimiento=proximo')}
               style={{ cursor: 'pointer' }}
             >
               <AlertTriangle size={32} />
