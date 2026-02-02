@@ -3,7 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 const ProtectedRoute = ({ children }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, userProfile, organization } = useAuth();
   const location = useLocation();
   const [needsPasswordChange, setNeedsPasswordChange] = React.useState(false);
   const [checkingPassword, setCheckingPassword] = React.useState(true);
@@ -31,7 +31,7 @@ const ProtectedRoute = ({ children }) => {
     }
   }, [user, loading, location.pathname]);
 
-  if (loading || checkingPassword) {
+  if (loading || checkingPassword || (user && (!userProfile || !organization))) {
     return (
       <div style={{
         display: 'flex',
@@ -53,6 +53,14 @@ const ProtectedRoute = ({ children }) => {
   // Si necesita cambiar contraseña y no está en la página de cambio, redirigir
   if (needsPasswordChange && location.pathname !== '/cambiar-contrasena-obligatorio') {
     return <Navigate to="/cambiar-contrasena-obligatorio" replace />;
+  }
+
+  const isAccessCodeRoute = location.pathname === '/codigo-acceso';
+  const accessKey = user && organization ? `access_code_verified:${organization.id}:${user.id}` : null;
+  const accessVerified = accessKey ? localStorage.getItem(accessKey) === 'true' : false;
+
+  if (!isAccessCodeRoute && !accessVerified) {
+    return <Navigate to="/codigo-acceso" replace />;
   }
 
   return children;

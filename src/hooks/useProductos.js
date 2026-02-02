@@ -15,7 +15,7 @@ export const useProductos = (organizationId) => {
         .select('id, organization_id, nombre, precio_venta, precio_compra, stock, imagen, codigo, tipo, created_at, metadata')
         .eq('organization_id', organizationId)
         .order('created_at', { ascending: false })
-        .limit(200); // Reducido de 300 a 200 para mejor performance inicial
+        .limit(2000); // Aumentado para mostrar inventarios grandes sin paginación
 
       if (error) {
         console.error('Error fetching productos:', error);

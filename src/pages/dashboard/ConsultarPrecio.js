@@ -13,12 +13,14 @@ const ConsultarPrecio = () => {
   const [query, setQuery] = useState('');
   const [productoEncontrado, setProductoEncontrado] = useState(null);
   const [varianteEncontrada, setVarianteEncontrada] = useState(null);
+  const [resultados, setResultados] = useState([]);
 
   // Función para buscar producto
   const buscarProducto = useCallback((termino) => {
     if (!termino || termino.trim() === '') {
       setProductoEncontrado(null);
       setVarianteEncontrada(null);
+      setResultados([]);
       return;
     }
 
@@ -32,6 +34,7 @@ const ConsultarPrecio = () => {
       const productoVariante = productos.find(p => p.id === variante.producto_id);
       setProductoEncontrado(productoVariante || null);
       setVarianteEncontrada(variante);
+      setResultados([]);
       return;
     }
 
@@ -42,15 +45,20 @@ const ConsultarPrecio = () => {
 
     // Si no se encuentra por código exacto, buscar por nombre o código parcial
     if (!producto) {
-      producto = productos.find(p => {
+      const coincidencias = productos.filter(p => {
         const nombre = (p.nombre || '').toLowerCase();
         const codigo = (p.codigo || '').toLowerCase();
         return nombre.includes(terminoLower) || codigo.includes(terminoLower);
       });
+      setResultados(coincidencias);
+      setProductoEncontrado(null);
+      setVarianteEncontrada(null);
+      return;
     }
 
     setProductoEncontrado(producto || null);
     setVarianteEncontrada(null);
+    setResultados([]);
   }, [productos]);
 
   // Handler para cuando se escanea un código de barras
@@ -182,6 +190,7 @@ const ConsultarPrecio = () => {
       buscarProducto(query);
     } else {
       setProductoEncontrado(null);
+      setResultados([]);
     }
   }, [query, buscarProducto]);
 
@@ -248,6 +257,28 @@ const ConsultarPrecio = () => {
         {isLoading ? (
           <div className="consultar-precio-loading">
             <p>Cargando productos...</p>
+          </div>
+        ) : query && resultados.length > 0 && !productoEncontrado ? (
+          <div className="consultar-precio-results">
+            {resultados.map((producto) => (
+              <div
+                key={producto.id}
+                className="consultar-precio-result-item"
+                onClick={() => {
+                  setProductoEncontrado(producto);
+                  setVarianteEncontrada(null);
+                  setResultados([]);
+                }}
+              >
+                <div className="consultar-precio-result-info">
+                  <div className="consultar-precio-result-name">{producto.nombre}</div>
+                  {producto.codigo && (
+                    <div className="consultar-precio-result-code">Código: {producto.codigo}</div>
+                  )}
+                </div>
+                <div className="consultar-precio-result-price">{formatCOP(producto.precio_venta)}</div>
+              </div>
+            ))}
           </div>
         ) : query && !productoEncontrado ? (
           <div className="consultar-precio-not-found">

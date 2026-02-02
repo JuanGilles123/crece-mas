@@ -5,19 +5,54 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import './InventarioStats.css';
 
-const InventarioStats = ({ productos }) => {
+const InventarioStats = ({ productos, totalProductosOverride }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const umbralStockBajo = Number(user?.user_metadata?.umbralStockBajo ?? 10);
   const umbralStockBajoSeguro = Number.isFinite(umbralStockBajo) && umbralStockBajo > 0 ? umbralStockBajo : 10;
+  const parseNumber = (value) => {
+    if (value === null || value === undefined) return 0;
+    if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+    const raw = String(value).trim();
+    if (!raw) return 0;
+    if (raw.includes('.') && raw.includes(',')) {
+      const normalized = raw.replace(/\./g, '').replace(',', '.');
+      const parsed = Number(normalized);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+    if (raw.includes(',') && !raw.includes('.')) {
+      const normalized = raw.replace(',', '.');
+      const parsed = Number(normalized);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+    if (raw.includes('.') && /^\d{1,3}(\.\d{3})+$/.test(raw)) {
+      const normalized = raw.replace(/\./g, '');
+      const parsed = Number(normalized);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
   // Calcular métricas
-  const totalProductos = productos.length;
+  const totalProductos = Number.isFinite(totalProductosOverride)
+    ? totalProductosOverride
+    : productos.length;
   
   const productosInventario = productos.filter(p => p.tipo !== 'servicio');
-  const totalStock = productosInventario.reduce((sum, p) => sum + (Number(p.stock ?? 0) || 0), 0);
+  const totalStock = productosInventario.reduce((sum, p) => sum + parseNumber(p.stock), 0);
   
   const getUmbralProducto = (producto) => {
-    const umbralProducto = Number(producto?.metadata?.umbral_stock_bajo);
+    const metadata = typeof producto?.metadata === 'string'
+      ? (() => {
+          try {
+            return JSON.parse(producto.metadata);
+          } catch {
+            return {};
+          }
+        })()
+      : (producto?.metadata || {});
+    const umbralProducto = Number(metadata?.umbral_stock_bajo);
     if (Number.isFinite(umbralProducto) && umbralProducto > 0) {
       return umbralProducto;
     }
@@ -26,26 +61,26 @@ const InventarioStats = ({ productos }) => {
 
   // Stock bajo (según umbral por producto o general)
   const stockBajo = productosInventario.filter(p => {
-    const stock = Number(p.stock ?? 0) || 0;
+    const stock = parseNumber(p.stock);
     return stock > 0 && stock <= getUmbralProducto(p);
   });
   const cantidadStockBajo = stockBajo.length;
   
   // Sin stock
-  const sinStock = productosInventario.filter(p => (Number(p.stock ?? 0) || 0) === 0);
+  const sinStock = productosInventario.filter(p => parseNumber(p.stock) === 0);
   const cantidadSinStock = sinStock.length;
   
   // Costo total en stock (precio_compra * stock)
   const costoEnStock = productosInventario.reduce((sum, p) => {
-    const stock = Number(p.stock ?? 0) || 0;
-    const precioCompra = p.precio_compra || 0;
+    const stock = parseNumber(p.stock);
+    const precioCompra = parseNumber(p.precio_compra);
     return sum + (stock * precioCompra);
   }, 0);
   
   // Valor de venta en stock (precio_venta * stock)
   const valorVentaEnStock = productosInventario.reduce((sum, p) => {
-    const stock = Number(p.stock ?? 0) || 0;
-    const precioVenta = p.precio_venta || 0;
+    const stock = parseNumber(p.stock);
+    const precioVenta = parseNumber(p.precio_venta);
     return sum + (stock * precioVenta);
   }, 0);
   
