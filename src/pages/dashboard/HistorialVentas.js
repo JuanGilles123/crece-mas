@@ -61,7 +61,8 @@ const HistorialVentas = () => {
   
   const { inputRef: barcodeInputRef, handleKeyDown: handleBarcodeKeyDown, handleInputChange: handleBarcodeInputChange } = useBarcodeScanner(handleBarcodeScanned, {
     minLength: 3,
-    maxTimeBetweenChars: 100
+    maxTimeBetweenChars: 100,
+    clearInput: false
   });
   const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
   const [mostrandoRecibo, setMostrandoRecibo] = useState(false);

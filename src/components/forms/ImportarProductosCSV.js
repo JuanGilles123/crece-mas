@@ -190,7 +190,7 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
             .replace(/\*/g, '')
             .replace(/[_\s\-()]/g, '');
           const headersNormalizados = headers.map(normalizarHeader);
-          const requiredHeaders = ['codigo', 'nombre', 'tipo', 'preciocompra', 'precioventa', 'stock'];
+          const requiredHeaders = ['nombre', 'tipo', 'preciocompra', 'precioventa', 'stock'];
           const missingHeaders = requiredHeaders.filter(req => !headersNormalizados.some(h => h.includes(req)));
           if (missingHeaders.length > 0) {
             resolve({
@@ -316,10 +316,6 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
             if (tipoRaw && !tiposValidos.includes(tipo)) {
               agregarProblema('tipo', `El tipo "${tipoRaw}" no es válido. Usa: ${tiposValidos.join(', ')}`, tipoRaw);
             }
-            if (!codigoRaw || String(codigoRaw).trim() === '') {
-              agregarProblema('codigo', 'El código del producto es obligatorio', codigoRaw);
-            }
-            
             if (!nombre || nombre.trim() === '') {
               agregarProblema('nombre', 'El nombre del producto es obligatorio', nombre);
             }
@@ -401,7 +397,7 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
               ? String(codigoRaw).trim()
               : '';
 
-            if (codigosEnArchivo.has(codigoFinal)) {
+            if (codigoFinal && codigosEnArchivo.has(codigoFinal)) {
               agregarProblema('codigo', `El código "${codigoFinal}" está duplicado en el archivo`, codigoFinal);
             }
 
@@ -436,7 +432,7 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
               imagen: imagen || null, // Guardamos la imagen original para procesar después
               fecha_vencimiento: fechaVencimiento || null,
               __rowNumber: numeroFila,
-              __productKey: codigoFinal
+              __productKey: codigoFinal || `fila_${numeroFila}`
             };
             
             // Agregar precio_compra solo si tiene valor (obligatorio para fisico, comida, accesorio)
@@ -486,11 +482,13 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
               productoFinal.metadata = metadata;
             }
             productos.push(productoFinal);
-            codigosEnArchivo.add(codigoFinal);
+            if (codigoFinal) {
+              codigosEnArchivo.add(codigoFinal);
+            }
 
             if (tieneVariante) {
               variantesEncontradas.push({
-                productKey: codigoFinal,
+                productKey: codigoFinal || `fila_${numeroFila}`,
                 nombre: String(varianteNombre || '').trim(),
                 codigo: String(varianteCodigo || '').trim() || null,
                 stock: !isNaN(varianteStockNum) ? varianteStockNum : 0,
@@ -674,7 +672,7 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
       .replace(/\*/g, '')
       .replace(/[_\s\-()]/g, '');
     const headersNormalizados = headers.map(normalizarHeader);
-    const requiredHeaders = ['codigo', 'nombre', 'tipo', 'preciocompra', 'precioventa', 'stock'];
+    const requiredHeaders = ['nombre', 'tipo', 'preciocompra', 'precioventa', 'stock'];
     const missingHeaders = requiredHeaders.filter(req => !headersNormalizados.some(h => h.includes(req)));
     if (missingHeaders.length > 0) {
       return {
@@ -827,10 +825,6 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
       if (tipoRaw && !tiposValidos.includes(tipo)) {
         agregarProblema('tipo', `El tipo "${tipoRaw}" no es válido. Usa: ${tiposValidos.join(', ')}`, tipoRaw);
       }
-      if (!codigoRaw || String(codigoRaw).trim() === '') {
-        agregarProblema('codigo', 'El código del producto es obligatorio', codigoRaw);
-      }
-
       if (!nombre || nombre.trim() === '') {
         agregarProblema('nombre', 'El nombre del producto es obligatorio', nombre);
       }
@@ -912,7 +906,7 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
         ? String(codigoRaw).trim()
         : '';
       
-      if (codigosEnArchivo.has(codigoFinal)) {
+      if (codigoFinal && codigosEnArchivo.has(codigoFinal)) {
         agregarProblema('codigo', `El código "${codigoFinal}" está duplicado en el archivo`, codigoFinal);
       }
 
@@ -947,7 +941,7 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
         imagen: imagen || null, // Guardamos la imagen original para procesar después
         fecha_vencimiento: fechaVencimiento || null,
         __rowNumber: numeroFila,
-        __productKey: codigoFinal
+        __productKey: codigoFinal || `fila_${numeroFila}`
       };
       
       // Agregar precio_compra solo si tiene valor (obligatorio para fisico, comida, accesorio)
@@ -997,11 +991,13 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
         productoFinal.metadata = metadata;
       }
       productos.push(productoFinal);
-      codigosEnArchivo.add(codigoFinal);
+      if (codigoFinal) {
+        codigosEnArchivo.add(codigoFinal);
+      }
 
       if (tieneVariante) {
         variantesEncontradas.push({
-          productKey: codigoFinal,
+          productKey: codigoFinal || `fila_${numeroFila}`,
           nombre: String(varianteNombre || '').trim(),
           codigo: String(varianteCodigo || '').trim() || null,
           stock: !isNaN(varianteStockNum) ? varianteStockNum : 0,

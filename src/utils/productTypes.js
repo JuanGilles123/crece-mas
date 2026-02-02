@@ -7,7 +7,7 @@ export const PRODUCT_TYPES = {
     icon: '📦',
     description: 'Productos tangibles con inventario',
     fields: {
-      required: ['codigo', 'nombre', 'precio_venta', 'precio_compra', 'stock'],
+      required: ['nombre', 'precio_venta', 'precio_compra', 'stock'],
       optional: ['imagen', 'fecha_vencimiento', 'peso', 'dimensiones', 'marca', 'modelo', 'color', 'talla', 'categoria']
     }
   },
@@ -17,7 +17,7 @@ export const PRODUCT_TYPES = {
     icon: '🔧',
     description: 'Servicios intangibles sin inventario',
     fields: {
-      required: ['codigo', 'nombre', 'precio_venta'],
+      required: ['nombre', 'precio_venta'],
       optional: ['imagen', 'duracion', 'descripcion', 'categoria']
     }
   },
@@ -27,7 +27,7 @@ export const PRODUCT_TYPES = {
     icon: '🍔',
     description: 'Productos alimenticios con ingredientes y variaciones',
     fields: {
-      required: ['codigo', 'nombre', 'precio_venta', 'precio_compra', 'stock'],
+      required: ['nombre', 'precio_venta', 'precio_compra', 'stock'],
       optional: ['imagen', 'fecha_vencimiento', 'ingredientes', 'alergenos', 'calorias', 'porcion', 'categoria', 'variaciones']
     }
   },
@@ -37,7 +37,7 @@ export const PRODUCT_TYPES = {
     icon: '⚖️',
     description: 'Productos con peso, medidas o variaciones personalizables',
     fields: {
-      required: ['codigo', 'nombre', 'precio_venta', 'precio_compra'],
+      required: ['nombre', 'precio_venta', 'precio_compra'],
       optional: ['imagen', 'peso', 'unidad_peso', 'stock', 'dimensiones', 'color', 'material', 'talla', 'variaciones', 'categoria']
     }
   }

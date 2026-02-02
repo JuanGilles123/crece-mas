@@ -5,6 +5,7 @@ import { supabase } from '../../services/api/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import { useSubscription } from '../../hooks/useSubscription';
 import { useProductos } from '../../hooks/useProductos';
+import { useVentas } from '../../hooks/useVentas';
 import { useToppings } from '../../hooks/useToppings';
 import { useGuardarCotizacion, useActualizarCotizacion } from '../../hooks/useCotizaciones';
 import { generarCodigoVenta } from '../../utils/generarCodigoVenta';
@@ -61,6 +62,7 @@ export default function Caja({
   
   const esModoPedido = mode === 'pedido';
   const [query, setQuery] = useState("");
+  
   const [queryPedidos, setQueryPedidos] = useState(""); // Buscador para pedidos listos para pagar
   const [cart, setCart] = useState([]);
   const [method, setMethod] = useState("Efectivo");
@@ -414,9 +416,10 @@ export default function Caja({
 
   // Cargar productos usando React Query (optimizado con cache)
   const { data: productosData = [], isLoading: productosLoading, refetch: refetchProductos } = useProductos(organization?.id);
+  const { data: ventasData = [], isLoading: ventasLoading } = useVentas(organization?.id, 2000, 30);
   
   // Cargar toppings para mostrarlos como productos individuales
-  const { data: toppingsData = [], isLoading: toppingsLoading } = useToppings(organization?.id);
+  const { data: toppingsData = [], isLoading: toppingsLoading, isFetched: toppingsFetched } = useToppings(organization?.id);
   
   // Precargar imágenes cuando se cargan los productos (similar a Inventario)
   useEffect(() => {
@@ -505,8 +508,8 @@ export default function Caja({
       }
     }
     
-    // Agregar toppings como productos individuales
-    if (toppingsData.length > 0) {
+    // Agregar toppings como productos individuales solo para negocio de comida
+    if (organization?.business_type === 'food' && toppingsData.length > 0) {
       const toppingsComoProductos = toppingsData.map(topping => ({
         id: `topping_${topping.id}`, // Prefijo para identificar que es un topping
         nombre: topping.nombre,
@@ -524,7 +527,7 @@ export default function Caja({
     }
     
     return productos;
-  }, [productosData, toppingsData, organization?.id]);
+  }, [productosData, toppingsData, organization?.id, organization?.business_type]);
 
   const areProductosIguales = (a, b) => {
     if (a === b) return true;
@@ -541,12 +544,6 @@ export default function Caja({
     return true;
   };
 
-  // Actualizar productos y estado de carga solo cuando cambien los datos combinados
-  useEffect(() => {
-    setProductos((prev) => (areProductosIguales(prev, productosCombinados) ? prev : productosCombinados));
-    setCargando(productosLoading || toppingsLoading);
-  }, [productosCombinados, productosLoading, toppingsLoading]);
-
   // Estado para trackear si estamos editando una cotización existente
   const [cotizacionId, setCotizacionId] = useState(null);
 
@@ -554,6 +551,10 @@ export default function Caja({
   const [clienteNombrePedido, setClienteNombrePedido] = useState(null);
 
   // Cargar pedido desde localStorage si viene de "Pagar ahora"
+  const updateSearchQuery = useCallback((value) => {
+    setQuery(value);
+  }, []);
+
   useEffect(() => {
     const pedidoData = localStorage.getItem('pedidoParaPagar');
     if (pedidoData && productos.length > 0) {
@@ -675,63 +676,98 @@ export default function Caja({
     }
   }, [productos, clientes]);
 
+  const productosSearchIndex = useMemo(() => {
+    const index = new Map();
+    productos.forEach((p) => {
+      const camposDirectos = [
+        p.nombre,
+        p.codigo,
+        p.tipo
+      ];
+
+      const metadata = typeof p.metadata === 'string'
+        ? (() => {
+            try {
+              return JSON.parse(p.metadata);
+            } catch {
+              return {};
+            }
+          })()
+        : (p.metadata || {});
+
+      const camposMetadata = [
+        metadata.marca,
+        metadata.modelo,
+        metadata.color,
+        metadata.talla,
+        metadata.categoria,
+        metadata.descripcion,
+        metadata.ingredientes,
+        metadata.alergenos,
+        metadata.material,
+        metadata.duracion,
+        metadata.peso,
+        metadata.dimensiones
+      ];
+
+      const textoCompleto = [...camposDirectos, ...camposMetadata]
+        .filter(campo => campo !== null && campo !== undefined && campo !== '')
+        .map(campo => String(campo).toLowerCase())
+        .join(' ');
+
+      index.set(String(p.id), textoCompleto);
+    });
+    return index;
+  }, [productos]);
+
   const filteredProducts = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return productos;
     return productos.filter((p) => {
-      // Buscar por nombre
-      if (p.nombre?.toLowerCase().includes(q)) return true;
-      
-      // Buscar por código de barras (parcial)
-      if (p.codigo?.toLowerCase().includes(q)) return true;
-      
-      // Buscar por tipo de producto
-      if (p.tipo?.toLowerCase().includes(q)) return true;
-      
-      // Buscar en metadata (campos adicionales)
-      if (p.metadata) {
-        const metadata = typeof p.metadata === 'string' ? JSON.parse(p.metadata) : p.metadata;
-        
-        // Buscar en marca
-        if (metadata.marca?.toLowerCase().includes(q)) return true;
-        
-        // Buscar en modelo
-        if (metadata.modelo?.toLowerCase().includes(q)) return true;
-        
-        // Buscar en color
-        if (metadata.color?.toLowerCase().includes(q)) return true;
-        
-        // Buscar en talla
-        if (metadata.talla?.toLowerCase().includes(q)) return true;
-        
-        // Buscar en categoría
-        if (metadata.categoria?.toLowerCase().includes(q)) return true;
-        
-        // Buscar en descripción
-        if (metadata.descripcion?.toLowerCase().includes(q)) return true;
-        
-        // Buscar en ingredientes
-        if (metadata.ingredientes?.toLowerCase().includes(q)) return true;
-        
-        // Buscar en alérgenos
-        if (metadata.alergenos?.toLowerCase().includes(q)) return true;
-        
-        // Buscar en material
-        if (metadata.material?.toLowerCase().includes(q)) return true;
-        
-        // Buscar en duración (para servicios)
-        if (metadata.duracion?.toLowerCase().includes(q)) return true;
-        
-        // Buscar en peso (convertir a string)
-        if (metadata.peso?.toString().includes(q)) return true;
-        
-        // Buscar en dimensiones
-        if (metadata.dimensiones?.toLowerCase().includes(q)) return true;
-      }
-      
-      return false;
+      const textoCompleto = productosSearchIndex.get(String(p.id)) || '';
+      return textoCompleto.includes(q);
     });
-  }, [query, productos]);
+  }, [query, productos, productosSearchIndex]);
+
+  const ventasPorProducto = useMemo(() => {
+    const map = new Map();
+    ventasData.forEach((venta) => {
+      const items = Array.isArray(venta?.items) ? venta.items : [];
+      items.forEach((item) => {
+        const itemId = item?.id ?? item?.producto_id;
+        if (!itemId) return;
+        const cantidad = Number(item?.qty ?? item?.cantidad ?? 1) || 0;
+        const key = String(itemId);
+        map.set(key, (map.get(key) || 0) + cantidad);
+      });
+    });
+    return map;
+  }, [ventasData]);
+
+  const productosCombinadosOrdenados = useMemo(() => {
+    const lista = [...productosCombinados];
+    lista.sort((a, b) => {
+      const ventasA = ventasPorProducto.get(String(a.id)) || 0;
+      const ventasB = ventasPorProducto.get(String(b.id)) || 0;
+      if (ventasB !== ventasA) {
+        return ventasB - ventasA;
+      }
+      return (a?.nombre || '').localeCompare(b?.nombre || '', 'es');
+    });
+    return lista;
+  }, [productosCombinados, ventasPorProducto]);
+
+  const toppingsReady = toppingsFetched || !organization?.id;
+
+  // Actualizar productos y estado de carga solo cuando cambien los datos combinados
+  useEffect(() => {
+    setProductos((prev) => (areProductosIguales(prev, productosCombinadosOrdenados) ? prev : productosCombinadosOrdenados));
+    setCargando(productosLoading || ventasLoading || !toppingsReady || toppingsLoading);
+  }, [productosCombinadosOrdenados, productosLoading, ventasLoading, toppingsReady, toppingsLoading]);
+
+  const sortedProducts = useMemo(() => {
+    return filteredProducts;
+  }, [filteredProducts]);
 
   // Calcular subtotal incluyendo precios de toppings
   const subtotal = useMemo(() => {
@@ -876,7 +912,7 @@ export default function Caja({
       if (productoVariante && addToCartRef.current) {
         addToCartRef.current(productoVariante, varianteEncontrada);
         setTimeout(() => {
-          setQuery('');
+          updateSearchQuery('');
         }, 100);
         toast.success(`Producto agregado: ${productoVariante.nombre} (${varianteEncontrada.nombre})`);
         return;
@@ -893,20 +929,22 @@ export default function Caja({
       addToCartRef.current(producto);
       // Limpiar búsqueda después de un pequeño delay
       setTimeout(() => {
-        setQuery('');
+        updateSearchQuery('');
         // El foco se mantendrá automáticamente por el hook
       }, 100);
       toast.success(`Producto agregado: ${producto.nombre}`);
     } else {
       // Si no se encuentra, buscar por código parcial
-      setQuery(barcode);
+      updateSearchQuery(barcode);
       toast('Producto no encontrado por código de barras', { icon: '⚠️' });
     }
-  }, [productos]);
+  }, [productos, updateSearchQuery]);
   
   const { inputRef: barcodeInputRef, handleKeyDown: handleBarcodeKeyDown, handleInputChange: handleBarcodeInputChange } = useBarcodeScanner(handleBarcodeScanned, {
     minLength: 3,
-    maxTimeBetweenChars: 100
+    maxTimeBetweenChars: 30,
+    waitForEndChar: true,
+    clearInput: false
   });
   
   // Refs para detección global de código de barras (funciona aunque el cursor no esté en el buscador)
@@ -1266,7 +1304,7 @@ export default function Caja({
       // Limpiar el carrito después de guardar
       setCart([]);
       setVieneDePedidos(false); // Resetear flag cuando se vacía el carrito
-      setQuery('');
+      updateSearchQuery('');
       localStorage.removeItem('cotizacionOriginal');
     } catch (error) {
       toast.error('Error al guardar la cotización');
@@ -3314,7 +3352,7 @@ export default function Caja({
         </div>
 
         <div className="caja-products-list">
-          {filteredProducts.map((producto, index) => (
+          {sortedProducts.map((producto, index) => (
             <motion.div 
               key={producto.id} 
               className="caja-product-card"
@@ -3339,7 +3377,7 @@ export default function Caja({
                   className="caja-product-image"
                 />
                 <div className="caja-product-info">
-                  <p className="caja-product-name">{producto.nombre}</p>
+                  <p className="caja-product-name" title={producto.nombre}>{producto.nombre}</p>
                   <p className="caja-product-stock">Stock: {producto.stock !== null && producto.stock !== undefined ? parseFloat(producto.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '0'}</p>
                 </div>
                 <span className="caja-product-price">{formatCOP(producto.precio_venta)}</span>
