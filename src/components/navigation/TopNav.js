@@ -397,8 +397,8 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
     }
   }, [moneda]);
 
-  const notificationsItems = useMemo(() => {
-    const items = [];
+  const notificationsGroups = useMemo(() => {
+    const groups = [];
     const mostrarStockBajo = user?.user_metadata?.mostrarStockBajo !== false;
     const umbralStockBajo = Number(user?.user_metadata?.umbralStockBajo ?? 10);
     const umbralSeguro = Number.isFinite(umbralStockBajo) && umbralStockBajo > 0 ? umbralStockBajo : 10;
@@ -413,37 +413,59 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
       }
       return umbralSeguro;
     };
+
     const agotados = mostrarStockBajo ? stockNumerico.filter(p => p.stock <= 0) : [];
     const bajos = mostrarStockBajo ? stockNumerico.filter(p => p.stock > 0 && p.stock <= getUmbralProducto(p)) : [];
-    const productosItems = [
-      ...agotados.map((producto) => ({
-        id: `producto-${producto.id || producto.codigo || producto.nombre}`,
-        title: producto.nombre || producto.codigo || 'Producto sin nombre',
-        subtitle: `Stock: ${Number.isFinite(producto.stock) ? producto.stock : 0}`,
-        to: `/dashboard/inventario?producto_id=${encodeURIComponent(producto.id)}`,
+
+    if (agotados.length > 0) {
+      groups.push({
+        id: 'stock-sin',
+        title: `Productos sin stock (${agotados.length})`,
+        to: '/dashboard/inventario?stock=sin',
         icon: Package,
-        category: 'Producto'
-      })),
-      ...bajos.map((producto) => ({
-        id: `producto-${producto.id || producto.codigo || producto.nombre}`,
-        title: producto.nombre || producto.codigo || 'Producto sin nombre',
-        subtitle: `Stock: ${Number.isFinite(producto.stock) ? producto.stock : 0}`,
-        to: `/dashboard/inventario?producto_id=${encodeURIComponent(producto.id)}`,
+        items: agotados.map((producto) => ({
+          id: `producto-${producto.id || producto.codigo || producto.nombre}`,
+          title: producto.nombre || producto.codigo || 'Producto sin nombre',
+          subtitle: `Stock: ${Number.isFinite(producto.stock) ? producto.stock : 0}`,
+          to: `/dashboard/inventario?producto_id=${encodeURIComponent(producto.id)}`,
+          icon: Package,
+          category: 'Producto'
+        }))
+      });
+    }
+
+    if (bajos.length > 0) {
+      groups.push({
+        id: 'stock-bajo',
+        title: `Stock bajo (${bajos.length})`,
+        to: '/dashboard/inventario?stock=bajo',
         icon: Package,
-        category: 'Producto'
-      }))
-    ];
-    items.push(...productosItems);
+        items: bajos.map((producto) => ({
+          id: `producto-${producto.id || producto.codigo || producto.nombre}`,
+          title: producto.nombre || producto.codigo || 'Producto sin nombre',
+          subtitle: `Stock: ${Number.isFinite(producto.stock) ? producto.stock : 0}`,
+          to: `/dashboard/inventario?producto_id=${encodeURIComponent(producto.id)}`,
+          icon: Package,
+          category: 'Producto'
+        }))
+      });
+    }
 
     if (creditosVencidos.length > 0) {
-      items.push(...creditosVencidos.map((credito) => ({
-        id: `cliente-${credito.id}`,
-        title: credito.cliente?.nombre || 'Cliente sin nombre',
-        subtitle: `Pendiente: ${formatMoneda(credito.monto_pendiente || credito.monto_total || 0)}`,
+      groups.push({
+        id: 'clientes-vencidos',
+        title: `Créditos vencidos (${creditosVencidos.length})`,
         to: '/dashboard/creditos?estado=vencido',
         icon: CreditCard,
-        category: 'Cliente'
-      })));
+        items: creditosVencidos.map((credito) => ({
+          id: `cliente-${credito.id}`,
+          title: credito.cliente?.nombre || 'Cliente sin nombre',
+          subtitle: `Pendiente: ${formatMoneda(credito.monto_pendiente || credito.monto_total || 0)}`,
+          to: '/dashboard/creditos?estado=vencido',
+          icon: CreditCard,
+          category: 'Cliente'
+        }))
+      });
     }
 
     const ahora = new Date();
@@ -463,18 +485,28 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
     });
 
     if (proveedoresVencidosOProximos.length > 0) {
-      items.push(...proveedoresVencidosOProximos.map((credito) => ({
-        id: `proveedor-${credito.id}`,
-        title: credito.proveedor?.nombre || 'Proveedor',
-        subtitle: `Pendiente: ${formatMoneda(credito.monto_pendiente || credito.monto_total || 0)}`,
+      groups.push({
+        id: 'proveedores-alertas',
+        title: `Proveedores por vencer (${proveedoresVencidosOProximos.length})`,
         to: '/dashboard/egresos?tab=creditos-proveedores&alerta=proveedores',
         icon: Truck,
-        category: 'Proveedor'
-      })));
+        items: proveedoresVencidosOProximos.map((credito) => ({
+          id: `proveedor-${credito.id}`,
+          title: credito.proveedor?.nombre || 'Proveedor',
+          subtitle: `Pendiente: ${formatMoneda(credito.monto_pendiente || credito.monto_total || 0)}`,
+          to: '/dashboard/egresos?tab=creditos-proveedores&alerta=proveedores',
+          icon: Truck,
+          category: 'Proveedor'
+        }))
+      });
     }
 
-    return items;
+    return groups;
   }, [productos, creditosVencidos, creditosProveedores, user?.user_metadata, formatMoneda]);
+
+  const notificationsItems = useMemo(() => {
+    return notificationsGroups.flatMap(group => group.items);
+  }, [notificationsGroups]);
 
   const notificationsCount = notificationsItems.filter(item => !seenNotificationIds.includes(item.id)).length;
 
@@ -520,25 +552,42 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
         <div className="top-nav-notification-header">
           <span>Notificaciones</span>
         </div>
-        {notificationsCount === 0 ? (
+        {notificationsGroups.length === 0 ? (
           <div className="top-nav-notification-empty">No hay notificaciones.</div>
         ) : (
           <div className="top-nav-notification-list">
-            {notificationsItems.map((item) => {
-              const ItemIcon = item.icon;
+            {notificationsGroups.map((group) => {
+              const GroupIcon = group.icon;
               return (
-                <NavLink
-                  key={item.id}
-                  to={item.to}
-                  className="top-nav-notification-item"
-                  onClick={handleItemClick}
-                >
-                  <ItemIcon size={16} />
-                  <div>
-                    <div className="top-nav-notification-title">{item.title}</div>
-                    <div className="top-nav-notification-subtitle">{item.category} • {item.subtitle}</div>
+                <div key={group.id} className="top-nav-notification-section">
+                  <NavLink
+                    to={group.to}
+                    className="top-nav-notification-group"
+                    onClick={handleItemClick}
+                  >
+                    <GroupIcon size={16} />
+                    <span className="top-nav-notification-group-title">{group.title}</span>
+                  </NavLink>
+                  <div className="top-nav-notification-items">
+                    {group.items.map((item) => {
+                      const ItemIcon = item.icon;
+                      return (
+                        <NavLink
+                          key={item.id}
+                          to={item.to}
+                          className="top-nav-notification-item top-nav-notification-item-detail"
+                          onClick={handleItemClick}
+                        >
+                          <ItemIcon size={16} />
+                          <div>
+                            <div className="top-nav-notification-title">{item.title}</div>
+                            <div className="top-nav-notification-subtitle">{item.category} • {item.subtitle}</div>
+                          </div>
+                        </NavLink>
+                      );
+                    })}
                   </div>
-                </NavLink>
+                </div>
               );
             })}
           </div>

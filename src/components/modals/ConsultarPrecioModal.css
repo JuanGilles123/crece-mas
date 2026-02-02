@@ -158,6 +158,58 @@
   margin: 0;
 }
 
+.consultar-precio-results {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.consultar-precio-result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border-primary);
+  border-radius: 12px;
+  background: white;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.consultar-precio-result-item:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--accent-primary);
+}
+
+.consultar-precio-result-item.active {
+  border-color: var(--accent-primary);
+  background: rgba(59, 130, 246, 0.12);
+}
+
+.consultar-precio-result-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.consultar-precio-result-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.consultar-precio-result-code {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.consultar-precio-result-price {
+  font-weight: 700;
+  color: var(--accent-success);
+  margin-left: 1rem;
+  white-space: nowrap;
+}
+
 .consultar-precio-product-card {
   background: var(--bg-secondary);
   border-radius: 12px;

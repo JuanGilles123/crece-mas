@@ -13,12 +13,16 @@ const ConsultarPrecioModal = ({ open, onClose }) => {
   const [query, setQuery] = useState('');
   const [productoEncontrado, setProductoEncontrado] = useState(null);
   const [varianteEncontrada, setVarianteEncontrada] = useState(null);
+  const [resultados, setResultados] = useState([]);
+  const [resultadoActivo, setResultadoActivo] = useState(0);
 
   // Función para buscar producto
   const buscarProducto = useCallback((termino) => {
     if (!termino || termino.trim() === '') {
       setProductoEncontrado(null);
       setVarianteEncontrada(null);
+      setResultados([]);
+      setResultadoActivo(0);
       return;
     }
 
@@ -32,6 +36,8 @@ const ConsultarPrecioModal = ({ open, onClose }) => {
       const productoVariante = productos.find(p => p.id === variante.producto_id);
       setProductoEncontrado(productoVariante || null);
       setVarianteEncontrada(variante);
+      setResultados([]);
+      setResultadoActivo(0);
       return;
     }
 
@@ -42,15 +48,22 @@ const ConsultarPrecioModal = ({ open, onClose }) => {
 
     // Si no se encuentra por código exacto, buscar por nombre o código parcial
     if (!producto) {
-      producto = productos.find(p => {
+      const coincidencias = productos.filter(p => {
         const nombre = (p.nombre || '').toLowerCase();
         const codigo = (p.codigo || '').toLowerCase();
         return nombre.includes(terminoLower) || codigo.includes(terminoLower);
       });
+      setResultados(coincidencias);
+      setProductoEncontrado(null);
+      setVarianteEncontrada(null);
+      setResultadoActivo(0);
+      return;
     }
 
     setProductoEncontrado(producto || null);
     setVarianteEncontrada(null);
+    setResultados([]);
+    setResultadoActivo(0);
   }, [productos]);
 
   // Handler para cuando se escanea un código de barras
@@ -178,8 +191,17 @@ const ConsultarPrecioModal = ({ open, onClose }) => {
       buscarProducto(query);
     } else {
       setProductoEncontrado(null);
+      setResultados([]);
+      setResultadoActivo(0);
     }
   }, [query, buscarProducto]);
+
+  useEffect(() => {
+    if (resultados.length === 0) return;
+    if (resultadoActivo >= resultados.length) {
+      setResultadoActivo(0);
+    }
+  }, [resultados, resultadoActivo]);
 
   // Limpiar cuando se cierra el modal
   useEffect(() => {
@@ -248,7 +270,31 @@ const ConsultarPrecioModal = ({ open, onClose }) => {
                 setQuery(e.target.value);
                 handleBarcodeInputChange(e);
               }}
-              onKeyDown={handleBarcodeKeyDown}
+              onKeyDown={(e) => {
+                if (resultados.length > 0) {
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setResultadoActivo((prev) => (prev + 1) % resultados.length);
+                    return;
+                  }
+                  if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setResultadoActivo((prev) => (prev - 1 + resultados.length) % resultados.length);
+                    return;
+                  }
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const producto = resultados[resultadoActivo];
+                    if (producto) {
+                      setProductoEncontrado(producto);
+                      setVarianteEncontrada(null);
+                      setResultados([]);
+                    }
+                    return;
+                  }
+                }
+                handleBarcodeKeyDown(e);
+              }}
               autoFocus
             />
             {query && (
@@ -266,6 +312,28 @@ const ConsultarPrecioModal = ({ open, onClose }) => {
             {isLoading ? (
               <div className="consultar-precio-loading">
                 <p>Cargando productos...</p>
+              </div>
+            ) : query && resultados.length > 0 && !productoEncontrado ? (
+              <div className="consultar-precio-results">
+                {resultados.map((producto, index) => (
+                  <div
+                    key={producto.id}
+                    className={`consultar-precio-result-item ${index === resultadoActivo ? 'active' : ''}`}
+                    onClick={() => {
+                      setProductoEncontrado(producto);
+                      setVarianteEncontrada(null);
+                      setResultados([]);
+                    }}
+                  >
+                    <div className="consultar-precio-result-info">
+                      <div className="consultar-precio-result-name">{producto.nombre}</div>
+                      {producto.codigo && (
+                        <div className="consultar-precio-result-code">Código: {producto.codigo}</div>
+                      )}
+                    </div>
+                    <div className="consultar-precio-result-price">{formatCOP(producto.precio_venta)}</div>
+                  </div>
+                ))}
               </div>
             ) : query && !productoEncontrado ? (
               <div className="consultar-precio-not-found">

@@ -129,20 +129,64 @@ const DashboardHome = () => {
       if (!userProfile?.organization_id) return;
 
       try {
+        const parseNumber = (value) => {
+          if (value === null || value === undefined) return 0;
+          if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+          const raw = String(value).trim();
+          if (!raw) return 0;
+          if (raw.includes('.') && raw.includes(',')) {
+            const normalized = raw.replace(/\./g, '').replace(',', '.');
+            const parsed = Number(normalized);
+            return Number.isFinite(parsed) ? parsed : 0;
+          }
+          if (raw.includes(',') && !raw.includes('.')) {
+            const normalized = raw.replace(',', '.');
+            const parsed = Number(normalized);
+            return Number.isFinite(parsed) ? parsed : 0;
+          }
+          if (raw.includes('.') && /^\d{1,3}(\.\d{3})+$/.test(raw)) {
+            const normalized = raw.replace(/\./g, '');
+            const parsed = Number(normalized);
+            return Number.isFinite(parsed) ? parsed : 0;
+          }
+          const parsed = Number(raw);
+          return Number.isFinite(parsed) ? parsed : 0;
+        };
+
         // Total de productos
         const { count: productos } = await supabase
           .from('productos')
           .select('*', { count: 'exact', head: true })
           .eq('organization_id', userProfile.organization_id);
 
-        // Productos con stock bajo (según umbral general)
-        const { count: bajoStock } = await supabase
+        // Productos con stock bajo (según umbral por producto o general)
+        const { data: productosStock } = await supabase
           .from('productos')
-          .select('*', { count: 'exact', head: true })
+          .select('id, stock, tipo, metadata')
           .eq('organization_id', userProfile.organization_id)
-          .neq('tipo', 'servicio')
-          .gt('stock', 0)
-          .lte('stock', umbralStockBajoSeguro);
+          .neq('tipo', 'servicio');
+
+        const getUmbralProducto = (producto) => {
+          const metadata = typeof producto?.metadata === 'string'
+            ? (() => {
+                try {
+                  return JSON.parse(producto.metadata);
+                } catch {
+                  return {};
+                }
+              })()
+            : (producto?.metadata || {});
+          const umbralProducto = Number(metadata?.umbral_stock_bajo);
+          if (Number.isFinite(umbralProducto) && umbralProducto > 0) {
+            return umbralProducto;
+          }
+          return umbralStockBajoSeguro;
+        };
+
+        const bajoStock = (productosStock || []).filter((producto) => {
+          const stock = parseNumber(producto.stock);
+          return stock > 0 && stock <= getUmbralProducto(producto);
+        }).length;
 
         // Productos próximos a vencer (dentro de 7 días)
         const hoy = new Date().toISOString().split('T')[0];
