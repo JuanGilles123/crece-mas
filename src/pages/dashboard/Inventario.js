@@ -14,7 +14,7 @@ import InventarioStats from '../../components/inventario/InventarioStats';
 import InventarioFilters from '../../components/inventario/InventarioFilters';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../services/api/supabaseClient';
-import { List, Grid3X3, PackagePlus, Search, RefreshCw, Download } from 'lucide-react';
+import { List, Grid3X3, PackagePlus, Search, RefreshCw, Download, CheckSquare } from 'lucide-react';
 import { useProductos, useEliminarProducto } from '../../hooks/useProductos';
 import EntradaInventarioModal from '../../components/modals/EntradaInventarioModal';
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
@@ -50,6 +50,7 @@ const Inventario = () => {
   const [varianteSeleccionadaId, setVarianteSeleccionadaId] = useState(null);
   const [modoLista, setModoLista] = useState(false);
   const [query, setQuery] = useState('');
+  const [productoIdFiltro, setProductoIdFiltro] = useState(null);
   const [filters, setFilters] = useState({});
   const [seleccionados, setSeleccionados] = useState([]);
   const [eliminandoSeleccionados, setEliminandoSeleccionados] = useState(false);
@@ -57,6 +58,13 @@ const Inventario = () => {
   const moneda = user?.user_metadata?.moneda || 'COP';
   const umbralStockBajo = Number(user?.user_metadata?.umbralStockBajo ?? 10);
   const umbralStockBajoSeguro = Number.isFinite(umbralStockBajo) && umbralStockBajo > 0 ? umbralStockBajo : 10;
+  const getUmbralProducto = useCallback((producto) => {
+    const umbralProducto = Number(producto?.metadata?.umbral_stock_bajo);
+    if (Number.isFinite(umbralProducto) && umbralProducto > 0) {
+      return umbralProducto;
+    }
+    return umbralStockBajoSeguro;
+  }, [umbralStockBajoSeguro]);
 
   // React Query hooks - usar organization?.id en lugar de user?.id
   const { data: productos = [], isLoading: cargando, error, refetch, isFetching } = useProductos(organization?.id);
@@ -65,6 +73,20 @@ const Inventario = () => {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const stockParam = params.get('stock');
+    const productoParam = params.get('producto_id');
+    const vencimientoParam = params.get('vencimiento');
+    if (productoParam) {
+      setProductoIdFiltro(productoParam);
+      setFilters({});
+      setQuery('');
+      return;
+    }
+
+    setProductoIdFiltro(null);
+    if (vencimientoParam === 'proximo') {
+      setFilters(prev => ({ ...prev, fecha_vencimiento_value: 'proximo' }));
+      return;
+    }
     if (stockParam === 'bajo') {
       setFilters(prev => ({ ...prev, stock_condition: 'bajo' }));
     } else if (stockParam === 'sin') {
@@ -346,6 +368,10 @@ const Inventario = () => {
   // Filtrar productos basado en búsqueda y filtros dinámicos
   const filteredProducts = useMemo(() => {
     return productos.filter((producto) => {
+      if (productoIdFiltro && String(producto.id) !== String(productoIdFiltro)) {
+        return false;
+      }
+
       // Filtro de búsqueda por cualquier campo
       // Si no hay búsqueda o está vacía, no filtrar por búsqueda
       if (!query || (typeof query === 'string' && query.trim() === '')) {
@@ -441,10 +467,21 @@ const Inventario = () => {
         } else if (filterType === 'value') {
           if (fieldId === 'created_at' || fieldId === 'fecha_vencimiento') {
             // Filtros de fecha con opciones rápidas
-            const fechaDesde = getFechaDesde(filterValue);
-            if (fechaDesde && productValue) {
+            if (fieldId === 'fecha_vencimiento' && filterValue === 'proximo') {
+              if (!productValue) return false;
               const fechaProducto = new Date(productValue);
-              if (fechaProducto < fechaDesde) return false;
+              const hoy = new Date();
+              hoy.setHours(0, 0, 0, 0);
+              const limite = new Date(hoy);
+              limite.setDate(limite.getDate() + 7);
+              limite.setHours(23, 59, 59, 999);
+              if (fechaProducto < hoy || fechaProducto > limite) return false;
+            } else {
+              const fechaDesde = getFechaDesde(filterValue);
+              if (fechaDesde && productValue) {
+                const fechaProducto = new Date(productValue);
+                if (fechaProducto < fechaDesde) return false;
+              }
             }
           } else if (typeof filterValue === 'string') {
             // Búsqueda de texto (contains)
@@ -477,7 +514,8 @@ const Inventario = () => {
           // Condiciones especiales
           if (fieldId === 'stock') {
             const stock = Number(productValue || 0);
-            if (filterValue === 'bajo' && (stock > umbralStockBajoSeguro || stock === null)) return false;
+            const umbralProducto = getUmbralProducto(producto);
+            if (filterValue === 'bajo' && (stock <= 0 || stock > umbralProducto || stock === null)) return false;
             if (filterValue === 'sin' && stock !== 0) return false;
             if (filterValue === 'con' && (stock === 0 || stock === null)) return false;
           } else if (fieldId === 'alta_utilidad') {
@@ -488,7 +526,7 @@ const Inventario = () => {
 
       return true;
     });
-  }, [productos, query, filters, umbralStockBajoSeguro]);
+  }, [productos, query, filters, getUmbralProducto, productoIdFiltro]);
 
   // Guardar producto en Supabase (ahora manejado por React Query en AgregarProductoModal)
   const handleAgregarProducto = async (nuevo) => {
@@ -785,14 +823,14 @@ const Inventario = () => {
                   Exportar
                 </button>
               </FeatureGuard>
-              <label className="inventario-select-all">
-                <input
-                  type="checkbox"
-                  checked={todosSeleccionados}
-                  onChange={toggleSeleccionarTodos}
-                />
-                Seleccionar todo
-              </label>
+              <button
+                type="button"
+                className="inventario-btn inventario-btn-secondary"
+                onClick={toggleSeleccionarTodos}
+              >
+                <CheckSquare size={18} />
+                {todosSeleccionados ? 'Quitar selección' : 'Seleccionar todo'}
+              </button>
               {seleccionados.length > 0 && (
                 <button
                   className="inventario-btn inventario-btn-outline eliminar"
@@ -883,7 +921,7 @@ const Inventario = () => {
                     <span style={{color:'var(--accent-primary)',fontWeight:700}}>Compra: {prod.precio_compra?.toLocaleString('es-CO')}</span>
                     <span style={{color:'var(--accent-success)',fontWeight:700}}>Venta: {prod.precio_venta?.toLocaleString('es-CO')}</span>
                   </div>
-                  <div className="inventario-stock">Stock: {prod.stock !== null && prod.stock !== undefined ? parseFloat(prod.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : 'N/A'}</div>
+                  <div className="inventario-stock">Stock: {prod.stock !== null && prod.stock !== undefined ? parseFloat(prod.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '0'}</div>
                 </div>
                 <div className="inventario-lista-actions">
                   <button 
@@ -951,7 +989,7 @@ const Inventario = () => {
                     <span style={{color:'var(--accent-primary)',fontWeight:700,fontSize:'0.85rem'}}>Compra: {prod.precio_compra?.toLocaleString('es-CO')}</span>
                     <span style={{color:'var(--accent-success)',fontWeight:700,fontSize:'0.85rem'}}>Venta: {prod.precio_venta?.toLocaleString('es-CO')}</span>
                   </div>
-                  <div className="inventario-stock">Stock: {prod.stock !== null && prod.stock !== undefined ? parseFloat(prod.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : 'N/A'}</div>
+                  <div className="inventario-stock">Stock: {prod.stock !== null && prod.stock !== undefined ? parseFloat(prod.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '0'}</div>
                 </div>
                 <div className="inventario-card-actions">
                   <button 

@@ -62,6 +62,7 @@ const createProductSchema = (productType) => {
   baseSchema.porcion = z.string().optional();
   baseSchema.variaciones = z.string().optional();
   baseSchema.permite_toppings = z.boolean().optional().default(true);
+  baseSchema.umbral_stock_bajo = z.string().optional();
 
   return z.object(baseSchema).superRefine((data, ctx) => {
     const precioCompra = data.precioCompra ? parseFloat(data.precioCompra.replace(/[^\d]/g, '')) : 0;
@@ -179,7 +180,8 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
       calorias: metadata?.calorias || '',
       porcion: metadata?.porcion || '',
       variaciones: metadata?.variaciones || '',
-      permite_toppings: metadata?.permite_toppings !== undefined ? metadata.permite_toppings : true
+      permite_toppings: metadata?.permite_toppings !== undefined ? metadata.permite_toppings : true,
+      umbral_stock_bajo: metadata?.umbral_stock_bajo?.toString() || ''
     }
   });
 
@@ -257,6 +259,7 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
       
       // Cargar permite_toppings
       setValue('permite_toppings', metadata?.permite_toppings !== undefined ? metadata.permite_toppings : true);
+      setValue('umbral_stock_bajo', metadata?.umbral_stock_bajo?.toString() || '');
 
       // Actualizar currency inputs solo cuando cambia el producto (por ID)
       precioCompraInput.setValue(producto.precio_compra || '');
@@ -642,6 +645,13 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
       // Agregar permite_toppings al metadata
       newMetadata.permite_toppings = data.permite_toppings !== undefined ? data.permite_toppings : true;
 
+      if (data.umbral_stock_bajo !== undefined && data.umbral_stock_bajo !== '') {
+        const umbralProducto = Number(data.umbral_stock_bajo);
+        if (Number.isFinite(umbralProducto) && umbralProducto > 0) {
+          newMetadata.umbral_stock_bajo = umbralProducto;
+        }
+      }
+
       // Agregar metadata solo si tiene datos
       if (Object.keys(newMetadata).length > 0) {
         productoData.metadata = newMetadata;
@@ -835,6 +845,18 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
                         El stock general se calcula con la sumatoria de variantes.
                       </span>
                     )}
+                    <label style={{ marginTop: '0.75rem' }}>
+                      Umbral de stock bajo <span style={{ color: '#6b7280', fontWeight: 400 }}>(Opcional)</span>
+                    </label>
+                    <input
+                      {...register('umbral_stock_bajo')}
+                      inputMode="numeric"
+                      className="input-form"
+                      placeholder="Ej: 10"
+                    />
+                    <span className="error-message" style={{ color: '#6b7280' }}>
+                      Si no lo defines, se usará el umbral general.
+                    </span>
                   </>
                 )}
 
@@ -1088,9 +1110,14 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
                   );
                 } else {
                   return (
-                    <button type="button" className="inventario-btn inventario-btn-primary" onClick={handleNext}>
-                      Siguiente →
-                    </button>
+                    <>
+                      <button type="submit" className="inventario-btn inventario-btn-outline" disabled={subiendo || isSubmitting}>
+                        {subiendo ? (comprimiendo ? '🗜️ Comprimiendo...' : 'Actualizando...') : 'Guardar cambios'}
+                      </button>
+                      <button type="button" className="inventario-btn inventario-btn-primary" onClick={handleNext}>
+                        Siguiente →
+                      </button>
+                    </>
                   );
                 }
               })()}

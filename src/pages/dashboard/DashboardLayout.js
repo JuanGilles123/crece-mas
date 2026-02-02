@@ -7,15 +7,11 @@ import {
   Package, 
   User, 
   TrendingUp, 
-  Users, 
   Zap, 
   Calculator, 
   Activity, 
-  CreditCard as SubscriptionIcon, 
-  FileText, 
   Circle, 
   ChefHat, 
-  Settings, 
   History, 
   UserCircle, 
   Table, 
@@ -37,7 +33,7 @@ import './DashboardLayout.css';
 
 
 const DashboardLayout = () => {
-  const { hasPermission, hasRole, userProfile, organization, user } = useAuth();
+  const { hasPermission, userProfile, organization, user } = useAuth();
   const { hasFeature } = useSubscription();
   const [isLoading, setIsLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
@@ -239,37 +235,6 @@ const DashboardLayout = () => {
         visible: ((hasPermission('reports') || true) && hasFeature('advancedReports')) || isSuperAdmin
       },
       
-      // Grupo: Configuración
-      {
-        type: 'group',
-        icon: Settings,
-        label: "Configuración",
-        items: [
-          {
-            to: "/dashboard/equipo",
-            icon: Users,
-            label: "Equipo",
-            title: "Gestión de Equipo",
-            visible: hasRole('owner', 'admin') && hasFeature('teamManagement')
-          },
-          {
-            to: "/dashboard/configuracion-facturacion",
-            icon: FileText,
-            label: "Facturación",
-            title: "Configuración de Facturación",
-            visible: hasRole('owner')
-          },
-          {
-            to: "/dashboard/suscripcion",
-            icon: SubscriptionIcon,
-            label: "Suscripción",
-            title: "Gestionar Suscripción",
-            visible: true
-          }
-        ].filter(item => item.visible),
-        visible: true
-      },
-      
       // Perfil (siempre visible, no agrupado)
       {
         type: 'single',
@@ -287,7 +252,7 @@ const DashboardLayout = () => {
       }
       return group.visible && group.items.length > 0;
     });
-  }, [user?.email, hasPermission, hasRole, hasFeature, organization]);
+  }, [user?.email, hasPermission, hasFeature, organization]);
 
   // Memoizar variantes de animación (solo se crean una vez) - ANTES de cualquier return
   const mainVariants = useMemo(() => ({

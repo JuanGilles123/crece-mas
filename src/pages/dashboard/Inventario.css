@@ -1236,6 +1236,65 @@
 
 /* Móviles pequeños (max-width: 480px) */
 @media (max-width: 480px) {
+  .inventario-main .inventario-lista-item {
+    display: grid !important;
+    grid-template-columns: 64px minmax(0, 1fr) !important;
+    grid-auto-rows: auto;
+    column-gap: 0 !important;
+    row-gap: 0.35rem !important;
+    align-items: start !important;
+    padding: 0.4rem !important;
+  }
+
+  .inventario-main .inventario-lista-item .inventario-select-checkbox {
+    grid-column: 1 / 2 !important;
+    grid-row: 1 / 2 !important;
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    justify-self: start !important;
+  }
+
+  .inventario-main .inventario-img-lista {
+    width: 64px !important;
+    height: 100% !important;
+    min-width: 64px !important;
+    max-width: 64px !important;
+    border-radius: 6px !important;
+    grid-column: 1 / 2 !important;
+    grid-row: 1 / 4 !important;
+    align-self: stretch !important;
+  }
+
+  .inventario-main .inventario-lista-info {
+    grid-column: 2 / 3 !important;
+    grid-row: 1 / 2 !important;
+    align-items: center !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .inventario-main .inventario-lista-actions {
+    grid-column: 2 / 3 !important;
+    grid-row: 2 / 3 !important;
+    justify-content: center !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .inventario-main .inventario-nombre {
+    max-width: 100% !important;
+    text-align: center !important;
+  }
+
+  .inventario-main .inventario-lista-precios {
+    max-width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .inventario-main .inventario-stock {
+    text-align: center !important;
+  }
   .inventario-main {
     padding: 0.8rem 0.5rem;
     overflow-x: hidden;
@@ -1257,9 +1316,9 @@
   
   /* Botones arriba */
   .inventario-actions {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 0.6rem !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.4rem !important;
     width: 100% !important;
     max-width: 100% !important;
     align-items: stretch !important;
@@ -1280,8 +1339,9 @@
     width: 100% !important;
     max-width: 100% !important;
     min-width: 0 !important;
-    padding: 0.75rem 1rem !important;
-    font-size: 0.9rem;
+    padding: 0.35rem 0.45rem !important;
+    font-size: 0.7rem !important;
+    min-height: 32px !important;
     white-space: nowrap;
     text-align: center;
     box-sizing: border-box;
@@ -1298,7 +1358,7 @@
   .inventario-actions .inventario-btn-view-toggle,
   .inventario-actions .inventario-btn-secondary.inventario-btn-view-toggle,
   .inventario-actions .inventario-btn-secondary:last-child {
-    flex: 1 1 100% !important;
+    grid-column: 1 / -1 !important;
     width: 100% !important;
     max-width: 100% !important;
     min-width: 0 !important;
@@ -1310,21 +1370,17 @@
     align-items: center !important;
     position: relative !important;
     z-index: 2 !important;
-    flex-shrink: 0 !important;
-    flex-grow: 1 !important;
-    flex-basis: auto !important;
     height: auto !important;
-    min-height: 44px !important;
-    max-height: none !important;
+    min-height: 32px !important;
     margin: 0 !important;
-    padding: 0.75rem 1rem !important;
+    padding: 0.35rem 0.45rem !important;
     order: 3 !important;
     background: var(--bg-tertiary) !important;
     color: var(--text-primary) !important;
     border: 1.7px solid var(--border-primary) !important;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
     cursor: pointer !important;
-    font-size: 0.9rem !important;
+    font-size: 0.7rem !important;
     font-weight: 600 !important;
     line-height: normal !important;
     text-align: center !important;
@@ -1337,8 +1393,8 @@
     display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
-    width: 18px !important;
-    height: 18px !important;
+    width: 12px !important;
+    height: 12px !important;
     flex-shrink: 0 !important;
     margin: 0 !important;
     pointer-events: none !important;
@@ -1922,6 +1978,17 @@
   cursor: pointer;
 }
 
+@media (max-width: 600px) {
+  .inventario-select-checkbox {
+    padding: 1px !important;
+  }
+
+  .inventario-select-checkbox input {
+    width: 5px !important;
+    height: 5px !important;
+  }
+}
+
 .inventario-select-all {
   display: inline-flex;
   align-items: center;
@@ -1935,6 +2002,58 @@
   width: 16px;
   height: 16px;
   cursor: pointer;
+}
+
+@media (max-width: 480px) {
+  .inventario-main .inventario-select-checkbox {
+    padding: 0 !important;
+    border-radius: 3px !important;
+  }
+
+  .inventario-main .inventario-select-checkbox input {
+    width: 5px !important;
+    height: 5px !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .inventario-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.6rem !important;
+  }
+
+  .inventario-card {
+    padding: 0.5rem !important;
+    gap: 0.5rem !important;
+  }
+
+  .inventario-card-image {
+    border-radius: 6px !important;
+  }
+
+  .inventario-card h3 {
+    font-size: 0.62rem !important;
+    line-height: 1.15 !important;
+    max-height: 2.3em !important;
+    overflow: hidden !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+  }
+
+  .inventario-nombre {
+    font-size: 0.62rem !important;
+    line-height: 1.15 !important;
+    max-height: 2.3em !important;
+    overflow: hidden !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+  }
+
+  .inventario-card p {
+    font-size: clamp(0.68rem, 2.2vw, 0.8rem) !important;
+  }
 }
 
 .inventario-lista-item:hover {
@@ -2433,12 +2552,191 @@
     max-width: 100% !important;
     min-width: 0 !important;
     height: auto !important;
-    min-height: 44px !important;
+    min-height: 32px !important;
     flex: 1 1 100% !important;
     margin: 0 !important;
-    padding: 0.75rem 1rem !important;
+    padding: 0.35rem 0.45rem !important;
+    font-size: 0.7rem !important;
+    grid-column: 1 / -1 !important;
     box-sizing: border-box !important;
     position: relative !important;
     z-index: 999 !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .inventario-main .inventario-card .inventario-select-checkbox {
+    top: 6px !important;
+    left: 6px !important;
+    padding: 0 !important;
+    border-radius: 3px !important;
+    width: 8px !important;
+    height: 8px !important;
+  }
+
+  .inventario-main .inventario-card .inventario-select-checkbox input {
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    width: 12px !important;
+    height: 12px !important;
+    border: 1px solid #9ca3af !important;
+    border-radius: 3px !important;
+    background: #fff !important;
+    transform: scale(0.4) !important;
+    transform-origin: center !important;
+  }
+
+  .inventario-main .inventario-card .inventario-select-checkbox input:checked {
+    background: #3b82f6 !important;
+    border-color: #3b82f6 !important;
+    box-shadow: inset 0 0 0 2px #fff !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .inventario-main .inventario-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.4rem !important;
+  }
+
+  .inventario-main .inventario-actions .inventario-btn {
+    padding: 0.35rem 0.45rem !important;
+    font-size: 0.7rem !important;
+    min-height: 32px !important;
+  }
+
+  .inventario-main .inventario-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 0.4rem !important;
+  }
+
+  .inventario-main .inventario-card {
+    padding: 0.35rem !important;
+    gap: 0.35rem !important;
+    border-radius: 10px !important;
+  }
+
+  .inventario-main .inventario-card h3 {
+    font-size: 0.62rem !important;
+    line-height: 1.15 !important;
+    max-height: 2.3em !important;
+    overflow: hidden !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+  }
+
+  .inventario-main .inventario-card p {
+    font-size: 0.6rem !important;
+    line-height: 1.15 !important;
+  }
+
+  .inventario-main .inventario-nombre {
+    font-size: 0.62rem !important;
+    line-height: 1.15 !important;
+    max-height: 2.3em !important;
+    overflow: hidden !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+  }
+
+  .inventario-main .inventario-info span,
+  .inventario-main .inventario-stock {
+    font-size: 0.6rem !important;
+    line-height: 1.15 !important;
+  }
+
+  .inventario-main .inventario-card-actions {
+    gap: 0.35rem !important;
+  }
+
+  .inventario-main .inventario-card-actions .inventario-btn,
+  .inventario-main .inventario-card-actions .inventario-btn-outline {
+    padding: 0.2rem 0.3rem !important;
+    font-size: 0.5rem !important;
+    min-height: 22px !important;
+  }
+
+  .inventario-main .inventario-card-image {
+    aspect-ratio: 4 / 3 !important;
+    border-radius: 5px !important;
+  }
+
+  .inventario-main .inventario-select-checkbox {
+    top: 6px !important;
+    left: 6px !important;
+    padding: 0 !important;
+    border-radius: 3px !important;
+  }
+
+  .inventario-main .inventario-select-checkbox input {
+    width: 5px !important;
+    height: 5px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .inventario-main .inventario-filters-toggle,
+  .inventario-main .inventario-filters-clear-all,
+  .inventario-main .inventario-filter-field-selector {
+    padding: 0.35rem 0.45rem !important;
+    font-size: 0.7rem !important;
+    min-height: 32px !important;
+  }
+
+  .inventario-main .inventario-lista-item {
+    padding: 0.5rem !important;
+    gap: 0.5rem !important;
+  }
+
+  .inventario-main .inventario-lista-precios {
+    font-size: 0.7rem !important;
+    gap: 0.5rem !important;
+    justify-content: center !important;
+    text-align: center !important;
+  }
+
+  .inventario-main .inventario-lista-actions .inventario-btn {
+    padding: 0.25rem 0.35rem !important;
+    font-size: 0.6rem !important;
+    min-height: 24px !important;
+  }
+
+  .inventario-main .inventario-lista-actions {
+    gap: 0.2rem !important;
+    justify-content: center !important;
+  }
+
+  .inventario-main .inventario-lista-actions {
+    margin-top: -0.2rem !important;
+  }
+
+  .inventario-main .inventario-lista-item .inventario-select-checkbox {
+    top: 6px !important;
+    left: 6px !important;
+    padding: 0 !important;
+    border-radius: 3px !important;
+    width: 8px !important;
+    height: 8px !important;
+  }
+
+  .inventario-main .inventario-lista-item .inventario-select-checkbox input {
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    width: 12px !important;
+    height: 12px !important;
+    border: 1px solid #9ca3af !important;
+    border-radius: 3px !important;
+    background: #fff !important;
+    transform: scale(0.4) !important;
+    transform-origin: center !important;
+  }
+
+  .inventario-main .inventario-lista-item .inventario-select-checkbox input:checked {
+    background: #3b82f6 !important;
+    border-color: #3b82f6 !important;
+    box-shadow: inset 0 0 0 2px #fff !important;
   }
 }

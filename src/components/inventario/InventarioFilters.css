@@ -551,6 +551,86 @@
 }
 
 @media (max-width: 480px) {
+  .inventario-filters-toggle,
+  .inventario-filters-clear-all,
+  .inventario-filter-field-selector {
+    padding: 0.35rem 0.45rem !important;
+    font-size: 0.7rem !important;
+    border-radius: 8px !important;
+  }
+
+  .inventario-filters-badge {
+    width: 16px !important;
+    height: 16px !important;
+    font-size: 0.6rem !important;
+  }
+
+  .inventario-filters-panel {
+    padding: 0.8rem !important;
+  }
+
+  .inventario-filter-item {
+    padding: 0.65rem !important;
+  }
+
+  .inventario-filter-label,
+  .inventario-filter-item.compact .inventario-filter-label {
+    font-size: 0.7rem !important;
+  }
+
+  .inventario-filter-select,
+  .inventario-filter-input {
+    padding: 0.35rem 0.45rem !important;
+    font-size: 0.7rem !important;
+  }
+
+  .inventario-filter-quick-btn {
+    padding: 0.3rem 0.45rem !important;
+    font-size: 0.65rem !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .inventario-filters-toggle,
+  .inventario-filters-clear-all,
+  .inventario-filter-field-selector {
+    padding: clamp(0.4rem, 1.4vw, 0.55rem) clamp(0.55rem, 2.2vw, 0.7rem);
+    font-size: clamp(0.7rem, 2.2vw, 0.8rem);
+    border-radius: 8px;
+  }
+
+  .inventario-filters-badge {
+    width: clamp(16px, 4.5vw, 18px);
+    height: clamp(16px, 4.5vw, 18px);
+    font-size: clamp(0.6rem, 2vw, 0.7rem);
+  }
+
+  .inventario-filters-panel {
+    padding: 0.9rem;
+  }
+
+  .inventario-filter-item {
+    padding: 0.7rem;
+  }
+
+  .inventario-filter-label,
+  .inventario-filter-item.compact .inventario-filter-label {
+    font-size: clamp(0.7rem, 2.2vw, 0.8rem);
+  }
+
+  .inventario-filter-select,
+  .inventario-filter-input {
+    padding: clamp(0.4rem, 1.4vw, 0.55rem) clamp(0.55rem, 2.2vw, 0.7rem);
+    font-size: clamp(0.7rem, 2.2vw, 0.8rem);
+  }
+
+  .inventario-filter-quick-btn {
+    padding: clamp(0.3rem, 1.2vw, 0.45rem) clamp(0.5rem, 2vw, 0.65rem);
+    font-size: clamp(0.65rem, 2vw, 0.75rem);
+  }
+}
+
+@media (max-width: 480px) {
   .inventario-filters-container {
     display: block !important;
     visibility: visible !important;

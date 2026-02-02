@@ -75,6 +75,13 @@
   transition: all 0.3s ease;
   text-decoration: none;
   color: var(--text-primary);
+  appearance: none;
+  text-align: left;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
 }
 
 .acceso-item:hover {

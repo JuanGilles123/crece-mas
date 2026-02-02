@@ -13,9 +13,9 @@ import ConfiguracionImpresora from '../../components/ConfiguracionImpresora';
 import './Perfil.css';
 
 const Perfil = () => {
-  const { user, organization } = useAuth();
+  const { user, organization, hasRole } = useAuth();
   const navigate = useNavigate();
-  const { isVIP, planName } = useSubscription();
+  const { isVIP, planName, hasFeature } = useSubscription();
   const [activeTab, setActiveTab] = useState('datos');
   const [activeConfigSection, setActiveConfigSection] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -43,7 +43,7 @@ const Perfil = () => {
           .eq('user_id', user.id)
           .eq('organization_id', organization.id)
           .eq('is_employee', true)
-          .single();
+          .maybeSingle();
 
         if (!error && data) {
           setEmployeeData(data);
@@ -515,6 +515,22 @@ const Perfil = () => {
                       }
                     </p>
                   </motion.div>
+
+                  {/* Equipo - Solo owner/admin con feature */}
+                  {hasRole('owner', 'admin') && hasFeature('teamManagement') && (
+                    <motion.div
+                      className="perfil-config-item clickable"
+                      onClick={() => navigate('/dashboard/equipo')}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <div className="config-icon-wrapper">
+                        <Shield size={24} />
+                      </div>
+                      <h3>Equipo</h3>
+                      <p>Gestionar roles y miembros del equipo</p>
+                    </motion.div>
+                  )}
 
                   {/* Platform Analytics - Solo VIP o Super Admin */}
                   {(isVIP || isSuperAdmin) && (

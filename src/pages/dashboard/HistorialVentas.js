@@ -1095,6 +1095,17 @@ const HistorialVentas = () => {
                   {venta.items?.slice(0, 3).map((item, idx) => (
                     <span key={idx} className="item-tag">
                       {item.nombre} x{item.qty}
+                      {item.variant_nombre ? ` · ${item.variant_nombre}` : ''}
+                      {item.variaciones && Object.keys(item.variaciones).length > 0
+                        ? ` · Var: ${Object.entries(item.variaciones)
+                            .map(([key, value]) => `${key}: ${typeof value === 'boolean' ? (value ? 'Sí' : 'No') : String(value)}`)
+                            .join(', ')}`
+                        : ''}
+                      {item.toppings && Array.isArray(item.toppings) && item.toppings.length > 0
+                        ? ` · Top: ${item.toppings
+                            .map((topping) => `${topping.nombre}${topping.cantidad > 1 ? ` (x${topping.cantidad})` : ''}`)
+                            .join(', ')}`
+                        : ''}
                     </span>
                   ))}
                   {venta.items?.length > 3 && (
@@ -1222,15 +1233,53 @@ const HistorialVentas = () => {
             <div style={{ marginBottom: '2rem' }}>
               <h3 style={{ marginBottom: '1rem' }}>Productos</h3>
               <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
-                {ventaSeleccionada.items?.map((item, idx) => (
-                  <div key={idx} style={{ padding: '0.75rem', borderBottom: idx < ventaSeleccionada.items.length - 1 ? '1px solid #e5e7eb' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <div style={{ fontWeight: '500' }}>{item.nombre}</div>
-                      <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Cantidad: {item.qty} | Precio unitario: {formatCOP(item.precio_venta || item.precio || 0)}</div>
+                {ventaSeleccionada.items?.map((item, idx) => {
+                  const tieneVariaciones = item.variaciones && Object.keys(item.variaciones).length > 0;
+                  const tieneToppings = item.toppings && Array.isArray(item.toppings) && item.toppings.length > 0;
+                  return (
+                    <div key={idx} style={{ padding: '0.75rem', borderBottom: idx < ventaSeleccionada.items.length - 1 ? '1px solid #e5e7eb' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: '500' }}>{item.nombre}</div>
+                        {item.variant_nombre && (
+                          <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.15rem' }}>
+                            Variante: {item.variant_nombre}
+                          </div>
+                        )}
+                        <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.15rem' }}>
+                          Cantidad: {item.qty} | Precio unitario: {formatCOP(item.precio_venta || item.precio || 0)}
+                        </div>
+                        {tieneVariaciones && (
+                          <div style={{ marginTop: '0.35rem', fontSize: '0.8rem', color: '#6b7280' }}>
+                            <div style={{ fontWeight: '500', color: '#4b5563', marginBottom: '0.2rem' }}>
+                              Variaciones:
+                            </div>
+                            {Object.entries(item.variaciones).map(([key, value], vIdx) => {
+                              const opcionLabel = typeof value === 'boolean' ? (value ? 'Sí' : 'No') : String(value);
+                              return (
+                                <div key={vIdx}>• {key}: {opcionLabel}</div>
+                              );
+                            })}
+                          </div>
+                        )}
+                        {tieneToppings && (
+                          <div style={{ marginTop: '0.35rem', fontSize: '0.8rem', color: '#6b7280' }}>
+                            <div style={{ fontWeight: '500', color: '#4b5563', marginBottom: '0.2rem' }}>
+                              Toppings:
+                            </div>
+                            {item.toppings.map((topping, tIdx) => (
+                              <div key={tIdx}>
+                                • {topping.nombre}{topping.cantidad > 1 ? ` (x${topping.cantidad})` : ''}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ fontWeight: '600', whiteSpace: 'nowrap' }}>
+                        {formatCOP((item.precio_venta || item.precio || 0) * item.qty)}
+                      </div>
                     </div>
-                    <div style={{ fontWeight: '600' }}>{formatCOP((item.precio_venta || item.precio || 0) * item.qty)}</div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

@@ -1,26 +1,15 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { NavLink, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  User, 
   ChevronDown,
-  Crown,
-  Shield,
-  Package2,
-  Wallet,
-  Eye,
-  Building2,
-  Check,
-  UtensilsCrossed,
-  Shirt,
-  Store,
   Package,
   Bell,
   CreditCard,
   Truck
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { supabase } from '../../services/api/supabaseClient';
 import { useProductos } from '../../hooks/useProductos';
 import { useCreditos } from '../../hooks/useCreditos';
 import { useCreditosProveedores } from '../../hooks/useEgresos';
@@ -31,35 +20,104 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
   const { user, organization } = useAuth();
   const [openDropdown, setOpenDropdown] = useState(null);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
-  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [organizations, setOrganizations] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [seenNotificationIds, setSeenNotificationIds] = useState([]);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 1024);
   const [hoveredItem, setHoveredItem] = useState(null);
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0 });
   const [notificationsPosition, setNotificationsPosition] = useState({ top: 0, left: 0, right: null });
+  const [notificationsPlacement, setNotificationsPlacement] = useState('topbar'); // 'topbar' | 'sidebar'
+  const [notificationsOpenDirection, setNotificationsOpenDirection] = useState('down'); // 'down' | 'up'
   const dropdownRefs = useRef({});
-  const profileRef = useRef(null);
+  const dropdownButtonRefs = useRef({});
+  const dropdownMenuRefs = useRef({});
   const notificationsRef = useRef(null);
+  const notificationsDropdownRef = useRef(null);
 
   const { data: productos = [] } = useProductos(organization?.id);
   const { data: creditosVencidos = [] } = useCreditos(organization?.id, { vencidos: true });
   const { data: creditosProveedores = [] } = useCreditosProveedores(organization?.id);
 
+  useEffect(() => {
+    const shouldOpen = Boolean(openDropdown) && isMobile;
+    document.body.classList.toggle('menu-dropdown-open', shouldOpen);
+    return () => {
+      document.body.classList.remove('menu-dropdown-open');
+    };
+  }, [openDropdown, isMobile]);
+
+  useEffect(() => {
+    const modalSelectors = [
+      '.modal-bg',
+      '.modal-overlay',
+      '.importar-csv-modal',
+      '.consultar-precio-modal-overlay',
+      '.detalle-venta-modal',
+      '.caja-modal-overlay',
+      '.caja-mobile-overlay-backdrop',
+      '.caja-mobile-overlay',
+      '.caja-variant-modal',
+      '.variaciones-selector-overlay',
+      '.top-nav-notification-overlay',
+      '[class*="modal-overlay"]',
+      '[class*="modal-bg"]',
+      '[role="dialog"]'
+    ];
+
+    const updateModalState = () => {
+      const elements = document.querySelectorAll(modalSelectors.join(','));
+      const hasVisibleModal = Array.from(elements).some((el) => {
+        const style = window.getComputedStyle(el);
+        return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+      });
+      document.body.classList.toggle('modal-open', hasVisibleModal);
+    };
+
+    updateModalState();
+    const observer = new MutationObserver(updateModalState);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['style', 'class']
+    });
+    window.addEventListener('resize', updateModalState);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateModalState);
+      document.body.classList.remove('modal-open');
+    };
+  }, []);
+
+  const notificationsStorageKey = user?.id ? `notifications_seen_${user.id}` : 'notifications_seen';
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(notificationsStorageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setSeenNotificationIds(parsed);
+        }
+      } else {
+        setSeenNotificationIds([]);
+      }
+    } catch (error) {
+      console.error('Error cargando notificaciones vistas:', error);
+    }
+  }, [notificationsStorageKey]);
+
   // Cerrar dropdown al hacer click fuera
   useEffect(() => {
     const handleClickOutside = (event) => {
-      Object.keys(dropdownRefs.current).forEach(key => {
-        if (dropdownRefs.current[key] && !dropdownRefs.current[key].contains(event.target)) {
-          setOpenDropdown(null);
-        }
-      });
-      
-      if (profileRef.current && !profileRef.current.contains(event.target)) {
-        setProfileDropdownOpen(false);
+      if (openDropdown) {
+        const buttonEl = dropdownButtonRefs.current[openDropdown] || dropdownRefs.current[openDropdown];
+        const menuEl = dropdownMenuRefs.current[openDropdown];
+        if (buttonEl && buttonEl.contains(event.target)) return;
+        if (menuEl && menuEl.contains(event.target)) return;
+        setOpenDropdown(null);
       }
-
+      
       if (notificationsRef.current && !notificationsRef.current.contains(event.target)) {
         setNotificationsOpen(false);
       }
@@ -68,10 +126,10 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
     // Actualizar posición al hacer scroll
     const handleScroll = () => {
       if (openDropdown) {
-        const element = dropdownRefs.current[openDropdown];
+        const element = dropdownButtonRefs.current[openDropdown] || dropdownRefs.current[openDropdown];
         if (element) {
           const rect = element.getBoundingClientRect();
-          const isMobile = window.innerWidth <= 768;
+          const isMobile = window.innerWidth <= 1024;
 
           if (isMobile) {
             // En móvil, posicionar justo debajo del botón
@@ -91,14 +149,24 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
             }
 
             setDropdownPosition({
-              top: rect.bottom + 8,
+              top: rect.bottom,
               left: left,
               right: 'auto'
             });
           } else {
+            const dropdownWidth = 200;
+            const screenWidth = window.innerWidth;
+            let left = rect.left;
+            if (left + dropdownWidth > screenWidth - 12) {
+              left = screenWidth - dropdownWidth - 12;
+            }
+            if (left < 12) {
+              left = 12;
+            }
             setDropdownPosition({
-              top: rect.bottom + 8,
-              left: rect.left
+              top: rect.bottom + 4,
+              left: left,
+              right: 'auto'
             });
           }
         }
@@ -106,32 +174,34 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
 
       if (notificationsOpen && notificationsRef.current) {
         const rect = notificationsRef.current.getBoundingClientRect();
-        const isMobile = window.innerWidth <= 768;
+        const isSidebarPlacement = rect.left < 100;
+        const dropdownWidth = Math.min(320, window.innerWidth - 24);
+        const screenWidth = window.innerWidth;
+        let left = rect.left;
 
-        if (isMobile) {
-          const dropdownWidth = 320;
-          const screenWidth = window.innerWidth;
-          let left = rect.left;
-
-          if (left + dropdownWidth > screenWidth - 12) {
-            left = screenWidth - dropdownWidth - 12;
-          }
-          if (left < 12) {
-            left = 12;
-          }
-
-          setNotificationsPosition({
-            top: rect.bottom + 8,
-            left,
-            right: null
-          });
-        } else {
-          setNotificationsPosition({
-            top: rect.top,
-            left: 86,
-            right: null
-          });
+        if (left + dropdownWidth > screenWidth - 12) {
+          left = screenWidth - dropdownWidth - 12;
         }
+        if (left < 12) {
+          left = 12;
+        }
+
+        const dropdownHeight = notificationsDropdownRef.current?.offsetHeight || 0;
+        const shouldOpenUp = isSidebarPlacement && (rect.bottom + dropdownHeight > window.innerHeight - 12);
+        let top = shouldOpenUp
+          ? Math.max(12, rect.top - dropdownHeight - 8)
+          : (isSidebarPlacement ? rect.top : rect.bottom + 8);
+        if (!isSidebarPlacement && dropdownHeight > 0 && top + dropdownHeight > window.innerHeight - 12) {
+          top = Math.max(12, window.innerHeight - dropdownHeight - 12);
+        }
+
+        setNotificationsPlacement(isSidebarPlacement ? 'sidebar' : 'topbar');
+        setNotificationsOpenDirection(shouldOpenUp ? 'up' : 'down');
+        setNotificationsPosition({
+          top,
+          left: isSidebarPlacement ? 86 : left,
+          right: null
+        });
       }
     };
 
@@ -150,10 +220,10 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
     if (openDropdown === groupLabel) {
       setOpenDropdown(null);
     } else {
-      const element = dropdownRefs.current[groupLabel];
+      const element = dropdownButtonRefs.current[groupLabel] || dropdownRefs.current[groupLabel];
       if (element) {
         const rect = element.getBoundingClientRect();
-        const isMobile = window.innerWidth <= 768;
+        const isMobile = window.innerWidth <= 1024;
         
         if (isMobile) {
           // En móvil, posicionar justo debajo del botón
@@ -173,15 +243,25 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
           }
           
           setDropdownPosition({
-            top: rect.bottom + 8,
+            top: rect.bottom,
             left: left,
             right: 'auto'
           });
         } else {
-          // En desktop, posicionar fuera del sidebar
+          // En desktop, posicionar justo debajo del botón
+          const dropdownWidth = 200;
+          const screenWidth = window.innerWidth;
+          let left = rect.left;
+          if (left + dropdownWidth > screenWidth - 12) {
+            left = screenWidth - dropdownWidth - 12;
+          }
+          if (left < 12) {
+            left = 12;
+          }
           setDropdownPosition({
-            top: rect.top,
-            left: 86 // 70px (sidebar) + 16px (margen)
+            top: rect.bottom + 8,
+            left: left,
+            right: 'auto'
           });
         }
       }
@@ -191,7 +271,6 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
 
   const handleItemClick = () => {
     setOpenDropdown(null);
-    setProfileDropdownOpen(false);
     setNotificationsOpen(false);
     if (onMenuClick) onMenuClick();
   };
@@ -205,108 +284,63 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
 
     if (notificationsRef.current) {
       const rect = notificationsRef.current.getBoundingClientRect();
-      const isMobile = window.innerWidth <= 768;
+      const isSidebarPlacement = rect.left < 100;
+      const dropdownWidth = Math.min(320, window.innerWidth - 24);
+      const screenWidth = window.innerWidth;
+      let left = rect.left;
 
-      if (isMobile) {
-        const dropdownWidth = 320;
-        const screenWidth = window.innerWidth;
-        let left = rect.left;
-
-        if (left + dropdownWidth > screenWidth - 12) {
-          left = screenWidth - dropdownWidth - 12;
-        }
-        if (left < 12) {
-          left = 12;
-        }
-
-        setNotificationsPosition({
-          top: rect.bottom + 8,
-          left,
-          right: null
-        });
-      } else {
-        setNotificationsPosition({
-          top: rect.top,
-          left: 86,
-          right: null
-        });
+      if (left + dropdownWidth > screenWidth - 12) {
+        left = screenWidth - dropdownWidth - 12;
       }
+      if (left < 12) {
+        left = 12;
+      }
+
+      const dropdownHeight = notificationsDropdownRef.current?.offsetHeight || 0;
+      const shouldOpenUp = isSidebarPlacement && (rect.bottom + dropdownHeight > window.innerHeight - 12);
+      let top = shouldOpenUp
+        ? Math.max(12, rect.top - dropdownHeight - 8)
+        : (isSidebarPlacement ? rect.top : rect.bottom + 8);
+      if (!isSidebarPlacement && dropdownHeight > 0 && top + dropdownHeight > window.innerHeight - 12) {
+        top = Math.max(12, window.innerHeight - dropdownHeight - 12);
+      }
+
+      setNotificationsPlacement(isSidebarPlacement ? 'sidebar' : 'topbar');
+      setNotificationsOpenDirection(shouldOpenUp ? 'up' : 'down');
+      setNotificationsPosition({
+        top,
+        left: isSidebarPlacement ? 86 : left,
+        right: null
+      });
     }
 
     setNotificationsOpen(true);
+    requestAnimationFrame(() => {
+      if (!notificationsRef.current) return;
+      const rect = notificationsRef.current.getBoundingClientRect();
+      const isSidebarPlacement = rect.left < 100;
+      const dropdownHeight = notificationsDropdownRef.current?.offsetHeight || 0;
+      const shouldOpenUp = isSidebarPlacement && (rect.bottom + dropdownHeight > window.innerHeight - 12);
+      if (shouldOpenUp) {
+        setNotificationsOpenDirection('up');
+        setNotificationsPosition((prev) => ({
+          ...prev,
+          top: Math.max(12, rect.top - dropdownHeight - 8)
+        }));
+      } else {
+        setNotificationsOpenDirection('down');
+        setNotificationsPosition((prev) => ({
+          ...prev,
+          top: isSidebarPlacement ? rect.top : Math.max(12, Math.min(rect.bottom + 8, window.innerHeight - dropdownHeight - 12))
+        }));
+      }
+    });
   };
-
-  // Cargar organizaciones
-  const loadOrganizations = useCallback(async () => {
-    if (!user) return;
-    
-    try {
-      const { data: profile } = await supabase
-        .from('user_profiles')
-        .select('organization_id, role')
-        .eq('user_id', user.id)
-        .single();
-
-      const { data: memberships } = await supabase
-        .from('team_members')
-        .select(`
-          organization_id,
-          role,
-          organizations (
-            id,
-            name,
-            business_type
-          )
-        `)
-        .eq('user_id', user.id)
-        .eq('status', 'active');
-
-      const allOrgs = [];
-
-      if (profile?.organization_id) {
-        const { data: mainOrg } = await supabase
-          .from('organizations')
-          .select('*')
-          .eq('id', profile.organization_id)
-          .single();
-
-        if (mainOrg) {
-          allOrgs.push({
-            ...mainOrg,
-            role: profile.role,
-            isPrimary: true
-          });
-        }
-      }
-
-      if (memberships) {
-        memberships.forEach(m => {
-          if (m.organizations && m.organizations.id !== profile?.organization_id) {
-            allOrgs.push({
-              ...m.organizations,
-              role: m.role,
-              isPrimary: false
-            });
-          }
-        });
-      }
-
-      setOrganizations(allOrgs);
-    } catch (error) {
-      console.error('Error loading organizations:', error);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (user) {
-      loadOrganizations();
-    }
-  }, [user, loadOrganizations]);
 
   // Detectar si es móvil
   useEffect(() => {
     const checkIsMobile = () => {
-      setIsMobile(window.innerWidth <= 768);
+      setIsMobile(window.innerWidth <= 1024);
     };
 
     checkIsMobile();
@@ -316,44 +350,6 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
       window.removeEventListener('resize', checkIsMobile);
     };
   }, []);
-
-  const switchOrganization = async (orgId) => {
-    if (orgId === organization?.id) {
-      setProfileDropdownOpen(false);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      localStorage.setItem('selected_organization_id', orgId);
-      window.location.reload();
-    } catch (error) {
-      console.error('Error switching organization:', error);
-      setLoading(false);
-    }
-  };
-
-  const getRoleLabel = (role) => {
-    const labels = {
-      owner: 'Propietario',
-      admin: 'Administrador',
-      inventory_manager: 'Inventario',
-      cashier: 'Cajero',
-      viewer: 'Visualizador'
-    };
-    return labels[role] || role;
-  };
-
-  const getBusinessTypeIcon = (type) => {
-    const iconMap = {
-      food: UtensilsCrossed,
-      clothing: Shirt,
-      retail: Store,
-      other: Package
-    };
-    const IconComponent = iconMap[type] || Package;
-    return <IconComponent size={14} />;
-  };
 
   // Verificar si algún item del grupo está activo
   const isGroupActive = (group) => {
@@ -392,43 +388,62 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
     return null;
   };
 
-  const notificationsSections = useMemo(() => {
-    const sections = [];
+  const moneda = user?.user_metadata?.moneda || 'COP';
+  const formatMoneda = useCallback((value) => {
+    try {
+      return new Intl.NumberFormat('es-CO', { style: 'currency', currency: moneda }).format(value || 0);
+    } catch (error) {
+      return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(value || 0);
+    }
+  }, [moneda]);
+
+  const notificationsItems = useMemo(() => {
+    const items = [];
     const mostrarStockBajo = user?.user_metadata?.mostrarStockBajo !== false;
     const umbralStockBajo = Number(user?.user_metadata?.umbralStockBajo ?? 10);
     const umbralSeguro = Number.isFinite(umbralStockBajo) && umbralStockBajo > 0 ? umbralStockBajo : 10;
 
     const stockNumerico = productos
-      .filter(p => p.stock !== null && p.stock !== undefined)
-      .map(p => ({ ...p, stock: Number(p.stock) }));
+      .filter(p => p.tipo !== 'servicio')
+      .map(p => ({ ...p, stock: Number(p.stock ?? 0) }));
+    const getUmbralProducto = (producto) => {
+      const umbralProducto = Number(producto?.metadata?.umbral_stock_bajo);
+      if (Number.isFinite(umbralProducto) && umbralProducto > 0) {
+        return umbralProducto;
+      }
+      return umbralSeguro;
+    };
     const agotados = mostrarStockBajo ? stockNumerico.filter(p => p.stock <= 0) : [];
-    const bajos = mostrarStockBajo ? stockNumerico.filter(p => p.stock > 0 && p.stock <= umbralSeguro) : [];
-    const productosCount = agotados.length + bajos.length;
-
-    if (productosCount > 0) {
-      const parts = [];
-      if (agotados.length > 0) parts.push(`Agotados: ${agotados.length}`);
-      if (bajos.length > 0) parts.push(`Stock bajo: ${bajos.length}`);
-
-      sections.push({
-        id: 'productos',
-        label: `Productos (${productosCount})`,
+    const bajos = mostrarStockBajo ? stockNumerico.filter(p => p.stock > 0 && p.stock <= getUmbralProducto(p)) : [];
+    const productosItems = [
+      ...agotados.map((producto) => ({
+        id: `producto-${producto.id || producto.codigo || producto.nombre}`,
+        title: producto.nombre || producto.codigo || 'Producto sin nombre',
+        subtitle: `Stock: ${Number.isFinite(producto.stock) ? producto.stock : 0}`,
+        to: `/dashboard/inventario?producto_id=${encodeURIComponent(producto.id)}`,
         icon: Package,
-        subtitle: parts.join('\n'),
-        to: '/dashboard/inventario?stock=bajo',
-        count: productosCount
-      });
-    }
+        category: 'Producto'
+      })),
+      ...bajos.map((producto) => ({
+        id: `producto-${producto.id || producto.codigo || producto.nombre}`,
+        title: producto.nombre || producto.codigo || 'Producto sin nombre',
+        subtitle: `Stock: ${Number.isFinite(producto.stock) ? producto.stock : 0}`,
+        to: `/dashboard/inventario?producto_id=${encodeURIComponent(producto.id)}`,
+        icon: Package,
+        category: 'Producto'
+      }))
+    ];
+    items.push(...productosItems);
 
     if (creditosVencidos.length > 0) {
-      sections.push({
-        id: 'clientes',
-        label: `Clientes (${creditosVencidos.length})`,
-        icon: CreditCard,
-        subtitle: 'Pagos vencidos',
+      items.push(...creditosVencidos.map((credito) => ({
+        id: `cliente-${credito.id}`,
+        title: credito.cliente?.nombre || 'Cliente sin nombre',
+        subtitle: `Pendiente: ${formatMoneda(credito.monto_pendiente || credito.monto_total || 0)}`,
         to: '/dashboard/creditos?estado=vencido',
-        count: creditosVencidos.length
-      });
+        icon: CreditCard,
+        category: 'Cliente'
+      })));
     }
 
     const ahora = new Date();
@@ -448,27 +463,50 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
     });
 
     if (proveedoresVencidosOProximos.length > 0) {
-      sections.push({
-        id: 'proveedores',
-        label: `Proveedores (${proveedoresVencidosOProximos.length})`,
-        icon: Truck,
-        subtitle: 'Vencidos o por vencer',
+      items.push(...proveedoresVencidosOProximos.map((credito) => ({
+        id: `proveedor-${credito.id}`,
+        title: credito.proveedor?.nombre || 'Proveedor',
+        subtitle: `Pendiente: ${formatMoneda(credito.monto_pendiente || credito.monto_total || 0)}`,
         to: '/dashboard/egresos?tab=creditos-proveedores&alerta=proveedores',
-        count: proveedoresVencidosOProximos.length
-      });
+        icon: Truck,
+        category: 'Proveedor'
+      })));
     }
 
-    return sections;
-  }, [productos, creditosVencidos, creditosProveedores, user?.user_metadata]);
+    return items;
+  }, [productos, creditosVencidos, creditosProveedores, user?.user_metadata, formatMoneda]);
 
-  const notificationsCount = notificationsSections.reduce((acc, section) => acc + (section.count || 0), 0);
+  const notificationsCount = notificationsItems.filter(item => !seenNotificationIds.includes(item.id)).length;
+
+  const markNotificationsAsSeen = useCallback((ids) => {
+    setSeenNotificationIds((prev) => {
+      const merged = new Set(prev);
+      ids.forEach(id => merged.add(id));
+      const next = Array.from(merged);
+      try {
+        localStorage.setItem(notificationsStorageKey, JSON.stringify(next));
+      } catch (error) {
+        console.error('Error guardando notificaciones vistas:', error);
+      }
+      return next;
+    });
+  }, [notificationsStorageKey]);
+
+  useEffect(() => {
+    if (notificationsOpen && notificationsItems.length > 0) {
+      markNotificationsAsSeen(notificationsItems.map(item => item.id));
+    }
+  }, [notificationsOpen, notificationsItems, markNotificationsAsSeen]);
 
   const NotificationsDropdown = () => {
     if (!notificationsOpen) return null;
-    const dropdownClass = isMobile ? 'top-nav-notification-dropdown' : 'top-nav-sidebar-dropdown';
+    const dropdownClass = notificationsPlacement === 'sidebar'
+      ? 'top-nav-sidebar-dropdown'
+      : 'top-nav-notification-dropdown';
     return (
       <motion.div
-        className={dropdownClass}
+        className={`${dropdownClass} ${notificationsOpenDirection === 'up' ? 'open-up' : ''}`}
+        ref={notificationsDropdownRef}
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -10 }}
@@ -486,21 +524,19 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
           <div className="top-nav-notification-empty">No hay notificaciones.</div>
         ) : (
           <div className="top-nav-notification-list">
-            {notificationsSections.map((section) => {
-              const SectionIcon = section.icon;
+            {notificationsItems.map((item) => {
+              const ItemIcon = item.icon;
               return (
                 <NavLink
-                  key={section.id}
-                  to={section.to}
+                  key={item.id}
+                  to={item.to}
                   className="top-nav-notification-item"
                   onClick={handleItemClick}
                 >
-                  <SectionIcon size={16} />
+                  <ItemIcon size={16} />
                   <div>
-                    <div className="top-nav-notification-title">{section.label}</div>
-                    {section.subtitle && (
-                      <div className="top-nav-notification-subtitle">{section.subtitle}</div>
-                    )}
+                    <div className="top-nav-notification-title">{item.title}</div>
+                    <div className="top-nav-notification-subtitle">{item.category} • {item.subtitle}</div>
                   </div>
                 </NavLink>
               );
@@ -553,24 +589,6 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
         {/* Menús principales */}
         <div className="top-nav-menu">
           {menuGroups.map((group, index) => {
-            const notificationsNode = (
-              <div className="top-nav-notifications top-nav-notifications-menu" ref={notificationsRef}>
-                <button
-                  className={`top-nav-notification-btn ${notificationsOpen ? 'open' : ''}`}
-                  onClick={toggleNotifications}
-                  aria-label="Notificaciones"
-                >
-                  <Bell size={18} />
-                  {notificationsCount > 0 && (
-                    <span className="top-nav-notification-badge">{notificationsCount}</span>
-                  )}
-                </button>
-                <AnimatePresence>
-                  {notificationsOpen && <NotificationsDropdown />}
-                </AnimatePresence>
-              </div>
-            );
-
             if (group.type === 'single') {
               const Icon = group.icon;
               const isActive = location.pathname === group.to;
@@ -586,7 +604,6 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
                     <Icon size={18} />
                     <span>{group.label}</span>
                   </NavLink>
-                  {group.label === 'Inventario' && notificationsNode}
                 </React.Fragment>
               );
             } else {
@@ -603,6 +620,7 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
                     <button
                       className="top-nav-dropdown-button"
                       onClick={() => toggleDropdown(group.label)}
+                      ref={el => dropdownButtonRefs.current[group.label] = el}
                     >
                       <Icon size={18} />
                       <span>{group.label}</span>
@@ -612,15 +630,21 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
                       />
                     </button>
                     
-                    <AnimatePresence>
-                      {isOpen && (
+                    {isMobile ? (
+                      isOpen ? createPortal(
                         <motion.div
+                          key={`menu-${group.label}`}
                           initial={{ opacity: 0, y: -10 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -10 }}
                           transition={{ duration: 0.2 }}
                           className="top-nav-dropdown-menu"
+                          ref={el => dropdownMenuRefs.current[group.label] = el}
+                          aria-live="polite"
+                          role="menu"
                           style={{
+                            zIndex: 999999,
+                            pointerEvents: 'auto',
                             top: `${dropdownPosition.top}px`,
                             left: dropdownPosition.left === 'auto' ? 'auto' : `${dropdownPosition.left}px`,
                             right: dropdownPosition.right ? `${dropdownPosition.right}px` : 'auto'
@@ -641,97 +665,71 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
                               </NavLink>
                             );
                           })}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                        </motion.div>,
+                        document.body
+                      ) : null
+                    ) : (
+                      <AnimatePresence>
+                        {isOpen && (
+                          <motion.div
+                            key={`menu-${group.label}`}
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.2 }}
+                            className="top-nav-dropdown-menu"
+                            ref={el => dropdownMenuRefs.current[group.label] = el}
+                            aria-live="polite"
+                            role="menu"
+                            style={{
+                              zIndex: 999999,
+                              pointerEvents: 'auto',
+                              top: `${dropdownPosition.top}px`,
+                              left: dropdownPosition.left === 'auto' ? 'auto' : `${dropdownPosition.left}px`,
+                              right: dropdownPosition.right ? `${dropdownPosition.right}px` : 'auto'
+                            }}
+                          >
+                            {group.items.map((item) => {
+                              const ItemIcon = item.icon;
+                              return (
+                                <NavLink
+                                  key={item.to}
+                                  to={item.to}
+                                  end={item.end}
+                                  className={({ isActive }) => `top-nav-dropdown-item ${isActive ? 'active' : ''}`}
+                                  onClick={handleItemClick}
+                                >
+                                  <ItemIcon size={16} />
+                                  <span>{item.label}</span>
+                                </NavLink>
+                              );
+                            })}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    )}
                   </div>
-                  {group.label === 'Inventario' && notificationsNode}
                 </React.Fragment>
               );
             }
           })}
         </div>
 
-        {/* Badge de rol y perfil con dropdown - Combinado */}
+        {/* Acciones */}
         <div className="top-nav-right">
-          <div className="top-nav-profile-wrapper" ref={profileRef}>
+          <div className="top-nav-notifications top-nav-notifications-menu" ref={notificationsRef}>
             <button
-              className={`top-nav-profile ${location.pathname === '/dashboard/perfil' ? 'active' : ''} ${userProfile ? `role-${userProfile.role}` : ''}`}
-              onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+              className={`top-nav-item top-nav-notification-btn ${notificationsOpen ? 'open' : ''} ${notificationsCount > 0 ? 'has-notifications' : ''}`}
+              onClick={toggleNotifications}
+              aria-label="Notificaciones"
             >
-              {userProfile ? (
-                <>
-                  {userProfile.role === 'owner' && <Crown size={16} />}
-                  {userProfile.role === 'admin' && <Shield size={16} />}
-                  {userProfile.role === 'inventory_manager' && <Package2 size={16} />}
-                  {userProfile.role === 'cashier' && <Wallet size={16} />}
-                  {userProfile.role === 'viewer' && <Eye size={16} />}
-                  {!['owner', 'admin', 'inventory_manager', 'cashier', 'viewer'].includes(userProfile.role) && <User size={16} />}
-                </>
-              ) : (
-                <User size={20} />
+              <Bell size={18} />
+              {notificationsCount > 0 && (
+                <span className="top-nav-notification-badge">{notificationsCount}</span>
               )}
             </button>
-            
             <AnimatePresence>
-              {profileDropdownOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.2 }}
-                  className="top-nav-profile-dropdown"
-                  style={{
-                    top: `${profileRef.current?.getBoundingClientRect().bottom + 8}px`,
-                    right: window.innerWidth <= 768 ? '12px' : '24px'
-                  }}
-                >
-                  {/* Selector de organizaciones */}
-                  {organizations.length > 1 && (
-                    <div className="profile-dropdown-section">
-                      <div className="profile-dropdown-section-title">
-                        <Building2 size={16} />
-                        <span>Organizaciones</span>
-                      </div>
-                      <div className="profile-dropdown-orgs">
-                        {organizations.map(org => (
-                          <button
-                            key={org.id}
-                            className={`profile-dropdown-org ${org.id === organization?.id ? 'active' : ''}`}
-                            onClick={() => switchOrganization(org.id)}
-                            disabled={loading}
-                          >
-                            <div className="profile-dropdown-org-content">
-                              <Building2 size={16} />
-                              <div>
-                                <div className="profile-dropdown-org-name">
-                                  {org.name}
-                                  {org.isPrimary && <span className="org-badge-primary">Principal</span>}
-                                </div>
-                                <div className="profile-dropdown-org-meta">
-                                  <span>{getRoleLabel(org.role)}</span>
-                                  <span style={{ display: 'inline-flex', alignItems: 'center' }}>{getBusinessTypeIcon(org.business_type)}</span>
-                                </div>
-                              </div>
-                            </div>
-                            {org.id === organization?.id && <Check size={16} />}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Enlace al perfil */}
-                  <NavLink
-                    to="/dashboard/perfil"
-                    className="profile-dropdown-item"
-                    onClick={handleItemClick}
-                  >
-                    <User size={16} />
-                    <span>Mi Perfil</span>
-                  </NavLink>
-                </motion.div>
-              )}
+              {notificationsOpen && <NotificationsDropdown />}
             </AnimatePresence>
           </div>
         </div>
@@ -764,34 +762,6 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
         {/* Menús principales como iconos */}
         <div className="top-nav-sidebar-menu">
           {menuGroups.map((group, index) => {
-            const notificationsNode = (
-              <div
-                className="top-nav-sidebar-item-wrapper"
-                onMouseEnter={(e) => handleItemHover('Notificaciones', e.currentTarget)}
-                onMouseLeave={() => setHoveredItem(null)}
-                ref={notificationsRef}
-              >
-                <button
-                  className={`top-nav-sidebar-item ${notificationsOpen ? 'open' : ''}`}
-                  onClick={toggleNotifications}
-                  aria-label="Notificaciones"
-                >
-                  <Bell size={22} />
-                  {notificationsCount > 0 && (
-                    <span className="top-nav-notification-badge top-nav-notification-badge-sidebar">
-                      {notificationsCount}
-                    </span>
-                  )}
-                </button>
-                <AnimatePresence>
-                  {renderTooltip('Notificaciones')}
-                </AnimatePresence>
-                <AnimatePresence>
-                  {notificationsOpen && <NotificationsDropdown />}
-                </AnimatePresence>
-              </div>
-            );
-
             if (group.type === 'single') {
               const Icon = group.icon;
               const isActive = location.pathname === group.to;
@@ -815,7 +785,6 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
                       {renderTooltip(group.label)}
                     </AnimatePresence>
                   </div>
-                  {group.label === 'Inventario' && notificationsNode}
                 </React.Fragment>
               );
             } else {
@@ -873,11 +842,37 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
                       )}
                     </AnimatePresence>
                   </div>
-                  {group.label === 'Inventario' && notificationsNode}
                 </React.Fragment>
               );
             }
           })}
+        </div>
+        <div className="top-nav-sidebar-actions">
+          <div
+            className="top-nav-sidebar-item-wrapper"
+            onMouseEnter={(e) => handleItemHover('Notificaciones', e.currentTarget)}
+            onMouseLeave={() => setHoveredItem(null)}
+            ref={notificationsRef}
+          >
+            <button
+              className={`top-nav-sidebar-item ${notificationsOpen ? 'open' : ''}`}
+              onClick={toggleNotifications}
+              aria-label="Notificaciones"
+            >
+              <Bell size={22} />
+              {notificationsCount > 0 && (
+                <span className="top-nav-notification-badge top-nav-notification-badge-sidebar">
+                  {notificationsCount}
+                </span>
+              )}
+            </button>
+            <AnimatePresence>
+              {renderTooltip('Notificaciones')}
+            </AnimatePresence>
+            <AnimatePresence>
+              {notificationsOpen && <NotificationsDropdown />}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
     </nav>

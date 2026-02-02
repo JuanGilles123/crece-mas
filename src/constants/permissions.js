@@ -45,6 +45,7 @@ export const MODULES = {
       CREATE: { id: 'cierre.create', label: 'Crear cierre', description: 'Realizar cierre de caja' },
       EDIT: { id: 'cierre.edit', label: 'Editar cierre', description: 'Modificar cierres existentes' },
       DELETE: { id: 'cierre.delete', label: 'Eliminar cierre', description: 'Eliminar cierres del sistema' },
+      VIEW_EXPECTED: { id: 'cierre.view_expected', label: 'Ver montos esperados', description: 'Ver totales del sistema y diferencias en cierre' },
     }
   },
   
@@ -131,7 +132,7 @@ export const PREDEFINED_ROLES = {
       // Inventario
       'inventario.view', 'inventario.create', 'inventario.edit', 'inventario.delete', 'inventario.import', 'inventario.review_differences',
       // Cierre
-      'cierre.view', 'cierre.create', 'cierre.edit', 'cierre.delete',
+      'cierre.view', 'cierre.create', 'cierre.edit', 'cierre.delete', 'cierre.view_expected',
       // Estadísticas
       'stats.view', 'stats.export',
       // Equipo

@@ -9,7 +9,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useSubscription } from '../../hooks/useSubscription';
 import { compressProductImage } from '../../services/storage/imageCompression';
 import { useAgregarProducto } from '../../hooks/useProductos';
-import { useCurrencyInput } from '../../hooks/useCurrencyInput';
+import { useCurrencyInput, formatCurrency } from '../../hooks/useCurrencyInput';
 import { Package, Scissors, UtensilsCrossed, Scale, ChevronRight, Plus, X } from 'lucide-react';
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
 import toast from 'react-hot-toast';
@@ -64,6 +64,7 @@ const createProductSchema = (productType, defaultPermiteToppings = true) => {
   baseSchema.porcion = z.string().optional();
   baseSchema.variaciones = z.string().optional();
   baseSchema.permite_toppings = z.boolean().optional().default(defaultPermiteToppings);
+  baseSchema.umbral_stock_bajo = z.string().optional();
 
   return z.object(baseSchema).superRefine((data, ctx) => {
     const precioCompra = data.precioCompra ? parseFloat(data.precioCompra.replace(/[^\d]/g, '')) : 0;
@@ -131,6 +132,8 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
   const [variacionesConfig, setVariacionesConfig] = useState([]);
   const [productosVinculados, setProductosVinculados] = useState([]);
   const [variantesProducto, setVariantesProducto] = useState([]);
+  const [precioVentaModo, setPrecioVentaModo] = useState('manual'); // 'manual' | 'porcentaje'
+  const [margenPorcentaje, setMargenPorcentaje] = useState('');
   const fileInputRef = useRef();
   const codigoInputRef = useRef(null);
 
@@ -146,6 +149,8 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
       setVariantesProducto([]);
       setImagen(null);
       setImagenUrl('');
+      setPrecioVentaModo('manual');
+      setMargenPorcentaje('');
       
       if (skipTypeSelector && defaultProductType) {
         setSelectedType(defaultProductType);
@@ -208,9 +213,30 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
       calorias: '',
       porcion: '',
       variaciones: '',
-      permite_toppings: defaultPermiteToppings
+      permite_toppings: defaultPermiteToppings,
+      umbral_stock_bajo: ''
     }
   });
+
+  const precioCompraWatch = watch('precioCompra');
+
+  useEffect(() => {
+    if (precioVentaModo !== 'porcentaje') return;
+
+    const compraNumerica = Number((precioCompraWatch || '').toString().replace(/\D/g, '')) || 0;
+    const margenNumerico = parseFloat((margenPorcentaje || '').toString().replace(',', '.').replace(/[^0-9.]/g, ''));
+
+    if (!compraNumerica || Number.isNaN(margenNumerico)) {
+      setValue('precioVenta', '', { shouldValidate: true });
+      precioVentaInput.reset();
+      return;
+    }
+
+    const ventaCalculada = Math.round(compraNumerica * (1 + (margenNumerico / 100)));
+    const ventaFormateada = formatCurrency(ventaCalculada);
+    setValue('precioVenta', ventaFormateada || '', { shouldValidate: true });
+    precioVentaInput.setValue(ventaCalculada);
+  }, [precioCompraWatch, margenPorcentaje, precioVentaModo, setValue, precioVentaInput]);
 
   // Resetear cuando cambia el tipo
   useEffect(() => {
@@ -227,8 +253,13 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
         setValue('stock', '');
         stockInput.reset();
       }
+
+      if (!typeFields.required.includes('precio_compra') && !typeFields.optional.includes('precio_compra')) {
+        setPrecioVentaModo('manual');
+        setMargenPorcentaje('');
+      }
     }
-  }, [selectedType, setValue, precioCompraInput, stockInput]);
+  }, [selectedType, setValue, precioCompraInput, stockInput, setPrecioVentaModo, setMargenPorcentaje]);
 
   useEffect(() => {
     if (variantesProducto.length > 0) {
@@ -423,10 +454,23 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
       const codigo = watch('codigo');
       const nombre = watch('nombre');
       const precioVenta = watch('precioVenta');
+      const precioCompra = watch('precioCompra');
       
       if (!codigo || !nombre || !precioVenta) {
         toast.error('Por favor completa todos los campos requeridos');
         return;
+      }
+
+      if (precioVentaModo === 'porcentaje') {
+        const margenNumerico = parseFloat((margenPorcentaje || '').toString().replace(',', '.').replace(/[^0-9.]/g, ''));
+        if (!precioCompra || Number.isNaN(margenNumerico)) {
+          toast.error('Ingresa precio de compra y porcentaje para calcular el precio de venta');
+          return;
+        }
+        if (margenNumerico < 0) {
+          toast.error('El porcentaje debe ser mayor o igual a 0');
+          return;
+        }
       }
       
       // Ir a paso 2 (opciones/variantes)
@@ -471,6 +515,12 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
     setValue('precioVenta', formatted || '', { shouldValidate: true });
   };
 
+  const handleMargenPorcentajeChange = (e) => {
+    const rawValue = e.target.value;
+    const sanitized = rawValue.replace(/[^0-9.,]/g, '');
+    setMargenPorcentaje(sanitized);
+  };
+
   const handleStockChange = (e) => {
     const formatted = stockInput.handleChange(e);
     setValue('stock', formatted || '', { shouldValidate: true });
@@ -498,6 +548,18 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
   };
 
   const onSubmit = async (data) => {
+    if (precioVentaModo === 'porcentaje') {
+      const margenNumerico = parseFloat((margenPorcentaje || '').toString().replace(',', '.').replace(/[^0-9.]/g, ''));
+      if (!data.precioCompra || Number.isNaN(margenNumerico)) {
+        toast.error('Ingresa precio de compra y porcentaje para calcular el precio de venta');
+        return;
+      }
+      if (margenNumerico < 0) {
+        toast.error('El porcentaje debe ser mayor o igual a 0');
+        return;
+      }
+    }
+
     // Verificar límite de productos antes de crear
     const canCreate = await canPerformAction('createProduct');
     if (!canCreate.allowed) {
@@ -581,6 +643,13 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
       metadata.permite_toppings = data.permite_toppings !== undefined
         ? data.permite_toppings
         : defaultPermiteToppings;
+
+      if (data.umbral_stock_bajo !== undefined && data.umbral_stock_bajo !== '') {
+        const umbralProducto = Number(data.umbral_stock_bajo);
+        if (Number.isFinite(umbralProducto) && umbralProducto > 0) {
+          metadata.umbral_stock_bajo = umbralProducto;
+        }
+      }
       
       // Agregar variaciones_config si hay variaciones configuradas
       if (variacionesConfig && variacionesConfig.length > 0) {
@@ -824,6 +893,40 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
                 <span style={{ fontWeight: 600, fontSize: '0.98rem', marginBottom: 4, textAlign: 'center' }}>
                   Precio de Venta <span style={{ color: '#ef4444' }}>*</span>
                 </span>
+                {(typeFields.required.includes('precio_compra') || typeFields.optional.includes('precio_compra')) && (
+                  <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', justifyContent: 'center' }}>
+                    <button
+                      type="button"
+                      className={`inventario-btn ${precioVentaModo === 'manual' ? 'inventario-btn-primary' : 'inventario-btn-outline'}`}
+                      onClick={() => setPrecioVentaModo('manual')}
+                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.85rem' }}
+                    >
+                      Manual
+                    </button>
+                    <button
+                      type="button"
+                      className={`inventario-btn ${precioVentaModo === 'porcentaje' ? 'inventario-btn-primary' : 'inventario-btn-outline'}`}
+                      onClick={() => setPrecioVentaModo('porcentaje')}
+                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.85rem' }}
+                    >
+                      % sobre compra
+                    </button>
+                  </div>
+                )}
+                {precioVentaModo === 'porcentaje' && (typeFields.required.includes('precio_compra') || typeFields.optional.includes('precio_compra')) && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '0.5rem' }}>
+                    <input
+                      value={margenPorcentaje}
+                      onChange={handleMargenPorcentajeChange}
+                      inputMode="decimal"
+                      placeholder="Ej: 30"
+                      className="input-form"
+                    />
+                    <span style={{ fontSize: '0.75rem', color: '#6b7280', textAlign: 'center' }}>
+                      % de margen sobre el precio de compra
+                    </span>
+                  </div>
+                )}
                 <input
                   {...register('precioVenta')}
                   value={precioVentaInput.displayValue}
@@ -831,6 +934,7 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
                   inputMode="numeric"
                   placeholder="Ej: 50.000"
                   className={`input-form ${errors.precioVenta ? 'error' : ''}`}
+                  disabled={precioVentaModo === 'porcentaje' && (typeFields.required.includes('precio_compra') || typeFields.optional.includes('precio_compra'))}
                 />
                 {errors.precioVenta && <span className="error-message">{errors.precioVenta.message}</span>}
               </div>
@@ -857,6 +961,18 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
                     El stock general se calcula con la sumatoria de variantes.
                   </span>
                 )}
+                <label style={{ marginTop: '0.75rem' }}>
+                  Umbral de stock bajo <span style={{ color: '#6b7280', fontWeight: 400 }}>(Opcional)</span>
+                </label>
+                <input
+                  {...register('umbral_stock_bajo')}
+                  inputMode="numeric"
+                  className="input-form"
+                  placeholder="Ej: 10"
+                />
+                <span className="error-message" style={{ color: '#6b7280' }}>
+                  Si no lo defines, se usará el umbral general.
+                </span>
               </>
             )}
 

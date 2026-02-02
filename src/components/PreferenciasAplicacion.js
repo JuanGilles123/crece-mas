@@ -31,7 +31,7 @@ const PreferenciasAplicacion = () => {
         formatoFecha: userMetadata.formatoFecha || 'DD/MM/YYYY',
         idioma: userMetadata.idioma || 'es',
         mostrarStockBajo: userMetadata.mostrarStockBajo !== false,
-        umbralStockBajo: userMetadata.umbralStockBajo || 10,
+        umbralStockBajo: userMetadata.umbralStockBajo ?? 10,
         mostrarFacturaPantalla: userMetadata.mostrarFacturaPantalla === true
       });
     } catch (error) {
@@ -51,11 +51,16 @@ const PreferenciasAplicacion = () => {
 
   const handleGuardar = async () => {
     setGuardando(true);
+    const umbralStockBajoSeguro = Number.isFinite(Number(preferencias.umbralStockBajo))
+      && Number(preferencias.umbralStockBajo) > 0
+      ? Number(preferencias.umbralStockBajo)
+      : 10;
     try {
       const { error } = await supabase.auth.updateUser({
         data: {
           ...user.user_metadata,
-          ...preferencias
+          ...preferencias,
+          umbralStockBajo: umbralStockBajoSeguro
         }
       });
 
@@ -169,8 +174,15 @@ const PreferenciasAplicacion = () => {
               type="number"
               min="1"
               max="100"
-              value={preferencias.umbralStockBajo}
-              onChange={(e) => handleChange('umbralStockBajo', parseInt(e.target.value) || 10)}
+              value={preferencias.umbralStockBajo ?? ''}
+              onChange={(e) => {
+                const { value } = e.target;
+                if (value === '') {
+                  handleChange('umbralStockBajo', '');
+                  return;
+                }
+                handleChange('umbralStockBajo', parseInt(value, 10));
+              }}
               className="preferencia-input"
             />
           </div>

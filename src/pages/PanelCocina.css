@@ -385,6 +385,17 @@
   min-width: 0;
 }
 
+.pedido-card-notas {
+  margin: 0 0 0.5rem;
+  padding: 0.4rem 0.5rem;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  color: #9a3412;
+  word-break: break-word;
+}
+
 .pedido-items-count {
   margin: 0 0 0.5rem;
   font-size: 0.75rem;
@@ -405,6 +416,25 @@
   overflow-wrap: break-word;
   max-width: 100%;
   box-sizing: border-box;
+}
+
+.pedido-item-detail {
+  background: white;
+  border-radius: 6px;
+  padding: 0.4rem 0.5rem;
+  margin: 0.25rem 0;
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+.pedido-item-detail-line {
+  font-weight: 600;
+}
+
+.pedido-item-detail-sub {
+  margin-top: 0.2rem;
+  color: var(--text-secondary);
 }
 
 .pedido-item-more {
