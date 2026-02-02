@@ -49,11 +49,13 @@ const Inventario = () => {
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
   const [varianteSeleccionadaId, setVarianteSeleccionadaId] = useState(null);
   const [modoLista, setModoLista] = useState(false);
+  const [ordenProductos, setOrdenProductos] = useState('name_asc');
   const [query, setQuery] = useState('');
   const [productoIdFiltro, setProductoIdFiltro] = useState(null);
   const [filters, setFilters] = useState({});
   const [seleccionados, setSeleccionados] = useState([]);
   const [eliminandoSeleccionados, setEliminandoSeleccionados] = useState(false);
+  const [totalProductosDb, setTotalProductosDb] = useState(null);
   // Suponiendo que el usuario tiene moneda en user.user_metadata.moneda
   const moneda = user?.user_metadata?.moneda || 'COP';
   const umbralStockBajo = Number(user?.user_metadata?.umbralStockBajo ?? 10);
@@ -69,6 +71,24 @@ const Inventario = () => {
   // React Query hooks - usar organization?.id en lugar de user?.id
   const { data: productos = [], isLoading: cargando, error, refetch, isFetching } = useProductos(organization?.id);
   const eliminarProductoMutation = useEliminarProducto();
+
+  useEffect(() => {
+    const cargarTotalProductos = async () => {
+      if (!organization?.id) return;
+      const { count, error: countError } = await supabase
+        .from('productos')
+        .select('id', { count: 'exact', head: true })
+        .eq('organization_id', organization.id);
+      if (countError) {
+        console.error('Error cargando total de productos:', countError);
+        return;
+      }
+      setTotalProductosDb(count ?? 0);
+    };
+
+    cargarTotalProductos();
+  }, [organization?.id]);
+
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -205,8 +225,10 @@ const Inventario = () => {
     handleInputChange: handleBarcodeInputChange 
   } = useBarcodeScanner(handleBarcodeScanned, {
     minLength: 3,
-    maxTimeBetweenChars: 50,
-    autoSubmit: true
+    maxTimeBetweenChars: 30,
+    autoSubmit: true,
+    waitForEndChar: true,
+    clearInput: false
   });
 
   // Ref para el input de búsqueda
@@ -365,6 +387,61 @@ const Inventario = () => {
     return desde;
   };
 
+  const productosSearchIndex = useMemo(() => {
+    const index = new Map();
+    productos.forEach((producto) => {
+      const camposDirectos = [
+        producto.codigo,
+        producto.nombre,
+        producto.tipo
+      ];
+
+      if (producto.precio_venta) camposDirectos.push(String(producto.precio_venta));
+      if (producto.precio_compra) camposDirectos.push(String(producto.precio_compra));
+      if (producto.stock !== null && producto.stock !== undefined) {
+        camposDirectos.push(String(producto.stock));
+      }
+
+      const metadata = typeof producto.metadata === 'string'
+        ? (() => {
+            try {
+              return JSON.parse(producto.metadata);
+            } catch {
+              return {};
+            }
+          })()
+        : (producto.metadata || {});
+
+      const camposMetadata = [
+        metadata.marca,
+        metadata.modelo,
+        metadata.color,
+        metadata.talla,
+        metadata.categoria,
+        metadata.descripcion,
+        metadata.material,
+        metadata.dimensiones,
+        metadata.duracion,
+        metadata.ingredientes,
+        metadata.alergenos,
+        metadata.porcion
+      ];
+
+      const variantes = producto.variantes || [];
+      const camposVariantes = variantes.flatMap(vari => [
+        vari.nombre,
+        vari.codigo
+      ]);
+
+      const todosLosCampos = [...camposDirectos, ...camposMetadata, ...camposVariantes]
+        .filter(campo => campo !== null && campo !== undefined && campo !== '')
+        .map(campo => String(campo).toLowerCase());
+
+      index.set(String(producto.id), todosLosCampos.join(' '));
+    });
+    return index;
+  }, [productos]);
+
   // Filtrar productos basado en búsqueda y filtros dinámicos
   const filteredProducts = useMemo(() => {
     return productos.filter((producto) => {
@@ -379,54 +456,10 @@ const Inventario = () => {
       } else {
         const searchTerm = query.toLowerCase().trim();
         if (searchTerm) {
-        // Campos directos del producto para buscar
-        const camposDirectos = [
-          producto.codigo,
-          producto.nombre,
-          producto.tipo
-        ];
-        
-        // Campos numéricos convertidos a string para búsqueda
-        if (producto.precio_venta) camposDirectos.push(String(producto.precio_venta));
-        if (producto.precio_compra) camposDirectos.push(String(producto.precio_compra));
-        if (producto.stock !== null && producto.stock !== undefined) {
-          camposDirectos.push(String(producto.stock));
-        }
-        
-        // Campos en metadata
-        const metadata = producto.metadata || {};
-        const camposMetadata = [
-          metadata.marca,
-          metadata.modelo,
-          metadata.color,
-          metadata.talla,
-          metadata.categoria,
-          metadata.descripcion,
-          metadata.material,
-          metadata.dimensiones,
-          metadata.duracion,
-          metadata.ingredientes,
-          metadata.alergenos,
-          metadata.porcion
-        ];
-        
-        const variantes = producto.variantes || [];
-        const camposVariantes = variantes.flatMap(vari => [
-          vari.nombre,
-          vari.codigo
-        ]);
-
-        // Combinar todos los campos en un solo string para buscar
-        const todosLosCampos = [...camposDirectos, ...camposMetadata, ...camposVariantes]
-          .filter(campo => campo !== null && campo !== undefined && campo !== '')
-          .map(campo => String(campo).toLowerCase());
-        
-        const textoCompleto = todosLosCampos.join(' ');
-        
-        // Si no encuentra el término de búsqueda en ningún campo, excluir el producto
-        if (!textoCompleto.includes(searchTerm)) {
-          return false;
-        }
+          const textoCompleto = productosSearchIndex.get(String(producto.id)) || '';
+          if (!textoCompleto.includes(searchTerm)) {
+            return false;
+          }
         }
       }
 
@@ -526,7 +559,51 @@ const Inventario = () => {
 
       return true;
     });
-  }, [productos, query, filters, getUmbralProducto, productoIdFiltro]);
+  }, [productos, query, productosSearchIndex, filters, getUmbralProducto, productoIdFiltro]);
+
+  const sortedProducts = useMemo(() => {
+    const lista = [...filteredProducts];
+    const getDateValue = (value) => {
+      if (!value) return 0;
+      const time = new Date(value).getTime();
+      return Number.isFinite(time) ? time : 0;
+    };
+    switch (ordenProductos) {
+      case 'name_asc':
+        lista.sort((a, b) => (a?.nombre || '').localeCompare(b?.nombre || '', 'es'));
+        break;
+      case 'name_desc':
+        lista.sort((a, b) => (b?.nombre || '').localeCompare(a?.nombre || '', 'es'));
+        break;
+      case 'created_asc':
+        lista.sort((a, b) => getDateValue(a?.created_at) - getDateValue(b?.created_at));
+        break;
+      case 'created_desc':
+        lista.sort((a, b) => getDateValue(b?.created_at) - getDateValue(a?.created_at));
+        break;
+      case 'stock_asc':
+        lista.sort((a, b) => (Number(a?.stock ?? 0) || 0) - (Number(b?.stock ?? 0) || 0));
+        break;
+      case 'stock_desc':
+        lista.sort((a, b) => (Number(b?.stock ?? 0) || 0) - (Number(a?.stock ?? 0) || 0));
+        break;
+      default:
+        break;
+    }
+    return lista;
+  }, [filteredProducts, ordenProductos]);
+
+  const shouldAnimateProducts = sortedProducts.length <= 200;
+  const ItemWrapper = shouldAnimateProducts ? motion.div : 'div';
+  const getItemAnimationProps = (index) => {
+    if (!shouldAnimateProducts) return {};
+    return {
+      initial: { opacity: 0, y: 20 },
+      animate: { opacity: 1, y: 0 },
+      transition: { duration: 0.3, delay: index * 0.05 },
+      whileHover: { scale: 1.01, transition: { duration: 0.2 } }
+    };
+  };
 
   // Guardar producto en Supabase (ahora manejado por React Query en AgregarProductoModal)
   const handleAgregarProducto = async (nuevo) => {
@@ -762,7 +839,14 @@ const Inventario = () => {
         <>
           {/* Métricas del inventario - se actualizan con los productos filtrados */}
           {productos.length > 0 && (
-            <InventarioStats productos={filteredProducts} />
+            <InventarioStats
+              productos={filteredProducts}
+              totalProductosOverride={
+                (!query && Object.keys(filters).length === 0 && !productoIdFiltro)
+                  ? totalProductosDb
+                  : null
+              }
+            />
           )}
 
           {/* Header con búsqueda y acciones - Separados para mejor control responsive */}
@@ -845,6 +929,21 @@ const Inventario = () => {
               </button>
             </div>
             <div className="inventario-search-container">
+              <div className="inventario-sort">
+                <select
+                  className="inventario-sort-select"
+                  value={ordenProductos}
+                  onChange={(e) => setOrdenProductos(e.target.value)}
+                  aria-label="Ordenar productos"
+                >
+                  <option value="created_desc">Más recientes</option>
+                  <option value="created_asc">Más antiguos</option>
+                  <option value="name_asc">Nombre A-Z</option>
+                  <option value="name_desc">Nombre Z-A</option>
+                  <option value="stock_desc">Stock mayor</option>
+                  <option value="stock_asc">Stock menor</option>
+                </select>
+              </div>
               <div className="search-input-wrapper">
                 <Search size={18} className="inventario-search-icon-outside" />
                 <input 
@@ -884,22 +983,12 @@ const Inventario = () => {
                   ? 'No se encontraron productos con los filtros aplicados.' 
                   : 'No hay productos aún.'}
               </div>
-            ) : filteredProducts.map((prod, index) => (
-              <motion.div 
+            ) : sortedProducts.map((prod, index) => (
+              <ItemWrapper 
                 className="inventario-lista-item" 
                 key={prod.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ 
-                  duration: 0.3, 
-                  delay: index * 0.05,
-                  ease: "easeOut"
-                }}
-                whileHover={{ 
-                  scale: 1.02,
-                  transition: { duration: 0.2 }
-                }}
-                layout
+                {...getItemAnimationProps(index)}
+                {...(shouldAnimateProducts ? { layout: true } : {})}
               >
                 <div className="inventario-select-checkbox">
                   <input
@@ -916,7 +1005,7 @@ const Inventario = () => {
                   }}
                 />
                 <div className="inventario-lista-info">
-                  <div className="inventario-nombre">{prod.nombre}</div>
+                  <div className="inventario-nombre" title={prod.nombre}>{prod.nombre}</div>
                   <div className="inventario-lista-precios">
                     <span style={{color:'var(--accent-primary)',fontWeight:700}}>Compra: {prod.precio_compra?.toLocaleString('es-CO')}</span>
                     <span style={{color:'var(--accent-success)',fontWeight:700}}>Venta: {prod.precio_venta?.toLocaleString('es-CO')}</span>
@@ -937,7 +1026,7 @@ const Inventario = () => {
                     Eliminar
                   </button>
                 </div>
-              </motion.div>
+              </ItemWrapper>
             ))}
           </div>
         ) : (
@@ -952,22 +1041,12 @@ const Inventario = () => {
                   ? 'No se encontraron productos con los filtros aplicados.' 
                   : 'No hay productos aún.'}
               </div>
-            ) : filteredProducts.map((prod, index) => (
-              <motion.div 
+            ) : sortedProducts.map((prod, index) => (
+              <ItemWrapper 
                 className="inventario-card" 
                 key={prod.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ 
-                  duration: 0.3, 
-                  delay: index * 0.05,
-                  ease: "easeOut"
-                }}
-                whileHover={{ 
-                  scale: 1.02,
-                  transition: { duration: 0.2 }
-                }}
-                layout
+                {...getItemAnimationProps(index)}
+                {...(shouldAnimateProducts ? { layout: true } : {})}
               >
                 <div className="inventario-select-checkbox">
                   <input
@@ -984,7 +1063,7 @@ const Inventario = () => {
                   }}
                 />
                 <div className="inventario-info">
-                  <div className="inventario-nombre">{prod.nombre}</div>
+                  <div className="inventario-nombre" title={prod.nombre}>{prod.nombre}</div>
                   <div style={{display:'flex',gap:'0.8rem',justifyContent:'center',marginBottom:2}}>
                     <span style={{color:'var(--accent-primary)',fontWeight:700,fontSize:'0.85rem'}}>Compra: {prod.precio_compra?.toLocaleString('es-CO')}</span>
                     <span style={{color:'var(--accent-success)',fontWeight:700,fontSize:'0.85rem'}}>Venta: {prod.precio_venta?.toLocaleString('es-CO')}</span>
@@ -1005,7 +1084,7 @@ const Inventario = () => {
                     Eliminar
                   </button>
                 </div>
-              </motion.div>
+              </ItemWrapper>
             ))}
           </div>
           )}

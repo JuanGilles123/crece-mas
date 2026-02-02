@@ -18,7 +18,7 @@ import toast from 'react-hot-toast';
 
 // Esquema de validación con Zod
 const productoSchema = z.object({
-  codigo: z.string().min(1, 'El código es requerido').max(50, 'El código es muy largo'),
+  codigo: z.string().max(50, 'El código es muy largo').optional(),
   nombre: z.string().min(1, 'El nombre es requerido').max(100, 'El nombre es muy largo'),
   precioCompra: z.string().optional(),
   precioVenta: z.string().min(1, 'El precio de venta es requerido'),

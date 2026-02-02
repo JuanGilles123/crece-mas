@@ -23,7 +23,7 @@ import './AgregarProductoModalV2.css';
 // Función para crear esquema de validación dinámico
 const createProductSchema = (productType, defaultPermiteToppings = true) => {
   const baseSchema = {
-    codigo: z.string().min(1, 'El código es requerido').max(50, 'El código es muy largo'),
+    codigo: z.string().max(50, 'El código es muy largo').optional(),
     nombre: z.string().min(1, 'El nombre es requerido').max(100, 'El nombre es muy largo'),
     precioVenta: z.string().min(1, 'El precio de venta es requerido'),
     tipo: z.enum(['fisico', 'servicio', 'comida', 'accesorio']),
@@ -842,7 +842,7 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
             {formStep === 1 && (
               <div className="form-step-content">
                 <h3 className="step-title">Información Básica e Imagen</h3>
-                <label>Código <span style={{ color: '#ef4444' }}>*</span></label>
+                <label>Código</label>
             <input
               {...register('codigo', {
                 onChange: (e) => {

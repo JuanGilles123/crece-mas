@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Search, Check, Building2 } from 'lucide-react';
+import { X, Search, Check, Building2, Plus } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useProductos, useActualizarProducto } from '../../hooks/useProductos';
 import { useProveedores, useCrearGastoVariable, useCrearCreditoProveedor } from '../../hooks/useEgresos';
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
 import OptimizedProductImage from '../../components/business/OptimizedProductImage';
+import AgregarProductoModalV2 from './AgregarProductoModalV2';
 import ProveedorModal from './ProveedorModal';
 import toast from 'react-hot-toast';
 import { supabase } from '../../services/api/supabaseClient';
@@ -13,6 +14,7 @@ import './EntradaInventarioModal.css';
 
 const EntradaInventarioModal = ({ open, onClose }) => {
   const { organization, user } = useAuth();
+  const moneda = user?.user_metadata?.moneda || 'COP';
   const { data: productos = [] } = useProductos(organization?.id);
   const actualizarProducto = useActualizarProducto();
   const { data: proveedores = [], refetch: refetchProveedores } = useProveedores(organization?.id, { activo: true });
@@ -24,6 +26,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
   const [mostrarBusqueda, setMostrarBusqueda] = useState(false);
   const [busqueda, setBusqueda] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [mostrarCrearProducto, setMostrarCrearProducto] = useState(false);
   const [productosActualizando, setProductosActualizando] = useState(new Set()); // IDs de productos que se están actualizando
   const [modalProveedor, setModalProveedor] = useState({ open: false, proveedor: null });
   const [proveedorSeleccionado, setProveedorSeleccionado] = useState(null); // ID del proveedor seleccionado
@@ -52,7 +55,8 @@ const EntradaInventarioModal = ({ open, onClose }) => {
   } = useBarcodeScanner(handleBarcodeScanned, {
     minLength: 3,
     maxTimeBetweenChars: 50,
-    autoSubmit: true
+    autoSubmit: true,
+    clearInput: false
   });
 
   // Ref para el input de búsqueda
@@ -643,6 +647,11 @@ const EntradaInventarioModal = ({ open, onClose }) => {
     refetchProveedores();
     setModalProveedor({ open: false, proveedor: null });
   };
+
+  const handleProductoCreado = () => {
+    setMostrarCrearProducto(false);
+    setMostrarBusqueda(true);
+  };
   
   if (!open) return null;
   
@@ -716,6 +725,14 @@ const EntradaInventarioModal = ({ open, onClose }) => {
               <Search size={16} />
               {mostrarBusqueda ? 'Ocultar búsqueda' : 'Buscar productos'}
             </button>
+          <button
+            type="button"
+            className="btn-buscar-productos"
+            onClick={() => setMostrarCrearProducto(true)}
+          >
+            <Plus size={16} />
+            Crear producto
+          </button>
           </div>
           
           {/* Modal de búsqueda */}
@@ -1116,6 +1133,15 @@ const EntradaInventarioModal = ({ open, onClose }) => {
           open={modalProveedor.open}
           onClose={handleProveedorCreado}
           proveedor={modalProveedor.proveedor}
+        />,
+        document.body
+      )}
+      {createPortal(
+        <AgregarProductoModalV2
+          open={mostrarCrearProducto}
+          onClose={() => setMostrarCrearProducto(false)}
+          onProductoAgregado={handleProductoCreado}
+          moneda={moneda}
         />,
         document.body
       )}
