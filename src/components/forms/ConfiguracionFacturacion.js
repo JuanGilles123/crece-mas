@@ -196,6 +196,9 @@ export default function ConfiguracionFacturacion() {
       // Mantener compatibilidad con sistema antiguo
       updateData.mesas_habilitadas = enabledFeatures.includes('mesas');
       updateData.pedidos_habilitados = enabledFeatures.includes('pedidos');
+
+      // Normalizar campos numéricos para joyería y metales
+      // Paramétricos de Joyería se guardan en Preferencias de la Aplicación
       
       const { error } = await supabase
         .from('organizations')
@@ -527,6 +530,7 @@ export default function ConfiguracionFacturacion() {
                 </small>
               </div>
             )}
+
 
             <div className="form-group">
               <label htmlFor="telefono">

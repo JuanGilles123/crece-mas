@@ -62,6 +62,9 @@ export default function Caja({
   
   const esModoPedido = mode === 'pedido';
   const [query, setQuery] = useState("");
+  const isJewelryBusiness = organization?.business_type === 'jewelry_metals';
+  const [goldPriceGlobal, setGoldPriceGlobal] = useState('');
+  const [goldPriceLocal, setGoldPriceLocal] = useState('');
   
   const [queryPedidos, setQueryPedidos] = useState(""); // Buscador para pedidos listos para pagar
   const [cart, setCart] = useState([]);
@@ -115,6 +118,61 @@ export default function Caja({
     alcance: 'total', // 'total' o 'productos'
     productosIds: [] // IDs de productos con descuento
   });
+
+  useEffect(() => {
+    if (!isJewelryBusiness) return;
+    const storageKey = organization?.id ? `jewelry_prices:${organization.id}` : null;
+    if (storageKey) {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (parsed?.global !== undefined && parsed?.global !== null) {
+            setGoldPriceGlobal(String(parsed.global));
+          }
+          if (parsed?.local !== undefined && parsed?.local !== null) {
+            setGoldPriceLocal(String(parsed.local));
+          }
+          return;
+        } catch (err) {
+          console.warn('No se pudo leer precios guardados:', err);
+        }
+      }
+    }
+
+    if (organization?.jewelry_gold_price_global !== undefined && organization?.jewelry_gold_price_global !== null) {
+      setGoldPriceGlobal(String(organization.jewelry_gold_price_global));
+    }
+    if (organization?.jewelry_gold_price_local !== undefined && organization?.jewelry_gold_price_local !== null) {
+      setGoldPriceLocal(String(organization.jewelry_gold_price_local));
+    }
+  }, [isJewelryBusiness, organization?.id, organization?.jewelry_gold_price_global, organization?.jewelry_gold_price_local]);
+
+  useEffect(() => {
+    if (!isJewelryBusiness || !organization?.id) return;
+    const storageKey = `jewelry_prices:${organization.id}`;
+    localStorage.setItem(
+      storageKey,
+      JSON.stringify({
+        global: goldPriceGlobal === '' ? null : Number(goldPriceGlobal),
+        local: goldPriceLocal === '' ? null : Number(goldPriceLocal)
+      })
+    );
+  }, [isJewelryBusiness, organization?.id, goldPriceGlobal, goldPriceLocal]);
+
+  useEffect(() => {
+    if (!isJewelryBusiness) return;
+    const adjustPct = Number(organization?.jewelry_national_adjust_pct);
+    if (!Number.isFinite(adjustPct) || adjustPct <= 0) {
+      return;
+    }
+    const base = Number(goldPriceGlobal) || 0;
+    if (!base) return;
+    const computed = base * (1 - adjustPct / 100);
+    setGoldPriceLocal(String(Math.round(computed)));
+  }, [isJewelryBusiness, organization?.jewelry_national_adjust_pct, goldPriceGlobal]);
+
+  // Precio del oro se mantiene manual por el momento (sin API).
   
   // Estados para selectores de toppings y variaciones
   const [mostrandoToppingsSelector, setMostrandoToppingsSelector] = useState(false);
@@ -830,6 +888,72 @@ export default function Caja({
   
   const normalizeStockValue = (value) => Number(value ?? 0) || 0;
 
+  const getGoldPriceForProduct = useCallback((producto) => {
+    const materialType = producto?.metadata?.jewelry_material_type || 'na';
+    if (materialType === 'local') return Number(goldPriceLocal) || 0;
+    if (materialType === 'international') return Number(goldPriceGlobal) || 0;
+    return Number(goldPriceGlobal) || 0;
+  }, [goldPriceGlobal, goldPriceLocal]);
+
+  const getMinMarginForProduct = useCallback((producto) => {
+    const materialType = producto?.metadata?.jewelry_material_type || 'na';
+    if (materialType === 'local') return Number(organization?.jewelry_min_margin_local) || 0;
+    if (materialType === 'international') return Number(organization?.jewelry_min_margin_international) || 0;
+    return 0;
+  }, [organization?.jewelry_min_margin_local, organization?.jewelry_min_margin_international]);
+
+  const getPurityFactor = useCallback((pureza) => {
+    switch ((pureza || '').toLowerCase()) {
+      case '24k':
+        return 1;
+      case '22k':
+        return 22 / 24;
+      case '18k':
+        return 18 / 24;
+      case '14k':
+        return 14 / 24;
+      case '10k':
+        return 10 / 24;
+      case '925':
+        return 0.925;
+      case '950':
+        return 0.95;
+      default:
+        return 1;
+    }
+  }, []);
+
+  const getJewelryUnitPrice = useCallback((producto) => {
+    const isVariablePrice = producto?.metadata?.jewelry_price_mode === 'variable';
+    if (!isVariablePrice) return producto?.precio_venta ?? 0;
+    const pesoGramos = Number(producto?.metadata?.peso) || 0;
+    const goldPrice = getGoldPriceForProduct(producto);
+    const minMargin = getMinMarginForProduct(producto);
+    const compraPorUnidad = Number(producto?.metadata?.jewelry_compra_por_unidad)
+      || (pesoGramos > 0 ? (Number(producto?.precio_compra || 0) / pesoGramos) : 0);
+    const diff = goldPrice - compraPorUnidad;
+    const precioBaseGramo = diff >= minMargin ? goldPrice : (compraPorUnidad + minMargin);
+    const aplicaPureza = (producto?.metadata?.jewelry_material_type || 'na') === 'international';
+    const purityFactor = aplicaPureza ? getPurityFactor(producto?.metadata?.pureza) : 1;
+    if (!pesoGramos || !precioBaseGramo) return 0;
+    return pesoGramos * precioBaseGramo * purityFactor;
+  }, [getGoldPriceForProduct, getMinMarginForProduct, getPurityFactor]);
+
+  useEffect(() => {
+    if (!isJewelryBusiness) return;
+    setCart((prev) => {
+      let changed = false;
+      const next = prev.map((item) => {
+        if (item?.metadata?.jewelry_price_mode !== 'variable') return item;
+        const newPrice = getJewelryUnitPrice(item);
+        if (newPrice === item.precio_venta) return item;
+        changed = true;
+        return { ...item, precio_venta: newPrice };
+      });
+      return changed ? next : prev;
+    });
+  }, [isJewelryBusiness, goldPriceGlobal, goldPriceLocal, getJewelryUnitPrice]);
+
   const getStockDisponibleProducto = (producto, variante = null) => {
     if (!producto || producto.tipo === 'servicio') return null;
     if (variante) return normalizeStockValue(variante.stock);
@@ -837,21 +961,25 @@ export default function Caja({
   };
 
   function addToCart(producto, variante = null) {
+    const precioUnitario = isJewelryBusiness ? getJewelryUnitPrice(producto) : producto?.precio_venta;
+    const productoConPrecio = isJewelryBusiness
+      ? { ...producto, precio_venta: precioUnitario }
+      : producto;
     // Si se agrega un producto manualmente (no desde un pedido), resetear el flag
     if (!esModoPedido) {
       setVieneDePedidos(false);
     }
-    const variantes = producto?.variantes || [];
+    const variantes = productoConPrecio?.variantes || [];
     if (variantes.length > 0 && !variante) {
-      setProductoParaVariante(producto);
+      setProductoParaVariante(productoConPrecio);
       setMostrandoVarianteSelector(true);
       return;
     }
 
     // Verificar stock disponible
-    const stockDisponible = getStockDisponibleProducto(producto, variante);
+    const stockDisponible = getStockDisponibleProducto(productoConPrecio, variante);
     const cantidadEnCarrito = cart
-      .filter(item => item.id === producto.id && (item.variant_id || null) === (variante?.id || null))
+      .filter(item => item.id === productoConPrecio.id && (item.variant_id || null) === (variante?.id || null))
       .reduce((sum, item) => sum + (item.qty || 0), 0);
     
     if (stockDisponible !== null && stockDisponible !== undefined && cantidadEnCarrito >= stockDisponible) {
@@ -860,25 +988,25 @@ export default function Caja({
     }
 
     // Si el producto es un topping, agregarlo directamente sin mostrar selector de toppings
-    const esTopping = producto.es_topping || (typeof producto.id === 'string' && producto.id.startsWith('topping_'));
+    const esTopping = productoConPrecio.es_topping || (typeof productoConPrecio.id === 'string' && productoConPrecio.id.startsWith('topping_'));
     if (esTopping) {
       // Agregar directamente al carrito sin toppings adicionales
-      agregarProductoConToppingsYVariaciones(producto, [], {}, variante);
+      agregarProductoConToppingsYVariaciones(productoConPrecio, [], {}, variante);
       return;
     }
 
     // Verificar si el producto permite toppings (por defecto true si no está definido)
-    const permiteToppings = producto.metadata?.permite_toppings !== undefined 
-      ? producto.metadata.permite_toppings 
+    const permiteToppings = productoConPrecio.metadata?.permite_toppings !== undefined 
+      ? productoConPrecio.metadata.permite_toppings 
       : true;
     
     // Verificar si el producto tiene variaciones
-    const tieneVariaciones = producto.metadata?.variaciones_config && producto.metadata.variaciones_config.length > 0;
+    const tieneVariaciones = productoConPrecio.metadata?.variaciones_config && productoConPrecio.metadata.variaciones_config.length > 0;
     
     // Si tiene variaciones, mostrar selector de variaciones primero
     if (tieneVariaciones) {
-      setProductoParaVariaciones(producto);
-      setProductoParaToppings(producto); // Guardar producto para después de variaciones
+      setProductoParaVariaciones(productoConPrecio);
+      setProductoParaToppings(productoConPrecio); // Guardar producto para después de variaciones
       setVarianteSeleccionada(variante);
       setMostrandoVariacionesSelector(true);
       return;
@@ -886,12 +1014,12 @@ export default function Caja({
     
     // Si permite toppings, mostrar selector de toppings
     if (permiteToppings) {
-      setProductoParaToppings(producto);
+      setProductoParaToppings(productoConPrecio);
       setVarianteSeleccionada(variante);
       setMostrandoToppingsSelector(true);
     } else {
       // Si no permite toppings, agregar directamente al carrito
-      agregarProductoConToppingsYVariaciones(producto, [], {}, variante);
+      agregarProductoConToppingsYVariaciones(productoConPrecio, [], {}, variante);
     }
   }
   
@@ -1093,6 +1221,7 @@ export default function Caja({
         qty: 1,
         toppings: toppings,
         variaciones: variaciones,
+        metadata: producto.metadata || {},
         variant_id: variante?.id || null,
         variant_nombre: variante?.nombre || null,
         variant_codigo: variante?.codigo || null,
@@ -3321,34 +3450,62 @@ export default function Caja({
             </button>
           </div>
         )}
-        <div className="caja-search-container">
-          <Search size={18} className="caja-search-icon-outside" />
-          <input
-            ref={barcodeInputRef}
-            type="text"
-            placeholder="Buscar producto o escanear código de barras..."
-            className="caja-search-input"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              // El hook manejará la detección de código de barras
-              handleBarcodeInputChange(e);
-            }}
-            onKeyDown={handleBarcodeKeyDown}
-            autoFocus
-            onFocus={(e) => {
-              // Prevenir scroll cuando se enfoca - mantener posición
-              e.target.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
-            }}
-          />
-          <button
-            type="button"
-            className="caja-btn-consultar-precio"
-            onClick={() => setMostrandoConsultarPrecio(true)}
-            title="Consultar precio de producto"
-          >
-            <DollarSign size={18} />
-          </button>
+        <div className="caja-search-wrapper">
+          {isJewelryBusiness && (
+            <div className="caja-metal-prices">
+              <div className="caja-metal-price-field">
+                <label>Oro internacional ({organization?.jewelry_weight_unit || 'g'})</label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  className="caja-metal-input"
+                  placeholder="Ej: 240000"
+                  value={goldPriceGlobal}
+                  onChange={(e) => setGoldPriceGlobal(e.target.value)}
+                />
+              </div>
+              <div className="caja-metal-price-field">
+                <label>Oro nacional ({organization?.jewelry_weight_unit || 'g'})</label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  className="caja-metal-input"
+                  placeholder="Ej: 255000"
+                  value={goldPriceLocal}
+                  onChange={(e) => setGoldPriceLocal(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+          <div className="caja-search-container">
+            <Search size={18} className="caja-search-icon-outside" />
+            <input
+              ref={barcodeInputRef}
+              type="text"
+              placeholder="Buscar producto o escanear código de barras..."
+              className="caja-search-input"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                // El hook manejará la detección de código de barras
+                handleBarcodeInputChange(e);
+              }}
+              onKeyDown={handleBarcodeKeyDown}
+              autoFocus
+              onFocus={(e) => {
+                // Prevenir scroll cuando se enfoca - mantener posición
+                e.target.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+              }}
+            />
+            <button
+              type="button"
+              className="caja-btn-consultar-precio"
+              onClick={() => setMostrandoConsultarPrecio(true)}
+              title="Consultar precio de producto"
+            >
+              <DollarSign size={18} />
+            </button>
+          </div>
         </div>
 
         <div className="caja-products-list">
@@ -3380,7 +3537,9 @@ export default function Caja({
                   <p className="caja-product-name" title={producto.nombre}>{producto.nombre}</p>
                   <p className="caja-product-stock">Stock: {producto.stock !== null && producto.stock !== undefined ? parseFloat(producto.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '0'}</p>
                 </div>
-                <span className="caja-product-price">{formatCOP(producto.precio_venta)}</span>
+                <span className="caja-product-price">
+                  {formatCOP(isJewelryBusiness ? getJewelryUnitPrice(producto) : producto.precio_venta)}
+                </span>
               </div>
             </motion.div>
           ))}

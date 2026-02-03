@@ -1,5 +1,5 @@
 // Configuración de tipos de negocio y sus características
-import { UtensilsCrossed, Scissors, ShoppingBag, Shirt, Package } from 'lucide-react';
+import { UtensilsCrossed, Scissors, ShoppingBag, Shirt, Package, Scale } from 'lucide-react';
 
 export const BUSINESS_TYPES = {
   // GRUPO 1: Negocios de Alimentación (con toppings, mesas, pedidos)
@@ -57,8 +57,22 @@ export const BUSINESS_TYPES = {
     features: ['Variaciones', 'Tallas', 'Colores', 'Materiales'],
     group: 'Comercio'
   },
+
+  // GRUPO 5: Joyería y Metales (ventas por peso y precio variable)
+  jewelry_metals: {
+    id: 'jewelry_metals',
+    label: 'Joyería y Metales',
+    icon: '💎',
+    Icon: Scale,
+    description: 'Joyerías, compra/venta de metales y gemas',
+    category: 'jewelry',
+    defaultProductType: 'accesorio',
+    availableProductTypes: ['accesorio', 'fisico', 'servicio'],
+    features: ['Peso', 'Precio variable', 'Metales preciosos'],
+    group: 'Comercio'
+  },
   
-  // GRUPO 5: Otros (flexible)
+  // GRUPO 6: Otros (flexible)
   other: {
     id: 'other',
     label: 'Otro',
@@ -85,7 +99,7 @@ export const BUSINESS_TYPE_GROUPS = [
   },
   {
     label: 'Comercio',
-    types: ['retail', 'clothing']
+    types: ['retail', 'clothing', 'jewelry_metals']
   },
   {
     label: 'Otros',

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Building2, Check, ChevronDown, UtensilsCrossed, Shirt, Store, Package } from 'lucide-react';
+import { Building2, Check, ChevronDown, UtensilsCrossed, Shirt, Store, Package, Scale } from 'lucide-react';
 import { supabase } from '../services/api/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import './OrganizationSwitcher.css';
@@ -226,6 +226,7 @@ const getBusinessTypeIcon = (type) => {
     food: UtensilsCrossed,
     clothing: Shirt,
     retail: Store,
+    jewelry_metals: Scale,
     other: Package
   };
   const IconComponent = iconMap[type] || Package;

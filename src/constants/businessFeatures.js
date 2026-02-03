@@ -19,7 +19,7 @@ export const BUSINESS_FEATURES = {
     description: 'Permite agregar ingredientes adicionales a productos (ej: queso extra, tocino)',
     category: 'product',
     requiresPremium: false,
-    compatibleWith: ['food', 'service', 'other'], // Tipos de negocio compatibles
+    compatibleWith: ['food', 'service', 'other', 'jewelry_metals'], // Tipos de negocio compatibles
     defaultFor: ['food'] // Tipos que lo tienen por defecto
   },
   adicionales: {
@@ -30,7 +30,7 @@ export const BUSINESS_FEATURES = {
     description: 'Permite agregar servicios adicionales sin stock (ej: barba, cejas en barbería)',
     category: 'service',
     requiresPremium: false,
-    compatibleWith: ['service', 'food', 'other'],
+    compatibleWith: ['service', 'food', 'other', 'jewelry_metals'],
     defaultFor: ['service']
   },
   mesas: {
@@ -41,7 +41,7 @@ export const BUSINESS_FEATURES = {
     description: 'Gestiona mesas para restaurantes y establecimientos con servicio de mesa',
     category: 'operations',
     requiresPremium: true,
-    compatibleWith: ['food', 'service', 'other'],
+    compatibleWith: ['food', 'service', 'other', 'jewelry_metals'],
     defaultFor: ['food']
   },
   pedidos: {
@@ -52,7 +52,7 @@ export const BUSINESS_FEATURES = {
     description: 'Toma pedidos por mesa y envíalos a cocina o preparación',
     category: 'operations',
     requiresPremium: true,
-    compatibleWith: ['food', 'service', 'other'],
+    compatibleWith: ['food', 'service', 'other', 'jewelry_metals'],
     defaultFor: ['food'],
     requires: ['mesas'] // Requiere que mesas esté activo
   },
@@ -64,7 +64,7 @@ export const BUSINESS_FEATURES = {
     description: 'Permite productos con variaciones (tallas, colores, materiales)',
     category: 'product',
     requiresPremium: false,
-    compatibleWith: ['clothing', 'retail', 'other'],
+    compatibleWith: ['clothing', 'retail', 'other', 'jewelry_metals'],
     defaultFor: ['clothing']
   },
   clientes: {
@@ -75,7 +75,7 @@ export const BUSINESS_FEATURES = {
     description: 'Registra y gestiona información de clientes',
     category: 'crm',
     requiresPremium: false,
-    compatibleWith: ['food', 'service', 'retail', 'clothing', 'other'],
+    compatibleWith: ['food', 'service', 'retail', 'clothing', 'other', 'jewelry_metals'],
     defaultFor: []
   },
   reportes_avanzados: {
@@ -86,7 +86,7 @@ export const BUSINESS_FEATURES = {
     description: 'Reportes detallados y análisis de ventas',
     category: 'analytics',
     requiresPremium: true,
-    compatibleWith: ['food', 'service', 'retail', 'clothing', 'other'],
+    compatibleWith: ['food', 'service', 'retail', 'clothing', 'other', 'jewelry_metals'],
     defaultFor: []
   }
 };

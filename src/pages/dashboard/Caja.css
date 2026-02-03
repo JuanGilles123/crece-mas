@@ -875,24 +875,70 @@
 }
 
 /* Búsqueda - iOS Style */
-.caja-search-container {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0;
+.caja-search-wrapper {
   position: sticky;
   top: 0;
   background: white;
   padding: 0.5rem 0.75rem;
   z-index: 10;
   border-bottom: 1px solid var(--border-primary);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.caja-metal-prices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.caja-metal-price-field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.caja-metal-price-field label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.caja-metal-input {
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  background: #F2F2F7;
+  color: #000;
+  outline: none;
+}
+
+.caja-metal-input:focus {
+  border-color: #007AFF;
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+  background: white;
+}
+
+.caja-search-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0;
+  position: relative;
+  padding: 0;
+  z-index: 10;
+  border-bottom: none;
   flex-shrink: 0;
   width: 100%;
 }
 
 /* Desktop: Padding mínimo */
 @media (min-width: 769px) {
-  .caja-search-container {
+  .caja-search-wrapper {
     padding: 0.75rem 1rem;
   }
 }
@@ -5391,6 +5437,27 @@ input.caja-mobile-qty-display,
 
 .dark .caja-search-container {
   background: #1C1C1E;
+}
+
+.dark .caja-search-wrapper {
+  background: #1C1C1E;
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .caja-metal-input {
+  background: #2C2C2E;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.dark .caja-metal-input:focus {
+  border-color: #0A84FF;
+  background: #2C2C2E;
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.1);
+}
+
+.dark .caja-metal-price-field label {
+  color: #8E8E93;
 }
 
 .dark .caja-search-input {

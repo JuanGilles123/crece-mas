@@ -55,13 +55,8 @@ const ProtectedRoute = ({ children }) => {
     return <Navigate to="/cambiar-contrasena-obligatorio" replace />;
   }
 
-  const isAccessCodeRoute = location.pathname === '/codigo-acceso';
-  const accessKey = user && organization ? `access_code_verified:${organization.id}:${user.id}` : null;
-  const accessVerified = accessKey ? localStorage.getItem(accessKey) === 'true' : false;
-
-  if (!isAccessCodeRoute && !accessVerified) {
-    return <Navigate to="/codigo-acceso" replace />;
-  }
+  // Desactivado temporalmente: no solicitar código de acceso al ingresar.
+  // Para reactivar, volver a validar access_code_verified y redirigir a /codigo-acceso.
 
   return children;
 };

@@ -79,6 +79,17 @@
   box-sizing: border-box;
 }
 
+.preferencia-field {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.preferencia-field label {
+  font-size: 14px;
+  color: #8E8E93;
+}
+
 .preferencia-select:focus,
 .preferencia-input:focus {
   outline: none;
