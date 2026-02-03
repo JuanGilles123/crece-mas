@@ -6,7 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import './InventarioStats.css';
 
 const InventarioStats = ({ productos, totalProductosOverride }) => {
-  const { user } = useAuth();
+  const { user, organization } = useAuth();
   const navigate = useNavigate();
   const umbralStockBajo = Number(user?.user_metadata?.umbralStockBajo ?? 10);
   const umbralStockBajoSeguro = Number.isFinite(umbralStockBajo) && umbralStockBajo > 0 ? umbralStockBajo : 10;
@@ -77,10 +77,72 @@ const InventarioStats = ({ productos, totalProductosOverride }) => {
     return sum + (stock * precioCompra);
   }, 0);
   
-  // Valor de venta en stock (precio_venta * stock)
+  const getPurityFactor = (pureza) => {
+    switch ((pureza || '').toLowerCase()) {
+      case '24k':
+        return 1;
+      case '22k':
+        return 22 / 24;
+      case '18k':
+        return 18 / 24;
+      case '14k':
+        return 14 / 24;
+      case '10k':
+        return 10 / 24;
+      case '925':
+        return 0.925;
+      case '950':
+        return 0.95;
+      default:
+        return 1;
+    }
+  };
+
+  const getGoldPriceLocal = () => {
+    const goldLocal = parseNumber(organization?.jewelry_gold_price_local);
+    if (goldLocal > 0) return goldLocal;
+    const goldGlobal = parseNumber(organization?.jewelry_gold_price_global);
+    const adjustPct = parseNumber(organization?.jewelry_national_adjust_pct);
+    if (goldGlobal > 0 && adjustPct > 0) {
+      return goldGlobal * (1 - adjustPct / 100);
+    }
+    return goldGlobal;
+  };
+
+  const getCurrentVentaPrice = (producto) => {
+    const metadata = typeof producto?.metadata === 'string'
+      ? (() => {
+          try {
+            return JSON.parse(producto.metadata);
+          } catch {
+            return {};
+          }
+        })()
+      : (producto?.metadata || {});
+    const isVariablePrice = metadata?.jewelry_price_mode === 'variable';
+    if (!isVariablePrice) return parseNumber(producto.precio_venta);
+    const peso = parseNumber(metadata?.peso);
+    const pureza = metadata?.pureza;
+    const materialType = metadata?.jewelry_material_type || 'na';
+    const goldPrice = materialType === 'local'
+      ? getGoldPriceLocal()
+      : parseNumber(organization?.jewelry_gold_price_global) || getGoldPriceLocal();
+    const aplicaPureza = materialType === 'international';
+    const minMargin = materialType === 'local'
+      ? parseNumber(organization?.jewelry_min_margin_local)
+      : parseNumber(organization?.jewelry_min_margin_international);
+    const compraPorUnidad = parseNumber(metadata?.jewelry_compra_por_unidad)
+      || (peso > 0 ? (parseNumber(producto.precio_compra) / peso) : 0);
+    const diff = goldPrice - compraPorUnidad;
+    const precioBaseGramo = diff >= minMargin ? goldPrice : (compraPorUnidad + minMargin);
+    if (!peso || !goldPrice) return 0;
+    return peso * precioBaseGramo * (aplicaPureza ? getPurityFactor(pureza) : 1);
+  };
+
+  // Valor de venta en stock (precio_venta * stock) con precios actuales
   const valorVentaEnStock = productosInventario.reduce((sum, p) => {
     const stock = parseNumber(p.stock);
-    const precioVenta = parseNumber(p.precio_venta);
+    const precioVenta = getCurrentVentaPrice(p);
     return sum + (stock * precioVenta);
   }, 0);
   

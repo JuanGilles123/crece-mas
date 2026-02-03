@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Globe, Calendar, DollarSign, Save, Receipt } from 'lucide-react';
+import { Globe, Calendar, DollarSign, Save, Receipt, Settings } from 'lucide-react';
 import { supabase } from '../services/api/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import './PreferenciasAplicacion.css';
 
 const PreferenciasAplicacion = () => {
-  const { user } = useAuth();
+  const { user, organization } = useAuth();
   const [loading, setLoading] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [preferencias, setPreferencias] = useState({
@@ -17,6 +17,13 @@ const PreferenciasAplicacion = () => {
     umbralStockBajo: 10,
     mostrarFacturaPantalla: false
   });
+  const [jewelryPrefs, setJewelryPrefs] = useState({
+    weightUnit: 'g',
+    minMarginLocal: '',
+    minMarginInternational: '',
+    nationalAdjustPct: ''
+  });
+  const isJewelryBusiness = organization?.business_type === 'jewelry_metals';
 
   const cargarPreferencias = useCallback(async () => {
     if (!user) return;
@@ -45,8 +52,28 @@ const PreferenciasAplicacion = () => {
     cargarPreferencias();
   }, [cargarPreferencias]);
 
+  useEffect(() => {
+    if (!organization || !isJewelryBusiness) return;
+    setJewelryPrefs({
+      weightUnit: organization.jewelry_weight_unit || 'g',
+      minMarginLocal: organization.jewelry_min_margin_local !== null && organization.jewelry_min_margin_local !== undefined
+        ? String(organization.jewelry_min_margin_local)
+        : '',
+      minMarginInternational: organization.jewelry_min_margin_international !== null && organization.jewelry_min_margin_international !== undefined
+        ? String(organization.jewelry_min_margin_international)
+        : '',
+      nationalAdjustPct: organization.jewelry_national_adjust_pct !== null && organization.jewelry_national_adjust_pct !== undefined
+        ? String(organization.jewelry_national_adjust_pct)
+        : ''
+    });
+  }, [organization, isJewelryBusiness]);
+
   const handleChange = (campo, valor) => {
     setPreferencias(prev => ({ ...prev, [campo]: valor }));
+  };
+
+  const handleJewelryChange = (campo, valor) => {
+    setJewelryPrefs(prev => ({ ...prev, [campo]: valor }));
   };
 
   const handleGuardar = async () => {
@@ -55,6 +82,12 @@ const PreferenciasAplicacion = () => {
       && Number(preferencias.umbralStockBajo) > 0
       ? Number(preferencias.umbralStockBajo)
       : 10;
+    const parseNullableNumber = (value) => {
+      if (value === '' || value === null || value === undefined) return null;
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
     try {
       const { error } = await supabase.auth.updateUser({
         data: {
@@ -65,6 +98,20 @@ const PreferenciasAplicacion = () => {
       });
 
       if (error) throw error;
+
+      if (isJewelryBusiness && organization?.id) {
+        const { error: orgError } = await supabase
+          .from('organizations')
+          .update({
+            jewelry_weight_unit: jewelryPrefs.weightUnit,
+            jewelry_min_margin_local: parseNullableNumber(jewelryPrefs.minMarginLocal),
+            jewelry_min_margin_international: parseNullableNumber(jewelryPrefs.minMarginInternational),
+            jewelry_national_adjust_pct: parseNullableNumber(jewelryPrefs.nationalAdjustPct)
+          })
+          .eq('id', organization.id);
+
+        if (orgError) throw orgError;
+      }
 
       toast.success('✅ Preferencias guardadas exitosamente');
     } catch (error) {
@@ -206,6 +253,64 @@ const PreferenciasAplicacion = () => {
             <span className="toggle-slider"></span>
           </label>
         </div>
+
+        {isJewelryBusiness && (
+          <div className="preferencia-item">
+            <div className="preferencia-header">
+              <Settings size={20} />
+              <div>
+                <h3>Joyería y Metales</h3>
+                <p>Parámetros de precio por peso y cotización</p>
+              </div>
+            </div>
+            <div className="preferencia-field">
+              <label>Unidad de peso por defecto</label>
+              <select
+                value={jewelryPrefs.weightUnit}
+                onChange={(e) => handleJewelryChange('weightUnit', e.target.value)}
+                className="preferencia-select"
+              >
+                <option value="g">Gramos (g)</option>
+                <option value="kg">Kilogramos (kg)</option>
+                <option value="oz">Onzas (oz)</option>
+                <option value="lb">Libras (lb)</option>
+              </select>
+            </div>
+            <div className="preferencia-field">
+              <label>Margen mínimo nacional (%)</label>
+              <input
+                type="number"
+                value={jewelryPrefs.minMarginLocal}
+                onChange={(e) => handleJewelryChange('minMarginLocal', e.target.value)}
+                className="preferencia-input"
+                min="0"
+                step="0.01"
+              />
+            </div>
+            <div className="preferencia-field">
+              <label>Margen mínimo internacional (%)</label>
+              <input
+                type="number"
+                value={jewelryPrefs.minMarginInternational}
+                onChange={(e) => handleJewelryChange('minMarginInternational', e.target.value)}
+                className="preferencia-input"
+                min="0"
+                step="0.01"
+              />
+            </div>
+            <div className="preferencia-field">
+              <label>Ajuste nacional (%)</label>
+              <input
+                type="number"
+                value={jewelryPrefs.nationalAdjustPct}
+                onChange={(e) => handleJewelryChange('nationalAdjustPct', e.target.value)}
+                className="preferencia-input"
+                min="0"
+                step="0.01"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       <button

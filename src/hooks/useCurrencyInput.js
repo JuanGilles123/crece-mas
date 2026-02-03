@@ -27,7 +27,9 @@ export const useCurrencyInput = (initialValue = '') => {
     // Permitir campo completamente vacío para poder borrar
     if (newValue === '' || newValue === null || newValue === undefined) {
       numericValueRef.current = 0;
-      setDisplayValue('');
+      if (displayValue !== '') {
+        setDisplayValue('');
+      }
       return '';
     }
     
@@ -36,15 +38,19 @@ export const useCurrencyInput = (initialValue = '') => {
     if (numero) {
       const formatted = numero.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
       numericValueRef.current = parseInt(numero, 10);
-      setDisplayValue(formatted);
+      if (formatted !== displayValue) {
+        setDisplayValue(formatted);
+      }
       return formatted;
     } else {
       // Si solo quedan caracteres no numéricos, permitir campo vacío
       numericValueRef.current = 0;
-      setDisplayValue('');
+      if (displayValue !== '') {
+        setDisplayValue('');
+      }
       return '';
     }
-  }, []);
+  }, [displayValue]);
 
   // Establecer valor programáticamente
   const setValue = useCallback((value) => {
@@ -52,12 +58,16 @@ export const useCurrencyInput = (initialValue = '') => {
     if (numero) {
       const formatted = numero.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
       numericValueRef.current = parseInt(numero, 10);
-      setDisplayValue(formatted);
+      if (formatted !== displayValue) {
+        setDisplayValue(formatted);
+      }
     } else {
       numericValueRef.current = 0;
-      setDisplayValue('');
+      if (displayValue !== '') {
+        setDisplayValue('');
+      }
     }
-  }, []);
+  }, [displayValue]);
 
   // Resetear valor
   const reset = useCallback(() => {

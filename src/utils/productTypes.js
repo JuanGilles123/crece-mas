@@ -94,6 +94,12 @@ export const ADDITIONAL_FIELDS = {
     type: 'text',
     placeholder: 'Ej: Algodón, Poliéster'
   },
+  pureza: {
+    id: 'pureza',
+    label: 'Pureza',
+    type: 'select',
+    options: ['24k', '22k', '18k', '14k', '10k', '925', '950']
+  },
   categoria: {
     id: 'categoria',
     label: 'Categoría',

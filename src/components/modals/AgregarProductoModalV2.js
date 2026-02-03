@@ -21,11 +21,11 @@ import ProductosVinculados from '../ProductosVinculados';
 import './AgregarProductoModalV2.css';
 
 // Función para crear esquema de validación dinámico
-const createProductSchema = (productType, defaultPermiteToppings = true) => {
+const createProductSchema = (productType, defaultPermiteToppings = true, isJewelryBusiness = false) => {
   const baseSchema = {
     codigo: z.string().max(50, 'El código es muy largo').optional(),
     nombre: z.string().min(1, 'El nombre es requerido').max(100, 'El nombre es muy largo'),
-    precioVenta: z.string().min(1, 'El precio de venta es requerido'),
+    precioVenta: z.string().optional(),
     tipo: z.enum(['fisico', 'servicio', 'comida', 'accesorio']),
     imagen: z.any().optional(),
   };
@@ -63,12 +63,19 @@ const createProductSchema = (productType, defaultPermiteToppings = true) => {
   baseSchema.calorias = z.string().optional();
   baseSchema.porcion = z.string().optional();
   baseSchema.variaciones = z.string().optional();
+  baseSchema.pureza = z.string().optional();
   baseSchema.permite_toppings = z.boolean().optional().default(defaultPermiteToppings);
   baseSchema.umbral_stock_bajo = z.string().optional();
+  baseSchema.jewelry_price_mode = z.enum(['fixed', 'variable']).optional();
+  baseSchema.jewelry_static_mode = z.enum(['fixed', 'percent']).optional();
+  baseSchema.jewelry_static_percent = z.string().optional();
+  baseSchema.jewelry_material_type = z.enum(['local', 'international', 'na']).optional();
+  baseSchema.jewelry_min_margin = z.string().optional();
 
   return z.object(baseSchema).superRefine((data, ctx) => {
     const precioCompra = data.precioCompra ? parseFloat(data.precioCompra.replace(/[^\d]/g, '')) : 0;
-    const precioVenta = parseFloat(data.precioVenta.replace(/[^\d]/g, ''));
+    const precioVenta = data.precioVenta ? parseFloat(data.precioVenta.replace(/[^\d]/g, '')) : NaN;
+    const isVariablePrice = data.jewelry_price_mode === 'variable';
 
     // Validar precio de compra si es requerido
     if (typeFields.required.includes('precio_compra') && (!data.precioCompra || data.precioCompra.trim() === '')) {
@@ -76,6 +83,15 @@ const createProductSchema = (productType, defaultPermiteToppings = true) => {
         code: z.ZodIssueCode.custom,
         message: "El precio de compra es requerido",
         path: ["precioCompra"]
+      });
+    }
+
+    // Validar precio de venta si no es variable
+    if (!isVariablePrice && (!data.precioVenta || data.precioVenta.trim() === '')) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "El precio de venta es requerido",
+        path: ["precioVenta"]
       });
     }
 
@@ -89,11 +105,19 @@ const createProductSchema = (productType, defaultPermiteToppings = true) => {
     }
 
     // Validar precio de venta >= compra (solo si hay precio compra)
-    if (data.precioCompra && !isNaN(precioCompra) && !isNaN(precioVenta) && precioVenta < precioCompra) {
+    if (data.precioVenta && data.precioCompra && !isNaN(precioCompra) && !isNaN(precioVenta) && precioVenta < precioCompra) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "El precio de venta debe ser mayor o igual al precio de compra",
         path: ["precioVenta"]
+      });
+    }
+
+    if (isJewelryBusiness && (!data.peso || data.peso.trim() === '')) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "El peso es requerido",
+        path: ["peso"]
       });
     }
   });
@@ -102,6 +126,13 @@ const createProductSchema = (productType, defaultPermiteToppings = true) => {
 const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) => {
   const { user, userProfile, organization } = useAuth();
   const { hasFeature, canPerformAction } = useSubscription();
+  const isJewelryBusiness = organization?.business_type === 'jewelry_metals';
+  const parseWeightValue = useCallback((value) => {
+    if (value === '' || value === null || value === undefined) return 0;
+    const normalized = value.toString().replace(',', '.');
+    const parsed = parseFloat(normalized);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }, []);
   
   // Obtener configuración del tipo de negocio
   const businessTypeConfig = organization?.business_type 
@@ -175,7 +206,7 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
 
   // Crear esquema dinámico
   const productSchema = selectedType
-    ? createProductSchema(selectedType, defaultPermiteToppings)
+    ? createProductSchema(selectedType, defaultPermiteToppings, isJewelryBusiness)
     : z.object({});
 
   // React Hook Form
@@ -198,7 +229,7 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
       tipo: selectedType || 'fisico',
       fecha_vencimiento: '',
       peso: '',
-      unidad_peso: 'kg',
+      unidad_peso: isJewelryBusiness ? (organization?.jewelry_weight_unit || 'g') : 'kg',
       dimensiones: '',
       marca: '',
       modelo: '',
@@ -213,12 +244,98 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
       calorias: '',
       porcion: '',
       variaciones: '',
+      pureza: '',
       permite_toppings: defaultPermiteToppings,
-      umbral_stock_bajo: ''
+      umbral_stock_bajo: '',
+      jewelry_price_mode: 'fixed',
+      jewelry_static_mode: 'fixed',
+      jewelry_static_percent: '',
+      jewelry_material_type: 'na',
+      jewelry_min_margin: ''
     }
   });
 
+  const jewelryPriceMode = watch('jewelry_price_mode');
+  const jewelryStaticMode = watch('jewelry_static_mode');
+  const jewelryMaterialType = watch('jewelry_material_type');
+  const pesoWatch = watch('peso');
+  const purezaWatch = watch('pureza');
+
+  useEffect(() => {
+    if (!isJewelryBusiness) return;
+    if (jewelryPriceMode !== 'fixed') {
+      setPrecioVentaModo('manual');
+      return;
+    }
+    if (jewelryStaticMode === 'percent') {
+      setPrecioVentaModo('porcentaje');
+    } else {
+      setPrecioVentaModo('manual');
+    }
+  }, [isJewelryBusiness, jewelryPriceMode, jewelryStaticMode]);
+
+  const getGoldPriceValue = useCallback((materialType) => {
+    if (materialType === 'local') {
+      return Number(organization?.jewelry_gold_price_local) || 0;
+    }
+    if (materialType === 'international') {
+      return Number(organization?.jewelry_gold_price_global) || 0;
+    }
+    return Number(organization?.jewelry_gold_price_global) || 0;
+  }, [organization?.jewelry_gold_price_local, organization?.jewelry_gold_price_global]);
+
+  const getMinMarginValue = useCallback((materialType) => {
+    if (materialType === 'local') {
+      return Number(organization?.jewelry_min_margin_local) || 0;
+    }
+    if (materialType === 'international') {
+      return Number(organization?.jewelry_min_margin_international) || 0;
+    }
+    return 0;
+  }, [organization?.jewelry_min_margin_local, organization?.jewelry_min_margin_international]);
+
+  const getPurityFactor = useCallback((pureza) => {
+    switch ((pureza || '').toLowerCase()) {
+      case '24k':
+        return 1;
+      case '22k':
+        return 22 / 24;
+      case '18k':
+        return 18 / 24;
+      case '14k':
+        return 14 / 24;
+      case '10k':
+        return 10 / 24;
+      case '925':
+        return 0.925;
+      case '950':
+        return 0.95;
+      default:
+        return 1;
+    }
+  }, []);
+
   const precioCompraWatch = watch('precioCompra');
+  const pesoNumerico = parseWeightValue(pesoWatch);
+  const compraPorUnidad = Number((precioCompraWatch || '').toString().replace(/\D/g, '')) || 0;
+  const costoCompraReal = isJewelryBusiness ? (compraPorUnidad * pesoNumerico) : 0;
+  const goldPriceActual = getGoldPriceValue(jewelryMaterialType);
+  const minMarginActual = getMinMarginValue(jewelryMaterialType);
+  const diffActual = goldPriceActual - compraPorUnidad;
+  const precioBaseGramoActual = diffActual >= minMarginActual ? goldPriceActual : (compraPorUnidad + minMarginActual);
+  const aplicaPureza = jewelryMaterialType === 'international';
+  const purityFactorActual = aplicaPureza ? getPurityFactor(purezaWatch) : 1;
+  const precioVentaVariableActual = pesoNumerico && precioBaseGramoActual
+    ? pesoNumerico * precioBaseGramoActual * purityFactorActual
+    : 0;
+  const reglaAplicada = diffActual >= minMarginActual ? 'Precio actual' : 'Costo + margen';
+
+  useEffect(() => {
+    if (!isJewelryBusiness || jewelryPriceMode !== 'variable') return;
+    const formatted = precioVentaVariableActual ? formatCurrency(precioVentaVariableActual) : '';
+    setValue('precioVenta', formatted, { shouldValidate: true });
+    precioVentaInput.setValue(precioVentaVariableActual || '');
+  }, [isJewelryBusiness, jewelryPriceMode, precioVentaVariableActual, setValue, precioVentaInput]);
 
   useEffect(() => {
     if (precioVentaModo !== 'porcentaje') return;
@@ -451,14 +568,26 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
     // Validar paso actual antes de avanzar
     if (formStep === 1) {
       // Validar campos básicos
-      const codigo = watch('codigo');
       const nombre = watch('nombre');
       const precioVenta = watch('precioVenta');
       const precioCompra = watch('precioCompra');
+      const stock = watch('stock');
+      const typeFieldsStep = getProductTypeFields(selectedType);
       
-      if (!codigo || !nombre || !precioVenta) {
+      const needsPrecioVenta = !isJewelryBusiness || jewelryPriceMode !== 'variable';
+      const needsPrecioCompra = typeFieldsStep.required.includes('precio_compra');
+      const needsStock = typeFieldsStep.required.includes('stock');
+      if (!nombre || (needsPrecioVenta && !precioVenta) || (needsPrecioCompra && !precioCompra) || (needsStock && !stock)) {
         toast.error('Por favor completa todos los campos requeridos');
         return;
+      }
+
+      if (isJewelryBusiness) {
+        const peso = watch('peso');
+        if (!peso) {
+          toast.error('El peso es requerido');
+          return;
+        }
       }
 
       if (precioVentaModo === 'porcentaje') {
@@ -601,14 +730,27 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
       const tieneVariantes = variantesProducto.length > 0;
 
       // Campos que existen en la tabla productos
+      const precioVentaManual = data.precioVenta ? Number(data.precioVenta.replace(/\D/g, '')) : 0;
+      const isVariablePrice = data.jewelry_price_mode === 'variable';
+      const compraPorUnidadValue = Number(data.precioCompra?.replace(/\D/g, '') || '0') || 0;
+      const goldPriceValue = getGoldPriceValue(data.jewelry_material_type);
+      const minMarginValue = getMinMarginValue(data.jewelry_material_type);
+      const pesoGramos = parseWeightValue(data.peso);
+      const diff = goldPriceValue - compraPorUnidadValue;
+      const precioBaseGramo = diff >= minMarginValue ? goldPriceValue : (compraPorUnidadValue + minMarginValue);
+      const isInternational = data.jewelry_material_type === 'international';
+      const purityFactor = isInternational ? getPurityFactor(data.pureza) : 1;
+      const precioVentaVariable = pesoGramos && precioBaseGramo ? pesoGramos * precioBaseGramo * purityFactor : 0;
+      const precioVentaValue = isVariablePrice ? precioVentaVariable : precioVentaManual;
+      const precioCompraReal = isJewelryBusiness ? (compraPorUnidadValue * pesoGramos) : compraPorUnidadValue;
       const productoData = {
         user_id: user?.id,
         organization_id: organizationId, // Usar la variable validada
         codigo: data.codigo,
         nombre: data.nombre,
-        precio_venta: Number(data.precioVenta.replace(/\D/g, '')),
+        precio_venta: precioVentaValue,
         precio_compra: typeFields.required.includes('precio_compra') || data.precioCompra
-          ? (Number(data.precioCompra?.replace(/\D/g, '') || '0') || 0)
+          ? precioCompraReal
           : 0,
         stock: tieneVariantes
           ? 0
@@ -638,6 +780,10 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
       if (data.calorias) metadata.calorias = data.calorias;
       if (data.porcion) metadata.porcion = data.porcion;
       if (data.variaciones) metadata.variaciones = data.variaciones;
+      if (data.pureza) metadata.pureza = data.pureza;
+      if (isJewelryBusiness && compraPorUnidadValue) {
+        metadata.jewelry_compra_por_unidad = compraPorUnidadValue;
+      }
       
       // Agregar permite_toppings al metadata
       metadata.permite_toppings = data.permite_toppings !== undefined
@@ -648,6 +794,47 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
         const umbralProducto = Number(data.umbral_stock_bajo);
         if (Number.isFinite(umbralProducto) && umbralProducto > 0) {
           metadata.umbral_stock_bajo = umbralProducto;
+        }
+      }
+
+      if (data.jewelry_price_mode) {
+        metadata.jewelry_price_mode = data.jewelry_price_mode;
+      }
+
+      if (data.jewelry_static_mode) {
+        metadata.jewelry_static_mode = data.jewelry_static_mode;
+      }
+
+      if (data.jewelry_static_mode === 'percent' && margenPorcentaje !== '') {
+        const percentValue = Number(margenPorcentaje);
+        if (Number.isFinite(percentValue) && percentValue >= 0) {
+          metadata.jewelry_static_percent = percentValue;
+        }
+      }
+
+      if (data.jewelry_material_type) {
+        metadata.jewelry_material_type = data.jewelry_material_type;
+        metadata.jewelry_gold_price_reference = data.jewelry_material_type === 'na'
+          ? 'international'
+          : data.jewelry_material_type;
+      }
+
+      if (data.jewelry_min_margin !== undefined && data.jewelry_min_margin !== '') {
+        const marginValue = Number(data.jewelry_min_margin);
+        if (Number.isFinite(marginValue) && marginValue >= 0) {
+          metadata.jewelry_min_margin = marginValue;
+        }
+      } else if (data.jewelry_price_mode === 'variable') {
+        const localMargin = organization?.jewelry_min_margin_local;
+        const internationalMargin = organization?.jewelry_min_margin_international;
+        const fallbackMargin = organization?.jewelry_min_margin;
+        const marginFromPrefs = data.jewelry_material_type === 'local'
+          ? localMargin
+          : data.jewelry_material_type === 'international'
+            ? internationalMargin
+            : fallbackMargin;
+        if (Number.isFinite(Number(marginFromPrefs))) {
+          metadata.jewelry_min_margin = Number(marginFromPrefs);
         }
       }
       
@@ -870,13 +1057,37 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
             />
             {errors.nombre && <span className="error-message">{errors.nombre.message}</span>}
 
+            {isJewelryBusiness && (
+              <>
+                <label>Peso <span style={{ color: '#ef4444' }}>*</span></label>
+                <input
+                  {...register('peso')}
+                  inputMode="decimal"
+                  className={`input-form ${errors.peso ? 'error' : ''}`}
+                  placeholder={`Ej: 5.2 ${organization?.jewelry_weight_unit || 'g'}`}
+                />
+                {errors.peso && <span className="error-message">{errors.peso.message}</span>}
+                <label>Pureza</label>
+                <select {...register('pureza')} className="input-form">
+                  <option value="">Selecciona pureza</option>
+                  <option value="24k">24k</option>
+                  <option value="22k">22k</option>
+                  <option value="18k">18k</option>
+                  <option value="14k">14k</option>
+                  <option value="10k">10k</option>
+                  <option value="925">925</option>
+                  <option value="950">950</option>
+                </select>
+              </>
+            )}
+
             {/* Precios */}
             <label>Precios</label>
             <div className="input-precio-row" style={{ gap: '2.5rem', justifyContent: 'space-between' }}>
               {(typeFields.required.includes('precio_compra') || typeFields.optional.includes('precio_compra')) && (
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                   <span style={{ fontWeight: 600, fontSize: '0.98rem', marginBottom: 4, textAlign: 'center' }}>
-                    Precio de Compra {typeFields.required.includes('precio_compra') && <span style={{ color: '#ef4444' }}>*</span>}
+                    Precio de Compra {isJewelryBusiness ? `(por ${organization?.jewelry_weight_unit || 'g'})` : ''} {typeFields.required.includes('precio_compra') && <span style={{ color: '#ef4444' }}>*</span>}
                   </span>
                   <input
                     {...register('precioCompra')}
@@ -887,13 +1098,28 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
                     className={`input-form ${errors.precioCompra ? 'error' : ''}`}
                   />
                   {errors.precioCompra && <span className="error-message">{errors.precioCompra.message}</span>}
+                  {isJewelryBusiness && compraPorUnidad > 0 && pesoNumerico > 0 && (
+                    <span style={{ fontSize: '0.75rem', color: '#6b7280', textAlign: 'center' }}>
+                      Costo real por pieza: {formatCurrency(costoCompraReal)}
+                    </span>
+                  )}
+                  {isJewelryBusiness && (
+                    <div style={{ marginTop: '0.65rem', display: 'grid', gap: '0.5rem' }}>
+                      <label style={{ fontWeight: 600 }}>Tipo de precio</label>
+                      <select {...register('jewelry_price_mode')} className="input-form">
+                        <option value="fixed">Precio fijo (estático)</option>
+                        <option value="variable">Precio variable</option>
+                      </select>
+                    </div>
+                  )}
                 </div>
               )}
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <span style={{ fontWeight: 600, fontSize: '0.98rem', marginBottom: 4, textAlign: 'center' }}>
-                  Precio de Venta <span style={{ color: '#ef4444' }}>*</span>
+                  Precio de Venta {!isJewelryBusiness || jewelryPriceMode !== 'variable' ? <span style={{ color: '#ef4444' }}>*</span> : null}
                 </span>
                 {(typeFields.required.includes('precio_compra') || typeFields.optional.includes('precio_compra')) && (
+                  (!isJewelryBusiness || jewelryPriceMode === 'fixed') && (
                   <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', justifyContent: 'center' }}>
                     <button
                       type="button"
@@ -912,6 +1138,7 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
                       % sobre compra
                     </button>
                   </div>
+                  )
                 )}
                 {precioVentaModo === 'porcentaje' && (typeFields.required.includes('precio_compra') || typeFields.optional.includes('precio_compra')) && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '0.5rem' }}>
@@ -934,11 +1161,59 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
                   inputMode="numeric"
                   placeholder="Ej: 50.000"
                   className={`input-form ${errors.precioVenta ? 'error' : ''}`}
-                  disabled={precioVentaModo === 'porcentaje' && (typeFields.required.includes('precio_compra') || typeFields.optional.includes('precio_compra'))}
+                  disabled={
+                    (precioVentaModo === 'porcentaje' && (typeFields.required.includes('precio_compra') || typeFields.optional.includes('precio_compra')))
+                    || (isJewelryBusiness && jewelryPriceMode === 'variable')
+                  }
                 />
                 {errors.precioVenta && <span className="error-message">{errors.precioVenta.message}</span>}
+                {isJewelryBusiness && jewelryPriceMode === 'variable' && precioBaseGramoActual > 0 && pesoNumerico > 0 && (
+                  <span style={{ fontSize: '0.75rem', color: '#6b7280', textAlign: 'center' }}>
+                    Base por {organization?.jewelry_weight_unit || 'g'}: {formatCurrency(precioBaseGramoActual)} • Regla: {reglaAplicada}{aplicaPureza ? ` • Pureza aplicada (${purezaWatch || '24k'})` : ''}
+                  </span>
+                )}
               </div>
             </div>
+
+            {isJewelryBusiness && (
+              <div style={{ marginTop: '0.75rem', display: 'grid', gap: '0.5rem' }}>
+                <label style={{ fontWeight: 600 }}>Configuración de precio por peso</label>
+                {jewelryPriceMode === 'fixed' && (
+                  <div style={{ display: 'grid', gap: '0.5rem' }}>
+                    <label>Cómo definir el precio estático</label>
+                    <select {...register('jewelry_static_mode')} className="input-form">
+                      <option value="fixed">Valor específico</option>
+                      <option value="percent">Porcentaje sobre compra</option>
+                    </select>
+                  </div>
+                )}
+
+                {jewelryPriceMode === 'variable' && (
+                  <div style={{ display: 'grid', gap: '0.5rem' }}>
+                    <label>Margen mínimo (%)</label>
+                    <input
+                      {...register('jewelry_min_margin')}
+                      type="number"
+                      inputMode="decimal"
+                      placeholder="Ej: 10"
+                      className="input-form"
+                    />
+                    <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                      Si no lo defines, se usará el valor de preferencias según el tipo de material.
+                    </span>
+                  </div>
+                )}
+
+                <div style={{ display: 'grid', gap: '0.5rem' }}>
+                  <label>Tipo de material</label>
+                  <select {...register('jewelry_material_type')} className="input-form">
+                    <option value="na">No aplica</option>
+                    <option value="local">Nacional</option>
+                    <option value="international">Internacional</option>
+                  </select>
+                </div>
+              </div>
+            )}
 
             {/* Stock si aplica */}
             {(typeFields.required.includes('stock') || typeFields.optional.includes('stock')) && (

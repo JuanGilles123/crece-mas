@@ -212,6 +212,7 @@ const InvitePublic = () => {
               {invitation.organizations?.business_type === 'food' && '🍔 Comida rápida'}
               {invitation.organizations?.business_type === 'clothing' && '👔 Ropa'}
               {invitation.organizations?.business_type === 'retail' && '🏪 Retail'}
+                {invitation.organizations?.business_type === 'jewelry_metals' && '💎 Joyería y Metales'}
               {invitation.organizations?.business_type === 'other' && '📦 Otro'}
             </p>
           </div>
