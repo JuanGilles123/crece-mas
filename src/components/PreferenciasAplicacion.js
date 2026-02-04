@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Globe, Calendar, DollarSign, Save, Receipt, Settings } from 'lucide-react';
 import { supabase } from '../services/api/supabaseClient';
 import { useAuth } from '../context/AuthContext';
+import { useCurrencyInput, getNumericValue } from '../hooks/useCurrencyInput';
 import toast from 'react-hot-toast';
 import './PreferenciasAplicacion.css';
 
@@ -23,6 +24,8 @@ const PreferenciasAplicacion = () => {
     minMarginInternational: '',
     nationalAdjustPct: ''
   });
+  const jewelryMinLocalInput = useCurrencyInput();
+  const jewelryMinIntlInput = useCurrencyInput();
   const isJewelryBusiness = organization?.business_type === 'jewelry_metals';
 
   const cargarPreferencias = useCallback(async () => {
@@ -54,7 +57,7 @@ const PreferenciasAplicacion = () => {
 
   useEffect(() => {
     if (!organization || !isJewelryBusiness) return;
-    setJewelryPrefs({
+    const nextPrefs = {
       weightUnit: organization.jewelry_weight_unit || 'g',
       minMarginLocal: organization.jewelry_min_margin_local !== null && organization.jewelry_min_margin_local !== undefined
         ? String(organization.jewelry_min_margin_local)
@@ -65,8 +68,11 @@ const PreferenciasAplicacion = () => {
       nationalAdjustPct: organization.jewelry_national_adjust_pct !== null && organization.jewelry_national_adjust_pct !== undefined
         ? String(organization.jewelry_national_adjust_pct)
         : ''
-    });
-  }, [organization, isJewelryBusiness]);
+    };
+    setJewelryPrefs(nextPrefs);
+    jewelryMinLocalInput.setValue(nextPrefs.minMarginLocal || '');
+    jewelryMinIntlInput.setValue(nextPrefs.minMarginInternational || '');
+  }, [organization, isJewelryBusiness, jewelryMinLocalInput, jewelryMinIntlInput]);
 
   const handleChange = (campo, valor) => {
     setPreferencias(prev => ({ ...prev, [campo]: valor }));
@@ -104,8 +110,12 @@ const PreferenciasAplicacion = () => {
           .from('organizations')
           .update({
             jewelry_weight_unit: jewelryPrefs.weightUnit,
-            jewelry_min_margin_local: parseNullableNumber(jewelryPrefs.minMarginLocal),
-            jewelry_min_margin_international: parseNullableNumber(jewelryPrefs.minMarginInternational),
+            jewelry_min_margin_local: jewelryPrefs.minMarginLocal
+              ? getNumericValue(jewelryPrefs.minMarginLocal)
+              : null,
+            jewelry_min_margin_international: jewelryPrefs.minMarginInternational
+              ? getNumericValue(jewelryPrefs.minMarginInternational)
+              : null,
             jewelry_national_adjust_pct: parseNullableNumber(jewelryPrefs.nationalAdjustPct)
           })
           .eq('id', organization.id);
@@ -277,25 +287,27 @@ const PreferenciasAplicacion = () => {
               </select>
             </div>
             <div className="preferencia-field">
-              <label>Margen mínimo nacional (%)</label>
+              <label>Margen mínimo nacional</label>
               <input
-                type="number"
-                value={jewelryPrefs.minMarginLocal}
-                onChange={(e) => handleJewelryChange('minMarginLocal', e.target.value)}
+                type="text"
+                value={jewelryMinLocalInput.displayValue}
+                onChange={(e) => {
+                  const formatted = jewelryMinLocalInput.handleChange(e);
+                  handleJewelryChange('minMarginLocal', formatted);
+                }}
                 className="preferencia-input"
-                min="0"
-                step="0.01"
               />
             </div>
             <div className="preferencia-field">
-              <label>Margen mínimo internacional (%)</label>
+              <label>Margen mínimo internacional</label>
               <input
-                type="number"
-                value={jewelryPrefs.minMarginInternational}
-                onChange={(e) => handleJewelryChange('minMarginInternational', e.target.value)}
+                type="text"
+                value={jewelryMinIntlInput.displayValue}
+                onChange={(e) => {
+                  const formatted = jewelryMinIntlInput.handleChange(e);
+                  handleJewelryChange('minMarginInternational', formatted);
+                }}
                 className="preferencia-input"
-                min="0"
-                step="0.01"
               />
             </div>
             <div className="preferencia-field">

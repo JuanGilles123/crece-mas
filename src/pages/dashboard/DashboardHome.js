@@ -421,7 +421,7 @@ const DashboardHome = () => {
                 {!isFreePlan && !isEnterprise && !isVIP && (
                   <div className="plan-banner-upgrade">
                     <div className="upgrade-features">
-                      <h4>¿Necesitas más? Considera el plan Enterprise:</h4>
+                      <h4>¿Necesitas más? Considera el plan Premium:</h4>
                       <ul>
                         <li>
                           <Check size={16} />

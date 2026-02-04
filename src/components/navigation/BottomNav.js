@@ -15,7 +15,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useSubscription } from '../../hooks/useSubscription';
 import './BottomNav.css';
 
-const BottomNav = ({ menuGroups, onItemClick }) => {
+const BottomNav = ({ menuGroups, onItemClick, items }) => {
   const location = useLocation();
   const [isVisible, setIsVisible] = useState(false);
   const { organization } = useAuth();
@@ -27,7 +27,7 @@ const BottomNav = ({ menuGroups, onItemClick }) => {
                              hasFeature('pedidos');
   
   // Obtener los menús principales para la barra inferior (sin Inicio, el logo es clickeable)
-  const mainItems = [
+  const mainItems = items || [
     { to: '/dashboard/caja', icon: CreditCard, label: 'Caja' },
     { to: '/dashboard/inventario', icon: Package, label: 'Inventario' },
     // Mostrar Pedidos si está habilitado, sino mostrar Reportes

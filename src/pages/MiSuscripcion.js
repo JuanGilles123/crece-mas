@@ -12,6 +12,7 @@ import {
   Crown,
   AlertTriangle,
   ArrowRight,
+  ArrowLeft,
   Sparkles
 } from 'lucide-react';
 import { useSubscription } from '../hooks/useSubscription';
@@ -43,9 +44,10 @@ const MiSuscripcion = () => {
 
   // Cargar estadísticas de uso
   React.useEffect(() => {
+    if (loading) return;
     loadUsageStats();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [organization?.id]);
+  }, [organization?.id, subscription?.plan?.slug, loading]);
 
   const loadUsageStats = async () => {
     if (!organization?.id) return;
@@ -66,9 +68,10 @@ const MiSuscripcion = () => {
           .select('id', { count: 'exact', head: true })
           .eq('organization_id', organization.id)
           .eq('status', 'active')
+          .neq('role', 'owner')
       ]);
 
-      const currentUsers = (teamMembers?.count || 0) + 1; // incluir owner
+      const currentUsers = (teamMembers?.count || 0); // no contar owner
       const normalize = (result) => {
         if (!result) return { current: 0, limit: null, unlimited: true };
         const unlimited = result.isVIP || result.limit === null || result.limit === undefined || result.limit === -1;
@@ -190,8 +193,18 @@ const MiSuscripcion = () => {
     <div className="mi-suscripcion-page">
       {/* Header */}
       <div className="suscripcion-header">
-        <h1>Mi Suscripción</h1>
-        <p className="subtitle">{organization?.name}</p>
+        <button
+          type="button"
+          className="config-back-btn"
+          onClick={() => navigate('/dashboard/perfil', { state: { activeTab: 'configuracion' } })}
+        >
+          <ArrowLeft size={18} />
+          Volver
+        </button>
+        <div className="header-content">
+          <h1>Mi Suscripción</h1>
+          <p className="subtitle">{organization?.name}</p>
+        </div>
       </div>
 
       <div className="suscripcion-content">

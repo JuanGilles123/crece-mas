@@ -8,15 +8,18 @@ import { lazy, Suspense } from 'react';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './components/layout/ProtectedRoute';
+import EmployeeProtectedRoute from './components/layout/EmployeeProtectedRoute';
 import './styles/themes.css';
 
 // Lazy loading de componentes (carga bajo demanda)
 const Home = lazy(() => import('./pages/public/Home'));
 const Login = lazy(() => import('./pages/auth/Login'));
+const LoginEmpleado = lazy(() => import('./pages/auth/LoginEmpleado'));
 const Registro = lazy(() => import('./pages/auth/Registro'));
 const Recuperar = lazy(() => import('./pages/auth/Recuperar'));
 const CodigoAcceso = lazy(() => import('./pages/auth/CodigoAcceso'));
 const Dashboard = lazy(() => import('./pages/dashboard/Dashboard'));
+const EmployeeDashboard = lazy(() => import('./pages/employee/EmployeeDashboard'));
 const RestablecerContrasena = lazy(() => import('./pages/auth/ResetPassword'));
 const CambiarContrasenaObligatorio = lazy(() => import('./components/CambiarContrasenaObligatorio'));
 const Confirmacion = lazy(() => import('./pages/auth/Confirmacion'));
@@ -76,13 +79,14 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <AuthProvider>
-          <Router>
+        <Router>
+          <AuthProvider>
             <Suspense fallback={<LoadingFallback />}>
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/home" element={<Home />} />
                 <Route path="/login" element={<Login />} />
+                <Route path="/login-empleado" element={<LoginEmpleado />} />
                 <Route path="/registro" element={<Registro />} />
                 <Route path="/recuperar" element={<Recuperar />} />
                 <Route path="/codigo-acceso" element={
@@ -100,6 +104,11 @@ function App() {
                   <ProtectedRoute>
                     <Dashboard />
                   </ProtectedRoute>
+                } />
+                <Route path="/empleado/*" element={
+                  <EmployeeProtectedRoute>
+                    <EmployeeDashboard />
+                  </EmployeeProtectedRoute>
                 } />
                 <Route path="/confirmar" element={<Confirmacion />} />
                 <Route path="/confirmacion-exitosa" element={<ConfirmacionExitosa />} />
@@ -136,7 +145,6 @@ function App() {
                 } />
               </Routes>
             </Suspense>
-          </Router>
           {/* Configuración de React Hot Toast */}
           <Toaster
             position="top-right"
@@ -170,7 +178,8 @@ function App() {
               },
             }}
           />
-        </AuthProvider>
+          </AuthProvider>
+        </Router>
       </ThemeProvider>
     </QueryClientProvider>
   );

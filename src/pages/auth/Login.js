@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { supabase } from '../../services/api/supabaseClient';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, Lock, Eye, EyeOff, ArrowLeft, TrendingUp, Users, BarChart3, Key } from 'lucide-react';
-import { loginEmployee } from '../../utils/employeeAuth';
+import { Mail, Lock, Eye, EyeOff, ArrowLeft, TrendingUp, Users, BarChart3 } from 'lucide-react';
 import styles from './Login.module.css';
 
 const TerminosModal = ({ open, onClose }) => (
@@ -28,11 +27,6 @@ const Login = () => {
   const navigate = useNavigate();
   const [showTerms, setShowTerms] = useState(false);
   
-  // Estados para login de empleado
-  const [isEmployeeLogin, setIsEmployeeLogin] = useState(false);
-  const [employeeCode, setEmployeeCode] = useState('');
-  const [employeePassword, setEmployeePassword] = useState('');
-  const [showEmployeePass, setShowEmployeePass] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -40,74 +34,40 @@ const Login = () => {
     setError('');
     setLoading(true);
     
-    if (isEmployeeLogin) {
-      // Login de empleado con email/teléfono y contraseña
-      if (!employeeCode.trim()) {
-        setError('Por favor ingresa tu email o teléfono.');
-        setLoading(false);
-        return;
-      }
-
-      if (!employeePassword.trim()) {
-        setError('Por favor ingresa tu contraseña.');
-        setLoading(false);
-        return;
-      }
-
-      try {
-        // Intentar login con email/teléfono y contraseña
-        const result = await loginEmployee(employeeCode.trim(), employeePassword);
-
-        if (result.success) {
-          // Si necesita cambiar contraseña, redirigir a la página de cambio obligatorio
-          if (result.needsPasswordChange) {
-            navigate('/cambiar-contrasena-obligatorio');
-          } else {
-            navigate('/dashboard');
-          }
-        } else {
-          setError(result.error || 'Error al iniciar sesión');
-        }
-      } catch (err) {
-        setError('Error al autenticar empleado. Por favor intenta nuevamente.');
-        console.error('Error en login de empleado:', err);
-      }
+    // Login normal con email y contraseña (solo owner)
+    if (!email.match(/^[^@\s]+@[^@\s]+\.[^@\s]+$/)) {
+      setError('Por favor ingresa un correo válido.');
+      setLoading(false);
+      return;
+    }
+    if (password.length < 8) {
+      setError('La contraseña debe tener al menos 8 caracteres.');
+      setLoading(false);
+      return;
+    }
+    if (!/[A-Z]/.test(password)) {
+      setError('La contraseña debe tener al menos una letra mayúscula.');
+      setLoading(false);
+      return;
+    }
+    if (!/[a-z]/.test(password)) {
+      setError('La contraseña debe tener al menos una letra minúscula.');
+      setLoading(false);
+      return;
+    }
+    if (!/\d/.test(password)) {
+      setError('La contraseña debe tener al menos un número.');
+      setLoading(false);
+      return;
+    }
+    
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      // Usar sistema de manejo de errores seguro
+      const { getErrorMessage } = await import('../../utils/errorHandler');
+      setError(getErrorMessage(error));
     } else {
-      // Login normal con email y contraseña
-      if (!email.match(/^[^@\s]+@[^@\s]+\.[^@\s]+$/)) {
-        setError('Por favor ingresa un correo válido.');
-        setLoading(false);
-        return;
-      }
-      if (password.length < 8) {
-        setError('La contraseña debe tener al menos 8 caracteres.');
-        setLoading(false);
-        return;
-      }
-      if (!/[A-Z]/.test(password)) {
-        setError('La contraseña debe tener al menos una letra mayúscula.');
-        setLoading(false);
-        return;
-      }
-      if (!/[a-z]/.test(password)) {
-        setError('La contraseña debe tener al menos una letra minúscula.');
-        setLoading(false);
-        return;
-      }
-      if (!/\d/.test(password)) {
-        setError('La contraseña debe tener al menos un número.');
-        setLoading(false);
-        return;
-      }
-      
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) {
-        // Usar sistema de manejo de errores seguro
-        const { getErrorMessage } = await import('../../utils/errorHandler');
-        setError(getErrorMessage(error));
-      } else {
-        navigate('/dashboard');
-      }
+      navigate('/dashboard');
     }
     
     setLoading(false);
@@ -181,101 +141,23 @@ const Login = () => {
             </div>
 
             <form onSubmit={handleSubmit}>
-              {/* Toggle entre login normal y empleado */}
-              <div className={styles.loginTypeToggle}>
-                <button
-                  type="button"
-                  className={`${styles.toggleButton} ${!isEmployeeLogin ? styles.active : ''}`}
-                  onClick={() => {
-                    setIsEmployeeLogin(false);
-                    setError('');
-                    setEmployeeCode('');
-                    setEmployeePassword('');
-                  }}
-                >
-                  <Mail size={24} />
-                  <span>Administrador</span>
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.toggleButton} ${isEmployeeLogin ? styles.active : ''}`}
-                  onClick={() => {
-                    setIsEmployeeLogin(true);
-                    setError('');
-                    setEmail('');
-                    setPassword('');
-                  }}
-                >
-                  <Key size={24} />
-                  <span>Empleado</span>
-                </button>
+              <div className={styles.inputGroup}>
+                <div className={styles.inputWrapper}>
+                  <Mail size={20} className={styles.inputIcon} />
+                  <input
+                    type="email"
+                    placeholder="Correo electrónico"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    required
+                    className={styles.input}
+                  />
+                </div>
               </div>
 
-              {isEmployeeLogin ? (
-                <>
-                  <div className={styles.inputGroup}>
-                    <div className={styles.inputWrapper}>
-                      <Mail size={20} className={styles.inputIcon} />
-                      <input
-                        type="text"
-                        placeholder="Email o Teléfono"
-                        value={employeeCode}
-                        onChange={e => {
-                          const value = e.target.value;
-                          setEmployeeCode(value);
-                        }}
-                        required
-                        className={styles.input}
-                      />
-                    </div>
-                    <small className={styles.hint}>
-                      Ingresa tu email (ej: juan@ejemplo.com) o tu número de teléfono (ej: 3001234567)
-                    </small>
-                  </div>
-
-                  <div className={styles.inputGroup}>
-                    <div className={styles.inputWrapper}>
-                      <Lock size={20} className={styles.inputIcon} />
-                      <input
-                        type={showEmployeePass ? 'text' : 'password'}
-                        placeholder="Contraseña"
-                        value={employeePassword}
-                        onChange={e => setEmployeePassword(e.target.value)}
-                        required
-                        className={styles.input}
-                      />
-                      <button 
-                        type="button" 
-                        className={styles.eyeButton}
-                        onClick={() => setShowEmployeePass(v => !v)}
-                      >
-                        {showEmployeePass ? <EyeOff size={20} /> : <Eye size={20} />}
-                      </button>
-                    </div>
-                    <small className={styles.hint}>
-                      Ingresa tu contraseña. Si es tu primer acceso, usa la contraseña que te proporcionó tu administrador.
-                    </small>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className={styles.inputGroup}>
-                    <div className={styles.inputWrapper}>
-                      <Mail size={20} className={styles.inputIcon} />
-                      <input
-                        type="email"
-                        placeholder="Correo electrónico"
-                        value={email}
-                        onChange={e => setEmail(e.target.value)}
-                        required
-                        className={styles.input}
-                      />
-                    </div>
-                  </div>
-
-                  <div className={styles.inputGroup}>
-                    <div className={styles.inputWrapper}>
-                      <Lock size={20} className={styles.inputIcon} />
+              <div className={styles.inputGroup}>
+                <div className={styles.inputWrapper}>
+                  <Lock size={20} className={styles.inputIcon} />
                       <input
                         type={showPass ? 'text' : 'password'}
                         placeholder="Contraseña"
@@ -299,9 +181,6 @@ const Login = () => {
                       ¿Olvidaste tu contraseña?
                     </Link>
                   </div>
-                </>
-              )}
-
               <motion.button 
                 className={styles.submitButton} 
                 type="submit"
@@ -322,6 +201,12 @@ const Login = () => {
                 </motion.div>
               )}
             </form>
+
+            <div className={styles.switchActions}>
+              <Link to="/login-empleado" className={styles.switchButton}>
+                ¿Eres empleado? Ir al panel de empleados
+              </Link>
+            </div>
 
             <div className={styles.signupLink}>
               <p>¿No tienes cuenta? <Link to="/registro" className={styles.link}>Regístrate aquí</Link></p>

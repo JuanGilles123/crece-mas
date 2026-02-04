@@ -58,6 +58,109 @@ const Inventario = () => {
   const [totalProductosDb, setTotalProductosDb] = useState(null);
   // Suponiendo que el usuario tiene moneda en user.user_metadata.moneda
   const moneda = user?.user_metadata?.moneda || 'COP';
+  const jewelryPrices = useMemo(() => {
+    if (!organization?.id) return {};
+    const stored = localStorage.getItem(`jewelry_prices:${organization.id}`);
+    if (!stored) return {};
+    try {
+      return JSON.parse(stored) || {};
+    } catch (err) {
+      console.warn('No se pudo leer precios de joyería:', err);
+      return {};
+    }
+  }, [organization?.id]);
+  const parseNumber = useCallback((value) => {
+    if (value === null || value === undefined) return 0;
+    if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+    const raw = String(value).trim();
+    if (!raw) return 0;
+    if (raw.includes('.') && raw.includes(',')) {
+      const normalized = raw.replace(/\./g, '').replace(',', '.');
+      const parsed = Number(normalized);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+    if (raw.includes(',') && !raw.includes('.')) {
+      const normalized = raw.replace(',', '.');
+      const parsed = Number(normalized);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+    if (raw.includes('.') && /^\d{1,3}(\.\d{3})+$/.test(raw)) {
+      const normalized = raw.replace(/\./g, '');
+      const parsed = Number(normalized);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }, []);
+
+  const getPurityFactor = useCallback((pureza) => {
+    switch ((pureza || '').toLowerCase()) {
+      case '24k':
+        return 1;
+      case '22k':
+        return 22 / 24;
+      case '18k':
+        return 18 / 24;
+      case '14k':
+        return 14 / 24;
+      case '10k':
+        return 10 / 24;
+      case '925':
+        return 0.925;
+      case '950':
+        return 0.95;
+      default:
+        return 1;
+    }
+  }, []);
+
+  const getGoldPriceGlobal = useCallback(() => {
+    const fromStorage = parseNumber(jewelryPrices?.global);
+    if (fromStorage > 0) return fromStorage;
+    return parseNumber(organization?.jewelry_gold_price_global);
+  }, [jewelryPrices, organization?.jewelry_gold_price_global, parseNumber]);
+
+  const getGoldPriceLocal = useCallback(() => {
+    const fromStorage = parseNumber(jewelryPrices?.local);
+    if (fromStorage > 0) return fromStorage;
+    const goldGlobal = getGoldPriceGlobal();
+    const adjustPct = parseNumber(organization?.jewelry_national_adjust_pct);
+    if (goldGlobal > 0 && adjustPct > 0) {
+      return goldGlobal * (1 - adjustPct / 100);
+    }
+    return parseNumber(organization?.jewelry_gold_price_local);
+  }, [jewelryPrices, organization?.jewelry_gold_price_local, organization?.jewelry_national_adjust_pct, getGoldPriceGlobal, parseNumber]);
+
+  const getCurrentVentaPrice = useCallback((producto) => {
+    const metadata = typeof producto?.metadata === 'string'
+      ? (() => {
+          try {
+            return JSON.parse(producto.metadata);
+          } catch {
+            return {};
+          }
+        })()
+      : (producto?.metadata || {});
+    const isVariablePrice = metadata?.jewelry_price_mode === 'variable';
+    if (!isVariablePrice) return parseNumber(producto.precio_venta);
+    const peso = parseNumber(metadata?.peso);
+    const materialType = metadata?.jewelry_material_type || 'na';
+    const goldPrice = materialType === 'local'
+      ? getGoldPriceLocal()
+      : getGoldPriceGlobal();
+    const minMargin = parseNumber(metadata?.jewelry_min_margin)
+      || (materialType === 'local'
+        ? parseNumber(organization?.jewelry_min_margin_local)
+        : parseNumber(organization?.jewelry_min_margin_international));
+    const compraPorUnidad = parseNumber(metadata?.jewelry_compra_por_unidad)
+      || (peso > 0 ? (parseNumber(producto.precio_compra) / peso) : 0);
+    const diff = goldPrice - compraPorUnidad;
+    const precioBaseGramo = diff >= minMargin ? goldPrice : (compraPorUnidad + minMargin);
+    const aplicaPureza = materialType === 'international';
+    const purityFactor = aplicaPureza ? getPurityFactor(metadata?.pureza) : 1;
+    if (!peso || !precioBaseGramo) return 0;
+    return peso * precioBaseGramo * purityFactor;
+  }, [getGoldPriceLocal, getGoldPriceGlobal, getPurityFactor, organization?.jewelry_min_margin_local, organization?.jewelry_min_margin_international, parseNumber]);
   const umbralStockBajo = Number(user?.user_metadata?.umbralStockBajo ?? 10);
   const umbralStockBajoSeguro = Number.isFinite(umbralStockBajo) && umbralStockBajo > 0 ? umbralStockBajo : 10;
   const getUmbralProducto = useCallback((producto) => {
@@ -1008,7 +1111,7 @@ const Inventario = () => {
                   <div className="inventario-nombre" title={prod.nombre}>{prod.nombre}</div>
                   <div className="inventario-lista-precios">
                     <span style={{color:'var(--accent-primary)',fontWeight:700}}>Compra: {prod.precio_compra?.toLocaleString('es-CO')}</span>
-                    <span style={{color:'var(--accent-success)',fontWeight:700}}>Venta: {prod.precio_venta?.toLocaleString('es-CO')}</span>
+                    <span style={{color:'var(--accent-success)',fontWeight:700}}>Venta: {getCurrentVentaPrice(prod).toLocaleString('es-CO')}</span>
                   </div>
                   <div className="inventario-stock">Stock: {prod.stock !== null && prod.stock !== undefined ? parseFloat(prod.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '0'}</div>
                 </div>
@@ -1066,7 +1169,7 @@ const Inventario = () => {
                   <div className="inventario-nombre" title={prod.nombre}>{prod.nombre}</div>
                   <div style={{display:'flex',gap:'0.8rem',justifyContent:'center',marginBottom:2}}>
                     <span style={{color:'var(--accent-primary)',fontWeight:700,fontSize:'0.85rem'}}>Compra: {prod.precio_compra?.toLocaleString('es-CO')}</span>
-                    <span style={{color:'var(--accent-success)',fontWeight:700,fontSize:'0.85rem'}}>Venta: {prod.precio_venta?.toLocaleString('es-CO')}</span>
+                    <span style={{color:'var(--accent-success)',fontWeight:700,fontSize:'0.85rem'}}>Venta: {getCurrentVentaPrice(prod).toLocaleString('es-CO')}</span>
                   </div>
                   <div className="inventario-stock">Stock: {prod.stock !== null && prod.stock !== undefined ? parseFloat(prod.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '0'}</div>
                 </div>

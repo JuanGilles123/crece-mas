@@ -49,16 +49,9 @@
   margin-bottom: 0.5rem;
 }
 
-.type-emoji {
-  font-size: 2.5rem;
-  position: absolute;
-  z-index: 1;
-}
-
 .type-icon {
-  position: absolute;
-  opacity: 0.1;
-  z-index: 0;
+  position: static;
+  opacity: 1;
 }
 
 .type-selector-card h3 {

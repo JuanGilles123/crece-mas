@@ -77,7 +77,12 @@ const Pricing = () => {
         { name: 'Roles y permisos', included: true },
         { name: 'Configuración de facturas', included: true },
         { name: 'Notificaciones', included: true },
-        { name: 'Soporte prioritario (24h)', included: true },
+        { name: 'Soporte por email', included: true },
+        { name: 'Sin soporte prioritario 24/7', included: false },
+        { name: 'Sin multi-organización', included: false },
+        { name: 'Sin transferencias entre sucursales', included: false },
+        { name: 'Sin API de integración', included: false },
+        { name: 'Sin marca personalizada', included: false },
       ],
       recommended: true,
       cta: 'Actualizar a Estándar',
@@ -482,7 +487,7 @@ const Pricing = () => {
 
           <div className="faq-item">
             <h3>¿Ofrecen soporte técnico?</h3>
-            <p>El plan Estándar incluye soporte prioritario por email (24h). El plan Premium incluye soporte 24/7 prioritario, WhatsApp directo y Account Manager.</p>
+            <p>El plan Estándar incluye soporte por email. El plan Premium incluye soporte 24/7 prioritario, WhatsApp directo y Account Manager.</p>
           </div>
         </div>
       </motion.div>

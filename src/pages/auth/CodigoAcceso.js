@@ -16,10 +16,9 @@ const generarCodigo = (digits = 6) => {
 };
 
 const CodigoAcceso = () => {
-  const { user, userProfile, organization, loading, refreshProfile } = useAuth();
+  const { user, userProfile, organization, loading } = useAuth();
   const [codigo, setCodigo] = useState('');
   const [error, setError] = useState('');
-  const [savingOwnerCode, setSavingOwnerCode] = useState(false);
   const [savingMemberCode, setSavingMemberCode] = useState(false);
   const [memberId, setMemberId] = useState(null);
   const [memberHasNoCode, setMemberHasNoCode] = useState(false);
@@ -32,11 +31,16 @@ const CodigoAcceso = () => {
   useEffect(() => {
     if (!loading && userId && orgId) {
       const key = buildAccessKey(userId, orgId);
+      if (isOwner) {
+        localStorage.setItem(key, 'true');
+        navigate('/dashboard', { replace: true });
+        return;
+      }
       if (localStorage.getItem(key) === 'true') {
         navigate('/dashboard', { replace: true });
       }
     }
-  }, [loading, userId, orgId, navigate]);
+  }, [loading, userId, orgId, isOwner, navigate]);
 
   useEffect(() => {
     const loadMember = async () => {
@@ -64,29 +68,6 @@ const CodigoAcceso = () => {
 
     loadMember();
   }, [loading, userId, orgId, isOwner]);
-
-  const handleGuardarOwnerCode = async () => {
-    if (!orgId) return;
-    setSavingOwnerCode(true);
-    setError('');
-    const nuevoCodigo = codigo.trim() || generarCodigo(6);
-    try {
-      const { error: updateError } = await supabase
-        .from('organizations')
-        .update({ owner_access_code: nuevoCodigo })
-        .eq('id', orgId);
-      if (updateError) {
-        throw updateError;
-      }
-      await refreshProfile();
-      setCodigo(nuevoCodigo);
-    } catch (err) {
-      console.error('Error guardando código del dueño:', err);
-      setError('No se pudo guardar el código del dueño.');
-    } finally {
-      setSavingOwnerCode(false);
-    }
-  };
 
   const handleGuardarMemberCode = async () => {
     if (!memberId) return;
@@ -128,39 +109,28 @@ const CodigoAcceso = () => {
       return;
     }
 
-    if (isOwner) {
-      if (!organization?.owner_access_code) {
-        setError('Configura primero el código del dueño.');
-        return;
-      }
-      if (codeValue !== organization.owner_access_code) {
-        setError('Código incorrecto.');
-        return;
-      }
-    } else {
-      const { data: member, error: memberError } = await supabase
-        .from('team_members')
-        .select('employee_code')
-        .eq('user_id', userId)
-        .eq('organization_id', orgId)
-        .eq('status', 'active')
-        .maybeSingle();
+    const { data: member, error: memberError } = await supabase
+      .from('team_members')
+      .select('employee_code')
+      .eq('user_id', userId)
+      .eq('organization_id', orgId)
+      .eq('status', 'active')
+      .maybeSingle();
 
-      if (memberError) {
-        console.error('Error validando código:', memberError);
-        setError('No se pudo validar el código. Intenta nuevamente.');
-        return;
-      }
+    if (memberError) {
+      console.error('Error validando código:', memberError);
+      setError('No se pudo validar el código. Intenta nuevamente.');
+      return;
+    }
 
-      if (!member?.employee_code) {
-        setError('Primero debes crear tu código de acceso.');
-        return;
-      }
+    if (!member?.employee_code) {
+      setError('Primero debes crear tu código de acceso.');
+      return;
+    }
 
-      if (codeValue !== member.employee_code) {
-        setError('Código incorrecto.');
-        return;
-      }
+    if (codeValue !== member.employee_code) {
+      setError('Código incorrecto.');
+      return;
     }
 
     localStorage.setItem(buildAccessKey(userId, orgId), 'true');
@@ -185,38 +155,6 @@ const CodigoAcceso = () => {
         <p className="codigo-acceso-subtitle">
           Ingresa el código para habilitar el acceso según tus permisos.
         </p>
-
-        {isOwner && !organization?.owner_access_code && (
-          <div className="codigo-acceso-owner-setup">
-            <p>Primero debes crear el código del dueño.</p>
-            <div className="codigo-acceso-input-group">
-              <input
-                type="text"
-                className="codigo-acceso-input"
-                placeholder="Ej: 123456"
-                value={codigo}
-                onChange={(e) => setCodigo(e.target.value)}
-              />
-              <button
-                type="button"
-                className="codigo-acceso-btn secundario"
-                onClick={() => setCodigo(generarCodigo(6))}
-                disabled={savingOwnerCode}
-              >
-                Generar
-              </button>
-              <button
-                type="button"
-                className="codigo-acceso-btn"
-                onClick={handleGuardarOwnerCode}
-                disabled={savingOwnerCode}
-              >
-                Guardar
-              </button>
-            </div>
-            {error && <div className="codigo-acceso-error">{error}</div>}
-          </div>
-        )}
 
         {!isOwner && memberHasNoCode && (
           <div className="codigo-acceso-owner-setup">

@@ -6,6 +6,7 @@ import { useSubscription } from '../../hooks/useSubscription';
 import { useVentas } from '../../hooks/useVentas';
 import { useCotizaciones } from '../../hooks/useCotizaciones';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useProductos } from '../../hooks/useProductos';
 import { supabase } from '../../services/api/supabaseClient';
 import ReciboVenta from '../../components/business/ReciboVenta';
@@ -33,6 +34,7 @@ const HistorialVentas = () => {
   const { userProfile, organization } = useAuth();
   const { getLimit } = useSubscription();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const historyDays = getLimit('historyDays');
   const { data: ventas = [], isLoading, refetch } = useVentas(userProfile?.organization_id, 500, historyDays);
   const { data: cotizaciones = [] } = useCotizaciones(userProfile?.organization_id);
@@ -223,6 +225,7 @@ const HistorialVentas = () => {
       const termino = busqueda.toLowerCase();
       filtradas = filtradas.filter(venta => {
         const idMatch = venta.id?.toString().toLowerCase().includes(termino);
+        const numeroVentaMatch = venta.numero_venta?.toLowerCase().includes(termino);
         const itemsMatch = venta.items?.some(item => {
           // Buscar por nombre de producto
           if (item.nombre?.toLowerCase().includes(termino)) return true;
@@ -231,7 +234,7 @@ const HistorialVentas = () => {
           return false;
         });
         const metodoMatch = venta.metodo_pago?.toLowerCase().includes(termino);
-        return idMatch || itemsMatch || metodoMatch;
+        return idMatch || numeroVentaMatch || itemsMatch || metodoMatch;
       });
     }
 
@@ -380,8 +383,9 @@ const HistorialVentas = () => {
     setMostrandoCambio(true);
   };
 
+  const obtenerItemId = (item) => item?.id || item?.producto_id || '';
   const obtenerKeyItem = (item) => {
-    const id = item?.id || item?.producto_id || '';
+    const id = obtenerItemId(item);
     const variante = item?.variant_id || '';
     return `${id}::${variante}`;
   };
@@ -487,6 +491,9 @@ const HistorialVentas = () => {
           if (metodoPago === 'Efectivo' && montoEntregado) {
             updatesVenta.pago_cliente = montoEntregado;
           }
+          if (metodoPago === 'Credito') {
+            updatesVenta.es_credito = true;
+          }
         }
       }
 
@@ -560,12 +567,45 @@ const HistorialVentas = () => {
             if (errorPagoCambio) {
               console.error('Error registrando pago por cambio:', errorPagoCambio);
               pagoCambioRegistrado = false;
+            } else {
+              queryClient.invalidateQueries(['pagos_creditos', credito.id]);
             }
           }
         } catch (errorCredito) {
           console.error('Error actualizando crédito por cambio:', errorCredito);
           creditoActualizado = false;
         }
+      } else if (diferencia > 0 && metodoPago === 'Credito') {
+        // Convertir la diferencia en crédito cuando la venta no era a crédito
+        if (!ventaActual.cliente_id) {
+          throw new Error('Para registrar un cambio a crédito debes seleccionar un cliente.');
+        }
+        const fechaVenc = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+        const montoPagado = Math.min(ventaActual.total || 0, nuevoTotal);
+        const creditoData = {
+          organization_id: organization.id,
+          venta_id: ventaActual.id,
+          cliente_id: ventaActual.cliente_id,
+          monto_total: nuevoTotal,
+          monto_pagado: montoPagado,
+          monto_pendiente: Math.max(nuevoTotal - montoPagado, 0),
+          fecha_vencimiento: fechaVenc.toISOString().split('T')[0],
+          estado: 'parcial',
+          notas: `Crédito generado por cambio en venta ${ventaActual.numero_venta || ventaActual.id}`
+        };
+        const { data: creditoCreado, error: creditoError } = await supabase
+          .from('creditos')
+          .insert([creditoData])
+          .select('id')
+          .single();
+        if (creditoError) {
+          throw creditoError;
+        }
+        await supabase
+          .from('ventas')
+          .update({ credito_id: creditoCreado.id, es_credito: true })
+          .eq('id', ventaActual.id);
+        queryClient.invalidateQueries(['creditos', organization?.id]);
       }
 
       // Restaurar stock de productos devueltos
@@ -593,10 +633,14 @@ const HistorialVentas = () => {
             continue;
           }
 
+          const productoId = obtenerItemId(item);
+          if (!productoId) {
+            continue;
+          }
           const { data: producto, error: errorProducto } = await supabase
             .from('productos')
             .select('stock')
-            .eq('id', item.id)
+            .eq('id', productoId)
             .single();
 
           if (!errorProducto && producto) {
@@ -604,7 +648,7 @@ const HistorialVentas = () => {
             const { error: errorUpdateStock } = await supabase
               .from('productos')
               .update({ stock: nuevoStock })
-              .eq('id', item.id);
+              .eq('id', productoId);
 
             if (!errorUpdateStock) {
               stockRestaurado++;
@@ -640,10 +684,14 @@ const HistorialVentas = () => {
             continue;
           }
 
+          const productoId = obtenerItemId(item);
+          if (!productoId) {
+            continue;
+          }
           const { data: producto, error: errorProducto } = await supabase
             .from('productos')
             .select('stock')
-            .eq('id', item.id)
+            .eq('id', productoId)
             .single();
 
           if (!errorProducto && producto) {
@@ -651,7 +699,7 @@ const HistorialVentas = () => {
             const { error: errorUpdateStock } = await supabase
               .from('productos')
               .update({ stock: nuevoStock })
-              .eq('id', item.id);
+              .eq('id', productoId);
 
             if (!errorUpdateStock) {
               stockReducido++;
@@ -805,6 +853,10 @@ const HistorialVentas = () => {
         try {
           const { actualizado, credito } = await actualizarCreditoPorVenta(ventaActual, esDevolucionCompleta ? 0 : nuevoTotal);
           creditoActualizado = actualizado || !credito;
+          if (credito) {
+            queryClient.invalidateQueries(['creditos', organization?.id]);
+            queryClient.invalidateQueries(['credito', credito.id]);
+          }
         } catch (errorCredito) {
           console.error('Error actualizando crédito por devolución:', errorCredito);
           creditoActualizado = false;
@@ -812,6 +864,7 @@ const HistorialVentas = () => {
       }
 
       // 5. Restaurar stock de productos devueltos
+      const restockTargets = itemsDevolver.filter(item => obtenerItemId(item) || item?.variant_id).length;
       let stockRestaurado = 0;
       for (const item of itemsDevolver) {
         try {
@@ -837,10 +890,14 @@ const HistorialVentas = () => {
             continue;
           }
 
+          const productoId = obtenerItemId(item);
+          if (!productoId) {
+            continue;
+          }
           const { data: producto, error: errorProducto } = await supabase
             .from('productos')
             .select('stock')
-            .eq('id', item.id)
+            .eq('id', productoId)
             .single();
 
           if (errorProducto) {
@@ -853,7 +910,7 @@ const HistorialVentas = () => {
             const { error: errorUpdateStock } = await supabase
               .from('productos')
               .update({ stock: nuevoStock })
-              .eq('id', item.id);
+              .eq('id', productoId);
 
             if (errorUpdateStock) {
               console.error(`Error actualizando stock de ${item.id}:`, errorUpdateStock);
@@ -868,16 +925,18 @@ const HistorialVentas = () => {
       }
 
       // 7. Mostrar mensaje de éxito
-      if (stockRestaurado === itemsDevolver.length) {
+      if (restockTargets === 0) {
+        // No hay items con stock para restaurar (servicios u otros)
+      } else if (stockRestaurado === restockTargets) {
         const mensaje = esDevolucionCompleta 
           ? `Devolución completa procesada. Venta anulada. Total revertido: ${formatCOP(totalDevolucion)}`
           : `Devolución parcial procesada. ${itemsDevolver.length} producto(s) devuelto(s). Total ajustado: ${formatCOP(ventaActual.total)} → ${formatCOP(nuevoTotal)}`;
 
         toast.success(creditoActualizado ? mensaje : `${mensaje} (Revisa créditos: no se pudo actualizar)`);
       } else if (stockRestaurado > 0) {
-        const mensaje = `Devolución parcial: ${stockRestaurado} de ${itemsDevolver.length} producto(s) procesado(s). La venta fue actualizada pero algunos stocks no se pudieron restaurar.`;
+        const mensaje = `Devolución parcial: ${stockRestaurado} de ${restockTargets} producto(s) procesado(s). La venta fue actualizada pero algunos stocks no se pudieron restaurar.`;
         toast.success(creditoActualizado ? mensaje : `${mensaje} (Revisa créditos: no se pudo actualizar)`);
-      } else {
+      } else if (restockTargets > 0) {
         toast.error('Error: No se pudo restaurar el stock de los productos. La venta fue actualizada pero revisa el stock manualmente.');
         return;
       }
@@ -1445,12 +1504,15 @@ const ModalDevolucion = ({ venta, onConfirmar, onCancelar }) => {
     
     const agrupados = {};
     venta.items.forEach(item => {
-      if (agrupados[item.id]) {
-        agrupados[item.id].qty_vendida += item.qty || 1;
-        agrupados[item.id].precio_venta = item.precio_venta || item.precio || 0;
+      const itemId = item.id || item.producto_id;
+      if (!itemId) return;
+      if (agrupados[itemId]) {
+        agrupados[itemId].qty_vendida += item.qty || 1;
+        agrupados[itemId].precio_venta = item.precio_venta || item.precio || 0;
       } else {
-        agrupados[item.id] = {
+        agrupados[itemId] = {
           ...item,
+          id: itemId,
           qty_vendida: item.qty || 1,
           precio_venta: item.precio_venta || item.precio || 0
         };
@@ -1640,12 +1702,15 @@ const ModalCambio = ({ venta, onConfirmar, onCancelar }) => {
     
     const agrupados = {};
     venta.items.forEach(item => {
-      if (agrupados[item.id]) {
-        agrupados[item.id].qty_vendida += item.qty || 1;
-        agrupados[item.id].precio_venta = item.precio_venta || item.precio || 0;
+      const itemId = item.id || item.producto_id;
+      if (!itemId) return;
+      if (agrupados[itemId]) {
+        agrupados[itemId].qty_vendida += item.qty || 1;
+        agrupados[itemId].precio_venta = item.precio_venta || item.precio || 0;
       } else {
-        agrupados[item.id] = {
+        agrupados[itemId] = {
           ...item,
+          id: itemId,
           qty_vendida: item.qty || 1,
           precio_venta: item.precio_venta || item.precio || 0
         };
@@ -1763,15 +1828,15 @@ const ModalCambio = ({ venta, onConfirmar, onCancelar }) => {
         toast.error('Selecciona al menos un producto nuevo');
         return;
       }
-      // Si hay diferencia, ir al paso 3 (pago), si no, procesar directamente
-      if (diferencia !== 0) {
+      // Si el cliente debe pagar, ir al paso 3 (pago), si no, procesar directamente
+      if (diferencia > 0) {
         setPaso(3);
       } else {
         onConfirmar(venta, itemsACambiar, itemsNuevos, null, null);
       }
     } else if (paso === 3) {
       // Validar método de pago
-      if (!metodoPago) {
+      if (diferencia > 0 && !metodoPago) {
         toast.error('Selecciona un método de pago');
         return;
       }
@@ -1795,6 +1860,8 @@ const ModalCambio = ({ venta, onConfirmar, onCancelar }) => {
     const nuevoMonto = montoActual + valor;
     setMontoEntregado(nuevoMonto.toLocaleString('es-CO'));
   };
+
+  const puedeCredito = Boolean(venta?.cliente_id || venta?.cliente?.id);
 
   return (
     <div className="modal-overlay">
@@ -2075,7 +2142,7 @@ const ModalCambio = ({ venta, onConfirmar, onCancelar }) => {
               <>
                 <div style={{ marginBottom: '1rem' }}>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Método de Pago:</label>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' }}>
                     <button
                       type="button"
                       onClick={() => {
@@ -2138,6 +2205,33 @@ const ModalCambio = ({ venta, onConfirmar, onCancelar }) => {
                     >
                       <Smartphone size={24} />
                       <span>Transferencia</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!puedeCredito) {
+                          toast.error('Para usar crédito debes asignar un cliente a la venta.');
+                          return;
+                        }
+                        setMetodoPago('Credito');
+                      }}
+                      className={`metodo-pago-btn ${metodoPago === 'Credito' ? 'active' : ''}`}
+                      style={{
+                        padding: '1rem',
+                        border: '2px solid',
+                        borderColor: metodoPago === 'Credito' ? '#007AFF' : '#e5e7eb',
+                        borderRadius: '8px',
+                        background: metodoPago === 'Credito' ? '#f0f7ff' : 'white',
+                        cursor: puedeCredito ? 'pointer' : 'not-allowed',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        opacity: puedeCredito ? 1 : 0.5
+                      }}
+                    >
+                      <CreditCard size={24} />
+                      <span>Crédito</span>
                     </button>
                   </div>
                 </div>
@@ -2238,7 +2332,11 @@ const ModalCambio = ({ venta, onConfirmar, onCancelar }) => {
             disabled={
               paso === 1 ? itemsACambiar.length === 0 
               : paso === 2 ? itemsNuevos.length === 0
-              : !metodoPago || (metodoPago === 'Efectivo' && (!montoEntregado || parseFloat(montoEntregado.replace(/[^\d]/g, '')) < diferencia))
+              : diferencia > 0 && (
+                !metodoPago ||
+                (metodoPago === 'Credito' && !puedeCredito) ||
+                (metodoPago === 'Efectivo' && (!montoEntregado || parseFloat(montoEntregado.replace(/[^\d]/g, '')) < diferencia))
+              )
             }
           >
             <Repeat size={18} />

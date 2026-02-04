@@ -291,6 +291,7 @@ export const usePagosCredito = (creditoId) => {
     enabled: !!creditoId,
     staleTime: 1 * 60 * 1000, // 1 minuto
     refetchOnWindowFocus: true, // Refrescar cuando se enfoca la ventana
+    refetchOnMount: 'always'
   });
 };
 

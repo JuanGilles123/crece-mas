@@ -454,6 +454,15 @@ export const useRemoveTeamMember = () => {
         throw new Error('Error al remover miembro');
       }
 
+      const { error: employeeError } = await supabase
+        .from('employees')
+        .update({ active: false })
+        .eq('team_member_id', memberId);
+
+      if (employeeError) {
+        console.error('Error desactivando empleado:', employeeError);
+      }
+
       return { memberId, organizationId };
     },
     onSuccess: ({ organizationId }) => {
@@ -675,32 +684,63 @@ export const useAssignCustomRole = () => {
 // ============================================
 // Hook para actualizar código de empleado
 // ============================================
-export const useUpdateEmployeeCode = () => {
+export const useUpdateEmployeeCredentials = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ memberId, newCode, organizationId }) => {
-      const { data, error } = await supabase
-        .from('team_members')
-        .update({ employee_code: newCode })
-        .eq('id', memberId)
-        .select()
-        .single();
+    mutationFn: async ({ memberId, organizationId, username, password }) => {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      let accessToken = sessionData?.session?.access_token;
+
+      if (sessionError || !accessToken) {
+        const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+        accessToken = refreshed?.session?.access_token;
+        if (refreshError || !accessToken) {
+          throw new Error('Sesión no válida. Cierra sesión y vuelve a iniciar.');
+        }
+      }
+
+      if (!organizationId || !memberId) {
+        throw new Error('Faltan datos del empleado.');
+      }
+      if (!username || !String(username).trim()) {
+        throw new Error('El usuario es requerido.');
+      }
+      if (!password || !String(password).trim()) {
+        throw new Error('La contraseña es requerida.');
+      }
+
+      const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+      const { data, error } = await supabase.functions.invoke('update-employee-credentials', {
+        body: {
+          organizationId,
+          memberId,
+          username: String(username),
+          password: String(password)
+        },
+        headers: {
+          ...(anonKey ? { apikey: anonKey } : {}),
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
 
       if (error) {
-        console.error('Error updating employee code:', error);
-        throw new Error(error.message || 'Error al actualizar el código del empleado');
+        console.error('Error updating employee credentials:', error);
+        throw new Error(error.message || 'Error al actualizar las credenciales del empleado');
+      }
+      if (data?.error) {
+        throw new Error(data.error);
       }
 
       return data;
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries(['teamMembers', variables.organizationId]);
-      toast.success('Código de empleado actualizado exitosamente');
+      toast.success('Credenciales de empleado actualizadas');
     },
     onError: (error) => {
-      console.error('Error updating employee code:', error);
-      toast.error(error.message || 'Error al actualizar el código del empleado');
+      console.error('Error updating employee credentials:', error);
+      toast.error(error.message || 'Error al actualizar las credenciales del empleado');
     },
   });
 };
@@ -712,147 +752,150 @@ export const useCreateEmployee = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ organizationId, nombre, email, telefono, usuario, password, role, customRoleId }) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      // Determinar el email a usar para Auth
-      if (!usuario || !usuario.trim()) {
-        throw new Error('El usuario (email o teléfono) es requerido. Si no se proporcionó, debería haberse generado automáticamente.');
+    mutationFn: async ({ organizationId, nombre, telefono, role, customRoleId, username, pin, accessCode }) => {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/67cbae63-1d62-454e-a79c-6473cc85ec06',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H1',location:'useTeam.js:715',message:'createEmployee:start',data:{organizationId:!!organizationId,hasNombre:!!nombre,hasUsername:!!username,hasPin:!!pin,hasAccessCode:!!accessCode,role},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion agent log
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData?.user) {
+        throw new Error('No autorizado. Inicia sesión nuevamente.');
+      }
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      let accessToken = sessionData?.session?.access_token;
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/67cbae63-1d62-454e-a79c-6473cc85ec06',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H1',location:'useTeam.js:726',message:'session:loaded',data:{hasSession:!!sessionData?.session,hasAccessToken:!!accessToken,sessionError:!!sessionError},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion agent log
+      if (!accessToken) {
+        const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+        accessToken = refreshed?.session?.access_token;
+        if (refreshError || !accessToken) {
+          throw new Error('Sesión no válida. Cierra sesión y vuelve a iniciar.');
+        }
+      }
+      try {
+        const tokenPayload = accessToken.split('.')[1] || '';
+        const decoded = JSON.parse(atob(tokenPayload));
+        const exp = Number(decoded?.exp || 0);
+        const now = Math.floor(Date.now() / 1000);
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/67cbae63-1d62-454e-a79c-6473cc85ec06',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H2',location:'useTeam.js:733',message:'token:exp_check',data:{exp,now,expiresInSec:exp?exp-now:null},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion agent log
+        if (exp && exp < now + 30) {
+          const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+          accessToken = refreshed?.session?.access_token || accessToken;
+          if (refreshError || !accessToken) {
+            throw new Error('Sesión no válida. Cierra sesión y vuelve a iniciar.');
+          }
+        }
+      } catch (error) {
+        if (error?.message?.includes('Sesión no válida')) {
+          throw error;
+        }
+        // Si no se puede decodificar el token, continuar y dejar que el backend responda.
+      }
+      if (sessionError || !accessToken) {
+        throw new Error('Sesión no válida. Cierra sesión y vuelve a iniciar.');
+      }
+
+      if (!nombre || !nombre.trim()) {
+        throw new Error('El nombre es requerido.');
+      }
+      if (!username || !String(username).trim()) {
+        throw new Error('El usuario es requerido.');
+      }
+      if (!accessCode || !String(accessCode).trim()) {
+        throw new Error('El código es requerido.');
+      }
+      if (!pin || !String(pin).trim()) {
+        throw new Error('El PIN es requerido.');
       }
       
-      const isEmail = usuario.includes('@');
-      let authEmail;
-      if (isEmail) {
-        authEmail = usuario.trim().toLowerCase();
-      } else {
-        // Si es teléfono, crear email con formato: telefono@empleado.creceplus.local
-        const telefonoLimpio = usuario.replace(/\D/g, '');
-        authEmail = `${telefonoLimpio}@empleado.creceplus.local`;
+      // Crear empleado con Edge Function (solo owner)
+      const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+      const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+      if (!supabaseUrl) {
+        throw new Error('Configuración inválida de Supabase.');
       }
-      
-      // Crear usuario en Supabase Auth usando signUp
-      // Nota: Si el email confirmation está habilitado en Supabase Dashboard, el usuario necesitará confirmar
-      // Para empleados, se recomienda deshabilitar la confirmación de email en:
-      // Supabase Dashboard → Authentication → Settings → Disable "Enable email confirmations"
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: authEmail,
-        password: password,
-        options: {
-          data: {
-            full_name: nombre,
-            phone: telefono || null,
-            is_employee: true,
-            needs_password_change: true, // Flag para indicar que debe cambiar contraseña
-            employee_email: email || null,
-            employee_phone: telefono || null
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/67cbae63-1d62-454e-a79c-6473cc85ec06',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H10',location:'useTeam.js:779',message:'supabaseUrl:createEmployee',data:{host:(new URL(supabaseUrl)).host},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion agent log
+      try {
+        const tokenPayload = accessToken.split('.')[1] || '';
+        const decoded = JSON.parse(atob(tokenPayload));
+        const issuer = decoded?.iss || '';
+        if (issuer && !issuer.includes(supabaseUrl)) {
+          throw new Error('Tu sesión pertenece a otro proyecto de Supabase. Cierra sesión, limpia el almacenamiento y vuelve a iniciar.');
+        }
+      } catch (error) {
+        if (error?.message?.includes('otro proyecto')) {
+          throw error;
+        }
+        // Si no se puede decodificar el token, continuar y dejar que el backend responda.
+      }
+
+      const payload = {
+        organizationId,
+        nombre,
+        telefono,
+        role: role || 'cashier',
+        customRoleId: customRoleId || null,
+        username: String(username).trim(),
+        accessCode: String(accessCode).trim(),
+        pin: String(pin).trim(),
+      };
+
+      const sendRequest = async (token) => {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/67cbae63-1d62-454e-a79c-6473cc85ec06',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H3',location:'useTeam.js:791',message:'edge:request',data:{hasToken:!!token,hasAnonKey:!!anonKey,hasUrl:!!supabaseUrl},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion agent log
+        const response = await fetch(`${supabaseUrl}/functions/v1/create-employee-user`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+            ...(anonKey ? { apikey: anonKey } : {})
           },
-          emailRedirectTo: undefined // No enviar email de confirmación
-        }
-      });
+          body: JSON.stringify(payload)
+        });
+        const data = await response.json().catch(() => ({}));
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/67cbae63-1d62-454e-a79c-6473cc85ec06',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H3',location:'useTeam.js:803',message:'edge:response',data:{status:response.status,ok:response.ok,error:data?.error||null},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion agent log
+        return { response, data };
+      };
 
-      if (authError) {
-        console.error('Error creating auth user:', authError);
-        
-        // Manejar error 429 (Too Many Requests)
-        if (authError.status === 429 || authError.message?.includes('429') || authError.message?.includes('Too Many Requests')) {
-          // Intentar extraer el tiempo de espera del mensaje o header
-          const retryAfter = authError.message?.match(/(\d+)\s+seconds?/)?.[1] || 
-                           authError.message?.match(/after\s+(\d+)/)?.[1] || 
-                           '60';
-          throw new Error(`Has realizado demasiadas solicitudes. Por seguridad, debes esperar ${retryAfter} segundos antes de crear otro empleado. Por favor, intenta nuevamente en unos momentos.`);
+      let { response, data: fnData } = await sendRequest(accessToken);
+
+      if (response.status === 401) {
+        const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+        const refreshedToken = refreshed?.session?.access_token;
+        if (!refreshError && refreshedToken) {
+          ({ response, data: fnData } = await sendRequest(refreshedToken));
         }
-        
-        // Manejar errores específicos de Supabase
-        if (authError.message && authError.message.includes('For security purposes')) {
-          // Extraer el tiempo de espera del mensaje si está disponible
-          const timeMatch = authError.message.match(/(\d+)\s+seconds?/);
-          const waitTime = timeMatch ? timeMatch[1] : '60';
-          throw new Error(`Por seguridad, debes esperar ${waitTime} segundos antes de crear otro empleado. Por favor, intenta nuevamente en unos momentos.`);
-        }
-        
-        // Otros errores comunes
-        if (authError.message && (authError.message.includes('already registered') || authError.message.includes('already exists'))) {
-          throw new Error('Este email o teléfono ya está registrado. Por favor, usa otro.');
-        }
-        
-        if (authError.message && authError.message.includes('Invalid email')) {
-          throw new Error('El formato del email no es válido. Por favor, verifica el email proporcionado.');
-        }
-        
-        throw new Error(authError.message || 'Error al crear usuario de autenticación');
       }
 
-      const authUserId = authData.user?.id;
-      
-      if (!authUserId) {
-        throw new Error('No se pudo obtener el ID del usuario creado. El usuario debe confirmar su email primero.');
-      }
-      
-      // Nota: El usuario se crea con needs_password_change: true en user_metadata
-      // Esto se verificará en el login para solicitar cambio de contraseña
-      // Para confirmar el email automáticamente, necesitaríamos una Edge Function
-      // con permisos de admin, pero por ahora el usuario puede hacer login
-      // y se le solicitará cambiar la contraseña en el primer acceso
-      
-      // Crear el empleado en team_members
-      // Nota: Si el constraint check_employee_user_id requiere que is_employee = true solo cuando user_id es NULL,
-      // entonces no marcamos is_employee = true cuando tenemos user_id (empleados con autenticación)
-      // IMPORTANTE: employee_email debe coincidir con authEmail para que el login funcione correctamente
-      const { data, error } = await supabase
-        .from('team_members')
-        .insert([{
-          organization_id: organizationId,
-          user_id: authUserId,
-          role,
-          custom_role_id: customRoleId || null,
-          status: 'active',
-          invited_by: user.id,
-          // Guardar información del empleado en metadata para referencia
-          employee_code: usuario, // Usar el usuario como código también
-          employee_name: nombre,
-          // Usar authEmail para que coincida con el email usado en Auth (importante para el login)
-          employee_email: authEmail, // Esto asegura que el login funcione
-          employee_phone: telefono || null,
-          // No marcar como is_employee = true si tiene user_id (el constraint lo requiere)
-          // Los empleados con autenticación se diferencian por tener user_id y estos campos
-          is_employee: false, // Cambiar a false porque tiene user_id
-          joined_at: new Date().toISOString()
-        }])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error creating employee:', error);
-        
-        // Manejar errores específicos de constraints
-        if (error.code === '23514') {
-          // Constraint violation
-          if (error.message && error.message.includes('check_employee_user_id')) {
-            throw new Error('Error de configuración: El constraint de la base de datos no permite empleados con autenticación. Por favor, contacta al administrador del sistema.');
-          }
-          throw new Error(`Error de validación: ${error.message || 'No se pudo crear el empleado debido a una restricción de la base de datos.'}`);
+      if (!response.ok) {
+        const status = response.status;
+        const errorMessage = fnData?.error || `Error ${status} al crear empleado`;
+        if (status === 404) {
+          throw new Error('La función create-employee-user no está deployada. Ejecuta el deploy en Supabase.');
         }
-        
-        // Si falla la creación en team_members, intentar eliminar el usuario de Auth
-        // Nota: Esto requiere permisos de admin, así que solo lo intentamos
-        if (authUserId) {
-          try {
-            await supabase.functions.invoke('delete-user', {
-              body: { user_id: authUserId }
-            });
-          } catch (deleteError) {
-            // Ignorar errores de CORS o de la función Edge
-            console.warn('No se pudo eliminar el usuario de Auth (esto es normal si la función Edge no está configurada):', deleteError);
-          }
+        if (status === 401) {
+          throw new Error(errorMessage || 'Sesión no válida. Cierra sesión y vuelve a iniciar.');
         }
-        throw new Error(error.message || 'Error al crear empleado');
+        if (status === 403) {
+          throw new Error('Solo el owner puede crear empleados sin validación.');
+        }
+        throw new Error(errorMessage);
       }
 
-      // Retornar el empleado creado con las credenciales
-      return { 
-        ...data, 
-        usuario: usuario,
-        password: password // Devolver la contraseña para mostrarla al admin
+      if (!fnData?.employee) {
+        throw new Error('No se pudo crear el empleado. Verifica permisos del owner.');
+      }
+
+      return {
+        ...fnData.employee,
+        username: String(username).trim()
       };
     },
     onSuccess: (data, variables) => {

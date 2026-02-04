@@ -96,6 +96,9 @@
 .business-type {
   color: #718096;
   font-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .role-section {

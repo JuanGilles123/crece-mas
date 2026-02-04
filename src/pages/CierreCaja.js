@@ -7,7 +7,7 @@ import { Calculator, TrendingUp, DollarSign, ShoppingCart, AlertCircle, CheckCir
 import './CierreCaja.css';
 
 const CierreCaja = () => {
-  const { userProfile, hasPermission } = useAuth();
+  const { userProfile, user, hasPermission } = useAuth();
   const [cargando, setCargando] = useState(true);
   const [ventasHoy, setVentasHoy] = useState([]);
   const [cotizacionesHoy, setCotizacionesHoy] = useState([]); // Cotizaciones informativas (no cuentan en totales)
@@ -32,8 +32,9 @@ const CierreCaja = () => {
   const [yaCerrado, setYaCerrado] = useState(false);
   const [montoInicialApertura, setMontoInicialApertura] = useState(0);
 
+  const puedeCerrarCaja = hasPermission('cierre.create') || ['owner', 'admin'].includes(userProfile?.role);
   const puedeVerEsperado = hasPermission('cierre.view_expected') || ['owner', 'admin'].includes(userProfile?.role);
-  
+
   // Desglose por método de pago
   const [desgloseSistema, setDesgloseSistema] = useState({
     efectivo: 0,
@@ -43,7 +44,7 @@ const CierreCaja = () => {
   });
 
   const cargarVentasHoy = useCallback(async () => {
-    if (!userProfile?.organization_id) return;
+    if (!userProfile?.organization_id || !user?.id) return;
 
     setCargando(true);
     try {
@@ -52,6 +53,7 @@ const CierreCaja = () => {
         .from('aperturas_caja')
         .select('monto_inicial, created_at')
         .eq('organization_id', userProfile.organization_id)
+        .eq('user_id', user.id)
         .is('cierre_id', null)
         .eq('estado', 'abierta')
         .order('created_at', { ascending: false })
@@ -70,6 +72,7 @@ const CierreCaja = () => {
         .from('cierres_caja')
         .select('created_at')
         .eq('organization_id', userProfile.organization_id)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -84,6 +87,7 @@ const CierreCaja = () => {
         .from('ventas')
         .select('*')
         .eq('organization_id', userProfile.organization_id)
+        .eq('user_id', user.id)
         // Excluir cotizaciones: no deben contar en el cierre de caja hasta que se conviertan en ventas
         .neq('metodo_pago', 'COTIZACION');
 
@@ -348,7 +352,7 @@ const CierreCaja = () => {
     } finally {
       setCargando(false);
     }
-  }, [userProfile?.organization_id]);
+  }, [userProfile?.organization_id, user?.id]);
 
   useEffect(() => {
     cargarVentasHoy();
@@ -469,6 +473,10 @@ Generado por Crece+ 🚀
   };
 
   const guardarCierre = async () => {
+    if (!user?.id) {
+      setMensaje({ tipo: 'error', texto: 'No hay usuario activo para cerrar caja' });
+      return;
+    }
     if (efectivoRealInput.displayValue === '' && transferenciasRealInput.displayValue === '' && tarjetaRealInput.displayValue === '') {
       setMensaje({ tipo: 'error', texto: 'Por favor ingresa al menos un monto' });
       return;
@@ -481,6 +489,7 @@ Generado por Crece+ 🚀
         .from('aperturas_caja')
         .select('id, monto_inicial')
         .eq('organization_id', userProfile.organization_id)
+        .eq('user_id', user?.id)
         .is('cierre_id', null)
         .eq('estado', 'abierta')
         .order('created_at', { ascending: false })
@@ -496,7 +505,7 @@ Generado por Crece+ 🚀
         .from('cierres_caja')
         .insert({
           organization_id: userProfile.organization_id,
-          user_id: userProfile.user_id,
+          user_id: user?.id,
           fecha: new Date().toISOString().split('T')[0],
           // Desglose del sistema
           sistema_efectivo: desgloseSistema.efectivo,
@@ -601,6 +610,17 @@ Generado por Crece+ 🚀
           <Calculator size={48} />
         </motion.div>
         <p>Cargando ventas...</p>
+      </div>
+    );
+  }
+
+  if (!puedeCerrarCaja) {
+    return (
+      <div className="cierre-container">
+        <div className="cierre-mensaje">
+          <AlertCircle size={20} />
+          <span>No tienes permisos para realizar el cierre de caja.</span>
+        </div>
       </div>
     );
   }

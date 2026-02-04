@@ -8,7 +8,7 @@ import { supabase } from '../../services/api/supabaseClient';
 import './AperturaCajaModal.css';
 
 const AperturaCajaModal = ({ isOpen, onClose, onAperturaExitosa }) => {
-  const { user, organization, userProfile } = useAuth();
+  const { user, organization, userProfile, hasPermission } = useAuth();
   const crearApertura = useCrearAperturaCaja();
   const montoInicialInput = useCurrencyInput();
   const [error, setError] = useState('');
@@ -16,6 +16,11 @@ const AperturaCajaModal = ({ isOpen, onClose, onAperturaExitosa }) => {
   const handleAbrirCaja = async () => {
     if (!user || !organization) {
       setError('Error: No hay usuario u organización activa');
+      return;
+    }
+
+    if (!hasPermission('caja.open') && !hasPermission('cierre.create') && !['owner', 'admin'].includes(userProfile?.role)) {
+      setError('No tienes permisos para abrir la caja.');
       return;
     }
 
@@ -34,6 +39,7 @@ const AperturaCajaModal = ({ isOpen, onClose, onAperturaExitosa }) => {
         .from('aperturas_caja')
         .select('id')
         .eq('organization_id', organization.id)
+        .eq('user_id', user.id)
         .is('cierre_id', null)
         .maybeSingle();
 

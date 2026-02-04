@@ -155,6 +155,7 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
   const [productosVinculados, setProductosVinculados] = useState([]);
   const [variantesProducto, setVariantesProducto] = useState([]);
   const [guardandoVariantes, setGuardandoVariantes] = useState(false);
+  const [precioVentaModo, setPrecioVentaModo] = useState('manual'); // 'manual' | 'porcentaje'
   const modoSoloVariantes = soloEditarVariantes && varianteActivaId;
   const fileInputRef = useRef();
   const codigoInputRef = useRef(null);
@@ -309,6 +310,12 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
     setValue('precioVenta', formatted, { shouldValidate: true });
     precioVentaInput.setValue(precioVentaVariableActual || '');
   }, [isJewelryBusiness, jewelryPriceMode, precioVentaVariableActual, setValue, precioVentaInput]);
+
+  useEffect(() => {
+    if (!isJewelryBusiness || jewelryPriceMode !== 'fixed') return;
+    const nextMode = precioVentaModo === 'porcentaje' ? 'percent' : 'fixed';
+    setValue('jewelry_static_mode', nextMode, { shouldValidate: false, shouldDirty: true });
+  }, [isJewelryBusiness, jewelryPriceMode, precioVentaModo, setValue]);
 
   // Cargar valores cuando cambia el producto (solo cuando cambia el ID del producto)
   useEffect(() => {
@@ -979,7 +986,7 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
                     {errors.peso && <span className="error-message">{errors.peso.message}</span>}
                     <label>Pureza</label>
                     <select {...register('pureza')} className="input-form">
-                      <option value="">Selecciona pureza</option>
+                      <option value="">No aplica</option>
                       <option value="24k">24k</option>
                       <option value="22k">22k</option>
                       <option value="18k">18k</option>
@@ -1051,21 +1058,35 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
                       <>
                         <div style={{ display: 'grid', gap: '0.5rem' }}>
                           <label>Cómo definir el precio estático</label>
-                          <select {...register('jewelry_static_mode')} className="input-form">
-                            <option value="fixed">Valor específico</option>
-                            <option value="percent">Porcentaje sobre compra</option>
-                          </select>
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button
+                              type="button"
+                              className={`inventario-btn ${precioVentaModo === 'manual' ? 'inventario-btn-primary' : 'inventario-btn-outline'}`}
+                              onClick={() => setPrecioVentaModo('manual')}
+                            >
+                              Valor específico
+                            </button>
+                            <button
+                              type="button"
+                              className={`inventario-btn ${precioVentaModo === 'porcentaje' ? 'inventario-btn-primary' : 'inventario-btn-outline'}`}
+                              onClick={() => setPrecioVentaModo('porcentaje')}
+                            >
+                              % sobre compra
+                            </button>
+                          </div>
                         </div>
-                        <div style={{ display: 'grid', gap: '0.5rem' }}>
-                          <label>Porcentaje sobre compra (%)</label>
-                          <input
-                            {...register('jewelry_static_percent')}
-                            type="number"
-                            inputMode="decimal"
-                            placeholder="Ej: 20"
-                            className="input-form"
-                          />
-                        </div>
+                        {precioVentaModo === 'porcentaje' && (
+                          <div style={{ display: 'grid', gap: '0.5rem' }}>
+                            <label>Porcentaje sobre compra (%)</label>
+                            <input
+                              {...register('jewelry_static_percent')}
+                              type="number"
+                              inputMode="decimal"
+                              placeholder="Ej: 20"
+                              className="input-form"
+                            />
+                          </div>
+                        )}
                       </>
                     )}
                     {jewelryPriceMode === 'variable' && (

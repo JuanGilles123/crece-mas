@@ -9,6 +9,7 @@ import { useVentas } from '../../hooks/useVentas';
 import { useToppings } from '../../hooks/useToppings';
 import { useGuardarCotizacion, useActualizarCotizacion } from '../../hooks/useCotizaciones';
 import { generarCodigoVenta } from '../../utils/generarCodigoVenta';
+import { useCurrencyInput } from '../../hooks/useCurrencyInput';
 import { useClientes, useCrearCliente } from '../../hooks/useClientes';
 import { useCrearCredito } from '../../hooks/useCreditos';
 import { usePedidos, useActualizarPedido, useCrearPedido } from '../../hooks/usePedidos';
@@ -56,15 +57,17 @@ export default function Caja({
   onPedidoGuardado = null, // Callback cuando se guarda el pedido
   onCancelar = null // Callback para cancelar
 }) {
-  const { user, organization } = useAuth();
+  const { user, organization, hasPermission, userProfile } = useAuth();
   const { hasFeature, canPerformAction } = useSubscription();
   const navigate = useNavigate();
   
   const esModoPedido = mode === 'pedido';
   const [query, setQuery] = useState("");
   const isJewelryBusiness = organization?.business_type === 'jewelry_metals';
-  const [goldPriceGlobal, setGoldPriceGlobal] = useState('');
-  const [goldPriceLocal, setGoldPriceLocal] = useState('');
+  const [goldPriceGlobal, setGoldPriceGlobal] = useState(0);
+  const [goldPriceLocal, setGoldPriceLocal] = useState(0);
+  const goldPriceGlobalInput = useCurrencyInput('');
+  const goldPriceLocalInput = useCurrencyInput('');
   
   const [queryPedidos, setQueryPedidos] = useState(""); // Buscador para pedidos listos para pagar
   const [cart, setCart] = useState([]);
@@ -128,10 +131,14 @@ export default function Caja({
         try {
           const parsed = JSON.parse(stored);
           if (parsed?.global !== undefined && parsed?.global !== null) {
-            setGoldPriceGlobal(String(parsed.global));
+            const globalValue = Number(parsed.global) || 0;
+            setGoldPriceGlobal(globalValue);
+            goldPriceGlobalInput.setValue(globalValue || '');
           }
           if (parsed?.local !== undefined && parsed?.local !== null) {
-            setGoldPriceLocal(String(parsed.local));
+            const localValue = Number(parsed.local) || 0;
+            setGoldPriceLocal(localValue);
+            goldPriceLocalInput.setValue(localValue || '');
           }
           return;
         } catch (err) {
@@ -141,12 +148,23 @@ export default function Caja({
     }
 
     if (organization?.jewelry_gold_price_global !== undefined && organization?.jewelry_gold_price_global !== null) {
-      setGoldPriceGlobal(String(organization.jewelry_gold_price_global));
+      const globalValue = Number(organization.jewelry_gold_price_global) || 0;
+      setGoldPriceGlobal(globalValue);
+      goldPriceGlobalInput.setValue(globalValue || '');
     }
     if (organization?.jewelry_gold_price_local !== undefined && organization?.jewelry_gold_price_local !== null) {
-      setGoldPriceLocal(String(organization.jewelry_gold_price_local));
+      const localValue = Number(organization.jewelry_gold_price_local) || 0;
+      setGoldPriceLocal(localValue);
+      goldPriceLocalInput.setValue(localValue || '');
     }
-  }, [isJewelryBusiness, organization?.id, organization?.jewelry_gold_price_global, organization?.jewelry_gold_price_local]);
+  }, [
+    isJewelryBusiness,
+    organization?.id,
+    organization?.jewelry_gold_price_global,
+    organization?.jewelry_gold_price_local,
+    goldPriceGlobalInput,
+    goldPriceLocalInput
+  ]);
 
   useEffect(() => {
     if (!isJewelryBusiness || !organization?.id) return;
@@ -154,8 +172,8 @@ export default function Caja({
     localStorage.setItem(
       storageKey,
       JSON.stringify({
-        global: goldPriceGlobal === '' ? null : Number(goldPriceGlobal),
-        local: goldPriceLocal === '' ? null : Number(goldPriceLocal)
+        global: goldPriceGlobal > 0 ? goldPriceGlobal : null,
+        local: goldPriceLocal > 0 ? goldPriceLocal : null
       })
     );
   }, [isJewelryBusiness, organization?.id, goldPriceGlobal, goldPriceLocal]);
@@ -169,8 +187,10 @@ export default function Caja({
     const base = Number(goldPriceGlobal) || 0;
     if (!base) return;
     const computed = base * (1 - adjustPct / 100);
-    setGoldPriceLocal(String(Math.round(computed)));
-  }, [isJewelryBusiness, organization?.jewelry_national_adjust_pct, goldPriceGlobal]);
+    const rounded = Math.round(computed);
+    setGoldPriceLocal(rounded);
+    goldPriceLocalInput.setValue(rounded);
+  }, [isJewelryBusiness, organization?.jewelry_national_adjust_pct, goldPriceGlobal, goldPriceLocalInput]);
 
   // Precio del oro se mantiene manual por el momento (sin API).
   
@@ -188,7 +208,8 @@ export default function Caja({
   
   // Verificar si hay una apertura de caja activa (solo en modo venta)
   const { data: aperturaActiva, isLoading: cargandoApertura, refetch: refetchApertura } = useAperturaCajaActiva(
-    esModoPedido ? null : organization?.id // No verificar apertura en modo pedido
+    esModoPedido ? null : organization?.id, // No verificar apertura en modo pedido
+    esModoPedido ? null : user?.id
   );
   
   // En modo pedido, forzar aperturaActiva a null para evitar problemas
@@ -197,7 +218,11 @@ export default function Caja({
   // Mostrar modal de apertura automáticamente solo una vez al cargar si no hay apertura activa (solo en modo venta)
   const [modalMostradoInicialmente, setModalMostradoInicialmente] = useState(false);
   const [modalCerradoManualmente, setModalCerradoManualmente] = useState(false);
+  const getFechaClave = () => new Date().toISOString().slice(0, 10);
+  const aperturaPromptStorageKey = 'caja_apertura_prompt_day';
   
+  const puedeAbrirCaja = hasPermission('caja.open') || hasPermission('cierre.create') || ['owner', 'admin'].includes(userProfile?.role);
+
   useEffect(() => {
     // En modo pedido, no verificar apertura de caja
     if (esModoPedido) return;
@@ -230,11 +255,24 @@ export default function Caja({
     // 4. No se ha mostrado inicialmente
     // 5. El modal no está ya abierto manualmente
     // 6. El usuario no lo cerró manualmente
-    if (!cargandoApertura && !aperturaActivaFinal && organization?.id && !modalMostradoInicialmente && !mostrarModalApertura && !modalCerradoManualmente) {
+    if (!cargandoApertura && !aperturaActivaFinal && organization?.id && !modalMostradoInicialmente && !mostrarModalApertura && !modalCerradoManualmente && puedeAbrirCaja) {
       setMostrarModalApertura(true);
       setModalMostradoInicialmente(true);
     }
-  }, [cargandoApertura, aperturaActivaFinal, organization?.id, modalMostradoInicialmente, mostrarModalApertura, modalCerradoManualmente, esModoPedido]);
+  }, [cargandoApertura, aperturaActivaFinal, organization?.id, modalMostradoInicialmente, mostrarModalApertura, modalCerradoManualmente, esModoPedido, puedeAbrirCaja]);
+
+  useEffect(() => {
+    if (esModoPedido) return;
+
+    const hoy = getFechaClave();
+    const ultimaFecha = localStorage.getItem(aperturaPromptStorageKey);
+
+    if (ultimaFecha !== hoy) {
+      setModalMostradoInicialmente(false);
+      setModalCerradoManualmente(false);
+      localStorage.setItem(aperturaPromptStorageKey, hoy);
+    }
+  }, [esModoPedido]);
   
   // Cerrar automáticamente el carrito móvil cuando esté vacío
   useEffect(() => {
@@ -2150,6 +2188,9 @@ export default function Caja({
     try {
       // Generar código de venta
       const numeroVenta = await generarCodigoVenta(organization.id, metodoPagoFinal, false);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/67cbae63-1d62-454e-a79c-6473cc85ec06',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H11',location:'Caja.js:2172',message:'venta:codigo_generado',data:{hasNumero:!!numeroVenta,metodo:metodoPagoFinal},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion agent log
       
       // Guardar la venta en la base de datos
       const ventaData = {
@@ -2180,6 +2221,9 @@ export default function Caja({
         .single();
 
       if (ventaError) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/67cbae63-1d62-454e-a79c-6473cc85ec06',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H11',location:'Caja.js:2202',message:'venta:insert_error',data:{status:ventaError?.status||null,code:ventaError?.code||null,details:ventaError?.details||null,message:ventaError?.message||null},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion agent log
         toast.error(`Error al guardar la venta: ${ventaError.message}`);
         setProcesandoVenta(false);
         return;
@@ -3199,10 +3243,16 @@ export default function Caja({
           <div className="caja-bloqueo-mensaje">
             <Lock size={48} />
             <h3>Caja Cerrada</h3>
-            <p>Debes abrir la caja antes de realizar ventas</p>
+            <p>
+              {puedeAbrirCaja
+                ? 'Debes abrir la caja antes de realizar ventas'
+                : 'No tienes permisos para abrir caja. Contacta al administrador.'}
+            </p>
             <button
               className="caja-btn-abrir-caja"
+              disabled={!puedeAbrirCaja}
               onClick={async () => {
+                if (!puedeAbrirCaja) return;
                 // Refetch para verificar el estado actual antes de abrir el modal
                 const { data: aperturaActualizada } = await refetchApertura();
                 
@@ -3456,23 +3506,29 @@ export default function Caja({
               <div className="caja-metal-price-field">
                 <label>Oro internacional ({organization?.jewelry_weight_unit || 'g'})</label>
                 <input
-                  type="number"
-                  inputMode="decimal"
+                  type="text"
+                  inputMode="numeric"
                   className="caja-metal-input"
-                  placeholder="Ej: 240000"
-                  value={goldPriceGlobal}
-                  onChange={(e) => setGoldPriceGlobal(e.target.value)}
+                  placeholder="Ej: 240.000"
+                  value={goldPriceGlobalInput.displayValue}
+                  onChange={(e) => {
+                    goldPriceGlobalInput.handleChange(e);
+                    setGoldPriceGlobal(goldPriceGlobalInput.getNumericValue());
+                  }}
                 />
               </div>
               <div className="caja-metal-price-field">
                 <label>Oro nacional ({organization?.jewelry_weight_unit || 'g'})</label>
                 <input
-                  type="number"
-                  inputMode="decimal"
+                  type="text"
+                  inputMode="numeric"
                   className="caja-metal-input"
-                  placeholder="Ej: 255000"
-                  value={goldPriceLocal}
-                  onChange={(e) => setGoldPriceLocal(e.target.value)}
+                  placeholder="Ej: 255.000"
+                  value={goldPriceLocalInput.displayValue}
+                  onChange={(e) => {
+                    goldPriceLocalInput.handleChange(e);
+                    setGoldPriceLocal(goldPriceLocalInput.getNumericValue());
+                  }}
                 />
               </div>
             </div>

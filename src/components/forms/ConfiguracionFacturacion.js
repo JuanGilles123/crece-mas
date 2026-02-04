@@ -4,7 +4,7 @@ import { supabase } from '../../services/api/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import { useSubscription } from '../../hooks/useSubscription';
 import UpgradePrompt from '../UpgradePrompt';
-import { Save, Building2, MapPin, Phone, Hash, Mail, AlertCircle, FileText, CreditCard, ShieldAlert, Store, Check, Settings, Plus } from 'lucide-react';
+import { Save, Building2, MapPin, Phone, Hash, Mail, AlertCircle, FileText, CreditCard, ShieldAlert, Store, Check, Settings, Plus, ArrowLeft } from 'lucide-react';
 import { BUSINESS_TYPES } from '../../constants/businessTypes';
 import { BUSINESS_FEATURES, getCompatibleFeatures, getDefaultFeatures, checkFeatureDependencies } from '../../constants/businessFeatures';
 import { hasBypassAccess } from '../../constants/vipUsers';
@@ -129,11 +129,11 @@ export default function ConfiguracionFacturacion() {
     if (feature.requiresPremium) {
       // Para mesas y pedidos, verificar features específicas
       if (featureId === 'mesas' && !hasFeature('mesas')) {
-        toast.error(`Esta función requiere una suscripción premium`);
+        toast.error(`Esta función requiere el plan Estándar o superior`);
         return;
       }
       if (featureId === 'pedidos' && !hasFeature('pedidos')) {
-        toast.error(`Esta función requiere una suscripción premium`);
+        toast.error(`Esta función requiere el plan Estándar o superior`);
         return;
       }
       // Para otras funciones premium, verificar según el plan (si aplica)
@@ -255,6 +255,14 @@ export default function ConfiguracionFacturacion() {
   return (
     <div className="config-facturacion">
       <div className="config-header">
+        <button
+          type="button"
+          className="config-back-btn"
+          onClick={() => navigate('/dashboard/perfil', { state: { activeTab: 'configuracion' } })}
+        >
+          <ArrowLeft size={18} />
+          Volver
+        </button>
         <div className="header-content">
           <div className="header-icon">
             <Building2 size={40} />
@@ -515,7 +523,7 @@ export default function ConfiguracionFacturacion() {
                           <h4>{feature.label}</h4>
                           <p>{feature.description}</p>
                           {feature.requiresPremium && !hasFeature(feature.id) && (
-                            <span className="feature-premium-badge">Requiere Premium</span>
+                            <span className="feature-premium-badge">Requiere Estándar+</span>
                           )}
                           {!dependencyCheck.valid && (
                             <span className="feature-dependency-warning">{dependencyCheck.message}</span>
@@ -526,7 +534,7 @@ export default function ConfiguracionFacturacion() {
                   })}
                 </div>
                 <small className="field-hint">
-                  Las funciones marcadas con "Requiere Premium" necesitan una suscripción profesional o superior
+                  Las funciones marcadas con "Requiere Estándar+" necesitan una suscripción Estándar o superior
                 </small>
               </div>
             )}
