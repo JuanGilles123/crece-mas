@@ -226,23 +226,38 @@
   margin-bottom: 1rem;
 }
 
+.inputRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.inputIconLeft {
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
 .inputWrapper {
   position: relative;
   display: flex;
   align-items: center;
+  flex: 1;
 }
 
 .inputIcon {
   position: absolute;
   left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
   color: #9ca3af;
   z-index: 2;
   transition: color 0.3s ease;
+  pointer-events: none;
 }
 
 .input {
   width: 100%;
-  padding: var(--pwa-space-5) var(--pwa-space-5) var(--pwa-space-5) 3.5rem;
+  padding: var(--pwa-space-5);
   border: 2px solid #e5e7eb;
   border-radius: var(--pwa-radius-xl);
   font-size: var(--pwa-font-size-xl);
@@ -251,6 +266,10 @@
   transition: var(--pwa-transition-normal);
   box-sizing: border-box;
   min-height: var(--pwa-input-height-xl);
+}
+
+.inputWithIcon {
+  padding-right: 3rem;
 }
 
 .input:focus {
@@ -271,7 +290,7 @@
 
 .select {
   width: 100%;
-  padding: var(--pwa-space-5) var(--pwa-space-5) var(--pwa-space-5) 3.5rem;
+  padding: var(--pwa-space-5);
   border: 2px solid #e5e7eb;
   border-radius: var(--pwa-radius-xl);
   font-size: var(--pwa-font-size-xl);
@@ -304,6 +323,8 @@
 .eyeButton {
   position: absolute;
   right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
   background: none;
   border: none;
   cursor: pointer;
@@ -322,8 +343,6 @@
   position: relative;
   width: 100%;
   z-index: 10;
-  margin-left: -2.75rem;
-  padding-left: 2.75rem;
 }
 
 .phoneInputContainer .react-tel-input {
@@ -353,8 +372,11 @@
   background: transparent !important;
   border: none !important;
   height: 44px !important;
-  padding: 0 8px !important;
+  padding: 0 !important;
   width: 60px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 .phoneInputContainer .react-tel-input .flag-dropdown .selected-flag:hover {
@@ -362,7 +384,7 @@
 }
 
 .phoneInputContainer .react-tel-input .flag-dropdown .selected-flag .flag {
-  margin-right: 4px !important;
+  margin-right: 0 !important;
 }
 
 .phoneInputContainer .react-tel-input .flag-dropdown .selected-flag .arrow {
@@ -447,9 +469,10 @@
 /* Checkbox */
 .checkboxGroup {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.75rem;
   margin-bottom: 1.5rem;
+  flex-wrap: nowrap;
 }
 
 .checkbox {
@@ -457,7 +480,7 @@
   height: 1.25rem;
   accent-color: #3b82f6;
   cursor: pointer;
-  margin-top: 0.125rem;
+  margin-top: 0;
 }
 
 .checkboxLabel {
@@ -465,6 +488,8 @@
   color: #6b7280;
   line-height: 1.5;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
 }
 
 .termsLink {
@@ -698,6 +723,19 @@
   
   .eyeButton {
     right: 0.75rem;
+  }
+
+  .checkbox {
+    width: 4px;
+    height: 4px;
+    transform: scale(0.5);
+    transform-origin: center;
+    margin: 0;
+  }
+
+  .checkboxLabel {
+    line-height: 1.1;
+    margin: 0;
   }
   
   .benefits {

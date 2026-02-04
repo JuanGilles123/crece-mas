@@ -113,6 +113,9 @@
   font-size: 0.95rem;
   color: var(--text-secondary);
   margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .role-info {

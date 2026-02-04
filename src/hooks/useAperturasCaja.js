@@ -3,17 +3,18 @@ import { supabase } from '../services/api/supabaseClient';
 import toast from 'react-hot-toast';
 
 // Hook para obtener la apertura de caja activa
-export const useAperturaCajaActiva = (organizationId) => {
+export const useAperturaCajaActiva = (organizationId, userId) => {
   return useQuery({
-    queryKey: ['apertura_caja_activa', organizationId],
+    queryKey: ['apertura_caja_activa', organizationId, userId],
     queryFn: async () => {
-      if (!organizationId) return null;
+      if (!organizationId || !userId) return null;
       
       // Buscar la última apertura que no tenga un cierre asociado
       const { data, error } = await supabase
         .from('aperturas_caja')
         .select('*')
         .eq('organization_id', organizationId)
+        .eq('user_id', userId)
         .is('cierre_id', null) // Apertura sin cierre = caja abierta
         .order('created_at', { ascending: false })
         .limit(1)
@@ -24,7 +25,7 @@ export const useAperturaCajaActiva = (organizationId) => {
       }
       return data || null;
     },
-    enabled: !!organizationId,
+    enabled: !!organizationId && !!userId,
     staleTime: 30 * 1000, // 30 segundos
     cacheTime: 2 * 60 * 1000, // 2 minutos
     refetchInterval: 30 * 1000, // Refrescar cada 30 segundos
@@ -46,6 +47,7 @@ export const useCrearAperturaCaja = () => {
         .from('aperturas_caja')
         .select('id')
         .eq('organization_id', organizationId)
+        .eq('user_id', userId)
         .is('cierre_id', null)
         .maybeSingle();
 
@@ -76,7 +78,7 @@ export const useCrearAperturaCaja = () => {
       return data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries(['apertura_caja_activa', data.organization_id]);
+      queryClient.invalidateQueries(['apertura_caja_activa', data.organization_id, data.user_id]);
       toast.success('Caja abierta exitosamente');
     },
     onError: (error) => {

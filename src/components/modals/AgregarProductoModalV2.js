@@ -274,6 +274,12 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
     }
   }, [isJewelryBusiness, jewelryPriceMode, jewelryStaticMode]);
 
+  useEffect(() => {
+    if (!isJewelryBusiness || jewelryPriceMode !== 'fixed') return;
+    const nextMode = precioVentaModo === 'porcentaje' ? 'percent' : 'fixed';
+    setValue('jewelry_static_mode', nextMode, { shouldValidate: false, shouldDirty: true });
+  }, [isJewelryBusiness, jewelryPriceMode, precioVentaModo, setValue]);
+
   const getGoldPriceValue = useCallback((materialType) => {
     if (materialType === 'local') {
       return Number(organization?.jewelry_gold_price_local) || 0;
@@ -934,7 +940,6 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
                     onClick={() => handleTypeSelect(type.id)}
                   >
                     <div className="type-selector-icon">
-                      <span className="type-emoji">{type.icon}</span>
                       <Icon size={24} className="type-icon" />
                     </div>
                     <h3>{type.label}</h3>
@@ -1069,7 +1074,7 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
                 {errors.peso && <span className="error-message">{errors.peso.message}</span>}
                 <label>Pureza</label>
                 <select {...register('pureza')} className="input-form">
-                  <option value="">Selecciona pureza</option>
+                  <option value="">No aplica</option>
                   <option value="24k">24k</option>
                   <option value="22k">22k</option>
                   <option value="18k">18k</option>
@@ -1181,10 +1186,35 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
                 {jewelryPriceMode === 'fixed' && (
                   <div style={{ display: 'grid', gap: '0.5rem' }}>
                     <label>Cómo definir el precio estático</label>
-                    <select {...register('jewelry_static_mode')} className="input-form">
-                      <option value="fixed">Valor específico</option>
-                      <option value="percent">Porcentaje sobre compra</option>
-                    </select>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button
+                        type="button"
+                        className={`inventario-btn ${precioVentaModo === 'manual' ? 'inventario-btn-primary' : 'inventario-btn-outline'}`}
+                        onClick={() => setPrecioVentaModo('manual')}
+                      >
+                        Valor específico
+                      </button>
+                      <button
+                        type="button"
+                        className={`inventario-btn ${precioVentaModo === 'porcentaje' ? 'inventario-btn-primary' : 'inventario-btn-outline'}`}
+                        onClick={() => setPrecioVentaModo('porcentaje')}
+                      >
+                        % sobre compra
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {jewelryPriceMode === 'fixed' && precioVentaModo === 'porcentaje' && (
+                  <div style={{ display: 'grid', gap: '0.5rem' }}>
+                    <label>Porcentaje sobre compra (%)</label>
+                    <input
+                      value={margenPorcentaje}
+                      onChange={handleMargenPorcentajeChange}
+                      inputMode="decimal"
+                      placeholder="Ej: 30"
+                      className="input-form"
+                    />
                   </div>
                 )}
 

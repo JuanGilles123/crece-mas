@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Key, 
@@ -9,80 +9,65 @@ import {
 import toast from 'react-hot-toast';
 import './EditarCodigoEmpleadoModal.css';
 
-const EditarCodigoEmpleadoModal = ({ open, onClose, onGuardar, codigoActual, nombreEmpleado, cargando = false }) => {
-  const [nuevoCodigo, setNuevoCodigo] = useState(codigoActual || '');
-  const [tipoCodigo, setTipoCodigo] = useState(codigoActual?.includes('|') ? 'telefono' : 'corto');
-  const [telefono, setTelefono] = useState(codigoActual?.includes('|') ? codigoActual.split('|')[0] : '');
-  const [pin, setPin] = useState(codigoActual?.includes('|') ? codigoActual.split('|')[1] : '');
+const EditarCodigoEmpleadoModal = ({ open, onClose, onGuardar, usuarioActual, nombreEmpleado, cargando = false }) => {
+  const [usuario, setUsuario] = useState(usuarioActual || '');
+  const [password, setPassword] = useState('');
 
-  // Generar código corto único (5 dígitos numéricos)
-  const generarCodigoCorto = () => {
+  const normalizarUsuario = (value) => {
+    const raw = String(value || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]/g, '');
+    return raw.slice(0, 12);
+  };
+
+  const generarPassword = (length = 6) => {
     let codigo = '';
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < length; i++) {
       codigo += Math.floor(Math.random() * 10).toString();
     }
     return codigo;
   };
 
-  // Generar PIN de 4 dígitos
-  const generarPIN = () => {
-    return Math.floor(1000 + Math.random() * 9000).toString();
-  };
-
-  const handleGenerarCodigo = () => {
-    if (tipoCodigo === 'telefono' && telefono) {
-      const pinGenerado = generarPIN();
-      setPin(pinGenerado);
-      const telefonoLimpio = telefono.replace(/\D/g, '');
-      setNuevoCodigo(`${telefonoLimpio}|${pinGenerado}`);
-    } else {
-      setNuevoCodigo(generarCodigoCorto());
+  useEffect(() => {
+    if (open) {
+      setUsuario(usuarioActual || '');
+      setPassword('');
     }
-  };
-
-  const handleTipoCodigoChange = (tipo) => {
-    setTipoCodigo(tipo);
-    if (tipo === 'telefono' && telefono) {
-      const pinGenerado = generarPIN();
-      setPin(pinGenerado);
-      const telefonoLimpio = telefono.replace(/\D/g, '');
-      setNuevoCodigo(`${telefonoLimpio}|${pinGenerado}`);
-    } else {
-      setNuevoCodigo(generarCodigoCorto());
-    }
-  };
-
-  const handleTelefonoChange = (value) => {
-    setTelefono(value);
-    if (tipoCodigo === 'telefono' && value) {
-      const pinGenerado = pin || generarPIN();
-      setPin(pinGenerado);
-      const telefonoLimpio = value.replace(/\D/g, '');
-      setNuevoCodigo(`${telefonoLimpio}|${pinGenerado}`);
-    }
-  };
+  }, [open, usuarioActual]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!nuevoCodigo.trim()) {
-      toast.error('Por favor ingresa o genera un código');
+
+    const usuarioSafe = normalizarUsuario(usuario);
+
+    if (!usuarioSafe) {
+      toast.error('Por favor ingresa un usuario válido');
       return;
     }
 
-    if (tipoCodigo === 'telefono' && !telefono) {
-      toast.error('Debes ingresar un teléfono para usar este método');
+    if (usuarioSafe.length < 4 || usuarioSafe.length > 12) {
+      toast.error('El usuario debe tener entre 4 y 12 caracteres.');
       return;
     }
 
-    await onGuardar(nuevoCodigo);
+    if (!password.trim()) {
+      toast.error('Por favor ingresa una contraseña');
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9]{4,12}$/.test(password.trim())) {
+      toast.error('La contraseña debe tener entre 4 y 12 caracteres (letras y números).');
+      return;
+    }
+
+    await onGuardar({ username: usuarioSafe, password: password.trim() });
   };
 
   const handleCerrar = () => {
-    setNuevoCodigo(codigoActual || '');
-    setTipoCodigo(codigoActual?.includes('|') ? 'telefono' : 'corto');
-    setTelefono(codigoActual?.includes('|') ? codigoActual.split('|')[0] : '');
-    setPin(codigoActual?.includes('|') ? codigoActual.split('|')[1] : '');
+    setUsuario(usuarioActual || '');
+    setPassword('');
     onClose();
   };
 
@@ -100,7 +85,7 @@ const EditarCodigoEmpleadoModal = ({ open, onClose, onGuardar, codigoActual, nom
         <div className="modal-header">
           <h3>
             <Key size={24} /> 
-            Editar Código de Empleado
+            Editar credenciales
           </h3>
           <button className="modal-close" onClick={handleCerrar}>
             <XCircle size={24} />
@@ -117,80 +102,50 @@ const EditarCodigoEmpleadoModal = ({ open, onClose, onGuardar, codigoActual, nom
           <div className="form-group">
             <label className="form-label">
               <Key size={16} />
-              Tipo de Código
-            </label>
-            <div className="form-radio-group">
-              <label className="form-radio">
-                <input
-                  type="radio"
-                  name="tipoCodigo"
-                  value="corto"
-                  checked={tipoCodigo === 'corto'}
-                  onChange={(e) => handleTipoCodigoChange(e.target.value)}
-                />
-                <span>Código Corto (5 dígitos)</span>
-                <small>Fácil de recordar, ejemplo: 12345</small>
-              </label>
-              <label className="form-radio">
-                <input
-                  type="radio"
-                  name="tipoCodigo"
-                  value="telefono"
-                  checked={tipoCodigo === 'telefono'}
-                  onChange={(e) => handleTipoCodigoChange(e.target.value)}
-                />
-                <span>Teléfono + PIN (4 dígitos)</span>
-                <small>Usa el teléfono + PIN único</small>
-              </label>
-            </div>
-          </div>
-
-          {tipoCodigo === 'telefono' && (
-            <div className="form-group">
-              <label className="form-label">
-                Teléfono
-              </label>
-              <input
-                type="tel"
-                className="form-input"
-                value={telefono}
-                onChange={(e) => handleTelefonoChange(e.target.value)}
-                placeholder="+57 300 123 4567"
-                required={tipoCodigo === 'telefono'}
-              />
-            </div>
-          )}
-
-          <div className="form-group">
-            <label className="form-label">
-              <Key size={16} />
-              Nuevo Código
+              Usuario
             </label>
             <div className="codigo-input-group">
               <input
                 type="text"
                 className="form-input"
-                value={nuevoCodigo}
-                onChange={(e) => setNuevoCodigo(e.target.value)}
-                placeholder={tipoCodigo === 'corto' ? '12345' : '3001234567|1234'}
+                value={usuario}
+                onChange={(e) => setUsuario(normalizarUsuario(e.target.value))}
+                placeholder="Ej: juanperez"
                 required
-                readOnly={tipoCodigo === 'corto'}
+              />
+            </div>
+            <small className="form-hint">
+              Solo letras y números (4 a 12 caracteres).
+            </small>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">
+              <Key size={16} />
+              Contraseña
+            </label>
+            <div className="codigo-input-group">
+              <input
+                type="text"
+                className="form-input"
+                value={password}
+                onChange={(e) => setPassword(e.target.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 12))}
+                placeholder="Ej: 1234 o juan23"
+                required
               />
               <button
                 type="button"
                 className="btn-generar-codigo"
-                onClick={handleGenerarCodigo}
-                title="Generar nuevo código"
+                onClick={() => setPassword(generarPassword(6))}
+                title="Generar contraseña"
               >
                 <RefreshCw size={18} />
                 Generar
               </button>
             </div>
-            {tipoCodigo === 'telefono' && pin && (
-              <small className="form-hint">
-                PIN generado: <strong>{pin}</strong>
-              </small>
-            )}
+            <small className="form-hint">
+              Contraseña de 4 a 12 caracteres (letras y números).
+            </small>
           </div>
 
           <div className="modal-actions">
@@ -208,7 +163,7 @@ const EditarCodigoEmpleadoModal = ({ open, onClose, onGuardar, codigoActual, nom
               disabled={cargando}
             >
               <Save size={16} />
-              {cargando ? 'Guardando...' : 'Guardar Código'}
+              {cargando ? 'Guardando...' : 'Guardar credenciales'}
             </button>
           </div>
         </form>

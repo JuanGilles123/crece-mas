@@ -18,11 +18,13 @@ import {
   Briefcase,
   Target,
   Key,
-  Award
+  Award,
+  ArrowLeft
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import UpgradePrompt from '../components/UpgradePrompt';
+import { useNavigate } from 'react-router-dom';
 import {
   useTeamMembers,
   useInvitations,
@@ -36,7 +38,7 @@ import {
   useDeleteCustomRole,
   useAssignCustomRole,
   useCreateEmployee,
-  useUpdateEmployeeCode,
+  useUpdateEmployeeCredentials,
 } from '../hooks/useTeam';
 import CrearRolModal from '../components/CrearRolModal';
 import AgregarEmpleadoModal from '../components/AgregarEmpleadoModal';
@@ -278,13 +280,19 @@ const MemberCard = ({ member, onUpdateRole, onRemove, isOwner, customRoles = [],
         )}
         {member.is_employee && (
           <div className="member-code">
+            <User size={12} />
+            Usuario: {member.employee_username || 'Sin usuario'}
+          </div>
+        )}
+        {member.is_employee && (
+          <div className="member-code">
             <Key size={12} />
-            Código: {member.employee_code || member.codigo || 'Sin código'}
+            Usuario: {member.employee_code || member.codigo || 'Sin usuario'}
             {isOwner && (
               <button
                 className="btn-edit-code"
                 onClick={() => setEditandoCodigo(true)}
-                title="Editar código"
+                title="Editar credenciales"
               >
                 <Edit3 size={12} />
               </button>
@@ -385,11 +393,11 @@ const MemberCard = ({ member, onUpdateRole, onRemove, isOwner, customRoles = [],
         <EditarCodigoEmpleadoModal
           open={editandoCodigo}
           onClose={() => setEditandoCodigo(false)}
-          onGuardar={async (nuevoCodigo) => {
-            await onUpdateCode(member.id, nuevoCodigo);
+          onGuardar={async ({ username, password }) => {
+            await onUpdateCode(member.id, username, password);
             setEditandoCodigo(false);
           }}
-          codigoActual={member.employee_code || member.codigo}
+          usuarioActual={member.employee_code || member.codigo}
           nombreEmpleado={member.employee_name || member.nombre || 'Empleado'}
         />
       )}
@@ -456,9 +464,10 @@ const InvitationCard = ({ invitation, onCancel }) => {
 
 const GestionEquipo = () => {
   const { organization, hasRole } = useAuth();
+  const navigate = useNavigate();
   
   // Hook de suscripción para verificar acceso
-  const { hasFeature, planSlug, loading: subscriptionLoading, isVIP } = useSubscription();
+  const { hasFeature, planSlug, loading: subscriptionLoading, isVIP, getLimit } = useSubscription();
   
   const [invitarModalOpen, setInvitarModalOpen] = useState(false);
   const [agregarEmpleadoModalOpen, setAgregarEmpleadoModalOpen] = useState(false);
@@ -483,9 +492,10 @@ const GestionEquipo = () => {
   const deleteCustomRole = useDeleteCustomRole();
   const assignCustomRole = useAssignCustomRole();
   const createEmployee = useCreateEmployee();
-  const updateEmployeeCode = useUpdateEmployeeCode();
+  const updateEmployeeCredentials = useUpdateEmployeeCredentials();
 
   const isOwner = hasRole('owner', 'admin');
+
   
   // Si no tiene acceso, mostrar prompt de upgrade
   if (!subscriptionLoading && !tieneAccesoEquipo) {
@@ -516,15 +526,18 @@ const GestionEquipo = () => {
     }
   };
 
-  const handleAgregarEmpleado = async ({ nombre, email, telefono, usuario, password, role, customRoleId }) => {
+  const handleAgregarEmpleado = async ({ nombre, telefono, role, customRoleId, username, pin, accessCode }) => {
     try {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/67cbae63-1d62-454e-a79c-6473cc85ec06',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H8',location:'GestionEquipo.js:565',message:'employee:create_handler',data:{hasUsername:!!username,hasPin:!!pin,hasAccessCode:!!accessCode},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion agent log
       const result = await createEmployee.mutateAsync({
         organizationId: organization.id,
         nombre,
-        email,
         telefono,
-        usuario,
-        password,
+        accessCode,
+        username,
+        pin,
         role,
         customRoleId
       });
@@ -606,10 +619,11 @@ const GestionEquipo = () => {
     });
   };
 
-  const handleActualizarCodigo = async (memberId, nuevoCodigo) => {
-    await updateEmployeeCode.mutateAsync({
+  const handleActualizarCodigo = async (memberId, username, password) => {
+    await updateEmployeeCredentials.mutateAsync({
       memberId,
-      newCode: nuevoCodigo,
+      username,
+      password,
       organizationId: organization.id
     });
   };
@@ -627,12 +641,24 @@ const GestionEquipo = () => {
   }
 
   const activeMembers = teamMembers.filter(m => m.status === 'active');
-  const limitReached = activeMembers.length >= organization.max_team_members;
+  const activeMembersForLimit = activeMembers.filter(m => m.role !== 'owner');
+  const maxTeamMembers = isVIP ? null : getLimit('maxUsers');
+  const limitReached = maxTeamMembers !== null && maxTeamMembers !== undefined
+    ? activeMembersForLimit.length >= maxTeamMembers
+    : false;
 
   return (
     <div className="gestion-equipo-container">
       <div className="gestion-equipo-header">
         <div className="header-content">
+          <button
+            type="button"
+            className="config-back-btn"
+            onClick={() => navigate('/dashboard/perfil', { state: { activeTab: 'configuracion' } })}
+          >
+            <ArrowLeft size={18} />
+            Volver
+          </button>
           <h1>
             <Users size={32} />
             Gestión de Equipo
@@ -664,7 +690,7 @@ const GestionEquipo = () => {
 
       {limitReached && isOwner && !isVIP && (
         <div className="alert alert-warning">
-          <span>⚠️ Has alcanzado el límite de {organization.max_team_members} miembros en tu plan.</span>
+          <span>⚠️ Has alcanzado el límite de {maxTeamMembers} miembros adicionales en tu plan.</span>
           <button className="btn btn-link">Actualizar plan</button>
         </div>
       )}
@@ -681,7 +707,9 @@ const GestionEquipo = () => {
         </div>
         <div className="stat-card">
           <div className="stat-value">
-            {isVIP ? '∞' : organization.max_team_members - activeMembers.length}
+            {maxTeamMembers === null || maxTeamMembers === undefined
+              ? '∞'
+              : Math.max(maxTeamMembers - activeMembersForLimit.length, 0)}
           </div>
           <div className="stat-label">Espacios Disponibles</div>
         </div>

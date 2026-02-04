@@ -41,6 +41,7 @@ export const MODULES = {
     icon: 'DollarSign',
     IconComponent: DollarSign,
     permissions: {
+      OPEN: { id: 'caja.open', label: 'Abrir caja', description: 'Realizar apertura de caja' },
       VIEW: { id: 'cierre.view', label: 'Ver cierres', description: 'Ver historial de cierres de caja' },
       CREATE: { id: 'cierre.create', label: 'Crear cierre', description: 'Realizar cierre de caja' },
       EDIT: { id: 'cierre.edit', label: 'Editar cierre', description: 'Modificar cierres existentes' },
@@ -132,7 +133,7 @@ export const PREDEFINED_ROLES = {
       // Inventario
       'inventario.view', 'inventario.create', 'inventario.edit', 'inventario.delete', 'inventario.import', 'inventario.review_differences',
       // Cierre
-      'cierre.view', 'cierre.create', 'cierre.edit', 'cierre.delete', 'cierre.view_expected',
+      'caja.open', 'cierre.view', 'cierre.create', 'cierre.edit', 'cierre.delete', 'cierre.view_expected',
       // Estadísticas
       'stats.view', 'stats.export',
       // Equipo
@@ -156,7 +157,7 @@ export const PREDEFINED_ROLES = {
       // Inventario
       'inventario.view', 'inventario.create', 'inventario.edit', 'inventario.delete', 'inventario.import',
       // Cierre
-      'cierre.view', 'cierre.create',
+      'caja.open', 'cierre.view', 'cierre.create',
       // Estadísticas
       'stats.view',
     ],
@@ -176,7 +177,7 @@ export const PREDEFINED_ROLES = {
       // Inventario (solo ver)
       'inventario.view',
       // Cierre
-      'cierre.view', 'cierre.create',
+      'caja.open', 'cierre.view', 'cierre.create',
     ],
     isCustom: false,
     canEdit: false,

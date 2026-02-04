@@ -98,15 +98,34 @@ const InventarioStats = ({ productos, totalProductosOverride }) => {
     }
   };
 
+  const getStoredJewelryPrices = () => {
+    if (!organization?.id) return {};
+    const stored = localStorage.getItem(`jewelry_prices:${organization.id}`);
+    if (!stored) return {};
+    try {
+      return JSON.parse(stored) || {};
+    } catch {
+      return {};
+    }
+  };
+
+  const getGoldPriceGlobal = () => {
+    const stored = getStoredJewelryPrices();
+    const fromStorage = parseNumber(stored?.global);
+    if (fromStorage > 0) return fromStorage;
+    return parseNumber(organization?.jewelry_gold_price_global);
+  };
+
   const getGoldPriceLocal = () => {
-    const goldLocal = parseNumber(organization?.jewelry_gold_price_local);
-    if (goldLocal > 0) return goldLocal;
-    const goldGlobal = parseNumber(organization?.jewelry_gold_price_global);
+    const stored = getStoredJewelryPrices();
+    const fromStorage = parseNumber(stored?.local);
+    if (fromStorage > 0) return fromStorage;
+    const goldGlobal = getGoldPriceGlobal();
     const adjustPct = parseNumber(organization?.jewelry_national_adjust_pct);
     if (goldGlobal > 0 && adjustPct > 0) {
       return goldGlobal * (1 - adjustPct / 100);
     }
-    return goldGlobal;
+    return parseNumber(organization?.jewelry_gold_price_local);
   };
 
   const getCurrentVentaPrice = (producto) => {
@@ -126,7 +145,7 @@ const InventarioStats = ({ productos, totalProductosOverride }) => {
     const materialType = metadata?.jewelry_material_type || 'na';
     const goldPrice = materialType === 'local'
       ? getGoldPriceLocal()
-      : parseNumber(organization?.jewelry_gold_price_global) || getGoldPriceLocal();
+      : getGoldPriceGlobal() || getGoldPriceLocal();
     const aplicaPureza = materialType === 'international';
     const minMargin = materialType === 'local'
       ? parseNumber(organization?.jewelry_min_margin_local)
@@ -147,7 +166,10 @@ const InventarioStats = ({ productos, totalProductosOverride }) => {
   }, 0);
   
   // Utilidad potencial en stock (valor venta - costo)
-  const utilidadEnStock = valorVentaEnStock - costoEnStock;
+  const utilidadEnStockRaw = valorVentaEnStock - costoEnStock;
+  const utilidadEnStock = organization?.business_type === 'jewelry_metals'
+    ? Math.max(0, utilidadEnStockRaw)
+    : utilidadEnStockRaw;
   
   // Margen de utilidad porcentual
   const margenUtilidad = valorVentaEnStock > 0 

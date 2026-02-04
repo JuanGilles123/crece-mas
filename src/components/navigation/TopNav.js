@@ -124,7 +124,12 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
     };
 
     // Actualizar posición al hacer scroll
-    const handleScroll = () => {
+    const handleScroll = (event) => {
+      if (notificationsOpen && notificationsDropdownRef.current && event?.target) {
+        if (notificationsDropdownRef.current.contains(event.target)) {
+          return;
+        }
+      }
       if (openDropdown) {
         const element = dropdownButtonRefs.current[openDropdown] || dropdownRefs.current[openDropdown];
         if (element) {

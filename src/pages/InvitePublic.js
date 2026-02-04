@@ -13,6 +13,7 @@ import {
   UserPlus
 } from 'lucide-react';
 import { supabase } from '../services/api/supabaseClient';
+import { getBusinessTypeConfig } from '../constants/businessTypes';
 import { useAuth } from '../context/AuthContext';
 import './InvitePublic.css';
 
@@ -182,6 +183,7 @@ const InvitePublic = () => {
   }
 
   const roleInfo = ROLES[invitation.role] || ROLES.viewer;
+  const businessTypeConfig = getBusinessTypeConfig(invitation.organizations?.business_type);
   const isExpired = new Date(invitation.expires_at) < new Date();
 
   return (
@@ -209,11 +211,8 @@ const InvitePublic = () => {
           <div className="organization-details">
             <h2>{invitation.organizations?.name || 'Organización'}</h2>
             <p className="business-type">
-              {invitation.organizations?.business_type === 'food' && '🍔 Comida rápida'}
-              {invitation.organizations?.business_type === 'clothing' && '👔 Ropa'}
-              {invitation.organizations?.business_type === 'retail' && '🏪 Retail'}
-                {invitation.organizations?.business_type === 'jewelry_metals' && '💎 Joyería y Metales'}
-              {invitation.organizations?.business_type === 'other' && '📦 Otro'}
+              {businessTypeConfig?.Icon && <businessTypeConfig.Icon size={16} />}
+              {businessTypeConfig?.label || 'Otro'}
             </p>
           </div>
         </div>

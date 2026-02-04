@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { User, Settings, Building2, LogOut, Edit3, Save, X, Lock, Sliders, Bell, CreditCard, BarChart3, Crown, Sparkles, Shield, Key, Printer } from 'lucide-react';
+import { Eye, EyeOff, Mail, ShieldCheck } from 'lucide-react';
 import { useSubscription } from '../../hooks/useSubscription';
+import toast from 'react-hot-toast';
 import ThemeToggle from '../../components/ui/ThemeToggle';
 import { supabase } from '../../services/api/supabaseClient';
-import { useUpdateEmployeeCode } from '../../hooks/useTeam';
+import { useUpdateEmployeeCredentials } from '../../hooks/useTeam';
 import EditarCodigoEmpleadoModal from '../../components/EditarCodigoEmpleadoModal';
 import PreferenciasAplicacion from '../../components/PreferenciasAplicacion';
 import ConfiguracionImpresora from '../../components/ConfiguracionImpresora';
@@ -15,9 +17,135 @@ import './Perfil.css';
 const Perfil = () => {
   const { user, organization, hasRole } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { isVIP, planName, hasFeature } = useSubscription();
   const [activeTab, setActiveTab] = useState('datos');
   const [activeConfigSection, setActiveConfigSection] = useState(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [updatingPassword, setUpdatingPassword] = useState(false);
+  const [sendingReset, setSendingReset] = useState(false);
+  const [signingOutOthers, setSigningOutOthers] = useState(false);
+  const [mostrarStockBajo, setMostrarStockBajo] = useState(true);
+  const [umbralStockBajo, setUmbralStockBajo] = useState('10');
+  const [savingNotifications, setSavingNotifications] = useState(false);
+
+  useEffect(() => {
+    const targetTab = location.state?.activeTab;
+    if (targetTab) {
+      setActiveTab(targetTab);
+      setActiveConfigSection(null);
+    }
+  }, [location.state?.activeTab]);
+
+  useEffect(() => {
+    const metadata = user?.user_metadata || {};
+    const mostrar = metadata.mostrarStockBajo !== false;
+    const umbral = Number(metadata.umbralStockBajo);
+    setMostrarStockBajo(mostrar);
+    setUmbralStockBajo(Number.isFinite(umbral) && umbral > 0 ? String(umbral) : '10');
+  }, [user]);
+
+  const validatePassword = (password) => {
+    if (!password || password.length < 8) {
+      return 'La contraseña debe tener al menos 8 caracteres.';
+    }
+    if (!/[A-Z]/.test(password)) {
+      return 'La contraseña debe tener al menos una letra mayúscula.';
+    }
+    if (!/[a-z]/.test(password)) {
+      return 'La contraseña debe tener al menos una letra minúscula.';
+    }
+    if (!/\d/.test(password)) {
+      return 'La contraseña debe tener al menos un número.';
+    }
+    return '';
+  };
+
+  const handleUpdatePassword = async (e) => {
+    e.preventDefault();
+    const error = validatePassword(newPassword);
+    if (error) {
+      toast.error(error);
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error('Las contraseñas no coinciden.');
+      return;
+    }
+    setUpdatingPassword(true);
+    try {
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+      if (updateError) throw updateError;
+      toast.success('Contraseña actualizada correctamente.');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err) {
+      console.error('Error actualizando contraseña:', err);
+      toast.error('No se pudo actualizar la contraseña.');
+    } finally {
+      setUpdatingPassword(false);
+    }
+  };
+
+  const handleSendResetEmail = async () => {
+    if (!user?.email) {
+      toast.error('No se encontró el correo del usuario.');
+      return;
+    }
+    setSendingReset(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(user.email);
+      if (error) throw error;
+      toast.success('Te enviamos un correo para restablecer la contraseña.');
+    } catch (err) {
+      console.error('Error enviando correo:', err);
+      toast.error('No se pudo enviar el correo de recuperación.');
+    } finally {
+      setSendingReset(false);
+    }
+  };
+
+  const handleSignOutOthers = async () => {
+    setSigningOutOthers(true);
+    try {
+      const { error } = await supabase.auth.signOut({ scope: 'others' });
+      if (error) throw error;
+      toast.success('Sesiones en otros dispositivos cerradas.');
+    } catch (err) {
+      console.error('Error cerrando otras sesiones:', err);
+      toast.error('No se pudieron cerrar otras sesiones.');
+    } finally {
+      setSigningOutOthers(false);
+    }
+  };
+
+  const handleSaveNotifications = async (e) => {
+    e.preventDefault();
+    const umbral = Number(umbralStockBajo);
+    if (!Number.isFinite(umbral) || umbral <= 0) {
+      toast.error('Ingresa un umbral válido mayor a 0.');
+      return;
+    }
+    setSavingNotifications(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          mostrarStockBajo,
+          umbralStockBajo: umbral
+        }
+      });
+      if (error) throw error;
+      toast.success('Preferencias de notificaciones actualizadas.');
+    } catch (err) {
+      console.error('Error guardando notificaciones:', err);
+      toast.error('No se pudieron guardar las notificaciones.');
+    } finally {
+      setSavingNotifications(false);
+    }
+  };
   const [loading, setLoading] = useState(false);
   const [editandoNombre, setEditandoNombre] = useState(false);
   const [nombreCompleto, setNombreCompleto] = useState(user?.user_metadata?.full_name || '');
@@ -27,7 +155,7 @@ const Perfil = () => {
   const [guardandoNombreNegocio, setGuardandoNombreNegocio] = useState(false);
   const [employeeData, setEmployeeData] = useState(null);
   const [editandoCodigo, setEditandoCodigo] = useState(false);
-  const updateEmployeeCode = useUpdateEmployeeCode();
+  const updateEmployeeCredentials = useUpdateEmployeeCredentials();
 
   const isSuperAdmin = user?.email === 'juanjosegilarbelaez@gmail.com';
 
@@ -452,11 +580,11 @@ const Perfil = () => {
                   <div className="perfil-dato-item">
                     <label className="perfil-dato-label">
                       <Key size={16} style={{ marginRight: '0.5rem' }} />
-                      Código de Empleado
+                      Usuario de Empleado
                     </label>
                     <div className="perfil-dato-display">
                       <p className="perfil-dato-value" style={{ fontFamily: 'Courier New, monospace' }}>
-                        {employeeData.employee_code || 'Sin código'}
+                        {employeeData.employee_code || 'Sin usuario'}
                       </p>
                       <button
                         className="perfil-edit-btn perfil-edit-start"
@@ -654,7 +782,7 @@ const Perfil = () => {
                   exit={{ opacity: 0, y: -20 }}
                 >
                   <button 
-                    className="perfil-back-btn"
+                    className="config-back-btn"
                     onClick={() => setActiveConfigSection(null)}
                   >
                     ← Volver a Configuración
@@ -670,15 +798,57 @@ const Perfil = () => {
                   exit={{ opacity: 0, y: -20 }}
                 >
                   <button 
-                    className="perfil-back-btn"
+                    className="config-back-btn"
                     onClick={() => setActiveConfigSection(null)}
                   >
                     ← Volver a Configuración
                   </button>
-                  <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                    <p>Sección en desarrollo</p>
+                  <div className="notifications-section">
+                    <div className="notifications-card">
+                      <div className="notifications-card-header">
+                        <div className="notifications-card-icon">
+                          <Bell size={20} />
+                        </div>
+                        <div>
+                          <h3>Alertas de inventario</h3>
+                          <p>Configura cuándo deseas recibir alertas de stock.</p>
+                        </div>
+                      </div>
+
+                      <form className="notifications-form" onSubmit={handleSaveNotifications}>
+                        <label className="notifications-toggle">
+                          <input
+                            type="checkbox"
+                            checked={mostrarStockBajo}
+                            onChange={(e) => setMostrarStockBajo(e.target.checked)}
+                          />
+                          <span>Mostrar alertas de stock bajo y sin stock</span>
+                        </label>
+
+                        <div className="notifications-field">
+                          <label>Umbral de stock bajo</label>
+                          <input
+                            type="number"
+                            min="1"
+                            className="perfil-edit-input"
+                            value={umbralStockBajo}
+                            onChange={(e) => setUmbralStockBajo(e.target.value)}
+                          />
+                          <small>Se considera stock bajo cuando el inventario es menor o igual a este valor.</small>
+                        </div>
+
+                        <div className="notifications-actions">
+                          <button
+                            type="submit"
+                            className="security-btn security-btn-primary"
+                            disabled={savingNotifications}
+                          >
+                            {savingNotifications ? 'Guardando...' : 'Guardar cambios'}
+                          </button>
+                        </div>
+                      </form>
+                    </div>
                   </div>
-                  {/* <ConfiguracionNotificaciones /> */}
                 </motion.div>
               )}
 
@@ -689,7 +859,7 @@ const Perfil = () => {
                   exit={{ opacity: 0, y: -20 }}
                 >
                   <button 
-                    className="perfil-back-btn"
+                    className="config-back-btn"
                     onClick={() => setActiveConfigSection(null)}
                   >
                     ← Volver a Configuración
@@ -705,15 +875,130 @@ const Perfil = () => {
                   exit={{ opacity: 0, y: -20 }}
                 >
                   <button 
-                    className="perfil-back-btn"
+                    className="config-back-btn"
                     onClick={() => setActiveConfigSection(null)}
                   >
                     ← Volver a Configuración
                   </button>
-                  <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                    <p>Sección en desarrollo</p>
+                  <div className="security-section">
+                    <div className="security-card">
+                      <div className="security-card-header">
+                        <div className="security-card-icon">
+                          <Lock size={20} />
+                        </div>
+                        <div>
+                          <h3>Cambiar contraseña</h3>
+                          <p>Protege tu cuenta con una contraseña segura.</p>
+                        </div>
+                      </div>
+
+                      <form className="security-form" onSubmit={handleUpdatePassword}>
+                        <div className="security-field">
+                          <label>Nueva contraseña</label>
+                          <div className="security-input-row">
+                            <input
+                              type={showNewPassword ? 'text' : 'password'}
+                              className="perfil-edit-input"
+                              value={newPassword}
+                              onChange={(e) => setNewPassword(e.target.value)}
+                              placeholder="Mínimo 8 caracteres"
+                              autoComplete="new-password"
+                            />
+                            <button
+                              type="button"
+                              className="security-toggle"
+                              onClick={() => setShowNewPassword((prev) => !prev)}
+                            >
+                              {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="security-field">
+                          <label>Confirmar contraseña</label>
+                          <div className="security-input-row">
+                            <input
+                              type={showConfirmPassword ? 'text' : 'password'}
+                              className="perfil-edit-input"
+                              value={confirmPassword}
+                              onChange={(e) => setConfirmPassword(e.target.value)}
+                              placeholder="Repite la contraseña"
+                              autoComplete="new-password"
+                            />
+                            <button
+                              type="button"
+                              className="security-toggle"
+                              onClick={() => setShowConfirmPassword((prev) => !prev)}
+                            >
+                              {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="security-hint">
+                          Debe incluir mayúsculas, minúsculas y números.
+                        </div>
+
+                        <div className="security-actions">
+                          <button
+                            type="submit"
+                            className="security-btn security-btn-primary"
+                            disabled={updatingPassword}
+                          >
+                            {updatingPassword ? 'Actualizando...' : 'Actualizar contraseña'}
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+
+                    <div className="security-card">
+                      <div className="security-card-header">
+                        <div className="security-card-icon">
+                          <Mail size={20} />
+                        </div>
+                        <div>
+                          <h3>Recuperación de cuenta</h3>
+                          <p>Envía un enlace de restablecimiento al correo.</p>
+                        </div>
+                      </div>
+                      <div className="security-meta">
+                        <span className="security-meta-label">Correo</span>
+                        <span className="security-meta-value">{user?.email || 'No disponible'}</span>
+                      </div>
+                      <div className="security-actions">
+                        <button
+                          type="button"
+                          className="security-btn security-btn-secondary"
+                          onClick={handleSendResetEmail}
+                          disabled={sendingReset}
+                        >
+                          {sendingReset ? 'Enviando...' : 'Enviar enlace de recuperación'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="security-card">
+                      <div className="security-card-header">
+                        <div className="security-card-icon">
+                          <ShieldCheck size={20} />
+                        </div>
+                        <div>
+                          <h3>Sesiones activas</h3>
+                          <p>Cierra sesiones abiertas en otros dispositivos.</p>
+                        </div>
+                      </div>
+                      <div className="security-actions">
+                        <button
+                          type="button"
+                          className="security-btn security-btn-ghost"
+                          onClick={handleSignOutOthers}
+                          disabled={signingOutOthers}
+                        >
+                          {signingOutOthers ? 'Cerrando...' : 'Cerrar otras sesiones'}
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  {/* <CambiarContrasena /> */}
                 </motion.div>
               )}
               
@@ -728,18 +1013,19 @@ const Perfil = () => {
         <EditarCodigoEmpleadoModal
           open={editandoCodigo}
           onClose={() => setEditandoCodigo(false)}
-          onGuardar={async (nuevoCodigo) => {
-            await updateEmployeeCode.mutateAsync({
+          onGuardar={async ({ username, password }) => {
+            await updateEmployeeCredentials.mutateAsync({
               memberId: employeeData.id,
-              newCode: nuevoCodigo,
+              username,
+              password,
               organizationId: organization?.id
             });
-            setEmployeeData({ ...employeeData, employee_code: nuevoCodigo });
+            setEmployeeData({ ...employeeData, employee_code: username });
             setEditandoCodigo(false);
           }}
-          codigoActual={employeeData.employee_code}
+          usuarioActual={employeeData.employee_code}
           nombreEmpleado={employeeData.employee_name || user?.user_metadata?.full_name}
-          cargando={updateEmployeeCode.isLoading}
+          cargando={updateEmployeeCredentials.isLoading}
         />
       )}
     </motion.div>

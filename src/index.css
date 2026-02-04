@@ -30,6 +30,30 @@ body {
   scroll-behavior: smooth;
 }
 
+/* Botón de regreso estándar en configuración */
+.config-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.config-back-btn:hover {
+  background: var(--bg-secondary);
+}
+
+.config-back-btn:active {
+  transform: scale(0.98);
+}
+
 /* Mejoras responsivas globales */
 html {
   font-size: 16px;

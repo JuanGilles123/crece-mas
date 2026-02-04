@@ -166,12 +166,18 @@ export const useSubscription = () => {
     try {
       // Determinar la tabla correcta
       let tableName;
-      if (entityType === 'products') {
+      const resolvedEntityType = entityType || (
+        limitName === 'maxProducts' ? 'products' :
+        limitName === 'maxSalesPerMonth' ? 'sales' :
+        limitName === 'maxUsers' ? 'team_members' :
+        undefined
+      );
+      if (resolvedEntityType === 'products') {
         tableName = 'productos';  // ✅ Usar nombre en español
-      } else if (entityType === 'sales') {
+      } else if (resolvedEntityType === 'sales') {
         tableName = 'ventas';     // ✅ Usar nombre en español
       } else {
-        tableName = entityType;
+        tableName = resolvedEntityType;
       }
 
       // Construir la consulta

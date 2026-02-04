@@ -1,5 +1,8 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { supabase } from '../services/api/supabaseClient';
+import { getEmployeeSession } from '../utils/employeeSession';
+import { getEmployeePermissions } from '../utils/employeePermissions';
 
 const AuthContext = createContext();
 
@@ -9,6 +12,8 @@ export function AuthProvider({ children }) {
   const [userProfile, setUserProfile] = useState(null);
   const [organization, setOrganization] = useState(null);
   const [permissions, setPermissions] = useState(null);
+  const [isEmployeeMode, setIsEmployeeMode] = useState(false);
+  const location = useLocation();
 
   // Cargar perfil del usuario y su organización (memoizado con useCallback)
   const loadUserProfile = useCallback(async (userId) => {
@@ -142,6 +147,56 @@ export function AuthProvider({ children }) {
   }, []); // Dependencias vacías porque setUserProfile, setOrganization, setPermissions son estables
 
   useEffect(() => {
+    const isEmployeePath = location.pathname.startsWith('/empleado') ||
+      location.pathname.startsWith('/login-empleado');
+    const employeeSession = isEmployeePath ? getEmployeeSession() : null;
+    setIsEmployeeMode(!!employeeSession && isEmployeePath);
+
+      if (isEmployeePath) {
+      if (!employeeSession) {
+        setUser(null);
+        setUserProfile(null);
+        setOrganization(null);
+        setPermissions(null);
+        setLoading(false);
+        return;
+      }
+
+      const loadEmployeeOrganization = async () => {
+        try {
+          const { data: org, error: orgError } = await supabase
+            .from('organizations')
+            .select('*')
+            .eq('id', employeeSession.employee?.organization_id)
+            .single();
+
+          if (!orgError && org) {
+            setOrganization(org);
+          }
+        } catch (error) {
+          console.error('❌ Error loading employee organization:', error);
+        }
+
+        const role = employeeSession.employee?.role || 'cashier';
+        setUser({
+          id: employeeSession.employee?.id,
+          user_metadata: { role }
+        });
+        setUserProfile({
+          role,
+          organization_id: employeeSession.employee?.organization_id,
+          full_name: employeeSession.employee?.name || employeeSession.employee?.code || 'Empleado',
+          user_id: employeeSession.employee?.id
+        });
+        const permissionsMap = getEmployeePermissions(role, employeeSession.permissions || []);
+        setPermissions({ permissions: permissionsMap });
+        setLoading(false);
+      };
+
+      loadEmployeeOrganization();
+      return;
+    }
+
     // Cargar sesión inicial
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
@@ -248,10 +303,11 @@ export function AuthProvider({ children }) {
       listener.subscription.unsubscribe();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [location.pathname, loadUserProfile]);
 
   // Función para recargar perfil (útil después de cambios)
   const refreshProfile = () => {
+    if (isEmployeeMode) return;
     if (user) {
       loadUserProfile(user.id);
     }
@@ -281,7 +337,8 @@ export function AuthProvider({ children }) {
     refreshProfile,
     hasPermission,
     hasRole,
-    hasRoleOwner
+    hasRoleOwner,
+    isEmployeeMode
   };
 
   return (

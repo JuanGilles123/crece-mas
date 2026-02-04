@@ -6,6 +6,12 @@
 
 # Redirecciones para SPA (Single Page Application)
 [[redirects]]
+  from = "/auth/employee-login"
+  to = "https://ywilkhfkuwhsjvojocso.supabase.co/functions/v1/employee-login"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200

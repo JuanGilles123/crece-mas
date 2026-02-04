@@ -36,7 +36,7 @@ const Registro = () => {
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [phone, setPhone] = useState('');
-  const [currency, setCurrency] = useState('USD');
+  const [currency, setCurrency] = useState('COP');
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [error, setError] = useState('');
@@ -167,65 +167,74 @@ const Registro = () => {
 
             <form onSubmit={handleSubmit}>
               <div className={styles.inputGroup}>
-                <div className={styles.inputWrapper}>
-                  <Mail size={20} className={styles.inputIcon} />
-                  <input
+                <div className={styles.inputRow}>
+                  <Mail size={20} className={styles.inputIconLeft} />
+                  <div className={styles.inputWrapper}>
+                    <input
                     type="email"
                     placeholder="Correo electrónico"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     required
                     className={styles.input}
-                  />
-                </div>
-              </div>
-
-              <div className={styles.inputGroup}>
-                <div className={styles.inputWrapper}>
-                  <Lock size={20} className={styles.inputIcon} />
-                  <input
-                    type={showPass ? 'text' : 'password'}
-                    placeholder="Contraseña (mínimo 8 caracteres)"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    required
-                    className={styles.input}
-                  />
-                  <button 
-                    type="button" 
-                    className={styles.eyeButton}
-                    onClick={() => setShowPass(v => !v)}
-                  >
-                    {showPass ? <EyeOff size={20} /> : <Eye size={20} />}
-                  </button>
-                </div>
-              </div>
-
-              <div className={styles.inputGroup}>
-                <div className={styles.inputWrapper}>
-                  <Phone size={20} className={styles.inputIcon} />
-                  <div className={styles.phoneInputContainer}>
-                    <PhoneInput
-                      country={'co'}
-                      value={phone}
-                      onChange={setPhone}
-                      placeholder="Número de teléfono"
-                      enableSearch
-                      required
                     />
                   </div>
                 </div>
               </div>
 
               <div className={styles.inputGroup}>
-                <div className={`${styles.inputWrapper} ${styles.currencySelect}`}>
-                  <Globe size={20} className={styles.inputIcon} />
-                  <select 
-                    value={currency} 
-                    onChange={e => setCurrency(e.target.value)} 
-                    className={styles.select}
+                <div className={styles.inputRow}>
+                  <Lock size={20} className={styles.inputIconLeft} />
+                  <div className={styles.inputWrapper}>
+                    <input
+                    type={showPass ? 'text' : 'password'}
+                    placeholder="Contraseña (mín. 8 caracteres)"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
                     required
-                  >
+                    className={`${styles.input} ${styles.inputWithIcon}`}
+                    />
+                    {password?.length > 0 && (
+                      <button 
+                        type="button" 
+                        className={styles.eyeButton}
+                        onClick={() => setShowPass(v => !v)}
+                      >
+                        {showPass ? <EyeOff size={20} /> : <Eye size={20} />}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.inputGroup}>
+                <div className={styles.inputRow}>
+                  <Phone size={20} className={styles.inputIconLeft} />
+                  <div className={styles.inputWrapper}>
+                    <div className={styles.phoneInputContainer}>
+                      <PhoneInput
+                        country={'co'}
+                        value={phone}
+                        onChange={setPhone}
+                        placeholder="Número de teléfono"
+                        enableSearch
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.inputGroup}>
+                <div className={styles.inputRow}>
+                  <Globe size={20} className={styles.inputIconLeft} />
+                  <div className={`${styles.inputWrapper} ${styles.currencySelect}`}>
+                    <select 
+                      value={currency} 
+                      onChange={e => setCurrency(e.target.value)} 
+                      className={styles.select}
+                      required
+                    >
                     <option value="">Selecciona tu moneda</option>
                     <option value="USD">USD - Dólar Estadounidense</option>
                     <option value="EUR">EUR - Euro</option>
@@ -291,8 +300,9 @@ const Registro = () => {
                     <option value="RWF">RWF - Franco Ruandés</option>
                     <option value="XOF">XOF - Franco CFA BCEAO</option>
                     <option value="XAF">XAF - Franco CFA BEAC</option>
-                    <option value="XPF">XPF - Franco CFP</option>
-                  </select>
+                      <option value="XPF">XPF - Franco CFP</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
