@@ -89,11 +89,9 @@ serve(async (req) => {
 
     const usernameTrim = String(username || '').toLowerCase().trim()
     const usernameSafe = usernameTrim.replace(/[^a-z0-9]/g, '')
-    const accessCodeTrim = String(accessCode || '').toLowerCase().trim()
-    const accessCodeSafe = accessCodeTrim
-      ? accessCodeTrim.replace(/[^a-z0-9]/g, '')
-      : usernameSafe
-    const pinTrim = String(pin || '').trim()
+    const accessCodeTrim = String(accessCode || '').trim()
+    const accessCodeSafe = accessCodeTrim.replace(/[^0-9]/g, '')
+    const pinTrim = String(pin || '').trim() || accessCodeSafe
 
     if (usernameSafe.length < 4 || usernameSafe.length > 12) {
       return new Response(
@@ -104,14 +102,21 @@ serve(async (req) => {
 
     if (accessCodeSafe.length < 4 || accessCodeSafe.length > 12) {
       return new Response(
-        JSON.stringify({ error: 'El código debe tener entre 4 y 12 caracteres.' }),
+        JSON.stringify({ error: 'El código debe tener entre 4 y 12 dígitos.' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       )
     }
 
-    if (!/^[a-zA-Z0-9]{4,12}$/.test(pinTrim)) {
+    if (accessCodeSafe === usernameSafe) {
       return new Response(
-        JSON.stringify({ error: 'La contraseña debe tener entre 4 y 12 caracteres (letras y números).' }),
+        JSON.stringify({ error: 'El código debe ser diferente al usuario.' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      )
+    }
+
+    if (!/^[0-9]{4,12}$/.test(pinTrim)) {
+      return new Response(
+        JSON.stringify({ error: 'El código debe ser numérico (4 a 12 dígitos).' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       )
     }

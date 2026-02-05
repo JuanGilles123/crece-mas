@@ -4,6 +4,7 @@ import { supabase } from '../services/api/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { useCurrencyInput } from '../hooks/useCurrencyInput';
 import { Calculator, TrendingUp, DollarSign, ShoppingCart, AlertCircle, CheckCircle, XCircle, Save, Banknote, CreditCard, Smartphone, Share2, Download, Receipt } from 'lucide-react';
+import { getEmployeeSession } from '../utils/employeeSession';
 import './CierreCaja.css';
 
 const CierreCaja = () => {
@@ -43,17 +44,27 @@ const CierreCaja = () => {
     mixto: 0
   });
 
+  const getActorIds = useCallback(() => {
+    const employeeSession = getEmployeeSession();
+    if (employeeSession?.employee?.id) {
+      return { actorUserId: null, actorEmployeeId: employeeSession.employee.id };
+    }
+    return { actorUserId: user?.id || null, actorEmployeeId: null };
+  }, [user?.id]);
+
   const cargarVentasHoy = useCallback(async () => {
     if (!userProfile?.organization_id || !user?.id) return;
 
     setCargando(true);
     try {
+      const { actorUserId, actorEmployeeId } = getActorIds();
+
       // Obtener la apertura activa para obtener el monto inicial
       const { data: aperturaActiva, error: errorApertura } = await supabase
         .from('aperturas_caja')
         .select('monto_inicial, created_at')
         .eq('organization_id', userProfile.organization_id)
-        .eq('user_id', user.id)
+        .eq(actorEmployeeId ? 'employee_id' : 'user_id', actorEmployeeId || actorUserId)
         .is('cierre_id', null)
         .eq('estado', 'abierta')
         .order('created_at', { ascending: false })
@@ -72,7 +83,7 @@ const CierreCaja = () => {
         .from('cierres_caja')
         .select('created_at')
         .eq('organization_id', userProfile.organization_id)
-        .eq('user_id', user.id)
+        .eq(actorEmployeeId ? 'employee_id' : 'user_id', actorEmployeeId || actorUserId)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -87,7 +98,7 @@ const CierreCaja = () => {
         .from('ventas')
         .select('*')
         .eq('organization_id', userProfile.organization_id)
-        .eq('user_id', user.id)
+        .eq(actorEmployeeId ? 'employee_id' : 'user_id', actorEmployeeId || actorUserId)
         // Excluir cotizaciones: no deben contar en el cierre de caja hasta que se conviertan en ventas
         .neq('metodo_pago', 'COTIZACION');
 
@@ -352,7 +363,7 @@ const CierreCaja = () => {
     } finally {
       setCargando(false);
     }
-  }, [userProfile?.organization_id, user?.id]);
+  }, [userProfile?.organization_id, user?.id, getActorIds]);
 
   useEffect(() => {
     cargarVentasHoy();
@@ -485,11 +496,13 @@ Generado por Crece+ 🚀
     setGuardando(true);
     try {
       // Primero, obtener la apertura activa para cerrarla
+      const { actorUserId, actorEmployeeId } = getActorIds();
+
       const { data: aperturaActiva, error: errorApertura } = await supabase
         .from('aperturas_caja')
         .select('id, monto_inicial')
         .eq('organization_id', userProfile.organization_id)
-        .eq('user_id', user?.id)
+        .eq(actorEmployeeId ? 'employee_id' : 'user_id', actorEmployeeId || actorUserId)
         .is('cierre_id', null)
         .eq('estado', 'abierta')
         .order('created_at', { ascending: false })
@@ -505,7 +518,8 @@ Generado por Crece+ 🚀
         .from('cierres_caja')
         .insert({
           organization_id: userProfile.organization_id,
-          user_id: user?.id,
+          user_id: actorUserId,
+          employee_id: actorEmployeeId,
           fecha: new Date().toISOString().split('T')[0],
           // Desglose del sistema
           sistema_efectivo: desgloseSistema.efectivo,

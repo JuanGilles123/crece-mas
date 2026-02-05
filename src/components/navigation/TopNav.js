@@ -161,7 +161,7 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
           } else {
             const dropdownWidth = 200;
             const screenWidth = window.innerWidth;
-            let left = rect.left;
+            let left = rect.right + 16;
             if (left + dropdownWidth > screenWidth - 12) {
               left = screenWidth - dropdownWidth - 12;
             }
@@ -253,10 +253,10 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
             right: 'auto'
           });
         } else {
-          // En desktop, posicionar justo debajo del botón
+          // En desktop, posicionar al lado derecho de la barra lateral
           const dropdownWidth = 200;
           const screenWidth = window.innerWidth;
-          let left = rect.left;
+          let left = rect.right + 16;
           if (left + dropdownWidth > screenWidth - 12) {
             left = screenWidth - dropdownWidth - 12;
           }

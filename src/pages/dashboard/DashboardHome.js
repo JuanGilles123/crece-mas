@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../services/api/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import { useSubscription } from '../../hooks/useSubscription';
+import { getDefaultFeatures } from '../../constants/businessFeatures';
 import { useVentas } from '../../hooks/useVentas';
 import { useClientes } from '../../hooks/useClientes';
 import { useEstadisticasEgresos, useOrdenesCompra } from '../../hooks/useEgresos';
@@ -28,8 +29,10 @@ import {
   Sparkles,
   ArrowRight,
   Check,
-  Tag
+  Tag,
+  Store
 } from 'lucide-react';
+import { BUSINESS_TYPES } from '../../constants/businessTypes';
 import './DashboardHome.css';
 
 const DashboardHome = () => {
@@ -56,6 +59,53 @@ const DashboardHome = () => {
     proximosVencer: 0,
     cargando: true
   });
+  const [mostrarTipoNegocio, setMostrarTipoNegocio] = useState(false);
+  const [tipoNegocioSeleccionado, setTipoNegocioSeleccionado] = useState('');
+  const [guardandoTipo, setGuardandoTipo] = useState(false);
+  useEffect(() => {
+    if (!organization?.id) return;
+    const storageKey = `business_type_setup_done:${organization.id}`;
+    if (!organization.business_type) {
+      const done = localStorage.getItem(storageKey);
+      if (!done) {
+        setTipoNegocioSeleccionado('');
+        setMostrarTipoNegocio(true);
+      }
+      return;
+    }
+    localStorage.setItem(storageKey, 'true');
+  }, [organization?.id, organization?.business_type]);
+
+  const guardarTipoNegocio = async () => {
+    if (!organization?.id || !tipoNegocioSeleccionado) {
+      return;
+    }
+    setGuardandoTipo(true);
+    try {
+      const defaultFeatures = getDefaultFeatures(tipoNegocioSeleccionado);
+      const { error } = await supabase
+        .from('organizations')
+        .update({
+          business_type: tipoNegocioSeleccionado,
+          enabled_features: defaultFeatures,
+          mesas_habilitadas: defaultFeatures.includes('mesas'),
+          pedidos_habilitados: defaultFeatures.includes('pedidos')
+        })
+        .eq('id', organization.id);
+
+      if (error) {
+        throw error;
+      }
+
+      localStorage.setItem(`business_type_setup_done:${organization.id}`, 'true');
+      setMostrarTipoNegocio(false);
+      window.location.reload();
+    } catch (error) {
+      console.error('Error guardando tipo de negocio:', error);
+    } finally {
+      setGuardandoTipo(false);
+    }
+  };
 
   // Calcular métricas de ventas
   const metricasVentas = useMemo(() => {
@@ -287,6 +337,56 @@ const DashboardHome = () => {
       initial="hidden"
       animate="visible"
     >
+      {mostrarTipoNegocio && (
+        <div className="modal-overlay">
+          <motion.div
+            className="modal-container business-type-setup-modal"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="modal-header">
+              <h3>
+                <Store size={22} /> Selecciona tu tipo de negocio
+              </h3>
+            </div>
+            <div className="modal-form">
+              <p className="form-hint">
+                Esto define funciones sugeridas para tu negocio. Puedes cambiarlo luego en Configuración.
+              </p>
+              <div className="business-type-grid">
+                {Object.values(BUSINESS_TYPES).map((type) => (
+                  <button
+                    key={type.id}
+                    type="button"
+                    className={`business-type-option ${tipoNegocioSeleccionado === type.id ? 'selected' : ''}`}
+                    onClick={() => setTipoNegocioSeleccionado(type.id)}
+                  >
+                    <span className="business-type-icon">{type.icon}</span>
+                    <div className="business-type-info">
+                      <strong>{type.label}</strong>
+                      <span>{type.description}</span>
+                    </div>
+                    {tipoNegocioSeleccionado === type.id && (
+                      <Check size={18} className="selected-check" />
+                    )}
+                  </button>
+                ))}
+              </div>
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={guardarTipoNegocio}
+                  disabled={!tipoNegocioSeleccionado || guardandoTipo}
+                >
+                  {guardandoTipo ? 'Guardando...' : 'Guardar'}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
       {/* Barra lateral de accesos rápidos */}
       <motion.div className="accesos-rapidos-sidebar" variants={cardVariants}>
         <h2><Zap size={18} /> Accesos</h2>

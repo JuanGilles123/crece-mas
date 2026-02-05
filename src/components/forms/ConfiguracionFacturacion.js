@@ -38,6 +38,7 @@ export default function ConfiguracionFacturacion() {
   });
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
+  const [guardandoTipo, setGuardandoTipo] = useState(false);
 
   // Verificar si tiene acceso a configuración de facturas
   const tieneAccesoConfiguracion = hasFeature('invoiceCustomization');
@@ -215,6 +216,47 @@ export default function ConfiguracionFacturacion() {
     }
   };
 
+  const guardarTipoNegocio = async () => {
+    if (!organization || !canEditBilling) {
+      toast.error('No tienes permisos para actualizar el tipo de negocio');
+      return;
+    }
+    if (!datosEmpresa.business_type) {
+      toast.error('Selecciona un tipo de negocio');
+      return;
+    }
+
+    setGuardandoTipo(true);
+    try {
+      const defaultFeatures = getDefaultFeatures(datosEmpresa.business_type);
+      const enabledFeatures = (datosEmpresa.enabled_features && datosEmpresa.enabled_features.length > 0)
+        ? datosEmpresa.enabled_features
+        : defaultFeatures;
+
+      const { error } = await supabase
+        .from('organizations')
+        .update({
+          business_type: datosEmpresa.business_type,
+          enabled_features: enabledFeatures,
+          mesas_habilitadas: enabledFeatures.includes('mesas'),
+          pedidos_habilitados: enabledFeatures.includes('pedidos')
+        })
+        .eq('id', organization.id);
+
+      if (error) {
+        throw error;
+      }
+
+      toast.success('Tipo de negocio actualizado');
+      window.location.reload();
+    } catch (error) {
+      console.error('Error guardando tipo de negocio:', error);
+      toast.error('No se pudo guardar el tipo de negocio');
+    } finally {
+      setGuardandoTipo(false);
+    }
+  };
+
   if (cargando) {
     return (
       <div className="config-facturacion">
@@ -237,10 +279,78 @@ export default function ConfiguracionFacturacion() {
     );
   }
 
-  // Si no tiene acceso, mostrar prompt de upgrade
+  // Si no tiene acceso, permitir configurar tipo de negocio en plan gratis
   if (!subscriptionLoading && !tieneAccesoConfiguracion) {
     return (
       <div className="config-facturacion">
+        <div className="config-header">
+          <button
+            type="button"
+            className="config-back-btn"
+            onClick={() => navigate('/dashboard/perfil', { state: { activeTab: 'configuracion' } })}
+          >
+            <ArrowLeft size={18} />
+            Volver
+          </button>
+          <div className="header-content">
+            <div className="header-icon">
+              <Store size={40} />
+            </div>
+            <div className="header-text">
+              <h1>Tipo de negocio</h1>
+              <p className="subtitle">{organization?.name || 'Tu negocio'}</p>
+            </div>
+          </div>
+          {canEditBilling && (
+            <button
+              className="btn-guardar-principal"
+              onClick={guardarTipoNegocio}
+              disabled={guardandoTipo}
+            >
+              <Save size={20} />
+              {guardandoTipo ? 'Guardando...' : 'Guardar'}
+            </button>
+          )}
+        </div>
+
+        {!canEditBilling && (
+          <div className="alert-warning">
+            <div className="alert-icon">
+              <ShieldAlert size={24} />
+            </div>
+            <div className="alert-content">
+              <h3>Permisos Restringidos</h3>
+              <p>Solo el propietario del negocio o usuarios con permisos específicos pueden modificar esta configuración.</p>
+            </div>
+          </div>
+        )}
+
+        <div className="business-type-selector">
+          <label className="section-label">Selecciona el tipo de negocio</label>
+          <div className="business-type-grid">
+            {Object.values(BUSINESS_TYPES).map((type) => (
+              <button
+                type="button"
+                key={type.id}
+                className={`business-type-option ${datosEmpresa.business_type === type.id ? 'selected' : ''}`}
+                onClick={() => canEditBilling && handleInputChange({ target: { name: 'business_type', value: type.id } })}
+              >
+                <span className="business-type-icon">{type.icon}</span>
+                <div className="business-type-info">
+                  <strong>{type.label}</strong>
+                  <span>{type.description}</span>
+                </div>
+                {datosEmpresa.business_type === type.id && (
+                  <Check size={18} className="selected-check" />
+                )}
+              </button>
+            ))}
+          </div>
+          <p className="form-hint">
+            El tipo de negocio define funcionalidades sugeridas (mesas, pedidos, toppings). Puedes cambiarlo luego.
+          </p>
+        </div>
+
         <UpgradePrompt
           feature="Configuración de Facturación"
           reason="La personalización de facturas está disponible en el plan Estándar. Actualiza para configurar tu información tributaria, logotipo y mensajes personalizados."

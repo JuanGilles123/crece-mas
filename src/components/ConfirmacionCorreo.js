@@ -24,13 +24,23 @@ const ConfirmacionCorreo = ({ email = 'usuario@ejemplo.com' }) => {
   const handleResendEmail = async () => {
     setIsResending(true);
     try {
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email: email,
+      const { data, error } = await supabase.functions.invoke('send-verify-email', {
+        body: {
+          email,
+          redirectTo: window.location.origin,
+        },
       });
 
-      if (error) {
-        toast.error('Error al reenviar el correo: ' + error.message);
+      if (error || data?.skipped || data?.success === false) {
+        const fallback = await supabase.auth.resend({
+          type: 'signup',
+          email: email,
+        });
+        if (fallback.error) {
+          toast.error('Error al reenviar el correo: ' + fallback.error.message);
+        } else {
+          toast.success('¡Correo reenviado! Revisa tu bandeja de entrada.');
+        }
       } else {
         toast.success('¡Correo reenviado! Revisa tu bandeja de entrada.');
       }

@@ -30,6 +30,31 @@ body {
   scroll-behavior: smooth;
 }
 
+/* Asegurar visibilidad del icono X en modales */
+.modal-close,
+.caja-modal-close,
+.apertura-caja-modal-close,
+.consultar-precio-modal-close,
+.pedido-modal-close,
+.topping-modal-close,
+.clientes-modal-close {
+  color: #111827 !important;
+  background: #f3f4f6 !important;
+  border: none;
+  z-index: 20;
+}
+
+.modal-close svg,
+.caja-modal-close svg,
+.apertura-caja-modal-close svg,
+.consultar-precio-modal-close svg,
+.pedido-modal-close svg,
+.topping-modal-close svg,
+.clientes-modal-close svg {
+  display: block;
+  stroke: #111827 !important;
+}
+
 /* Botón de regreso estándar en configuración */
 .config-back-btn {
   display: inline-flex;

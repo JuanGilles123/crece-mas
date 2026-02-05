@@ -4,7 +4,7 @@
  * organizados por módulos
  */
 
-import { ShoppingCart, Package, DollarSign, BarChart3, Users, Settings } from 'lucide-react';
+import { ShoppingCart, Package, DollarSign, BarChart3, Users, Settings, CreditCard } from 'lucide-react';
 
 export const MODULES = {
   VENTAS: {
@@ -32,6 +32,32 @@ export const MODULES = {
       DELETE: { id: 'inventario.delete', label: 'Eliminar productos', description: 'Eliminar productos del sistema' },
       IMPORT: { id: 'inventario.import', label: 'Importar CSV', description: 'Importar productos desde archivo' },
       REVIEW_DIFFERENCES: { id: 'inventario.review_differences', label: 'Ver diferencias de revisión', description: 'Ver diferencias detectadas en revisión de inventario' },
+    }
+  },
+
+  CLIENTES: {
+    id: 'clientes',
+    label: 'Clientes',
+    icon: 'Users',
+    IconComponent: Users,
+    permissions: {
+      VIEW: { id: 'clientes.view', label: 'Ver clientes', description: 'Ver listado de clientes' },
+      CREATE: { id: 'clientes.create', label: 'Crear clientes', description: 'Registrar nuevos clientes' },
+      EDIT: { id: 'clientes.edit', label: 'Editar clientes', description: 'Modificar clientes existentes' },
+      DELETE: { id: 'clientes.delete', label: 'Eliminar clientes', description: 'Eliminar clientes del sistema' },
+    }
+  },
+
+  CREDITOS: {
+    id: 'creditos',
+    label: 'Créditos',
+    icon: 'CreditCard',
+    IconComponent: CreditCard,
+    permissions: {
+      VIEW: { id: 'creditos.view', label: 'Ver créditos', description: 'Ver créditos de clientes' },
+      CREATE: { id: 'creditos.create', label: 'Crear créditos', description: 'Crear ventas a crédito' },
+      EDIT: { id: 'creditos.edit', label: 'Editar créditos', description: 'Actualizar créditos' },
+      DELETE: { id: 'creditos.delete', label: 'Eliminar créditos', description: 'Eliminar créditos' },
     }
   },
   
@@ -132,6 +158,9 @@ export const PREDEFINED_ROLES = {
       'ventas.view', 'ventas.create', 'ventas.delete', 'ventas.export',
       // Inventario
       'inventario.view', 'inventario.create', 'inventario.edit', 'inventario.delete', 'inventario.import', 'inventario.review_differences',
+      // Clientes y créditos
+      'clientes.view', 'clientes.create', 'clientes.edit', 'clientes.delete',
+      'creditos.view', 'creditos.create', 'creditos.edit', 'creditos.delete',
       // Cierre
       'caja.open', 'cierre.view', 'cierre.create', 'cierre.edit', 'cierre.delete', 'cierre.view_expected',
       // Estadísticas
@@ -156,6 +185,9 @@ export const PREDEFINED_ROLES = {
       'ventas.view', 'ventas.create', 'ventas.export',
       // Inventario
       'inventario.view', 'inventario.create', 'inventario.edit', 'inventario.delete', 'inventario.import',
+      // Clientes y créditos (solo lectura)
+      'clientes.view',
+      'creditos.view',
       // Cierre
       'caja.open', 'cierre.view', 'cierre.create',
       // Estadísticas
@@ -176,6 +208,9 @@ export const PREDEFINED_ROLES = {
       'ventas.view', 'ventas.create',
       // Inventario (solo ver)
       'inventario.view',
+      // Clientes y créditos
+      'clientes.view', 'clientes.create',
+      'creditos.view', 'creditos.create',
       // Cierre
       'caja.open', 'cierre.view', 'cierre.create',
     ],
@@ -195,6 +230,8 @@ export const PREDEFINED_ROLES = {
       'inventario.view',
       'cierre.view',
       'stats.view',
+      'clientes.view',
+      'creditos.view',
     ],
     isCustom: false,
     canEdit: false,

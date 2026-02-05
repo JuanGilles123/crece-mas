@@ -15,12 +15,26 @@ const Recuperar = () => {
     setError('');
     setSuccess('');
     setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin + '/restablecer-contraseña'
+    const redirectTo = window.location.origin + '/restablecer-contraseña';
+    const { data, error } = await supabase.functions.invoke('send-reset-password', {
+      body: {
+        email,
+        redirectTo,
+      },
     });
     setLoading(false);
-    if (error) {
-      setError(error.message);
+    if (error || data?.error || data?.success === false) {
+      const { error: fallbackError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo,
+      });
+      if (fallbackError) {
+        setError(
+          (fallbackError?.message || error?.message || data?.error) ||
+            'No se pudo enviar el enlace.'
+        );
+      } else {
+        setSuccess('Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.');
+      }
     } else {
       setSuccess('Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.');
     }

@@ -90,8 +90,45 @@ const Registro = () => {
         return;
       }
 
-      // Si el registro fue exitoso, mostrar confirmación inmediatamente
+      // Si el registro fue exitoso, enviar correo de bienvenida y mostrar confirmación
       if (data.user) {
+        try {
+          await supabase.functions.invoke('send-welcome', {
+            body: {
+              userId: data.user.id,
+              email: data.user.email,
+              name: data.user.user_metadata?.full_name || email.split('@')[0]
+            }
+          });
+        } catch (welcomeError) {
+          console.warn('No se pudo enviar correo de bienvenida:', welcomeError);
+        }
+
+        try {
+          const { data: verifyData, error: verifyError } = await supabase.functions.invoke(
+            'send-verify-email',
+            {
+              body: {
+                userId: data.user.id,
+                email: data.user.email,
+                redirectTo: window.location.origin,
+              },
+            }
+          );
+
+          if (verifyError || verifyData?.skipped || verifyData?.success === false) {
+            const { error: resendError } = await supabase.auth.resend({
+              type: 'signup',
+              email: data.user.email,
+            });
+            if (resendError) {
+              console.warn('No se pudo reenviar correo con Supabase:', resendError);
+            }
+          }
+        } catch (verifyError) {
+          console.warn('No se pudo enviar correo de verificación:', verifyError);
+        }
+
         setShowConfirmation(true);
       }
     } catch (error) {

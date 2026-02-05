@@ -15,7 +15,7 @@ import ConfiguracionImpresora from '../../components/ConfiguracionImpresora';
 import './Perfil.css';
 
 const Perfil = () => {
-  const { user, organization, hasRole } = useAuth();
+  const { user, organization, hasRole, userProfile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { isVIP, planName, hasFeature } = useSubscription();
@@ -158,6 +158,7 @@ const Perfil = () => {
   const updateEmployeeCredentials = useUpdateEmployeeCredentials();
 
   const isSuperAdmin = user?.email === 'juanjosegilarbelaez@gmail.com';
+  const hasDeveloperAccess = isVIP || isSuperAdmin || user?.user_metadata?.is_developer || userProfile?.role === 'developer';
 
   // Cargar datos del empleado si es empleado
   React.useEffect(() => {
@@ -584,7 +585,7 @@ const Perfil = () => {
                     </label>
                     <div className="perfil-dato-display">
                       <p className="perfil-dato-value" style={{ fontFamily: 'Courier New, monospace' }}>
-                        {employeeData.employee_code || 'Sin usuario'}
+                        {employeeData.employee_username || employeeData.employee_code || 'Sin usuario'}
                       </p>
                       <button
                         className="perfil-edit-btn perfil-edit-start"
@@ -661,7 +662,7 @@ const Perfil = () => {
                   )}
 
                   {/* Platform Analytics - Solo VIP o Super Admin */}
-                  {(isVIP || isSuperAdmin) && (
+                  {hasDeveloperAccess && (
                     <motion.div 
                       className="perfil-config-item clickable analytics-item"
                       onClick={() => navigate('/dashboard/analytics')}
@@ -684,7 +685,7 @@ const Perfil = () => {
                   )}
 
                   {/* Panel de Administración VIP */}
-                  {(isVIP || isSuperAdmin) && (
+                  {hasDeveloperAccess && (
                     <motion.div 
                       className="perfil-config-item clickable vip-admin-item"
                       onClick={() => navigate('/vip-admin')}
@@ -1013,17 +1014,23 @@ const Perfil = () => {
         <EditarCodigoEmpleadoModal
           open={editandoCodigo}
           onClose={() => setEditandoCodigo(false)}
-          onGuardar={async ({ username, password }) => {
+          onGuardar={async ({ username, accessCode, password }) => {
             await updateEmployeeCredentials.mutateAsync({
               memberId: employeeData.id,
               username,
+              accessCode,
               password,
               organizationId: organization?.id
             });
-            setEmployeeData({ ...employeeData, employee_code: username });
+            setEmployeeData({
+              ...employeeData,
+              employee_username: username,
+              employee_code: accessCode
+            });
             setEditandoCodigo(false);
           }}
-          usuarioActual={employeeData.employee_code}
+          usuarioActual={employeeData.employee_username || employeeData.employee_code}
+          codigoActual={employeeData.employee_code}
           nombreEmpleado={employeeData.employee_name || user?.user_metadata?.full_name}
           cargando={updateEmployeeCredentials.isLoading}
         />

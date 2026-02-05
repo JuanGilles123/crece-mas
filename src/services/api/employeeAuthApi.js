@@ -9,14 +9,15 @@ const getEmployeeAuthUrl = () => {
   return '/auth/employee-login';
 };
 
-export const loginEmployee = async ({ code, password }) => {
+export const loginEmployee = async ({ username, code, password }) => {
   const payload = {
-    code: String(code || '').toLowerCase().trim(),
-    password: String(password || '')
+    username: String(username || '').toLowerCase().trim(),
+    code: String(code || '').trim(),
+    password: String(password || code || '')
   };
 
   // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/67cbae63-1d62-454e-a79c-6473cc85ec06',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H5',location:'employeeAuthApi.js:12',message:'employeeLogin:request',data:{hasCode:!!payload.code,codeLength:payload.code.length,hasPassword:!!payload.password},timestamp:Date.now()})}).catch(()=>{});
+  fetch('http://127.0.0.1:7242/ingest/67cbae63-1d62-454e-a79c-6473cc85ec06',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H5',location:'employeeAuthApi.js:12',message:'employeeLogin:request',data:{hasUsername:!!payload.username,hasCode:!!payload.code,codeLength:payload.code.length,hasPassword:!!payload.password},timestamp:Date.now()})}).catch(()=>{});
   // #endregion agent log
 
   const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;

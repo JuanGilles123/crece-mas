@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import FeatureGuard from '../../components/FeatureGuard';
@@ -18,11 +18,27 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import './HistorialCierresCaja.css';
 
-const HistorialCierresCaja = () => {
+const HistorialCierresCaja = ({ employeeId = null }) => {
   const { userProfile } = useAuth();
-  const { data: cierres = [], isLoading, refetch } = useCierresCaja(userProfile?.organization_id, 200);
+  const { data: cierres = [], isLoading, refetch } = useCierresCaja(
+    userProfile?.organization_id,
+    200,
+    employeeId
+  );
   const [busqueda, setBusqueda] = useState('');
   const [cierreSeleccionado, setCierreSeleccionado] = useState(null);
+
+  const getResponsableLabel = useCallback((cierre) => {
+    if (cierre?.employee_id) {
+      const employeeName = cierre?.employee?.team_member?.employee_name;
+      return employeeName ? `Empleado: ${employeeName}` : `Empleado (${cierre.employee_id.slice(0, 8)})`;
+    }
+    if (cierre?.user_id) {
+      const ownerName = userProfile?.full_name || userProfile?.nombre;
+      return ownerName ? `Propietario: ${ownerName}` : 'Propietario';
+    }
+    return 'No disponible';
+  }, [userProfile?.full_name, userProfile?.nombre]);
 
   // Filtrar cierres
   const cierresFiltrados = useMemo(() => {
@@ -31,10 +47,13 @@ const HistorialCierresCaja = () => {
     const termino = busqueda.toLowerCase();
     return cierres.filter(cierre => {
       const fecha = format(new Date(cierre.created_at), 'dd/MM/yyyy', { locale: es });
+      const responsable = getResponsableLabel(cierre).toLowerCase();
       return fecha.includes(termino) || 
-             cierre.id?.toString().toLowerCase().includes(termino);
+             cierre.id?.toString().toLowerCase().includes(termino) ||
+             cierre.employee_id?.toString().toLowerCase().includes(termino) ||
+             responsable.includes(termino);
     });
-  }, [cierres, busqueda]);
+  }, [cierres, busqueda, getResponsableLabel]);
 
   const formatCOP = (value) => {
     return new Intl.NumberFormat('es-CO', {
@@ -69,12 +88,22 @@ const HistorialCierresCaja = () => {
   const generarTextoCierre = (cierre) => {
     const fecha = formatFecha(cierre.created_at);
     const diferencia = cierre.diferencia || 0;
+    const responsable = getResponsableLabel(cierre);
+    const resumenPagos = [
+      { label: 'Efectivo', sistema: cierre.sistema_efectivo, real: cierre.real_efectivo },
+      { label: 'Transferencias', sistema: cierre.sistema_transferencias, real: cierre.real_transferencias },
+      { label: 'Tarjeta', sistema: cierre.sistema_tarjeta, real: cierre.real_tarjeta },
+    ]
+      .filter((item) => (item.sistema || 0) !== 0 || (item.real || 0) !== 0)
+      .map((item) => `• ${item.label}: ${formatCOP(item.sistema || 0)} / ${formatCOP(item.real || 0)}`)
+      .join('\n');
     
     return `
 🧾 CIERRE DE CAJA
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Fecha: ${fecha}
 ID: ${cierre.id}
+Responsable: ${responsable}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📊 RESUMEN DEL SISTEMA:
@@ -92,6 +121,10 @@ TOTAL SISTEMA: ${formatCOP(cierre.total_sistema || 0)}
 💳 Tarjeta: ${formatCOP(cierre.real_tarjeta || 0)}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 TOTAL REAL: ${formatCOP(cierre.total_real || 0)}
+
+🧾 COMPARATIVO POR MÉTODO (SISTEMA / REAL):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${resumenPagos || 'Sin movimientos por método'}
 
 📈 RESULTADO:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -178,6 +211,9 @@ Generado por Crece+ 🚀
                       <Calendar size={16} />
                       {format(new Date(cierre.created_at), 'dd/MM/yyyy HH:mm', { locale: es })}
                     </div>
+                    <div className="cierre-responsable">
+                      {getResponsableLabel(cierre)}
+                    </div>
                     <div className="cierre-id">
                       ID: {cierre.id?.slice(0, 8)}
                     </div>
@@ -219,18 +255,27 @@ Generado por Crece+ 🚀
                   </div>
                 </div>
 
-                <div className="cierre-detalles">
-                  <div className="detalle-row">
-                    <span>Ventas:</span>
-                    <span>{cierre.cantidad_ventas || 0}</span>
+                <div className="cierre-comparativo">
+                  <div className="comparativo-header">
+                    <span>Método</span>
+                    <span>Sistema</span>
+                    <span>Real</span>
                   </div>
-                  <div className="detalle-row">
-                    <span>Efectivo Sistema:</span>
-                    <span>{formatCOP(cierre.sistema_efectivo || 0)}</span>
-                  </div>
-                  <div className="detalle-row">
-                    <span>Efectivo Real:</span>
-                    <span>{formatCOP(cierre.real_efectivo || 0)}</span>
+                  {[
+                    { label: 'Efectivo', sistema: cierre.sistema_efectivo, real: cierre.real_efectivo },
+                    { label: 'Transferencias', sistema: cierre.sistema_transferencias, real: cierre.real_transferencias },
+                    { label: 'Tarjeta', sistema: cierre.sistema_tarjeta, real: cierre.real_tarjeta },
+                  ].map((item) => (
+                    <div className="comparativo-row" key={item.label}>
+                      <span className="comparativo-label">{item.label}</span>
+                      <span className="comparativo-value">{formatCOP(item.sistema || 0)}</span>
+                      <span className="comparativo-value">{formatCOP(item.real || 0)}</span>
+                    </div>
+                  ))}
+                  <div className="comparativo-footer">
+                    <span className="comparativo-label">Ventas</span>
+                    <span className="comparativo-value">{cierre.cantidad_ventas || 0}</span>
+                    <span className="comparativo-value"> </span>
                   </div>
                 </div>
 

@@ -234,6 +234,9 @@ const MemberCard = ({ member, onUpdateRole, onRemove, isOwner, customRoles = [],
     roleDisplay = 'predefined';
   }
 
+  const usuarioActual = member.employee_username || member.employee_code || member.codigo || '';
+  const codigoAccesoActual = member.employee_code || member.codigo || '';
+
   const handleGuardarRole = () => {
     if (customRoleId && customRoleId !== member.custom_role_id) {
       // Asignar rol personalizado
@@ -281,13 +284,7 @@ const MemberCard = ({ member, onUpdateRole, onRemove, isOwner, customRoles = [],
         {member.is_employee && (
           <div className="member-code">
             <User size={12} />
-            Usuario: {member.employee_username || 'Sin usuario'}
-          </div>
-        )}
-        {member.is_employee && (
-          <div className="member-code">
-            <Key size={12} />
-            Usuario: {member.employee_code || member.codigo || 'Sin usuario'}
+            Usuario: {usuarioActual || 'Sin usuario'}
             {isOwner && (
               <button
                 className="btn-edit-code"
@@ -297,6 +294,12 @@ const MemberCard = ({ member, onUpdateRole, onRemove, isOwner, customRoles = [],
                 <Edit3 size={12} />
               </button>
             )}
+          </div>
+        )}
+        {member.is_employee && (
+          <div className="member-code">
+            <Key size={12} />
+            Código: {codigoAccesoActual || 'Sin código'}
           </div>
         )}
       </div>
@@ -393,11 +396,12 @@ const MemberCard = ({ member, onUpdateRole, onRemove, isOwner, customRoles = [],
         <EditarCodigoEmpleadoModal
           open={editandoCodigo}
           onClose={() => setEditandoCodigo(false)}
-          onGuardar={async ({ username, password }) => {
-            await onUpdateCode(member.id, username, password);
+          onGuardar={async ({ username, accessCode, password }) => {
+            await onUpdateCode(member.id, username, accessCode, password);
             setEditandoCodigo(false);
           }}
-          usuarioActual={member.employee_code || member.codigo}
+          usuarioActual={usuarioActual}
+          codigoActual={codigoAccesoActual}
           nombreEmpleado={member.employee_name || member.nombre || 'Empleado'}
         />
       )}
@@ -619,10 +623,11 @@ const GestionEquipo = () => {
     });
   };
 
-  const handleActualizarCodigo = async (memberId, username, password) => {
+  const handleActualizarCodigo = async (memberId, username, accessCode, password) => {
     await updateEmployeeCredentials.mutateAsync({
       memberId,
       username,
+      accessCode,
       password,
       organizationId: organization.id
     });
@@ -859,6 +864,7 @@ const GestionEquipo = () => {
             onAgregar={handleAgregarEmpleado}
             cargando={createEmployee.isLoading}
             customRoles={customRoles}
+            roles={ROLES}
           />
         )}
 

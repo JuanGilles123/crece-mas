@@ -8,6 +8,7 @@ import './ImportarProductosCSV.css';
 
 const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
   const { userProfile, organization } = useAuth();
+  const isJewelryBusiness = organization?.business_type === 'jewelry_metals';
   const [archivo, setArchivo] = useState(null);
   const [procesando, setProcesando] = useState(false);
   const [resultado, setResultado] = useState(null);
@@ -18,6 +19,112 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
   const [productosRevision, setProductosRevision] = useState([]);
   const [variantesRevision, setVariantesRevision] = useState([]);
   const [seleccionadosRevision, setSeleccionadosRevision] = useState([]);
+
+  const parseNumberFlexible = (value) => {
+    if (value === null || value === undefined) return 0;
+    if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+    const raw = String(value).trim();
+    if (!raw) return 0;
+    if (raw.includes('.') && raw.includes(',')) {
+      const normalized = raw.replace(/\./g, '').replace(',', '.');
+      const parsed = Number(normalized);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+    if (raw.includes(',') && !raw.includes('.')) {
+      const normalized = raw.replace(',', '.');
+      const parsed = Number(normalized);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+    if (raw.includes('.') && /^\d{1,3}(\.\d{3})+$/.test(raw)) {
+      const normalized = raw.replace(/\./g, '');
+      const parsed = Number(normalized);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  const parseWeightValue = (value) => {
+    if (value === '' || value === null || value === undefined) return 0;
+    const normalized = String(value).trim().replace(',', '.');
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  const normalizeJewelryPriceMode = (value) => {
+    const raw = String(value || '').trim().toLowerCase();
+    if (!raw) return 'fixed';
+    if (['variable', 'var', 'peso', 'por_peso', 'porpeso', 'peso_variable'].includes(raw)) return 'variable';
+    if (['fixed', 'fijo', 'manual'].includes(raw)) return 'fixed';
+    return '';
+  };
+
+  const normalizeJewelryMaterialType = (value) => {
+    const raw = String(value || '').trim().toLowerCase();
+    if (!raw) return 'na';
+    if (['local', 'nacional'].includes(raw)) return 'local';
+    if (['international', 'internacional', 'global'].includes(raw)) return 'international';
+    if (['na', 'n/a', 'none', 'ninguno'].includes(raw)) return 'na';
+    return '';
+  };
+
+  const getPurityFactor = (pureza) => {
+    switch ((pureza || '').toLowerCase()) {
+      case '24k':
+        return 1;
+      case '22k':
+        return 22 / 24;
+      case '18k':
+        return 18 / 24;
+      case '14k':
+        return 14 / 24;
+      case '10k':
+        return 10 / 24;
+      case '925':
+        return 0.925;
+      case '950':
+        return 0.95;
+      default:
+        return 1;
+    }
+  };
+
+  const getGoldPriceValue = (materialType) => {
+    if (materialType === 'local') {
+      return parseNumberFlexible(organization?.jewelry_gold_price_local);
+    }
+    if (materialType === 'international') {
+      return parseNumberFlexible(organization?.jewelry_gold_price_global);
+    }
+    return parseNumberFlexible(organization?.jewelry_gold_price_global);
+  };
+
+  const getMinMarginValue = (materialType) => {
+    if (materialType === 'local') {
+      return parseNumberFlexible(organization?.jewelry_min_margin_local);
+    }
+    if (materialType === 'international') {
+      return parseNumberFlexible(organization?.jewelry_min_margin_international);
+    }
+    return parseNumberFlexible(organization?.jewelry_min_margin);
+  };
+
+  const calcularPrecioVentaJoyeria = ({
+    compraPorUnidad,
+    peso,
+    materialType,
+    pureza,
+    minMarginOverride
+  }) => {
+    const goldPriceValue = getGoldPriceValue(materialType);
+    const minMarginValue = minMarginOverride > 0 ? minMarginOverride : getMinMarginValue(materialType);
+    const diff = goldPriceValue - compraPorUnidad;
+    const precioBaseGramo = diff >= minMarginValue ? goldPriceValue : (compraPorUnidad + minMarginValue);
+    const aplicaPureza = materialType === 'international';
+    const purityFactor = aplicaPureza ? getPurityFactor(pureza) : 1;
+    if (!peso || !precioBaseGramo) return 0;
+    return peso * precioBaseGramo * purityFactor;
+  };
 
   // Función para procesar imagen desde Excel
   const procesarImagenExcel = async (imagenData, nombreProducto) => {
@@ -155,7 +262,9 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
 
           // Buscar la fila con los headers (validación ultra flexible)
           let headerRowIndex = -1;
-          const requiredHeadersBusqueda = ['nombre', 'precio_compra', 'precio_venta', 'stock'];
+          const requiredHeadersBusqueda = isJewelryBusiness
+            ? ['nombre', 'precio_compra', 'peso', 'stock']
+            : ['nombre', 'precio_compra', 'precio_venta', 'stock'];
           
           for (let i = 0; i < jsonData.length; i++) {
             const row = jsonData[i];
@@ -190,7 +299,9 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
             .replace(/\*/g, '')
             .replace(/[_\s\-()]/g, '');
           const headersNormalizados = headers.map(normalizarHeader);
-          const requiredHeaders = ['nombre', 'tipo', 'preciocompra', 'precioventa', 'stock'];
+          const requiredHeaders = isJewelryBusiness
+            ? ['nombre', 'tipo', 'preciocompra', 'peso', 'stock']
+            : ['nombre', 'tipo', 'preciocompra', 'precioventa', 'stock'];
           const missingHeaders = requiredHeaders.filter(req => !headersNormalizados.some(h => h.includes(req)));
           if (missingHeaders.length > 0) {
             resolve({
@@ -301,6 +412,40 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
               'permite_adicionales',
               'permite_adicional'
             ]) || '';
+            const pesoRaw = buscarCampoFlexibleLocal(producto, ['peso', 'peso_gramos', 'weight', 'gramos']) || '';
+            const unidadPesoRaw = buscarCampoFlexibleLocal(producto, ['unidad_peso', 'unidad peso', 'unidad', 'u_peso', 'unidad_de_peso']) || '';
+            const purezaRaw = buscarCampoFlexibleLocal(producto, ['pureza', 'quilates', 'kilates', 'karat', 'kt']) || '';
+            const jewelryPriceModeRaw = buscarCampoFlexibleLocal(producto, [
+              'jewelry_price_mode',
+              'modo_precio',
+              'modo_precio_joyeria',
+              'precio_variable',
+              'precio_por_peso'
+            ]) || '';
+            const jewelryMaterialTypeRaw = buscarCampoFlexibleLocal(producto, [
+              'jewelry_material_type',
+              'tipo_material',
+              'material_type',
+              'oro_local',
+              'oro_internacional'
+            ]) || '';
+            const jewelryMinMarginRaw = buscarCampoFlexibleLocal(producto, [
+              'jewelry_min_margin',
+              'margen_minimo',
+              'margen_min',
+              'min_margin'
+            ]) || '';
+            const jewelryStaticModeRaw = buscarCampoFlexibleLocal(producto, [
+              'jewelry_static_mode',
+              'modo_precio_fijo',
+              'modo_fijo'
+            ]) || '';
+            const jewelryStaticPercentRaw = buscarCampoFlexibleLocal(producto, [
+              'jewelry_static_percent',
+              'porcentaje_margen',
+              'margen_porcentaje',
+              'percent'
+            ]) || '';
             
             // Validar tipo de producto
             const tiposValidos = ['fisico', 'servicio', 'comida', 'accesorio'];
@@ -320,13 +465,34 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
               agregarProblema('nombre', 'El nombre del producto es obligatorio', nombre);
             }
             
-            if (!precioVenta || precioVenta.toString().trim() === '') {
-              agregarProblema('precio_venta', 'El precio de venta es obligatorio', precioVenta);
+            const jewelryPriceMode = isJewelryBusiness
+              ? normalizeJewelryPriceMode(jewelryPriceModeRaw)
+              : 'fixed';
+            const jewelryMaterialType = isJewelryBusiness
+              ? normalizeJewelryMaterialType(jewelryMaterialTypeRaw)
+              : 'na';
+
+            if (isJewelryBusiness && jewelryPriceMode === '') {
+              agregarProblema('jewelry_price_mode', 'El modo de precio debe ser "fixed" o "variable"', jewelryPriceModeRaw);
+            }
+
+            if (isJewelryBusiness && jewelryMaterialType === '') {
+              agregarProblema('jewelry_material_type', 'El tipo de material debe ser "local", "international" o "na"', jewelryMaterialTypeRaw);
+            }
+
+            if (!isJewelryBusiness || jewelryPriceMode !== 'variable') {
+              if (!precioVenta || precioVenta.toString().trim() === '') {
+                agregarProblema('precio_venta', 'El precio de venta es obligatorio', precioVenta);
+              }
             }
             
             // Validar campos condicionales según tipo
             if ((tipoValido === 'fisico' || tipoValido === 'comida' || tipoValido === 'accesorio') && (!precioCompra || precioCompra.toString().trim() === '')) {
               agregarProblema('precio_compra', `El precio de compra es obligatorio para productos tipo "${tipoValido}"`, precioCompra);
+            }
+
+            if (isJewelryBusiness && (!pesoRaw || String(pesoRaw).trim() === '')) {
+              agregarProblema('peso', 'El peso es obligatorio para joyería', pesoRaw);
             }
             
             const tieneVariante = Boolean(
@@ -348,10 +514,12 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
             }
 
             // Convertir números
-            const precioCompraNum = parseFloat(precioCompra);
-            const precioVentaNum = parseFloat(precioVenta);
-            const stockNum = parseInt(stock);
-            const varianteStockNum = parseInt(varianteStock);
+            const precioCompraNum = parseNumberFlexible(precioCompra);
+            const precioVentaNum = parseNumberFlexible(precioVenta);
+            const stockNum = parseInt(String(stock || '').trim() || '0', 10);
+            const varianteStockNum = parseInt(String(varianteStock || '').trim() || '0', 10);
+            const pesoNum = parseWeightValue(pesoRaw);
+            const jewelryMinMarginNum = parseNumberFlexible(jewelryMinMarginRaw);
             
             // Validaciones numéricas
             if (precioCompra && precioCompra.toString().trim() !== '' && isNaN(precioCompraNum)) {
@@ -368,6 +536,23 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
 
             if (varianteStock && String(varianteStock).trim() !== '' && isNaN(varianteStockNum)) {
               agregarProblema('variante_stock', `El stock de variante "${varianteStock}" no es un número válido`, varianteStock);
+            }
+
+            if (isJewelryBusiness && pesoRaw && String(pesoRaw).trim() !== '' && isNaN(pesoNum)) {
+              agregarProblema('peso', `El peso "${pesoRaw}" no es un número válido`, pesoRaw);
+            }
+
+            if (isJewelryBusiness && jewelryStaticModeRaw) {
+              const normalizedStaticMode = String(jewelryStaticModeRaw || '').trim().toLowerCase();
+              if (!['fixed', 'fijo', 'percent', 'porcentaje'].includes(normalizedStaticMode)) {
+                agregarProblema('jewelry_static_mode', 'El modo fijo debe ser "fixed" o "percent"', jewelryStaticModeRaw);
+              }
+              if (['percent', 'porcentaje'].includes(normalizedStaticMode)) {
+                const percentValue = parseNumberFlexible(jewelryStaticPercentRaw);
+                if (!jewelryStaticPercentRaw || isNaN(percentValue)) {
+                  agregarProblema('jewelry_static_percent', 'El porcentaje fijo es obligatorio y debe ser numérico', jewelryStaticPercentRaw);
+                }
+              }
             }
             
             // Validar que no sean negativos
@@ -386,6 +571,10 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
             if (!isNaN(varianteStockNum) && varianteStockNum < 0) {
               agregarProblema('variante_stock', 'El stock de variante no puede ser negativo', varianteStock);
             }
+
+            if (isJewelryBusiness && !isNaN(pesoNum) && pesoNum < 0) {
+              agregarProblema('peso', 'El peso no puede ser negativo', pesoRaw);
+            }
             
             // Validar fecha vencimiento (si existe)
             if (fechaVencimiento && !/^\d{4}-\d{2}-\d{2}$/.test(String(fechaVencimiento).trim())) {
@@ -402,8 +591,11 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
             }
 
             // Validar que precio de venta >= precio de compra
-            if (!isNaN(precioCompraNum) && !isNaN(precioVentaNum) && precioVentaNum < precioCompraNum) {
-              agregarProblema('precio_venta', `El precio de venta (${precioVentaNum}) no puede ser menor que el precio de compra (${precioCompraNum})`, precioVenta);
+            if (!isJewelryBusiness || jewelryPriceMode !== 'variable') {
+              const precioCompraComparable = isJewelryBusiness ? (precioCompraNum * (pesoNum || 0)) : precioCompraNum;
+              if (!isNaN(precioCompraComparable) && !isNaN(precioVentaNum) && precioVentaNum < precioCompraComparable) {
+                agregarProblema('precio_venta', `El precio de venta (${precioVentaNum}) no puede ser menor que el precio de compra (${precioCompraComparable})`, precioVenta);
+              }
             }
             
             // Si hay problemas, agregar a inconsistencias y continuar
@@ -417,8 +609,20 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
             }
             
             // Usar valores numéricos convertidos
-            const precioCompraFinal = precioCompraNum || 0;
-            const precioVentaFinal = precioVentaNum || 0;
+            const pesoFinal = isJewelryBusiness ? pesoNum : 0;
+            const compraPorUnidad = isJewelryBusiness ? (precioCompraNum || 0) : (precioCompraNum || 0);
+            const precioCompraFinal = isJewelryBusiness
+              ? (compraPorUnidad * (pesoFinal || 0))
+              : (precioCompraNum || 0);
+            const precioVentaFinal = isJewelryBusiness && jewelryPriceMode === 'variable'
+              ? calcularPrecioVentaJoyeria({
+                  compraPorUnidad,
+                  peso: pesoFinal,
+                  materialType: jewelryMaterialType || 'na',
+                  pureza: purezaRaw,
+                  minMarginOverride: jewelryMinMarginNum
+                })
+              : (precioVentaNum || 0);
             const stockFinal = stockNum || 0;
 
             // Crear producto final (solo con columnas que existen en la tabla)
@@ -452,7 +656,7 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
             // Agregar campos opcionales desde metadata si existen
             const metadata = {};
             const camposMetadata = ['peso', 'unidad_peso', 'dimensiones', 'marca', 'modelo', 'color', 'talla', 'material', 'categoria', 
-                                   'duracion', 'descripcion', 'ingredientes', 'alergenos', 'calorias', 'porcion', 'variaciones'];
+                                   'duracion', 'descripcion', 'ingredientes', 'alergenos', 'calorias', 'porcion', 'variaciones', 'pureza'];
             
             camposMetadata.forEach(campo => {
               const valor = producto[campo] || producto[campo.toUpperCase()] || producto[campo.replace('_', ' ').toUpperCase()] || '';
@@ -466,6 +670,36 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
               metadata.permite_toppings = ['1', 'true', 'si', 'sí', 'yes', 'y'].includes(normalized);
             } else {
               metadata.permite_toppings = defaultPermiteToppings;
+            }
+
+            if (isJewelryBusiness) {
+              if (pesoFinal) metadata.peso = pesoFinal;
+              const unidadPesoFinal = unidadPesoRaw || organization?.jewelry_weight_unit || 'g';
+              if (unidadPesoFinal) metadata.unidad_peso = unidadPesoFinal;
+              if (purezaRaw) metadata.pureza = purezaRaw;
+              if (compraPorUnidad > 0) metadata.jewelry_compra_por_unidad = compraPorUnidad;
+              if (jewelryPriceMode) metadata.jewelry_price_mode = jewelryPriceMode;
+              if (jewelryMaterialType) {
+                metadata.jewelry_material_type = jewelryMaterialType;
+                metadata.jewelry_gold_price_reference = jewelryMaterialType === 'na'
+                  ? 'international'
+                  : jewelryMaterialType;
+              }
+              if (jewelryStaticModeRaw) {
+                const normalizedStaticMode = String(jewelryStaticModeRaw || '').trim().toLowerCase();
+                metadata.jewelry_static_mode = ['percent', 'porcentaje'].includes(normalizedStaticMode) ? 'percent' : 'fixed';
+              }
+              if (jewelryStaticPercentRaw && !isNaN(parseNumberFlexible(jewelryStaticPercentRaw))) {
+                metadata.jewelry_static_percent = parseNumberFlexible(jewelryStaticPercentRaw);
+              }
+              if (jewelryMinMarginNum > 0) {
+                metadata.jewelry_min_margin = jewelryMinMarginNum;
+              } else if (jewelryPriceMode === 'variable') {
+                const fallbackMargin = getMinMarginValue(jewelryMaterialType || 'na');
+                if (fallbackMargin > 0) {
+                  metadata.jewelry_min_margin = fallbackMargin;
+                }
+              }
             }
 
             if (stockMinimoRaw && stockMinimoRaw.toString().trim() !== '') {
@@ -599,7 +833,9 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
 
     // Buscar la línea con los headers (validación ultra flexible)
     let headerLineIndex = -1;
-    const requiredHeadersBusqueda = ['nombre', 'precio_compra', 'precio_venta', 'stock'];
+    const requiredHeadersBusqueda = isJewelryBusiness
+      ? ['nombre', 'precio_compra', 'peso', 'stock']
+      : ['nombre', 'precio_compra', 'precio_venta', 'stock'];
     
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].toLowerCase();
@@ -672,7 +908,9 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
       .replace(/\*/g, '')
       .replace(/[_\s\-()]/g, '');
     const headersNormalizados = headers.map(normalizarHeader);
-    const requiredHeaders = ['nombre', 'tipo', 'preciocompra', 'precioventa', 'stock'];
+    const requiredHeaders = isJewelryBusiness
+      ? ['nombre', 'tipo', 'preciocompra', 'peso', 'stock']
+      : ['nombre', 'tipo', 'preciocompra', 'precioventa', 'stock'];
     const missingHeaders = requiredHeaders.filter(req => !headersNormalizados.some(h => h.includes(req)));
     if (missingHeaders.length > 0) {
       return {
@@ -800,6 +1038,46 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
         ['permite_toppings', 'permite_topping', 'toppings', 'permite_adicionales', 'permite_adicional'],
         debugMode
       ) || '';
+      const pesoRaw = buscarCampoFlexible(
+        producto,
+        ['peso', 'peso_gramos', 'weight', 'gramos'],
+        debugMode
+      ) || '';
+      const unidadPesoRaw = buscarCampoFlexible(
+        producto,
+        ['unidad_peso', 'unidad peso', 'unidad', 'u_peso', 'unidad_de_peso'],
+        debugMode
+      ) || '';
+      const purezaRaw = buscarCampoFlexible(
+        producto,
+        ['pureza', 'quilates', 'kilates', 'karat', 'kt'],
+        debugMode
+      ) || '';
+      const jewelryPriceModeRaw = buscarCampoFlexible(
+        producto,
+        ['jewelry_price_mode', 'modo_precio', 'modo_precio_joyeria', 'precio_variable', 'precio_por_peso'],
+        debugMode
+      ) || '';
+      const jewelryMaterialTypeRaw = buscarCampoFlexible(
+        producto,
+        ['jewelry_material_type', 'tipo_material', 'material_type', 'oro_local', 'oro_internacional'],
+        debugMode
+      ) || '';
+      const jewelryMinMarginRaw = buscarCampoFlexible(
+        producto,
+        ['jewelry_min_margin', 'margen_minimo', 'margen_min', 'min_margin'],
+        debugMode
+      ) || '';
+      const jewelryStaticModeRaw = buscarCampoFlexible(
+        producto,
+        ['jewelry_static_mode', 'modo_precio_fijo', 'modo_fijo'],
+        debugMode
+      ) || '';
+      const jewelryStaticPercentRaw = buscarCampoFlexible(
+        producto,
+        ['jewelry_static_percent', 'porcentaje_margen', 'margen_porcentaje', 'percent'],
+        debugMode
+      ) || '';
       
       // Debug: mostrar valores encontrados para las primeras filas o si hay problemas
       if (debugMode || (!nombre || !stock)) {
@@ -829,13 +1107,34 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
         agregarProblema('nombre', 'El nombre del producto es obligatorio', nombre);
       }
       
-      if (!precioVenta || precioVenta.toString().trim() === '') {
-        agregarProblema('precio_venta', 'El precio de venta es obligatorio', precioVenta);
+      const jewelryPriceMode = isJewelryBusiness
+        ? normalizeJewelryPriceMode(jewelryPriceModeRaw)
+        : 'fixed';
+      const jewelryMaterialType = isJewelryBusiness
+        ? normalizeJewelryMaterialType(jewelryMaterialTypeRaw)
+        : 'na';
+
+      if (isJewelryBusiness && jewelryPriceMode === '') {
+        agregarProblema('jewelry_price_mode', 'El modo de precio debe ser "fixed" o "variable"', jewelryPriceModeRaw);
+      }
+
+      if (isJewelryBusiness && jewelryMaterialType === '') {
+        agregarProblema('jewelry_material_type', 'El tipo de material debe ser "local", "international" o "na"', jewelryMaterialTypeRaw);
+      }
+
+      if (!isJewelryBusiness || jewelryPriceMode !== 'variable') {
+        if (!precioVenta || precioVenta.toString().trim() === '') {
+          agregarProblema('precio_venta', 'El precio de venta es obligatorio', precioVenta);
+        }
       }
       
       // Validar campos condicionales según tipo
       if ((tipoValido === 'fisico' || tipoValido === 'comida' || tipoValido === 'accesorio') && (!precioCompra || precioCompra.toString().trim() === '')) {
         agregarProblema('precio_compra', `El precio de compra es obligatorio para productos tipo "${tipoValido}"`, precioCompra);
+      }
+
+      if (isJewelryBusiness && (!pesoRaw || String(pesoRaw).trim() === '')) {
+        agregarProblema('peso', 'El peso es obligatorio para joyería', pesoRaw);
       }
       
       const tieneVariante = Boolean(
@@ -857,10 +1156,12 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
       }
 
       // Convertir números
-      const precioCompraNum = parseFloat(precioCompra);
-      const precioVentaNum = parseFloat(precioVenta);
-      const stockNum = parseInt(stock);
-      const varianteStockNum = parseInt(varianteStock);
+      const precioCompraNum = parseNumberFlexible(precioCompra);
+      const precioVentaNum = parseNumberFlexible(precioVenta);
+      const stockNum = parseInt(String(stock || '').trim() || '0', 10);
+      const varianteStockNum = parseInt(String(varianteStock || '').trim() || '0', 10);
+      const pesoNum = parseWeightValue(pesoRaw);
+      const jewelryMinMarginNum = parseNumberFlexible(jewelryMinMarginRaw);
       
       // Validar que sean números válidos
       if (precioCompra && precioCompra.toString().trim() !== '' && isNaN(precioCompraNum)) {
@@ -879,6 +1180,23 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
         agregarProblema('variante_stock', `El stock de variante "${varianteStock}" no es un número válido`, varianteStock);
       }
 
+      if (isJewelryBusiness && pesoRaw && String(pesoRaw).trim() !== '' && isNaN(pesoNum)) {
+        agregarProblema('peso', `El peso "${pesoRaw}" no es un número válido`, pesoRaw);
+      }
+
+      if (isJewelryBusiness && jewelryStaticModeRaw) {
+        const normalizedStaticMode = String(jewelryStaticModeRaw || '').trim().toLowerCase();
+        if (!['fixed', 'fijo', 'percent', 'porcentaje'].includes(normalizedStaticMode)) {
+          agregarProblema('jewelry_static_mode', 'El modo fijo debe ser "fixed" o "percent"', jewelryStaticModeRaw);
+        }
+        if (['percent', 'porcentaje'].includes(normalizedStaticMode)) {
+          const percentValue = parseNumberFlexible(jewelryStaticPercentRaw);
+          if (!jewelryStaticPercentRaw || isNaN(percentValue)) {
+            agregarProblema('jewelry_static_percent', 'El porcentaje fijo es obligatorio y debe ser numérico', jewelryStaticPercentRaw);
+          }
+        }
+      }
+
       // Validar que no sean negativos
       if (!isNaN(precioCompraNum) && precioCompraNum < 0) {
         agregarProblema('precio_compra', 'El precio de compra no puede ser negativo', precioCompra);
@@ -894,6 +1212,10 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
 
       if (!isNaN(varianteStockNum) && varianteStockNum < 0) {
         agregarProblema('variante_stock', 'El stock de variante no puede ser negativo', varianteStock);
+      }
+
+      if (isJewelryBusiness && !isNaN(pesoNum) && pesoNum < 0) {
+        agregarProblema('peso', 'El peso no puede ser negativo', pesoRaw);
       }
       
       // Validar fecha vencimiento (si existe)
@@ -911,8 +1233,11 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
       }
 
       // Validar que precio de venta >= precio de compra
-      if (!isNaN(precioCompraNum) && !isNaN(precioVentaNum) && precioVentaNum < precioCompraNum) {
-        agregarProblema('precio_venta', `El precio de venta (${precioVentaNum}) no puede ser menor que el precio de compra (${precioCompraNum})`, precioVenta);
+      if (!isJewelryBusiness || jewelryPriceMode !== 'variable') {
+        const precioCompraComparable = isJewelryBusiness ? (precioCompraNum * (pesoNum || 0)) : precioCompraNum;
+        if (!isNaN(precioCompraComparable) && !isNaN(precioVentaNum) && precioVentaNum < precioCompraComparable) {
+          agregarProblema('precio_venta', `El precio de venta (${precioVentaNum}) no puede ser menor que el precio de compra (${precioCompraComparable})`, precioVenta);
+        }
       }
       
       // Si hay problemas, agregar a inconsistencias y continuar
@@ -926,8 +1251,20 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
       }
       
       // Usar valores numéricos convertidos
-      const precioCompraFinal = precioCompraNum || 0;
-      const precioVentaFinal = precioVentaNum || 0;
+      const pesoFinal = isJewelryBusiness ? pesoNum : 0;
+      const compraPorUnidad = isJewelryBusiness ? (precioCompraNum || 0) : (precioCompraNum || 0);
+      const precioCompraFinal = isJewelryBusiness
+        ? (compraPorUnidad * (pesoFinal || 0))
+        : (precioCompraNum || 0);
+      const precioVentaFinal = isJewelryBusiness && jewelryPriceMode === 'variable'
+        ? calcularPrecioVentaJoyeria({
+            compraPorUnidad,
+            peso: pesoFinal,
+            materialType: jewelryMaterialType || 'na',
+            pureza: purezaRaw,
+            minMarginOverride: jewelryMinMarginNum
+          })
+        : (precioVentaNum || 0);
       const stockFinal = stockNum || 0;
 
       // Crear producto final (solo con columnas que existen en la tabla)
@@ -961,7 +1298,7 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
       // Agregar campos opcionales desde metadata si existen
       const metadata = {};
       const camposMetadata = ['peso', 'unidad_peso', 'dimensiones', 'marca', 'modelo', 'color', 'talla', 'material', 'categoria', 
-                             'duracion', 'descripcion', 'ingredientes', 'alergenos', 'calorias', 'porcion', 'variaciones'];
+                             'duracion', 'descripcion', 'ingredientes', 'alergenos', 'calorias', 'porcion', 'variaciones', 'pureza'];
       
       camposMetadata.forEach(campo => {
         const valor = producto[campo] || producto[campo.toUpperCase()] || producto[campo.replace('_', ' ').toUpperCase()] || '';
@@ -975,6 +1312,36 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
         metadata.permite_toppings = ['1', 'true', 'si', 'sí', 'yes', 'y'].includes(normalized);
       } else {
         metadata.permite_toppings = defaultPermiteToppings;
+      }
+
+      if (isJewelryBusiness) {
+        if (pesoFinal) metadata.peso = pesoFinal;
+        const unidadPesoFinal = unidadPesoRaw || organization?.jewelry_weight_unit || 'g';
+        if (unidadPesoFinal) metadata.unidad_peso = unidadPesoFinal;
+        if (purezaRaw) metadata.pureza = purezaRaw;
+        if (compraPorUnidad > 0) metadata.jewelry_compra_por_unidad = compraPorUnidad;
+        if (jewelryPriceMode) metadata.jewelry_price_mode = jewelryPriceMode;
+        if (jewelryMaterialType) {
+          metadata.jewelry_material_type = jewelryMaterialType;
+          metadata.jewelry_gold_price_reference = jewelryMaterialType === 'na'
+            ? 'international'
+            : jewelryMaterialType;
+        }
+        if (jewelryStaticModeRaw) {
+          const normalizedStaticMode = String(jewelryStaticModeRaw || '').trim().toLowerCase();
+          metadata.jewelry_static_mode = ['percent', 'porcentaje'].includes(normalizedStaticMode) ? 'percent' : 'fixed';
+        }
+        if (jewelryStaticPercentRaw && !isNaN(parseNumberFlexible(jewelryStaticPercentRaw))) {
+          metadata.jewelry_static_percent = parseNumberFlexible(jewelryStaticPercentRaw);
+        }
+        if (jewelryMinMarginNum > 0) {
+          metadata.jewelry_min_margin = jewelryMinMarginNum;
+        } else if (jewelryPriceMode === 'variable') {
+          const fallbackMargin = getMinMarginValue(jewelryMaterialType || 'na');
+          if (fallbackMargin > 0) {
+            metadata.jewelry_min_margin = fallbackMargin;
+          }
+        }
       }
 
       if (stockMinimoRaw && stockMinimoRaw.toString().trim() !== '') {
@@ -1415,10 +1782,15 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
   };
 
   const descargarPlantilla = (tipo = 'csv') => {
-    const archivos = {
-      csv: '/templates/plantilla_productos.csv',
-      excel: '/templates/plantilla-importacion-productos.xlsx'
-    };
+    const archivos = isJewelryBusiness
+      ? {
+          csv: '/templates/plantilla_productos_joyeria.csv',
+          excel: '/templates/plantilla-importacion-productos-joyeria.xlsx'
+        }
+      : {
+          csv: '/templates/plantilla_productos.csv',
+          excel: '/templates/plantilla-importacion-productos.xlsx'
+        };
     
     const link = document.createElement('a');
     link.href = archivos[tipo];
@@ -1469,7 +1841,17 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
               <h4>📝 Instrucciones:</h4>
               <ul>
                 <li><strong>NO modifiques</strong> los títulos (celdas bloqueadas)</li>
-                <li><strong>Campos requeridos:</strong> codigo, nombre, tipo, precio_compra, precio_venta, stock</li>
+                {isJewelryBusiness ? (
+                  <li><strong>Campos requeridos (joyería):</strong> codigo, nombre, tipo, precio_compra, peso, stock</li>
+                ) : (
+                  <li><strong>Campos requeridos:</strong> codigo, nombre, tipo, precio_compra, precio_venta, stock</li>
+                )}
+                {isJewelryBusiness && (
+                  <li><strong>Joyería:</strong> precio_venta es opcional si jewelry_price_mode = variable</li>
+                )}
+                {isJewelryBusiness && (
+                  <li><strong>Joyería:</strong> jewelry_price_mode (fixed/variable), jewelry_material_type (local/international/na), pureza (24k, 18k, 925...)</li>
+                )}
                 <li><strong>Campo opcional:</strong> permite_toppings (si/no, true/false, 1/0)</li>
                 <li><strong>Campo opcional:</strong> stock_minimo (número, umbral por producto)</li>
                 <li><strong>Si usas variantes:</strong> llena variante_nombre y variante_stock (stock global puede quedar vacío)</li>
