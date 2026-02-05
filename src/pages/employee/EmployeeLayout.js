@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CreditCard, History, Home, Calculator, Sparkles } from 'lucide-react';
+import { CreditCard, History, Home, Calculator, Sparkles, Users, Receipt, FileText, Tag } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import BottomNav from '../../components/navigation/BottomNav';
 import TopNav from '../../components/navigation/TopNav';
@@ -26,36 +26,71 @@ const EmployeeLayout = () => {
   };
 
   const menuGroups = useMemo(() => {
-    const items = [
-    {
-      type: 'single',
-      icon: Home,
-      label: 'Inicio',
-      to: '/empleado',
-      end: true
-    },
-    {
-      type: 'single',
-      icon: CreditCard,
-      label: 'Caja',
-      to: '/empleado/caja'
-    },
-    {
-      type: 'single',
-      icon: History,
-      label: 'Historial',
-      to: '/empleado/historial-ventas'
-    }
-    ];
-    if (hasPermission('cierre.create') || hasPermission('cierre.view')) {
-      items.push({
+    const groups = [
+      {
         type: 'single',
-        icon: Calculator,
-        label: 'Cierre de Caja',
-        to: '/empleado/cierre-caja'
-      });
-    }
-    return items;
+        icon: Home,
+        label: 'Inicio',
+        to: '/empleado',
+        end: true
+      },
+      {
+        type: 'group',
+        icon: CreditCard,
+        label: 'Ventas y Caja',
+        items: [
+          {
+            to: '/empleado/caja',
+            icon: CreditCard,
+            label: 'Caja'
+          },
+          {
+            to: '/empleado/historial-ventas',
+            icon: History,
+            label: 'Historial de Ventas'
+          },
+          {
+            to: '/empleado/consultar-precio',
+            icon: Tag,
+            label: 'Consultar Precio',
+            visible: hasPermission('ventas.view') || hasPermission('ventas.create')
+          },
+          {
+            to: '/empleado/cierre-caja',
+            icon: Calculator,
+            label: 'Cierre de Caja',
+            visible: hasPermission('cierre.create') || hasPermission('cierre.view')
+          },
+          {
+            to: '/empleado/historial-cierres',
+            icon: FileText,
+            label: 'Historial de Cierres',
+            visible: hasPermission('cierre.create') || hasPermission('cierre.view')
+          }
+        ].filter(item => item.visible !== false)
+      },
+      {
+        type: 'group',
+        icon: Users,
+        label: 'Clientes y Créditos',
+        items: [
+          {
+            to: '/empleado/clientes',
+            icon: Users,
+            label: 'Clientes',
+            visible: hasPermission('clientes.view')
+          },
+          {
+            to: '/empleado/creditos',
+            icon: Receipt,
+            label: 'Créditos',
+            visible: hasPermission('creditos.view')
+          }
+        ].filter(item => item.visible !== false)
+      }
+    ];
+
+    return groups;
   }, [hasPermission]);
 
   const bottomNavItems = useMemo(() => {
@@ -64,8 +99,18 @@ const EmployeeLayout = () => {
       { to: '/empleado/caja', icon: CreditCard, label: 'Caja' },
       { to: '/empleado/historial-ventas', icon: History, label: 'Historial' }
     ];
+    if (hasPermission('ventas.view') || hasPermission('ventas.create')) {
+      items.push({ to: '/empleado/consultar-precio', icon: Tag, label: 'Precio' });
+    }
+    if (hasPermission('clientes.view')) {
+      items.push({ to: '/empleado/clientes', icon: Users, label: 'Clientes' });
+    }
+    if (hasPermission('creditos.view')) {
+      items.push({ to: '/empleado/creditos', icon: Receipt, label: 'Créditos' });
+    }
     if (hasPermission('cierre.create') || hasPermission('cierre.view')) {
       items.push({ to: '/empleado/cierre-caja', icon: Calculator, label: 'Cierre' });
+      items.push({ to: '/empleado/historial-cierres', icon: FileText, label: 'Cierres' });
     }
     return items;
   }, [hasPermission]);

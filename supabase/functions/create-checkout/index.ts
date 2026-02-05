@@ -113,7 +113,12 @@ serve(async (req) => {
     // Preparar datos para Wompi
     const wompiPublicKey = Deno.env.get('WOMPI_PUBLIC_KEY')
     const wompiIntegritySecret = Deno.env.get('WOMPI_INTEGRITY_SECRET')
-    const redirectUrl = Deno.env.get('WOMPI_REDIRECT_URL') || 'http://localhost:3000/subscription/callback'
+    const envRedirectUrl = Deno.env.get('WOMPI_REDIRECT_URL')
+    const origin = req.headers.get('origin') || ''
+    const fallbackRedirectUrl = origin.startsWith('https://')
+      ? `${origin}/subscription/callback`
+      : ''
+    const redirectUrl = envRedirectUrl || fallbackRedirectUrl
 
     const amountInCents = Math.round(amount * 100)
     

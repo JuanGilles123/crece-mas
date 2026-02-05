@@ -6,8 +6,8 @@ import { loginEmployee } from '../../services/api/employeeAuthApi';
 import styles from './Login.module.css';
 
 const LoginEmpleado = () => {
+  const [username, setUsername] = useState('');
   const [code, setCode] = useState('');
-  const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -18,20 +18,20 @@ const LoginEmpleado = () => {
     setError('');
     setLoading(true);
 
-    if (!code.trim()) {
+    if (!username.trim()) {
       setError('Por favor ingresa tu usuario.');
       setLoading(false);
       return;
     }
 
-    if (!password.trim()) {
-      setError('Por favor ingresa tu contraseña.');
+    if (!code.trim()) {
+      setError('Por favor ingresa tu código.');
       setLoading(false);
       return;
     }
 
     try {
-      await loginEmployee({ code, password });
+      await loginEmployee({ username, code });
       navigate('/empleado');
     } catch (err) {
       setError(err.message || 'Error al iniciar sesión');
@@ -64,7 +64,7 @@ const LoginEmpleado = () => {
           <div className={styles.form}>
             <div className={styles.formHeader}>
               <h2>Acceso de Empleados</h2>
-              <p>Ingresa tu usuario y contraseña</p>
+              <p>Ingresa tu usuario y código</p>
             </div>
 
             <form onSubmit={handleSubmit}>
@@ -74,8 +74,8 @@ const LoginEmpleado = () => {
                   <input
                     type="text"
                     placeholder="Usuario"
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
                     required
                     className={styles.input}
                   />
@@ -87,9 +87,9 @@ const LoginEmpleado = () => {
                   <Lock size={20} className={styles.inputIcon} />
                   <input
                     type={showPass ? 'text' : 'password'}
-                    placeholder="Contraseña"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Código"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 12))}
                     required
                     className={styles.input}
                   />

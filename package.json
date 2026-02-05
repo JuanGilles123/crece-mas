@@ -51,7 +51,8 @@
     "react-scripts": "5.0.1",
     "web-vitals": "^2.1.4",
     "xlsx": "^0.18.5",
-    "zod": "^4.1.9"
+    "zod": "^4.1.9",
+    "@sendgrid/mail": "^8.1.4"
   },
   "scripts": {
     "start": "react-scripts start",

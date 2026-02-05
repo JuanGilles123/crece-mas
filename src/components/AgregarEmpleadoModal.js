@@ -12,15 +12,17 @@ import {
 import toast from 'react-hot-toast';
 import './AgregarEmpleadoModal.css';
 
-const AgregarEmpleadoModal = ({ open, onClose, onAgregar, cargando }) => {
+const AgregarEmpleadoModal = ({ open, onClose, onAgregar, cargando, customRoles = [], roles = {} }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [nombre, setNombre] = useState('');
   const [telefono, setTelefono] = useState('');
   const [empleadoCreado, setEmpleadoCreado] = useState(null);
   const [username, setUsername] = useState('');
-  const [pin, setPin] = useState('');
+  const [accessCode, setAccessCode] = useState('');
   const [usernameManual, setUsernameManual] = useState(false);
   const [codigoCopiado, setCodigoCopiado] = useState(false);
+  const [role, setRole] = useState('cashier');
+  const [customRoleId, setCustomRoleId] = useState('');
 
   const normalizarUsuario = (value) => {
     const raw = String(value || '')
@@ -39,19 +41,10 @@ const AgregarEmpleadoModal = ({ open, onClose, onAgregar, cargando }) => {
     return result.slice(0, 12);
   };
 
-  const generarPin = (length = 6) => {
-    let codigo = '';
-    for (let i = 0; i < length; i++) {
-      codigo += Math.floor(Math.random() * 10).toString();
-    }
-    return codigo;
+  const normalizarCodigo = (value) => {
+    const raw = String(value || '').replace(/[^0-9]/g, '');
+    return raw.slice(0, 12);
   };
-
-  useEffect(() => {
-    if (open && !pin) {
-      setPin(generarPin(4));
-    }
-  }, [open, pin]);
 
   useEffect(() => {
     if (!nombre) return;
@@ -64,26 +57,32 @@ const AgregarEmpleadoModal = ({ open, onClose, onAgregar, cargando }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const usernameSafe = normalizarUsuario(username);
-    if (!nombre || !usernameSafe || !pin) {
-      toast.error('Por favor completa nombre, usuario y contraseña');
+    const accessCodeSafe = normalizarCodigo(accessCode);
+    if (!nombre || !usernameSafe || !accessCodeSafe) {
+      toast.error('Por favor completa nombre, usuario y código');
       return;
     }
     if (usernameSafe.length < 4 || usernameSafe.length > 12) {
       toast.error('El usuario debe tener entre 4 y 12 caracteres.');
       return;
     }
-    if (!/^[a-zA-Z0-9]{4,12}$/.test(pin)) {
-      toast.error('La contraseña debe tener entre 4 y 12 caracteres (letras y números).');
+    if (accessCodeSafe.length < 4 || accessCodeSafe.length > 12) {
+      toast.error('El código debe tener entre 4 y 12 dígitos.');
       return;
     }
 
+    if (accessCodeSafe === usernameSafe) {
+      toast.error('El código debe ser diferente al usuario.');
+      return;
+    }
     setIsSubmitting(true);
 
     const usernameFinal = usernameSafe;
-    const accessCodeFinal = usernameFinal;
+    const accessCodeFinal = accessCodeSafe;
+    const pinFinal = accessCodeSafe;
 
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/67cbae63-1d62-454e-a79c-6473cc85ec06',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H8',location:'AgregarEmpleadoModal.js:82',message:'employee:create_submit',data:{hasNombre:!!nombre,hasUsername:!!usernameFinal,hasPin:!!pin,hasAccessCode:!!accessCodeFinal},timestamp:Date.now()})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/67cbae63-1d62-454e-a79c-6473cc85ec06',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H8',location:'AgregarEmpleadoModal.js:82',message:'employee:create_submit',data:{hasNombre:!!nombre,hasUsername:!!usernameFinal,hasPin:!!pinFinal,hasAccessCode:!!accessCodeFinal},timestamp:Date.now()})}).catch(()=>{});
     // #endregion agent log
 
     // Llamar a onAgregar y esperar la respuesta
@@ -93,9 +92,9 @@ const AgregarEmpleadoModal = ({ open, onClose, onAgregar, cargando }) => {
         telefono: telefono.trim(),
         accessCode: accessCodeFinal,
         username: usernameFinal,
-        pin: pin.trim(),
-        role: 'cashier',
-        customRoleId: null
+        pin: pinFinal,
+        role,
+        customRoleId: customRoleId || null
       });
       
       // Si la creación fue exitosa, mostrar la información
@@ -116,9 +115,11 @@ const AgregarEmpleadoModal = ({ open, onClose, onAgregar, cargando }) => {
     setTelefono('');
     setEmpleadoCreado(null);
     setUsername('');
-    setPin('');
+    setAccessCode('');
     setUsernameManual(false);
     setCodigoCopiado(false);
+    setRole('cashier');
+    setCustomRoleId('');
     onClose();
   };
 
@@ -179,32 +180,30 @@ const AgregarEmpleadoModal = ({ open, onClose, onAgregar, cargando }) => {
                 </button>
               </div>
 
-              <div className="codigo-label" style={{ marginTop: '1rem' }}>
-                <Key size={16} />
-                Contraseña:
-              </div>
-              <div className="codigo-value-container">
-                <code className="codigo-value" style={{ fontSize: '1.05rem', fontWeight: 'bold', color: '#16a34a' }}>
-                  {pin}
-                </code>
-                <button 
-                  className="btn-copiar-codigo"
-                  onClick={() => {
-                    const pinTexto = pin || '';
-                    navigator.clipboard.writeText(pinTexto);
-                    setCodigoCopiado(true);
-                    toast.success('PIN copiado');
-                    setTimeout(() => setCodigoCopiado(false), 2000);
-                  }}
-                  title="Copiar contraseña"
-                >
-                  {codigoCopiado ? (
-                    <CheckCircle size={18} />
-                  ) : (
-                    <Copy size={18} />
-                  )}
-                </button>
-              </div>
+            <div className="codigo-label" style={{ marginTop: '1rem' }}>
+              <Key size={16} />
+              Código:
+            </div>
+            <div className="codigo-value-container">
+              <code className="codigo-value">{empleadoCreado.employee_code || empleadoCreado.code || accessCode || '—'}</code>
+              <button
+                className="btn-copiar-codigo"
+                onClick={() => {
+                  const codigoTexto = empleadoCreado.employee_code || empleadoCreado.code || accessCode || '';
+                  navigator.clipboard.writeText(codigoTexto);
+                  setCodigoCopiado(true);
+                  toast.success('Código copiado');
+                  setTimeout(() => setCodigoCopiado(false), 2000);
+                }}
+                title="Copiar código"
+              >
+                {codigoCopiado ? (
+                  <CheckCircle size={18} />
+                ) : (
+                  <Copy size={18} />
+                )}
+              </button>
+            </div>
 
               <div className="codigo-label" style={{ marginTop: '1rem' }}>
                 <Phone size={16} />
@@ -232,7 +231,7 @@ const AgregarEmpleadoModal = ({ open, onClose, onAgregar, cargando }) => {
         ) : (
           <form onSubmit={handleSubmit} className="modal-form">
             <div className="form-hint" style={{ marginBottom: '0.75rem' }}>
-              Obligatorios: <strong>Nombre Completo</strong>, <strong>Usuario</strong> y <strong>Contraseña</strong>.
+              Obligatorios: <strong>Nombre Completo</strong>, <strong>Usuario</strong> y <strong>Código</strong>.
             </div>
             <div className="form-group">
               <label className="form-label">
@@ -248,6 +247,57 @@ const AgregarEmpleadoModal = ({ open, onClose, onAgregar, cargando }) => {
                 required
               />
             </div>
+
+            <div className="form-group">
+              <label className="form-label">
+                <Key size={16} />
+                Rol *
+              </label>
+              <select
+                className="form-select"
+                value={role}
+                onChange={(e) => {
+                  setRole(e.target.value);
+                  setCustomRoleId('');
+                }}
+                required
+              >
+                {Object.entries(roles)
+                  .filter(([key]) => key !== 'owner')
+                  .map(([key, roleInfo]) => (
+                    <option key={key} value={key}>
+                      {roleInfo.label} - {roleInfo.description}
+                    </option>
+                  ))}
+              </select>
+              <small className="form-hint">
+                Selecciona el rol base para este empleado.
+              </small>
+            </div>
+
+            {customRoles.length > 0 && (
+              <div className="form-group">
+                <label className="form-label">
+                  <Key size={16} />
+                  Rol personalizado (opcional)
+                </label>
+                <select
+                  className="form-select"
+                  value={customRoleId}
+                  onChange={(e) => setCustomRoleId(e.target.value)}
+                >
+                  <option value="">Sin rol personalizado</option>
+                  {customRoles.map((customRole) => (
+                    <option key={customRole.id} value={customRole.id}>
+                      {customRole.name}
+                    </option>
+                  ))}
+                </select>
+                <small className="form-hint">
+                  Si eliges un rol personalizado, se aplicará sobre el rol base.
+                </small>
+              </div>
+            )}
 
             <div className="form-group">
               <label className="form-label">
@@ -273,28 +323,22 @@ const AgregarEmpleadoModal = ({ open, onClose, onAgregar, cargando }) => {
             <div className="form-group">
               <label className="form-label">
                 <Key size={16} />
-                Contraseña *
+                Código (PIN) *
               </label>
               <div className="codigo-input-group">
                 <input
                   type="text"
                   className="form-input"
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 12))}
-                  placeholder="Ej: 1234 o juan23"
+                  value={accessCode}
+                  onChange={(e) => {
+                    setAccessCode(normalizarCodigo(e.target.value));
+                  }}
+                  placeholder="Ej: 1234"
                   required
                 />
-                <button
-                  type="button"
-                  className="btn-generar-codigo"
-                  onClick={() => setPin(generarPin(6))}
-                  title="Generar contraseña"
-                >
-                  Generar
-                </button>
               </div>
               <small className="form-hint">
-                Contraseña de 4 a 12 caracteres (letras y números).
+                Código numérico de 4 a 12 dígitos.
               </small>
             </div>
 

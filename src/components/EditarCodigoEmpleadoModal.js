@@ -3,15 +3,14 @@ import { motion } from 'framer-motion';
 import { 
   Key, 
   XCircle, 
-  Save,
-  RefreshCw
+  Save
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import './EditarCodigoEmpleadoModal.css';
 
-const EditarCodigoEmpleadoModal = ({ open, onClose, onGuardar, usuarioActual, nombreEmpleado, cargando = false }) => {
+const EditarCodigoEmpleadoModal = ({ open, onClose, onGuardar, usuarioActual, codigoActual, nombreEmpleado, cargando = false }) => {
   const [usuario, setUsuario] = useState(usuarioActual || '');
-  const [password, setPassword] = useState('');
+  const [codigo, setCodigo] = useState(codigoActual || '');
 
   const normalizarUsuario = (value) => {
     const raw = String(value || '')
@@ -22,25 +21,24 @@ const EditarCodigoEmpleadoModal = ({ open, onClose, onGuardar, usuarioActual, no
     return raw.slice(0, 12);
   };
 
-  const generarPassword = (length = 6) => {
-    let codigo = '';
-    for (let i = 0; i < length; i++) {
-      codigo += Math.floor(Math.random() * 10).toString();
-    }
-    return codigo;
+  const normalizarCodigo = (value) => {
+    const raw = String(value || '').replace(/[^0-9]/g, '');
+    return raw.slice(0, 12);
   };
 
   useEffect(() => {
     if (open) {
       setUsuario(usuarioActual || '');
-      setPassword('');
+      setCodigo(codigoActual || '');
+      setCodigo(codigoActual || '');
     }
-  }, [open, usuarioActual]);
+  }, [open, usuarioActual, codigoActual]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     const usuarioSafe = normalizarUsuario(usuario);
+    const codigoSafe = normalizarCodigo(codigo);
 
     if (!usuarioSafe) {
       toast.error('Por favor ingresa un usuario válido');
@@ -52,22 +50,27 @@ const EditarCodigoEmpleadoModal = ({ open, onClose, onGuardar, usuarioActual, no
       return;
     }
 
-    if (!password.trim()) {
-      toast.error('Por favor ingresa una contraseña');
+    if (!codigoSafe) {
+      toast.error('Por favor ingresa un código válido');
       return;
     }
 
-    if (!/^[a-zA-Z0-9]{4,12}$/.test(password.trim())) {
-      toast.error('La contraseña debe tener entre 4 y 12 caracteres (letras y números).');
+    if (codigoSafe.length < 4 || codigoSafe.length > 12) {
+      toast.error('El código debe tener entre 4 y 12 caracteres.');
       return;
     }
 
-    await onGuardar({ username: usuarioSafe, password: password.trim() });
+    if (codigoSafe === usuarioSafe) {
+      toast.error('El código debe ser diferente al usuario.');
+      return;
+    }
+
+    await onGuardar({ username: usuarioSafe, accessCode: codigoSafe, password: codigoSafe });
   };
 
   const handleCerrar = () => {
     setUsuario(usuarioActual || '');
-    setPassword('');
+    setCodigo(codigoActual || '');
     onClose();
   };
 
@@ -102,7 +105,37 @@ const EditarCodigoEmpleadoModal = ({ open, onClose, onGuardar, usuarioActual, no
           <div className="form-group">
             <label className="form-label">
               <Key size={16} />
-              Usuario
+              Usuario actual
+            </label>
+            <div className="codigo-input-group">
+              <input
+                type="text"
+                className="form-input"
+                value={usuarioActual || ''}
+                readOnly
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">
+              <Key size={16} />
+              Código actual
+            </label>
+            <div className="codigo-input-group">
+              <input
+                type="text"
+                className="form-input"
+                value={codigoActual || ''}
+                readOnly
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">
+              <Key size={16} />
+              Nuevo usuario
             </label>
             <div className="codigo-input-group">
               <input
@@ -122,30 +155,26 @@ const EditarCodigoEmpleadoModal = ({ open, onClose, onGuardar, usuarioActual, no
           <div className="form-group">
             <label className="form-label">
               <Key size={16} />
-              Contraseña
+              Nuevo código (PIN)
             </label>
             <div className="codigo-input-group">
               <input
                 type="text"
                 className="form-input"
-                value={password}
-                onChange={(e) => setPassword(e.target.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 12))}
-                placeholder="Ej: 1234 o juan23"
+                value={codigo}
+                onChange={(e) => setCodigo(normalizarCodigo(e.target.value))}
+                placeholder="Ej: 1234"
                 required
               />
-              <button
-                type="button"
-                className="btn-generar-codigo"
-                onClick={() => setPassword(generarPassword(6))}
-                title="Generar contraseña"
-              >
-                <RefreshCw size={18} />
-                Generar
-              </button>
             </div>
             <small className="form-hint">
-              Contraseña de 4 a 12 caracteres (letras y números).
+              Código de 4 a 12 dígitos.
             </small>
+            {usuarioActual && codigoActual && usuarioActual === codigoActual && (
+              <small className="form-hint" style={{ color: '#ef4444' }}>
+                El código debe ser diferente al usuario.
+              </small>
+            )}
           </div>
 
           <div className="modal-actions">

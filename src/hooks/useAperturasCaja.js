@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../services/api/supabaseClient';
+import { getEmployeeSession } from '../utils/employeeSession';
 import toast from 'react-hot-toast';
 
 // Hook para obtener la apertura de caja activa
@@ -8,6 +9,25 @@ export const useAperturaCajaActiva = (organizationId, userId) => {
     queryKey: ['apertura_caja_activa', organizationId, userId],
     queryFn: async () => {
       if (!organizationId || !userId) return null;
+
+      const employeeSession = getEmployeeSession();
+      if (employeeSession?.token) {
+        const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+        const { data, error } = await supabase.functions.invoke('employee-apertura-activa', {
+          body: { token: employeeSession.token },
+          headers: {
+            ...(anonKey ? { apikey: anonKey } : {}),
+            Authorization: anonKey ? `Bearer ${anonKey}` : undefined
+          }
+        });
+        if (error) {
+          throw new Error(error.message || 'Error al verificar apertura de caja');
+        }
+        if (data?.error) {
+          throw new Error(data.error);
+        }
+        return data?.apertura || null;
+      }
       
       // Buscar la última apertura que no tenga un cierre asociado
       const { data, error } = await supabase
@@ -38,6 +58,25 @@ export const useCrearAperturaCaja = () => {
 
   return useMutation({
     mutationFn: async ({ organizationId, userId, montoInicial }) => {
+      const employeeSession = getEmployeeSession();
+      if (employeeSession?.token) {
+        const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+        const { data, error } = await supabase.functions.invoke('employee-open-caja', {
+          body: { token: employeeSession.token, montoInicial },
+          headers: {
+            ...(anonKey ? { apikey: anonKey } : {}),
+            Authorization: anonKey ? `Bearer ${anonKey}` : undefined
+          }
+        });
+        if (error) {
+          throw new Error(error.message || 'Error al crear apertura de caja');
+        }
+        if (data?.error) {
+          throw new Error(data.error);
+        }
+        return data?.apertura;
+      }
+
       if (!organizationId || !userId) {
         throw new Error('Faltan datos de organización o usuario');
       }

@@ -70,9 +70,9 @@ serve(async (req) => {
     }
 
     const body = await req.json()
-    const { organizationId, memberId, username, password } = body || {}
+    const { organizationId, memberId, username, accessCode, password } = body || {}
 
-    if (!organizationId || !memberId || !username || !password) {
+    if (!organizationId || !memberId || !username || !accessCode) {
       return new Response(
         JSON.stringify({ error: 'Faltan campos requeridos' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
@@ -80,7 +80,8 @@ serve(async (req) => {
     }
 
     const usernameSafe = String(username || '').toLowerCase().trim().replace(/[^a-z0-9]/g, '')
-    const passwordTrim = String(password || '').trim()
+    const accessCodeSafe = String(accessCode || '').trim().replace(/[^0-9]/g, '')
+    const passwordTrim = String(password || '').trim() || accessCodeSafe
 
     if (usernameSafe.length < 4 || usernameSafe.length > 12) {
       return new Response(
@@ -89,9 +90,23 @@ serve(async (req) => {
       )
     }
 
-    if (!/^[a-zA-Z0-9]{4,12}$/.test(passwordTrim)) {
+    if (accessCodeSafe.length < 4 || accessCodeSafe.length > 12) {
       return new Response(
-        JSON.stringify({ error: 'La contraseña debe tener entre 4 y 12 caracteres (letras y números).' }),
+        JSON.stringify({ error: 'El código debe tener entre 4 y 12 dígitos.' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      )
+    }
+
+    if (accessCodeSafe === usernameSafe) {
+      return new Response(
+        JSON.stringify({ error: 'El código debe ser diferente al usuario.' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      )
+    }
+
+    if (!/^[0-9]{4,12}$/.test(passwordTrim)) {
+      return new Response(
+        JSON.stringify({ error: 'El código debe ser numérico (4 a 12 dígitos).' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       )
     }
@@ -135,7 +150,7 @@ serve(async (req) => {
 
     const { error: updateMemberError } = await supabaseAdmin
       .from('team_members')
-      .update({ employee_code: usernameSafe, employee_username: usernameSafe })
+      .update({ employee_code: accessCodeSafe, employee_username: usernameSafe })
       .eq('id', memberId)
 
     if (updateMemberError) {
@@ -147,7 +162,7 @@ serve(async (req) => {
 
     const { error: updateEmployeeError } = await supabaseAdmin
       .from('employees')
-      .update({ code: usernameSafe, password_hash: passwordHash, updated_at: new Date().toISOString() })
+      .update({ code: accessCodeSafe, password_hash: passwordHash, updated_at: new Date().toISOString() })
       .eq('team_member_id', memberId)
       .eq('organization_id', organizationId)
 

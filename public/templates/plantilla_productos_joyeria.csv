@@ -1,0 +1,34 @@
+# ========================================
+# PLANTILLA DE IMPORTACION DE PRODUCTOS - JOYERIA
+# ========================================
+# 
+# INSTRUCCIONES:
+# 1. Completa los datos de tus productos en las filas de abajo
+# 2. NO modifiques los títulos (celdas bloqueadas)
+# 3. Usa números sin comillas para precios, peso y stock
+# 4. Usa comillas solo para textos con espacios
+# 5. Guarda el archivo como CSV antes de importar
+#
+# ========================================
+
+# TÍTULOS (NO MODIFICAR)
+# Campos requeridos (joyeria): codigo, nombre, tipo, precio_compra, peso, stock
+# precio_venta es opcional si jewelry_price_mode = variable
+# Campos opcionales: pureza, material, talla, jewelry_price_mode, jewelry_material_type, jewelry_min_margin, jewelry_static_mode, jewelry_static_percent
+codigo,nombre,tipo,precio_compra,precio_venta,stock,stock_minimo,peso,unidad_peso,pureza,material,talla,jewelry_price_mode,jewelry_material_type,jewelry_min_margin,jewelry_static_mode,jewelry_static_percent,categoria,descripcion,imagen,fecha_vencimiento,variante_nombre,variante_codigo,variante_stock,marca,modelo,color,permite_toppings
+
+# ========================================
+# EJEMPLOS DE PRODUCTOS (BORRA ESTAS FILAS)
+# ========================================
+
+"JOY-001","Anillo Oro 18k","accesorio",180000,320000,3,1,4.5,"g","18k","Oro","6","fixed","international",15000,"fixed","", "Anillos","Anillo clasico de oro","",,"","","","", "JoyaPlus","Clasico","Dorado","no"
+"JOY-002","Cadena Oro 24k","accesorio",220000,"",2,1,12.3,"g","24k","Oro","", "variable","international",12000,"","", "Cadenas","Cadena con precio por peso","",,"","","","", "JoyaPlus","Premium","Dorado","no"
+"JOY-003","Pulsera Plata 925","accesorio",60000,120000,5,1,8.2,"g","925","Plata","", "fixed","local",8000,"percent","25","Pulseras","Pulsera plata con margen porcentual","",,"","","","", "JoyaPlus","Argolla","Plateado","no"
+
+# ========================================
+# TUS PRODUCTOS (AGREGA AQUÍ TUS DATOS)
+# ========================================
+
+"","","","","","","","","","","","","","","","","","","","","","","","","","",""
+"","","","","","","","","","","","","","","","","","","","","","","","","","",""
+"","","","","","","","","","","","","","","","","","","","","","","","","","",""

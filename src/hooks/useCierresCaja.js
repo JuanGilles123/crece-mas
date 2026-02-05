@@ -2,16 +2,22 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../services/api/supabaseClient';
 
 // Hook para obtener cierres de caja
-export const useCierresCaja = (organizationId, limit = 100) => {
+export const useCierresCaja = (organizationId, limit = 100, employeeId = null) => {
   return useQuery({
-    queryKey: ['cierres_caja', organizationId, limit],
+    queryKey: ['cierres_caja', organizationId, limit, employeeId],
     queryFn: async () => {
       if (!organizationId) return [];
       
-      const { data, error } = await supabase
+      let query = supabase
         .from('cierres_caja')
         .select('*')
-        .eq('organization_id', organizationId)
+        .eq('organization_id', organizationId);
+
+      if (employeeId) {
+        query = query.eq('employee_id', employeeId);
+      }
+
+      const { data, error } = await query
         .order('created_at', { ascending: false })
         .limit(limit);
 
@@ -19,7 +25,34 @@ export const useCierresCaja = (organizationId, limit = 100) => {
         console.error('Error fetching cierres_caja:', error);
         throw new Error('Error al cargar cierres de caja');
       }
-      return data || [];
+      const cierres = data || [];
+      const employeeIds = Array.from(
+        new Set(cierres.map((cierre) => cierre.employee_id).filter(Boolean))
+      );
+
+      if (!employeeIds.length) {
+        return cierres;
+      }
+
+      const { data: employeesData, error: employeesError } = await supabase
+        .from('employees')
+        .select('id, team_member:team_members(employee_name)')
+        .in('id', employeeIds);
+
+      if (employeesError) {
+        console.warn('Error fetching employees for cierres:', employeesError);
+        return cierres;
+      }
+
+      const employeesById = (employeesData || []).reduce((acc, employee) => {
+        acc[employee.id] = employee;
+        return acc;
+      }, {});
+
+      return cierres.map((cierre) => ({
+        ...cierre,
+        employee: cierre.employee_id ? employeesById[cierre.employee_id] || null : null,
+      }));
     },
     enabled: !!organizationId,
     staleTime: 10 * 60 * 1000,

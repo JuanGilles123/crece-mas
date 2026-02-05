@@ -64,16 +64,18 @@ serve(async (req) => {
 
   try {
     const body = await req.json()
+    const username = String(body?.username || '').toLowerCase().trim()
     const code = String(body?.code || '').toLowerCase().trim()
     const password = String(body?.password || '')
+    const pin = password || code
 
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/67cbae63-1d62-454e-a79c-6473cc85ec06',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H4',location:'employee-login/index.ts:34',message:'employeeLogin:start',data:{hasCode:!!code,codeLength:code.length,hasPassword:!!password},timestamp:Date.now()})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/67cbae63-1d62-454e-a79c-6473cc85ec06',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H4',location:'employee-login/index.ts:34',message:'employeeLogin:start',data:{hasUsername:!!username,hasCode:!!code,codeLength:code.length,hasPassword:!!password},timestamp:Date.now()})}).catch(()=>{});
     // #endregion agent log
 
-    if (!code || !password) {
+    if ((!username && !code) || !pin || (username && !code)) {
       return new Response(
-        JSON.stringify({ error: 'Código y contraseña son requeridos' }),
+        JSON.stringify({ error: 'Usuario y código son requeridos' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       )
     }
@@ -83,13 +85,44 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    let { data: employee, error: employeeError } = await supabaseAdmin
-      .from('employees')
-      .select('id, organization_id, code, role, active, team_member_id, team_members(employee_name, employee_phone, custom_role_id, role)')
-      .eq('code', code)
-      .single()
+    let employee = null
+    let employeeError = null
+
+    if (username) {
+      const { data: teamMember, error: teamMemberError } = await supabaseAdmin
+        .from('team_members')
+        .select('id')
+        .eq('employee_username', username)
+        .eq('is_employee', true)
+        .eq('status', 'active')
+        .maybeSingle()
+
+      if (!teamMemberError && teamMember?.id) {
+        const lookup = await supabaseAdmin
+          .from('employees')
+          .select('id, organization_id, code, role, active, team_member_id, team_members(employee_name, employee_phone, custom_role_id, role)')
+          .eq('team_member_id', teamMember.id)
+          .single()
+        employee = lookup.data || null
+        employeeError = lookup.error || null
+      }
+    } else {
+      const lookup = await supabaseAdmin
+        .from('employees')
+        .select('id, organization_id, code, role, active, team_member_id, team_members(employee_name, employee_phone, custom_role_id, role)')
+        .eq('code', code)
+        .single()
+      employee = lookup.data || null
+      employeeError = lookup.error || null
+    }
 
     if (employeeError || !employee) {
+      if (username) {
+        return new Response(
+          JSON.stringify({ error: 'Credenciales inválidas', code: 'EMPLOYEE_NOT_FOUND' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+        )
+      }
       const { data: teamMember, error: teamMemberError } = await supabaseAdmin
         .from('team_members')
         .select('id')
@@ -145,7 +178,7 @@ serve(async (req) => {
       )
     }
 
-    const matches = await verifyPassword(password, employeeAuth.password_hash)
+    const matches = await verifyPassword(pin, employeeAuth.password_hash)
     // #region agent log
     fetch('http://127.0.0.1:7242/ingest/67cbae63-1d62-454e-a79c-6473cc85ec06',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H9',location:'employee-login/index.ts:87',message:'employee:verify',data:{employeeId:employee.id,matches},timestamp:Date.now()})}).catch(()=>{});
     // #endregion agent log

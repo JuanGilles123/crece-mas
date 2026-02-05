@@ -27,7 +27,7 @@ const SubscriptionCallback = () => {
         }
 
         // Esperar un momento para que el webhook procese (el webhook puede tardar unos segundos)
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
         // Verificar el estado del pago y suscripción
         // Buscar por transaction_id primero, si no por reference
@@ -35,7 +35,7 @@ const SubscriptionCallback = () => {
         
         let payment = null;
         let attempts = 0;
-        const maxAttempts = 10; // Intentar por hasta 30 segundos (10 intentos x 3 segundos)
+        const maxAttempts = 6; // Intentar por hasta ~12 segundos (6 intentos x 2 segundos)
 
         while (attempts < maxAttempts && !payment) {
           // Buscar pago por transaction_id (puede estar en diferentes formatos)
@@ -97,7 +97,7 @@ const SubscriptionCallback = () => {
             attempts++;
             if (attempts < maxAttempts) {
               setMessage(`Verificando pago... (${attempts}/${maxAttempts})`);
-              await new Promise(resolve => setTimeout(resolve, 3000));
+              await new Promise(resolve => setTimeout(resolve, 2000));
             }
           }
         }
@@ -110,7 +110,7 @@ const SubscriptionCallback = () => {
           console.warn('   3. Necesitas activar manualmente la suscripción');
           
           setStatus('loading');
-          setMessage('Tu pago está siendo procesado. Esto puede tardar unos momentos...');
+          setMessage('Tu pago está siendo procesado. Puedes continuar y te avisaremos si se activa.');
           
           // Intentar buscar por organization_id del usuario actual como último recurso
           try {
@@ -268,6 +268,12 @@ const SubscriptionCallback = () => {
               <span></span>
               <span></span>
               <span></span>
+            </div>
+            <div className="callback-actions">
+              <button className="callback-btn" onClick={() => navigate('/dashboard')}>
+                Continuar al Dashboard
+                <ArrowRight size={20} />
+              </button>
             </div>
           </>
         )}

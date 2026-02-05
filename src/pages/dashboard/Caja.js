@@ -9,6 +9,7 @@ import { useVentas } from '../../hooks/useVentas';
 import { useToppings } from '../../hooks/useToppings';
 import { useGuardarCotizacion, useActualizarCotizacion } from '../../hooks/useCotizaciones';
 import { generarCodigoVenta } from '../../utils/generarCodigoVenta';
+import { getEmployeeSession } from '../../utils/employeeSession';
 import { useCurrencyInput } from '../../hooks/useCurrencyInput';
 import { useClientes, useCrearCliente } from '../../hooks/useClientes';
 import { useCrearCredito } from '../../hooks/useCreditos';
@@ -94,8 +95,8 @@ export default function Caja({
   const [metodoSeleccionado, setMetodoSeleccionado] = useState(null);
   const [guardandoCotizacion, setGuardandoCotizacion] = useState(false);
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
-  // eslint-disable-next-line no-unused-vars
   const [mostrandoModalSeleccionCliente, setMostrandoModalSeleccionCliente] = useState(false);
+  const [creditoPendienteCliente, setCreditoPendienteCliente] = useState(false);
   const [mostrandoModalCliente, setMostrandoModalCliente] = useState(false);
   const [mostrandoConsultarPrecio, setMostrandoConsultarPrecio] = useState(false);
   // eslint-disable-next-line no-unused-vars
@@ -121,6 +122,14 @@ export default function Caja({
     alcance: 'total', // 'total' o 'productos'
     productosIds: [] // IDs de productos con descuento
   });
+
+  const getVentaActorIds = () => {
+    const employeeSession = getEmployeeSession();
+    if (employeeSession?.employee?.id) {
+      return { ventaUserId: null, ventaEmployeeId: employeeSession.employee.id };
+    }
+    return { ventaUserId: user?.id || null, ventaEmployeeId: null };
+  };
 
   useEffect(() => {
     if (!isJewelryBusiness) return;
@@ -295,6 +304,14 @@ export default function Caja({
       document.body.classList.remove('modal-open');
     };
   }, [mostrandoVariacionesSelector, mostrandoVarianteSelector, mostrandoToppingsSelector]);
+
+  useEffect(() => {
+    if (creditoPendienteCliente && clienteSeleccionado) {
+      setCreditoPendienteCliente(false);
+      setFechaVencimientoCredito('');
+      setMostrandoModalCredito(true);
+    }
+  }, [creditoPendienteCliente, clienteSeleccionado]);
   
   // Hooks para clientes
   // eslint-disable-next-line no-unused-vars
@@ -1421,11 +1438,13 @@ export default function Caja({
     try {
       // Generar código de cotización
       const numeroVenta = await generarCodigoVenta(organization.id, 'COTIZACION');
+      const { ventaUserId, ventaEmployeeId } = getVentaActorIds();
       
       // Construir objeto de cotización con solo campos básicos requeridos
       const cotizacionData = {
         organization_id: organization.id,
-        user_id: user.id,
+        user_id: ventaUserId,
+        employee_id: ventaEmployeeId,
         total: total,
         metodo_pago: 'COTIZACION', // Valor especial para identificar cotizaciones (metodo_pago tiene NOT NULL)
         items: cart,
@@ -1496,11 +1515,15 @@ export default function Caja({
       setMetodoMixto2('Transferencia');
       setMostrandoPagoMixto(true);
     } else if (metodo === 'Credito') {
+      if (!hasPermission('creditos.create') && !['owner', 'admin'].includes(userProfile?.role)) {
+        toast.error('No tienes permisos para crear créditos');
+        return;
+      }
       // Para crédito, verificar que haya un cliente seleccionado
       if (!clienteSeleccionado) {
         // Mostrar modal de selección de cliente
+        setCreditoPendienteCliente(true);
         setMostrandoModalSeleccionCliente(true);
-        toast.error('Debes seleccionar un cliente para vender a crédito');
         return;
       }
       // Mostrar modal para fecha de vencimiento
@@ -2188,6 +2211,7 @@ export default function Caja({
     try {
       // Generar código de venta
       const numeroVenta = await generarCodigoVenta(organization.id, metodoPagoFinal, false);
+      const { ventaUserId, ventaEmployeeId } = getVentaActorIds();
       // #region agent log
       fetch('http://127.0.0.1:7242/ingest/67cbae63-1d62-454e-a79c-6473cc85ec06',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H11',location:'Caja.js:2172',message:'venta:codigo_generado',data:{hasNumero:!!numeroVenta,metodo:metodoPagoFinal},timestamp:Date.now()})}).catch(()=>{});
       // #endregion agent log
@@ -2195,7 +2219,8 @@ export default function Caja({
       // Guardar la venta en la base de datos
       const ventaData = {
         organization_id: organization.id,
-        user_id: user.id,
+        user_id: ventaUserId,
+        employee_id: ventaEmployeeId,
         total: total,
         subtotal: subtotal,
         descuento: montoDescuento > 0 ? {
@@ -2596,8 +2621,13 @@ export default function Caja({
 
     // Si es crédito, verificar que haya un cliente seleccionado
     if (metodoActual === 'Credito') {
+      if (!hasPermission('creditos.create') && !['owner', 'admin'].includes(userProfile?.role)) {
+        toast.error('No tienes permisos para crear créditos');
+        setProcesandoVenta(false);
+        return;
+      }
       if (!clienteSeleccionado) {
-        toast.error('Debes seleccionar un cliente para vender a crédito');
+        setCreditoPendienteCliente(true);
         setMostrandoModalSeleccionCliente(true);
         setProcesandoVenta(false);
         return;
@@ -2698,9 +2728,11 @@ export default function Caja({
         const numeroVenta = await generarCodigoVenta(organization.id, metodoPagoFinal, intento > 0);
         
         // Guardar la venta en la base de datos
+        const { ventaUserId, ventaEmployeeId } = getVentaActorIds();
         const ventaData = {
           organization_id: organization.id,
-          user_id: user.id,
+          user_id: ventaUserId,
+          employee_id: ventaEmployeeId,
           total: total,
           subtotal: subtotal,
           descuento: montoDescuento > 0 ? {
@@ -4709,13 +4741,19 @@ export default function Caja({
 
       {/* Modal de selección de cliente */}
       {mostrandoModalSeleccionCliente && (
-        <div className="caja-modal-overlay" onClick={() => setMostrandoModalSeleccionCliente(false)}>
+        <div className="caja-modal-overlay" onClick={() => {
+          setMostrandoModalSeleccionCliente(false);
+          setCreditoPendienteCliente(false);
+        }}>
           <div className="caja-modal-content caja-modal-seleccion-cliente" onClick={(e) => e.stopPropagation()}>
             <div className="caja-modal-header">
               <h3>Seleccionar Cliente</h3>
               <button 
                 className="caja-modal-close"
-                onClick={() => setMostrandoModalSeleccionCliente(false)}
+                onClick={() => {
+                  setMostrandoModalSeleccionCliente(false);
+                  setCreditoPendienteCliente(false);
+                }}
               >
                 <X size={20} />
               </button>

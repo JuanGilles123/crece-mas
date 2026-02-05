@@ -2,6 +2,11 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
 import { crypto } from 'https://deno.land/std@0.168.0/crypto/mod.ts'
+import { sendEmail, SENDERS, isSendgridConfigured } from './sendgrid.ts'
+import {
+  renderSubscriptionActive,
+  renderSubscriptionPaymentFailed
+} from './emailTemplates.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -226,6 +231,21 @@ serve(async (req) => {
       console.log('✅ Pago encontrado:', payment.id, '- Organization:', payment.organization_id)
 
       // Actualizar estado del pago
+      const fetchOwnerEmail = async (organizationId: string) => {
+        const { data: org } = await supabaseClient
+          .from('organizations')
+          .select('owner_id, name')
+          .eq('id', organizationId)
+          .maybeSingle()
+
+        if (!org?.owner_id) {
+          return { email: null, name: org?.name || 'Crece+' }
+        }
+
+        const { data: ownerData } = await supabaseClient.auth.admin.getUserById(org.owner_id)
+        return { email: ownerData?.user?.email || null, name: org?.name || 'Crece+' }
+      }
+
       if (status === 'APPROVED') {
         // ✅ Pago aprobado - Activar suscripción
         console.log('✅ Pago aprobado, activando suscripción...')
@@ -268,7 +288,7 @@ serve(async (req) => {
         // Verificar si ya existe una suscripción activa
         const { data: existingSub, error: existingSubError } = await supabaseClient
           .from('subscriptions')
-          .select('id')
+          .select('id, plan_id')
           .eq('organization_id', payment.organization_id)
           .eq('status', 'active')
           .maybeSingle()
@@ -356,6 +376,41 @@ serve(async (req) => {
           console.error('❌ No se pudo obtener subscription_id para vincular')
         }
 
+        // Enviar correo de suscripción activa
+        try {
+          if (isSendgridConfigured) {
+            const { email: ownerEmail, name: orgName } = await fetchOwnerEmail(payment.organization_id)
+            if (ownerEmail) {
+              const { data: plan } = await supabaseClient
+                .from('subscription_plans')
+                .select('name')
+                .eq('id', payment.plan_id)
+                .maybeSingle()
+
+              const startDate = now.toISOString().split('T')[0]
+              const endDate = periodEnd.toISOString().split('T')[0]
+
+              const html = renderSubscriptionActive({
+                name: orgName,
+                planName: plan?.name || 'Plan Crece+',
+                startDate,
+                endDate,
+                status: 'activa',
+                dashboardUrl: 'https://creceplus.app/dashboard',
+              })
+
+              await sendEmail({
+                to: ownerEmail,
+                subject: 'Tu suscripción Crece+ está activa',
+                html,
+                from: SENDERS.BILLING,
+              })
+            }
+          }
+        } catch (emailError) {
+          console.error('❌ Error enviando correo de suscripción activa:', emailError)
+        }
+
       } else if (status === 'DECLINED' || status === 'ERROR') {
         // ❌ Pago rechazado
         console.log('❌ Pago rechazado o error')
@@ -367,6 +422,28 @@ serve(async (req) => {
             completed_at: new Date().toISOString(),
           })
           .eq('id', payment.id)
+
+        // Enviar correo de pago fallido
+        try {
+          if (isSendgridConfigured) {
+            const { email: ownerEmail, name: orgName } = await fetchOwnerEmail(payment.organization_id)
+            if (ownerEmail) {
+              const html = renderSubscriptionPaymentFailed({
+                name: orgName,
+                supportUrl: 'https://creceplus.app/soporte',
+              })
+
+              await sendEmail({
+                to: ownerEmail,
+                subject: 'Problema con tu pago en Crece+',
+                html,
+                from: SENDERS.BILLING,
+              })
+            }
+          }
+        } catch (emailError) {
+          console.error('❌ Error enviando correo de pago fallido:', emailError)
+        }
 
       } else if (status === 'VOIDED') {
         // 🚫 Pago anulado

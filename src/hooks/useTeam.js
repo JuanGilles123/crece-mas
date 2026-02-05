@@ -688,7 +688,7 @@ export const useUpdateEmployeeCredentials = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ memberId, organizationId, username, password }) => {
+    mutationFn: async ({ memberId, organizationId, username, accessCode, password }) => {
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       let accessToken = sessionData?.session?.access_token;
 
@@ -706,6 +706,9 @@ export const useUpdateEmployeeCredentials = () => {
       if (!username || !String(username).trim()) {
         throw new Error('El usuario es requerido.');
       }
+      if (!accessCode || !String(accessCode).trim()) {
+        throw new Error('El código es requerido.');
+      }
       if (!password || !String(password).trim()) {
         throw new Error('La contraseña es requerida.');
       }
@@ -716,6 +719,7 @@ export const useUpdateEmployeeCredentials = () => {
           organizationId,
           memberId,
           username: String(username),
+          accessCode: String(accessCode),
           password: String(password)
         },
         headers: {
