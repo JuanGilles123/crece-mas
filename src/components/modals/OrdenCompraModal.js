@@ -416,7 +416,8 @@ const OrdenCompraModal = ({ open, onClose, orden = null }) => {
       try {
         await actualizarProducto.mutateAsync({
           id: producto.id,
-          updates
+          updates,
+          organizationId: organization?.id
         });
         
         // Calcular porcentaje de ganancia actual si existe precio de venta
@@ -1797,7 +1798,8 @@ const OrdenCompraModal = ({ open, onClose, orden = null }) => {
                         id: prod.id,
                         updates: {
                           precio_venta: prod.precio_venta_actual
-                        }
+                        },
+                        organizationId: organization?.id
                       });
                     }
                     alert('Precios de venta actualizados exitosamente.');

@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { User, Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { loginEmployee } from '../../services/api/employeeAuthApi';
+import { getEmployeeSession } from '../../utils/employeeSession';
 import styles from './Login.module.css';
 
 const LoginEmpleado = () => {
@@ -17,6 +18,24 @@ const LoginEmpleado = () => {
     e.preventDefault();
     setError('');
     setLoading(true);
+
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      const session = getEmployeeSession();
+      if (!session) {
+        setError('Sin internet: solo puedes entrar si ya habías iniciado sesión en este dispositivo.');
+        setLoading(false);
+        return;
+      }
+      const cachedUsername = session.employee_username;
+      if (cachedUsername && cachedUsername.toLowerCase() !== username.toLowerCase().trim()) {
+        setError('Sin internet: solo puedes entrar con el usuario usado anteriormente en este dispositivo.');
+        setLoading(false);
+        return;
+      }
+      navigate('/empleado');
+      setLoading(false);
+      return;
+    }
 
     if (!username.trim()) {
       setError('Por favor ingresa tu usuario.');

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../services/api/supabaseClient';
 import toast from 'react-hot-toast';
+import { enqueueVenta, cacheVentas, getCachedVentas, getPendingVentas } from '../utils/offlineQueue';
 
 // Hook para obtener ventas
 export const useVentas = (organizationId, limit = 100, historyDays = null) => {
@@ -8,6 +9,27 @@ export const useVentas = (organizationId, limit = 100, historyDays = null) => {
     queryKey: ['ventas', organizationId, limit, historyDays],
     queryFn: async () => {
       if (!organizationId) return [];
+      const applyFilters = (ventas = []) => {
+        let filtradas = ventas;
+        if (historyDays !== null && historyDays !== undefined) {
+          const fechaLimite = new Date();
+          fechaLimite.setDate(fechaLimite.getDate() - historyDays);
+          filtradas = filtradas.filter(venta => {
+            const fecha = new Date(venta.created_at || venta.fecha);
+            return fecha >= fechaLimite;
+          });
+        }
+        return filtradas
+          .sort((a, b) => new Date(b.created_at || b.fecha).getTime() - new Date(a.created_at || a.fecha).getTime())
+          .slice(0, limit);
+      };
+
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        const cached = await getCachedVentas(organizationId);
+        const pending = await getPendingVentas({ organizationId });
+        const merged = [...cached, ...pending.map(v => ({ ...v, id: v.id || v.temp_id }))];
+        return applyFilters(merged);
+      }
       
       try {
         // Construir query base
@@ -48,16 +70,21 @@ export const useVentas = (organizationId, limit = 100, historyDays = null) => {
           
           // Mapear clientes a las ventas
           const clientesMap = new Map((clientesData || []).map(c => [c.id, c]));
-          return ventasData.map(venta => ({
+          const ventasConClienteMap = ventasData.map(venta => ({
             ...venta,
             cliente: venta.cliente_id ? (clientesMap.get(venta.cliente_id) || null) : null
           }));
+          await cacheVentas(organizationId, ventasConClienteMap);
+          const pending = await getPendingVentas({ organizationId });
+          return applyFilters([...ventasConClienteMap, ...pending]);
         }
-        
-        return ventasData.map(venta => ({
+        const ventasSinCliente = ventasData.map(venta => ({
           ...venta,
           cliente: null
         }));
+        await cacheVentas(organizationId, ventasSinCliente);
+        const pending = await getPendingVentas({ organizationId });
+        return applyFilters([...ventasSinCliente, ...pending]);
       } catch (error) {
         console.error('Error en useVentas:', error);
         return [];
@@ -78,6 +105,17 @@ export const useCrearVenta = () => {
 
   return useMutation({
     mutationFn: async (ventaData) => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        const tempId = await enqueueVenta({
+          ventaData: {
+            ...ventaData,
+            created_at: ventaData.created_at || ventaData.fecha || new Date().toISOString()
+          },
+          actorUserId: ventaData.user_id,
+          actorEmployeeId: ventaData.employee_id || null
+        });
+        return { ...ventaData, id: tempId };
+      }
       const { data, error } = await supabase
         .from('ventas')
         .insert([ventaData])

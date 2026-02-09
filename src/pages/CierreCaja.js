@@ -5,10 +5,15 @@ import { useAuth } from '../context/AuthContext';
 import { useCurrencyInput } from '../hooks/useCurrencyInput';
 import { Calculator, TrendingUp, DollarSign, ShoppingCart, AlertCircle, CheckCircle, XCircle, Save, Banknote, CreditCard, Smartphone, Share2, Download, Receipt } from 'lucide-react';
 import { getEmployeeSession } from '../utils/employeeSession';
+import { enqueueCierre, getPendingVentas } from '../utils/offlineQueue';
+import { useNetworkStatus } from '../hooks/useNetworkStatus';
+import { useOfflineSync } from '../hooks/useOfflineSync';
 import './CierreCaja.css';
 
 const CierreCaja = () => {
   const { userProfile, user, hasPermission } = useAuth();
+  const { isOnline } = useNetworkStatus();
+  const { isSyncing } = useOfflineSync();
   const [cargando, setCargando] = useState(true);
   const [ventasHoy, setVentasHoy] = useState([]);
   const [cotizacionesHoy, setCotizacionesHoy] = useState([]); // Cotizaciones informativas (no cuentan en totales)
@@ -58,6 +63,48 @@ const CierreCaja = () => {
     setCargando(true);
     try {
       const { actorUserId, actorEmployeeId } = getActorIds();
+      const pendientesLocales = await getPendingVentas({
+        organizationId: userProfile.organization_id,
+        actorUserId,
+        actorEmployeeId
+      });
+      const ventasPendientes = (pendientesLocales || []).map(venta => ({
+        id: venta.id,
+        total: venta.total || 0,
+        metodo_pago: venta.metodo_pago || 'Efectivo',
+        created_at: venta.created_at
+      }));
+      const ventasPendientesReales = ventasPendientes.filter(venta => {
+        const metodo = (venta.metodo_pago || '').toUpperCase();
+        return metodo !== 'COTIZACION' && metodo !== 'CREDITO';
+      });
+
+      if (!isOnline) {
+        setVentasHoy(ventasPendientesReales);
+        setVentasCreditoHoy([]);
+        setPagosCreditoHoy([]);
+        setTotalPagosCredito(0);
+        setTotalPagosTotales(0);
+        setTotalAbonos(0);
+        const totalPendiente = ventasPendientesReales.reduce((sum, venta) => sum + (venta.total || 0), 0);
+        setTotalSistema(totalPendiente);
+        setDesgloseSistema(
+          ventasPendientesReales.reduce(
+            (acc, venta) => {
+              const metodo = (venta.metodo_pago || '').toLowerCase();
+              const montoTotal = venta.total || 0;
+              if (metodo === 'efectivo') acc.efectivo += montoTotal;
+              else if (metodo === 'transferencia' || metodo === 'nequi') acc.transferencias += montoTotal;
+              else if (metodo === 'tarjeta') acc.tarjeta += montoTotal;
+              else if (metodo === 'mixto') acc.mixto += montoTotal;
+              return acc;
+            },
+            { efectivo: 0, transferencias: 0, tarjeta: 0, mixto: 0 }
+          )
+        );
+        setCargando(false);
+        return;
+      }
 
       // Obtener la apertura activa para obtener el monto inicial
       const { data: aperturaActiva, error: errorApertura } = await supabase
@@ -129,9 +176,13 @@ const CierreCaja = () => {
         return esCredito;
       });
 
-      setVentasHoy(ventasReales);
+      const ventasCombinadas = [...ventasPendientesReales, ...ventasReales].sort((a, b) => {
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+
+      setVentasHoy(ventasCombinadas);
       setVentasCreditoHoy(ventasCredito);
-      const total = ventasReales.reduce((sum, venta) => sum + (venta.total || 0), 0);
+      const total = ventasCombinadas.reduce((sum, venta) => sum + (venta.total || 0), 0);
       setTotalSistema(total);
       
       // Cargar pagos de créditos recibidos desde el último cierre (o apertura)
@@ -202,7 +253,7 @@ const CierreCaja = () => {
       setTotalAbonos(totalAbonos);
       
       // Calcular desglose por método de pago - procesando pagos mixtos (solo ventas reales, excluyendo créditos)
-      const desglose = ventasReales.reduce((acc, venta) => {
+      const desglose = ventasCombinadas.reduce((acc, venta) => {
         const metodo = (venta.metodo_pago || '').toLowerCase();
         const montoTotal = venta.total || 0;
         let procesado = false;
@@ -363,7 +414,7 @@ const CierreCaja = () => {
     } finally {
       setCargando(false);
     }
-  }, [userProfile?.organization_id, user?.id, getActorIds]);
+  }, [userProfile?.organization_id, user?.id, getActorIds, isOnline]);
 
   useEffect(() => {
     cargarVentasHoy();
@@ -495,6 +546,54 @@ Generado por Crece+ 🚀
 
     setGuardando(true);
     try {
+      if (!isOnline) {
+        const { actorUserId, actorEmployeeId } = getActorIds();
+        const cierreData = {
+          organization_id: userProfile.organization_id,
+          user_id: actorUserId,
+          employee_id: actorEmployeeId,
+          fecha: new Date().toISOString().split('T')[0],
+          sistema_efectivo: desgloseSistema.efectivo,
+          sistema_transferencias: desgloseSistema.transferencias,
+          sistema_tarjeta: desgloseSistema.tarjeta,
+          sistema_otros: 0,
+          total_sistema: totalSistema,
+          real_efectivo: efectivoRealInput.numericValue,
+          real_transferencias: transferenciasRealInput.numericValue,
+          real_tarjeta: tarjetaRealInput.numericValue,
+          real_otros: 0,
+          total_real: totalReal,
+          diferencia: diferencia,
+          cantidad_ventas: ventasHoy.length,
+          created_at: new Date().toISOString()
+        };
+
+        await enqueueCierre({
+          cierreData,
+          actorUserId,
+          actorEmployeeId,
+          organizationId: userProfile.organization_id
+        });
+
+        setMensaje({ tipo: 'success', texto: 'Cierre guardado localmente. Se sincronizará al reconectar.' });
+        setCierreGuardado(true);
+
+        setTimeout(() => {
+          efectivoRealInput.reset();
+          transferenciasRealInput.reset();
+          tarjetaRealInput.reset();
+          setTotalReal(0);
+          setDiferencia(null);
+          setMensaje({ tipo: '', texto: '' });
+          setVentasHoy([]);
+          setTotalSistema(0);
+          setDesgloseSistema({ efectivo: 0, transferencias: 0, tarjeta: 0, mixto: 0 });
+          setCierreGuardado(false);
+          cargarVentasHoy();
+        }, 3000);
+        return;
+      }
+
       // Primero, obtener la apertura activa para cerrarla
       const { actorUserId, actorEmployeeId } = getActorIds();
 
@@ -650,6 +749,36 @@ Generado por Crece+ 🚀
         <h1>Cierre de Caja</h1>
         <p>{new Date().toLocaleDateString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
       </motion.div>
+      {!isOnline && (
+        <div
+          style={{
+            background: '#fff7ed',
+            border: '1px solid #fdba74',
+            color: '#9a3412',
+            padding: '0.6rem 0.9rem',
+            borderRadius: '10px',
+            fontSize: '0.9rem',
+            marginBottom: '0.75rem'
+          }}
+        >
+          Sin internet: el cierre se guardará localmente y se sincronizará al reconectar.
+        </div>
+      )}
+      {isOnline && isSyncing && (
+        <div
+          style={{
+            background: '#eff6ff',
+            border: '1px solid #93c5fd',
+            color: '#1d4ed8',
+            padding: '0.6rem 0.9rem',
+            borderRadius: '10px',
+            fontSize: '0.9rem',
+            marginBottom: '0.75rem'
+          }}
+        >
+          Sincronizando cierres y ventas pendientes...
+        </div>
+      )}
 
       {yaCerrado && ventasHoy.length === 0 && (
         <motion.div

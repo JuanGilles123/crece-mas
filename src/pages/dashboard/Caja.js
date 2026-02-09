@@ -8,7 +8,8 @@ import { useProductos } from '../../hooks/useProductos';
 import { useVentas } from '../../hooks/useVentas';
 import { useToppings } from '../../hooks/useToppings';
 import { useGuardarCotizacion, useActualizarCotizacion } from '../../hooks/useCotizaciones';
-import { generarCodigoVenta } from '../../utils/generarCodigoVenta';
+import { generarCodigoVenta, generarCodigoVentaLocal } from '../../utils/generarCodigoVenta';
+import { enqueueVenta, getPendingOutboxCount } from '../../utils/offlineQueue';
 import { getEmployeeSession } from '../../utils/employeeSession';
 import { useCurrencyInput } from '../../hooks/useCurrencyInput';
 import { useClientes, useCrearCliente } from '../../hooks/useClientes';
@@ -16,6 +17,8 @@ import { useCrearCredito } from '../../hooks/useCreditos';
 import { usePedidos, useActualizarPedido, useCrearPedido } from '../../hooks/usePedidos';
 import { useAperturaCajaActiva } from '../../hooks/useAperturasCaja';
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
+import { useNetworkStatus } from '../../hooks/useNetworkStatus';
+import { useOfflineSync } from '../../hooks/useOfflineSync';
 import OptimizedProductImage from '../../components/business/OptimizedProductImage';
 import ReciboVenta from '../../components/business/ReciboVenta';
 import ConfirmacionVenta from '../../components/business/ConfirmacionVenta';
@@ -61,6 +64,8 @@ export default function Caja({
   const { user, organization, hasPermission, userProfile } = useAuth();
   const { hasFeature, canPerformAction } = useSubscription();
   const navigate = useNavigate();
+  const { isOnline } = useNetworkStatus();
+  const { isSyncing } = useOfflineSync();
   
   const esModoPedido = mode === 'pedido';
   const [query, setQuery] = useState("");
@@ -110,6 +115,7 @@ export default function Caja({
   });
   const [fechaVencimientoCredito, setFechaVencimientoCredito] = useState('');
   const [mostrandoModalCredito, setMostrandoModalCredito] = useState(false);
+  const [pendingOutboxCount, setPendingOutboxCount] = useState(0);
   // Leer preferencia de mostrar factura desde user_metadata
   const mostrarFacturaPantalla = user?.user_metadata?.mostrarFacturaPantalla === true;
   const [mostrarModalRegresarPedidos, setMostrarModalRegresarPedidos] = useState(false);
@@ -130,6 +136,25 @@ export default function Caja({
     }
     return { ventaUserId: user?.id || null, ventaEmployeeId: null };
   };
+
+  useEffect(() => {
+    let mounted = true;
+    const loadPending = async () => {
+      try {
+        const count = await getPendingOutboxCount();
+        if (mounted) setPendingOutboxCount(count);
+      } catch (error) {
+        console.warn('No se pudo obtener outbox pendiente:', error);
+      }
+    };
+
+    loadPending();
+    const timer = setInterval(loadPending, 5000);
+    return () => {
+      mounted = false;
+      clearInterval(timer);
+    };
+  }, [isOnline, isSyncing]);
 
   useEffect(() => {
     if (!isJewelryBusiness) return;
@@ -2210,8 +2235,12 @@ export default function Caja({
 
     try {
       // Generar código de venta
-      const numeroVenta = await generarCodigoVenta(organization.id, metodoPagoFinal, false);
+      const numeroVenta = isOnline
+        ? await generarCodigoVenta(organization.id, metodoPagoFinal, false)
+        : generarCodigoVentaLocal(metodoPagoFinal);
       const { ventaUserId, ventaEmployeeId } = getVentaActorIds();
+      const pedidosAActualizar = pedidosConsolidados.length > 0 ? pedidosConsolidados : [pedidoId];
+      const fechaVenta = new Date().toISOString();
       // #region agent log
       fetch('http://127.0.0.1:7242/ingest/67cbae63-1d62-454e-a79c-6473cc85ec06',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H11',location:'Caja.js:2172',message:'venta:codigo_generado',data:{hasNumero:!!numeroVenta,metodo:metodoPagoFinal},timestamp:Date.now()})}).catch(()=>{});
       // #endregion agent log
@@ -2232,12 +2261,41 @@ export default function Caja({
         } : null,
         metodo_pago: metodoPagoFinal,
         items: cart,
-        fecha: new Date().toISOString(),
+        fecha: fechaVenta,
+        created_at: fechaVenta,
         pago_cliente: montoPagoCliente,
         detalles_pago_mixto: metodoActual === "Mixto" && detallesPago ? detallesPago : null,
         numero_venta: numeroVenta,
         cliente_id: clienteSeleccionado?.id || null
       };
+
+      if (!isOnline) {
+        await enqueueVenta({
+          ventaData,
+          actorUserId: ventaUserId,
+          actorEmployeeId: ventaEmployeeId,
+          pedidosIds: pedidosAActualizar
+        });
+
+        setCart([]);
+        setVieneDePedidos(false);
+        setProcesandoVenta(false);
+        setMostrandoMetodosPago(false);
+        setMostrandoPagoEfectivo(false);
+        setMostrandoPagoMixto(false);
+        setMontoEntregado('');
+        setMostrandoConfirmacion(true);
+        setConfirmacionCargando(false);
+        setConfirmacionExito(true);
+        setDatosVentaConfirmada({ ...ventaData, id: ventaData.numero_venta });
+
+        if (onPedidoGuardado) {
+          onPedidoGuardado({ id: pedidoId, ...ventaData });
+        } else {
+          toast.success('Pago guardado localmente. Se sincronizará al reconectar.');
+        }
+        return;
+      }
       
       const { data: ventaResult, error: ventaError } = await supabase
         .from('ventas')
@@ -2256,7 +2314,6 @@ export default function Caja({
 
       // Actualizar todos los pedidos consolidados: asociar la venta pero mantener el estado actual
       // Los pedidos se marcarán como "completados" cuando se finalice la preparación
-      const pedidosAActualizar = pedidosConsolidados.length > 0 ? pedidosConsolidados : [pedidoId];
       const { error: pedidoError } = await supabase
         .from('pedidos')
         .update({
@@ -2626,6 +2683,11 @@ export default function Caja({
         setProcesandoVenta(false);
         return;
       }
+      if (!isOnline) {
+        toast.error('Las ventas a crédito requieren internet para sincronizar el crédito.');
+        setProcesandoVenta(false);
+        return;
+      }
       if (!clienteSeleccionado) {
         setCreditoPendienteCliente(true);
         setMostrandoModalSeleccionCliente(true);
@@ -2717,6 +2779,54 @@ export default function Caja({
       montoPagoCliente = detallesPagoMixto.monto1 + detallesPagoMixto.monto2;
     }
     
+    const { ventaUserId, ventaEmployeeId } = getVentaActorIds();
+    const fechaVenta = new Date().toISOString();
+
+    if (!isOnline) {
+      const numeroVenta = generarCodigoVentaLocal(metodoPagoFinal);
+      const ventaData = {
+        organization_id: organization.id,
+        user_id: ventaUserId,
+        employee_id: ventaEmployeeId,
+        total: total,
+        subtotal: subtotal,
+        descuento: montoDescuento > 0 ? {
+          tipo: descuento.tipo,
+          valor: descuento.valor,
+          monto: montoDescuento,
+          alcance: descuento.alcance,
+          productosIds: descuento.productosIds
+        } : null,
+        metodo_pago: metodoPagoFinal,
+        items: cart,
+        fecha: fechaVenta,
+        created_at: fechaVenta,
+        pago_cliente: metodoActual === 'Credito' ? 0 : montoPagoCliente,
+        detalles_pago_mixto: metodoActual === "Mixto" && detallesPagoMixto ? detallesPagoMixto : null,
+        numero_venta: numeroVenta,
+        cliente_id: clienteSeleccionado?.id || null,
+        es_credito: metodoActual === 'Credito'
+      };
+
+      await enqueueVenta({
+        ventaData,
+        actorUserId: ventaUserId,
+        actorEmployeeId: ventaEmployeeId
+      });
+
+      setCart([]);
+      setProcesandoVenta(false);
+      setMostrandoMetodosPago(false);
+      setMostrandoPagoEfectivo(false);
+      setMostrandoPagoMixto(false);
+      setMontoEntregado('');
+      setConfirmacionCargando(false);
+      setConfirmacionExito(true);
+      setDatosVentaConfirmada({ ...ventaData, id: ventaData.numero_venta });
+      toast.success('Venta guardada localmente. Se sincronizará al reconectar.');
+      return;
+    }
+
     const maxIntentos = 3;
     let intento = 0;
     let ventaResult = null;
@@ -2728,7 +2838,6 @@ export default function Caja({
         const numeroVenta = await generarCodigoVenta(organization.id, metodoPagoFinal, intento > 0);
         
         // Guardar la venta en la base de datos
-        const { ventaUserId, ventaEmployeeId } = getVentaActorIds();
         const ventaData = {
           organization_id: organization.id,
           user_id: ventaUserId,
@@ -2744,7 +2853,8 @@ export default function Caja({
           } : null,
           metodo_pago: metodoPagoFinal,
           items: cart,
-          fecha: new Date().toISOString(),
+          fecha: fechaVenta,
+          created_at: fechaVenta,
           pago_cliente: metodoActual === 'Credito' ? 0 : montoPagoCliente,
           detalles_pago_mixto: metodoActual === "Mixto" && detallesPagoMixto ? detallesPagoMixto : null,
           numero_venta: numeroVenta,
@@ -3269,6 +3379,18 @@ export default function Caja({
 
   return (
     <div className="caja-container">
+      <span
+        className={`caja-connection-badge ${
+          isOnline ? 'caja-connection-badge--online' : 'caja-connection-badge--offline'
+        }`}
+      >
+        {isSyncing && pendingOutboxCount > 0 ? (
+          <span className="caja-connection-spinner" aria-hidden="true" />
+        ) : (
+          <span className="caja-connection-dot" aria-hidden="true" />
+        )}
+        {isOnline ? (isSyncing && pendingOutboxCount > 0 ? 'Sincronizando…' : 'Conectado') : 'Sin internet'}
+      </span>
       {/* Overlay de bloqueo si no hay apertura activa (solo en modo venta) */}
       {!esModoPedido && !aperturaActivaFinal && organization?.id && !cargandoApertura && (
         <div className="caja-bloqueo-overlay">

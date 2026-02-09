@@ -8,6 +8,9 @@ import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import { useMesas } from '../hooks/useMesas';
 import { useCrearPedido } from '../hooks/usePedidos';
+import { useNetworkStatus } from '../hooks/useNetworkStatus';
+import { useOfflineSync } from '../hooks/useOfflineSync';
+import { getPendingOutboxCount, cacheProductos, getCachedProductos } from '../utils/offlineQueue';
 import ReciboVenta from '../components/business/ReciboVenta';
 import { canUsePedidos, getMesaEstadoColor } from '../utils/mesasUtils';
 import { canUseToppings } from '../utils/toppingsUtils';
@@ -34,6 +37,9 @@ const TomarPedido = () => {
   const { hasFeature } = useSubscription();
   const { data: mesas = [] } = useMesas(organization?.id);
   const crearPedido = useCrearPedido();
+  const { isOnline } = useNetworkStatus();
+  const { isSyncing } = useOfflineSync();
+  const [pendingOutboxCount, setPendingOutboxCount] = useState(0);
   
   // Estados para pago inmediato
   const [mostrandoMetodoPago, setMostrandoMetodoPago] = useState(false);
@@ -149,6 +155,12 @@ const TomarPedido = () => {
         setProductos([]);
         return;
       }
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        const cached = await getCachedProductos(organization.id);
+        setProductos(cached || []);
+        setCargando(false);
+        return;
+      }
       setCargando(true);
       try {
         const { data, error } = await supabase
@@ -158,7 +170,9 @@ const TomarPedido = () => {
           .order('nombre', { ascending: true });
 
         if (error) throw error;
-        setProductos(data || []);
+        const productosData = data || [];
+        setProductos(productosData);
+        await cacheProductos(organization.id, productosData);
       } catch (error) {
         console.error('Error cargando productos:', error);
         toast.error('Error al cargar productos');
@@ -169,6 +183,25 @@ const TomarPedido = () => {
     };
     cargarProductos();
   }, [organization?.id]);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadPending = async () => {
+      try {
+        const count = await getPendingOutboxCount();
+        if (mounted) setPendingOutboxCount(count);
+      } catch (error) {
+        console.warn('No se pudo obtener outbox pendiente:', error);
+      }
+    };
+
+    loadPending();
+    const timer = setInterval(loadPending, 5000);
+    return () => {
+      mounted = false;
+      clearInterval(timer);
+    };
+  }, [isOnline, isSyncing]);
 
   // Filtrar productos (excluir servicios y aplicar búsqueda)
   const productosFiltrados = useMemo(() => {
@@ -927,16 +960,30 @@ const TomarPedido = () => {
           <Circle size={24} />
           <h1>Tomar Pedido</h1>
         </div>
-        {tieneMesasHabilitadas && (
-          <button
-            className="pedido-btn-mapa"
-            onClick={() => navigate('/dashboard/mesas')}
-            title="Gestionar mapa de mesas"
+        <div className="pedido-header-actions">
+          <span
+            className={`pedido-connection-badge ${
+              isOnline ? 'pedido-connection-badge--online' : 'pedido-connection-badge--offline'
+            }`}
           >
-            <MapPin size={18} />
-            Mapa de Mesas
-          </button>
-        )}
+            {isSyncing && pendingOutboxCount > 0 ? (
+              <span className="pedido-connection-spinner" aria-hidden="true" />
+            ) : (
+              <span className="pedido-connection-dot" aria-hidden="true" />
+            )}
+            {isOnline ? (isSyncing && pendingOutboxCount > 0 ? 'Sincronizando…' : 'Conectado') : 'Sin internet'}
+          </span>
+          {tieneMesasHabilitadas && (
+            <button
+              className="pedido-btn-mapa"
+              onClick={() => navigate('/dashboard/mesas')}
+              title="Gestionar mapa de mesas"
+            >
+              <MapPin size={18} />
+              Mapa de Mesas
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="pedido-container">

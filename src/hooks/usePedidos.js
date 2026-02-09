@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../services/api/supabaseClient';
 import toast from 'react-hot-toast';
+import { cachePedidos, getCachedPedidos, enqueuePedidoCreate, enqueuePedidoUpdate, enqueuePedidoDelete } from '../utils/offlineQueue';
 
 /**
  * Hook para obtener pedidos de una organización
@@ -11,6 +12,26 @@ export const usePedidos = (organizationId, filters = {}) => {
     queryKey: ['pedidos', organizationId, filters],
     queryFn: async () => {
       if (!organizationId) return [];
+      const applyFilters = (pedidos = []) => {
+        let filtrados = pedidos;
+        if (filters.estado) {
+          filtrados = filtrados.filter(pedido => pedido.estado === filters.estado);
+        }
+        if (filters.mesa_id) {
+          filtrados = filtrados.filter(pedido => pedido.mesa_id === filters.mesa_id);
+        }
+        if (filters.chef_id) {
+          filtrados = filtrados.filter(pedido => pedido.chef_id === filters.chef_id);
+        }
+        if (filters.mesero_id) {
+          filtrados = filtrados.filter(pedido => pedido.mesero_id === filters.mesero_id);
+        }
+        return filtrados;
+      };
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        const cached = await getCachedPedidos(organizationId);
+        return applyFilters(cached);
+      }
 
       let query = supabase
         .from('pedidos')
@@ -47,7 +68,14 @@ export const usePedidos = (organizationId, filters = {}) => {
       if (error) {
         throw new Error('Error al cargar pedidos');
       }
-      return data || [];
+      const pedidos = data || [];
+      await cachePedidos(organizationId, pedidos);
+      const cached = await getCachedPedidos(organizationId);
+      const mergedMap = new Map(pedidos.map(pedido => [pedido.id, pedido]));
+      cached.filter(pedido => pedido.synced === 0).forEach(pedido => {
+        mergedMap.set(pedido.id, { ...mergedMap.get(pedido.id), ...pedido });
+      });
+      return applyFilters(Array.from(mergedMap.values()));
     },
     enabled: !!organizationId,
     staleTime: 10 * 1000, // 10 segundos (actualización frecuente)
@@ -80,6 +108,30 @@ export const useCrearPedido = () => {
       prioridad = 'normal',
       pagoInmediato = false
     }) => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        const subtotal = items.reduce((sum, item) => sum + (item.precio_total || 0), 0);
+        const total = subtotal + (parseFloat(costoEnvio) || 0);
+        const pedidoData = {
+          organization_id: organizationId,
+          mesa_id: mesaId || null,
+          numero_pedido: `OFF-${Date.now()}`,
+          estado: 'pendiente',
+          total,
+          notas: notas || null,
+          mesero_id: meseroId,
+          tipo_pedido: tipoPedido,
+          cliente_nombre: clienteNombre || null,
+          cliente_telefono: clienteTelefono || null,
+          direccion_entrega: direccionEntrega || null,
+          costo_envio: parseFloat(costoEnvio) || 0,
+          hora_estimada: horaEstimada || null,
+          numero_personas: numeroPersonas || 1,
+          prioridad: prioridad,
+          pago_inmediato: pagoInmediato
+        };
+
+        return await enqueuePedidoCreate({ pedidoData, items });
+      }
       // Calcular total (incluyendo costo de envío)
       const subtotal = items.reduce((sum, item) => {
         return sum + (item.precio_total || 0);
@@ -243,6 +295,13 @@ export const useCrearPedido = () => {
     onSuccess: (newPedido) => {
       queryClient.invalidateQueries(['pedidos', newPedido.organization_id]);
       queryClient.invalidateQueries(['mesas', newPedido.organization_id]);
+      if (newPedido?.synced === 0) {
+        queryClient.setQueryData(['pedidos', newPedido.organization_id], (old = []) => {
+          return [newPedido, ...old];
+        });
+        toast.success('Pedido guardado localmente. Se sincronizará al reconectar.');
+        return;
+      }
       toast.success('Pedido creado correctamente');
     },
     onError: (error) => {
@@ -259,6 +318,17 @@ export const useActualizarPedido = () => {
 
   return useMutation({
     mutationFn: async ({ id, organizationId, estado, chefId, notas, total }) => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        const updates = {};
+        if (estado !== undefined) updates.estado = estado;
+        if (chefId !== undefined) updates.chef_id = chefId;
+        if (notas !== undefined) updates.notas = notas;
+        if (total !== undefined) updates.total = total;
+        if (estado === 'completado') {
+          updates.completado_at = new Date().toISOString();
+        }
+        return await enqueuePedidoUpdate({ id, updates, organizationId });
+      }
       // Si el estado es "completado", obtener el mesa_id antes de actualizar para liberar la mesa
       let mesaIdParaLiberar = null;
       if (estado === 'completado') {
@@ -314,6 +384,13 @@ export const useActualizarPedido = () => {
     },
     onSuccess: (updatedPedido) => {
       queryClient.invalidateQueries(['pedidos', updatedPedido.organization_id]);
+      if (updatedPedido?.synced === 0) {
+        queryClient.setQueryData(['pedidos', updatedPedido.organization_id], (old = []) => {
+          return old.map(pedido => (pedido.id === updatedPedido.id ? { ...pedido, ...updatedPedido } : pedido));
+        });
+        toast.success('Pedido actualizado localmente. Se sincronizará al reconectar.');
+        return;
+      }
       toast.success('Pedido actualizado correctamente');
     },
     onError: (error) => {
@@ -330,6 +407,9 @@ export const useEliminarPedido = () => {
 
   return useMutation({
     mutationFn: async ({ id, organizationId, mesaId }) => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        return await enqueuePedidoDelete({ id, organizationId });
+      }
       const { error } = await supabase
         .from('pedidos')
         .delete()
@@ -349,9 +429,16 @@ export const useEliminarPedido = () => {
 
       return { id, organizationId };
     },
-    onSuccess: ({ organizationId }) => {
+    onSuccess: ({ organizationId, id }) => {
       queryClient.invalidateQueries(['pedidos', organizationId]);
       queryClient.invalidateQueries(['mesas', organizationId]);
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        queryClient.setQueryData(['pedidos', organizationId], (old = []) => {
+          return old.filter(pedido => pedido.id !== id);
+        });
+        toast.success('Pedido eliminado localmente. Se sincronizará al reconectar.');
+        return;
+      }
       toast.success('Pedido eliminado correctamente');
     },
     onError: (error) => {

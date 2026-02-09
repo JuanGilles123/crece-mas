@@ -387,7 +387,8 @@ const EntradaInventarioModal = ({ open, onClose }) => {
       if (Object.keys(updates).length > 0) {
         await actualizarProducto.mutateAsync({
           id: producto.producto_id,
-          updates
+          updates,
+          organizationId: organization?.id
         });
         
         // Actualizar el producto en la lista con los nuevos valores
@@ -556,7 +557,8 @@ const EntradaInventarioModal = ({ open, onClose }) => {
         if (Object.keys(updates).length > 0) {
           await actualizarProducto.mutateAsync({
             id: producto.producto_id,
-            updates
+            updates,
+            organizationId: organization?.id
           });
         }
       }

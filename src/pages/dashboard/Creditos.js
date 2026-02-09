@@ -2,6 +2,9 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useCreditos, useEstadisticasCreditos, useCrearPagoCredito, useEliminarPagoCredito, usePagosCredito } from '../../hooks/useCreditos';
+import { useNetworkStatus } from '../../hooks/useNetworkStatus';
+import { useOfflineSync } from '../../hooks/useOfflineSync';
+import { getPendingOutboxCount } from '../../utils/offlineQueue';
 import { 
   Filter, 
   DollarSign, 
@@ -38,6 +41,9 @@ function formatCOP(value) {
 export default function Creditos() {
   const { organization } = useAuth();
   const location = useLocation();
+  const { isOnline } = useNetworkStatus();
+  const { isSyncing } = useOfflineSync();
+  const [pendingOutboxCount, setPendingOutboxCount] = useState(0);
   const [filtroEstado, setFiltroEstado] = useState('todos');
   const [busqueda, setBusqueda] = useState('');
   const [creditoSeleccionado, setCreditoSeleccionado] = useState(null);
@@ -55,6 +61,25 @@ export default function Creditos() {
   const crearPagoMutation = useCrearPagoCredito();
   const eliminarPagoMutation = useEliminarPagoCredito();
   const lastAppliedSearchRef = useRef(null);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadPending = async () => {
+      try {
+        const count = await getPendingOutboxCount();
+        if (mounted) setPendingOutboxCount(count);
+      } catch (error) {
+        console.warn('No se pudo obtener outbox pendiente:', error);
+      }
+    };
+
+    loadPending();
+    const timer = setInterval(loadPending, 5000);
+    return () => {
+      mounted = false;
+      clearInterval(timer);
+    };
+  }, [isOnline, isSyncing]);
 
   useEffect(() => {
     if (lastAppliedSearchRef.current === location.search) return;
@@ -244,6 +269,18 @@ export default function Creditos() {
           <h1>Gestión de Créditos</h1>
           <p>Administra y realiza seguimiento de las cuentas por cobrar</p>
         </div>
+        <span
+          className={`creditos-connection-badge ${
+            isOnline ? 'creditos-connection-badge--online' : 'creditos-connection-badge--offline'
+          }`}
+        >
+          {isSyncing && pendingOutboxCount > 0 ? (
+            <span className="creditos-connection-spinner" aria-hidden="true" />
+          ) : (
+            <span className="creditos-connection-dot" aria-hidden="true" />
+          )}
+          {isOnline ? (isSyncing && pendingOutboxCount > 0 ? 'Sincronizando…' : 'Conectado') : 'Sin internet'}
+        </span>
       </div>
 
       {/* Estadísticas */}

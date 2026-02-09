@@ -1,8 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import FeatureGuard from '../../components/FeatureGuard';
 import { useClientes, useCrearCliente, useActualizarCliente, useEliminarCliente } from '../../hooks/useClientes';
 import { Plus, Edit2, Trash2, X, User, Phone, Mail, MapPin, FileText, Search } from 'lucide-react';
+import { useNetworkStatus } from '../../hooks/useNetworkStatus';
+import { useOfflineSync } from '../../hooks/useOfflineSync';
+import { getPendingOutboxCount } from '../../utils/offlineQueue';
 import './Clientes.css';
 
 export default function Clientes() {
@@ -11,6 +14,9 @@ export default function Clientes() {
   const crearClienteMutation = useCrearCliente();
   const actualizarClienteMutation = useActualizarCliente();
   const eliminarClienteMutation = useEliminarCliente();
+  const { isOnline } = useNetworkStatus();
+  const { isSyncing } = useOfflineSync();
+  const [pendingOutboxCount, setPendingOutboxCount] = useState(0);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [mostrandoModal, setMostrandoModal] = useState(false);
@@ -23,6 +29,25 @@ export default function Clientes() {
     direccion: '',
     notas: ''
   });
+
+  useEffect(() => {
+    let mounted = true;
+    const loadPending = async () => {
+      try {
+        const count = await getPendingOutboxCount();
+        if (mounted) setPendingOutboxCount(count);
+      } catch (error) {
+        console.warn('No se pudo obtener outbox pendiente:', error);
+      }
+    };
+
+    loadPending();
+    const timer = setInterval(loadPending, 5000);
+    return () => {
+      mounted = false;
+      clearInterval(timer);
+    };
+  }, [isOnline, isSyncing]);
 
   // Filtrar clientes según búsqueda
   const clientesFiltrados = useMemo(() => {
@@ -139,13 +164,27 @@ export default function Clientes() {
       <div className="clientes-header">
         <div className="clientes-header-top">
           <h1 className="clientes-title">Clientes</h1>
-          <button
-            className="clientes-btn-nuevo"
-            onClick={abrirModalNuevo}
-          >
-            <Plus size={20} />
-            <span>Nuevo Cliente</span>
-          </button>
+          <div className="clientes-header-actions">
+            <span
+              className={`clientes-connection-badge ${
+                isOnline ? 'clientes-connection-badge--online' : 'clientes-connection-badge--offline'
+              }`}
+            >
+              {isSyncing && pendingOutboxCount > 0 ? (
+                <span className="clientes-connection-spinner" aria-hidden="true" />
+              ) : (
+                <span className="clientes-connection-dot" aria-hidden="true" />
+              )}
+              {isOnline ? (isSyncing && pendingOutboxCount > 0 ? 'Sincronizando…' : 'Conectado') : 'Sin internet'}
+            </span>
+            <button
+              className="clientes-btn-nuevo"
+              onClick={abrirModalNuevo}
+            >
+              <Plus size={20} />
+              <span>Nuevo Cliente</span>
+            </button>
+          </div>
         </div>
         
         <div className="clientes-search">

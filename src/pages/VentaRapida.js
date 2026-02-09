@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { supabase } from '../services/api/supabaseClient';
-import { generarCodigoVenta } from '../utils/generarCodigoVenta';
+import { enqueueVenta } from '../utils/offlineQueue';
+import { generarCodigoVenta, generarCodigoVentaLocal } from '../utils/generarCodigoVenta';
+import { useNetworkStatus } from '../hooks/useNetworkStatus';
+import { useOfflineSync } from '../hooks/useOfflineSync';
 import { useAuth } from '../context/AuthContext';
 import { Zap, DollarSign, FileText, CreditCard, Check, X, Banknote, Building2, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -9,6 +12,8 @@ import './VentaRapida.css';
 
 export default function VentaRapida() {
   const { user, organization } = useAuth();
+  const { isOnline } = useNetworkStatus();
+  const { isSyncing } = useOfflineSync();
   const montoInput = useCurrencyInput();
   const [descripcion, setDescripcion] = useState('');
   const [metodoPago, setMetodoPago] = useState('efectivo');
@@ -68,6 +73,35 @@ export default function VentaRapida() {
     let intento = 0;
     let exito = false;
 
+    const fechaVenta = new Date().toISOString();
+
+    if (!isOnline) {
+      const numeroVenta = generarCodigoVentaLocal(metodoPago);
+      const ventaData = {
+        organization_id: organization.id,
+        user_id: user.id,
+        total: montoNumerico,
+        metodo_pago: metodoPago,
+        tipo_venta: 'rapida',
+        descripcion: descripcion.trim() || 'Venta rápida',
+        items: [],
+        fecha: fechaVenta,
+        created_at: fechaVenta,
+        numero_venta: numeroVenta
+      };
+
+      await enqueueVenta({
+        ventaData,
+        actorUserId: user.id,
+        actorEmployeeId: null
+      });
+
+      toast.success(`✅ Venta guardada localmente: ${formatearMonto(montoNumerico)}`);
+      limpiarFormulario();
+      setProcesando(false);
+      return;
+    }
+
     while (intento < maxIntentos && !exito) {
       try {
         // Generar código de venta (forzar único en reintentos)
@@ -82,7 +116,8 @@ export default function VentaRapida() {
           tipo_venta: 'rapida',
           descripcion: descripcion.trim() || 'Venta rápida',
           items: [],
-          fecha: new Date().toISOString(),
+          fecha: fechaVenta,
+          created_at: fechaVenta,
           numero_venta: numeroVenta
         };
 
@@ -160,6 +195,36 @@ export default function VentaRapida() {
           <p className="subtitle">Registra ventas sin usar el inventario</p>
         </div>
       </div>
+      {!isOnline && (
+        <div
+          style={{
+            background: '#fff7ed',
+            border: '1px solid #fdba74',
+            color: '#9a3412',
+            padding: '0.6rem 0.9rem',
+            borderRadius: '10px',
+            fontSize: '0.9rem',
+            marginBottom: '0.75rem'
+          }}
+        >
+          Sin internet: la venta se guardará localmente y se sincronizará al reconectar.
+        </div>
+      )}
+      {isOnline && isSyncing && (
+        <div
+          style={{
+            background: '#eff6ff',
+            border: '1px solid #93c5fd',
+            color: '#1d4ed8',
+            padding: '0.6rem 0.9rem',
+            borderRadius: '10px',
+            fontSize: '0.9rem',
+            marginBottom: '0.75rem'
+          }}
+        >
+          Sincronizando ventas pendientes...
+        </div>
+      )}
 
       <div className="venta-rapida-container">
         {/* Monto */}

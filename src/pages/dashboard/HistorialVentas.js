@@ -5,6 +5,9 @@ import { useAuth } from '../../context/AuthContext';
 import { useSubscription } from '../../hooks/useSubscription';
 import { useVentas } from '../../hooks/useVentas';
 import { useCotizaciones } from '../../hooks/useCotizaciones';
+import { useNetworkStatus } from '../../hooks/useNetworkStatus';
+import { useOfflineSync } from '../../hooks/useOfflineSync';
+import { getPendingOutboxCount } from '../../utils/offlineQueue';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useProductos } from '../../hooks/useProductos';
@@ -35,9 +38,31 @@ const HistorialVentas = () => {
   const { getLimit } = useSubscription();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { isOnline } = useNetworkStatus();
+  const { isSyncing } = useOfflineSync();
+  const [pendingOutboxCount, setPendingOutboxCount] = useState(0);
   const historyDays = getLimit('historyDays');
   const { data: ventas = [], isLoading, refetch } = useVentas(userProfile?.organization_id, 500, historyDays);
   const { data: cotizaciones = [] } = useCotizaciones(userProfile?.organization_id);
+  
+  useEffect(() => {
+    let mounted = true;
+    const loadPending = async () => {
+      try {
+        const count = await getPendingOutboxCount();
+        if (mounted) setPendingOutboxCount(count);
+      } catch (error) {
+        console.warn('No se pudo obtener outbox pendiente:', error);
+      }
+    };
+
+    loadPending();
+    const timer = setInterval(loadPending, 5000);
+    return () => {
+      mounted = false;
+      clearInterval(timer);
+    };
+  }, [isOnline, isSyncing]);
   
   // Combinar ventas y cotizaciones, ordenar por fecha
   const todasLasVentas = useMemo(() => {
@@ -222,7 +247,8 @@ const HistorialVentas = () => {
 
     // Filtro de búsqueda
     if (busqueda.trim()) {
-      const termino = busqueda.toLowerCase();
+      const termino = busqueda.toLowerCase().trim();
+      const terminoNumerico = termino.replace(/[^\d]/g, '');
       filtradas = filtradas.filter(venta => {
         const idMatch = venta.id?.toString().toLowerCase().includes(termino);
         const numeroVentaMatch = venta.numero_venta?.toLowerCase().includes(termino);
@@ -234,7 +260,23 @@ const HistorialVentas = () => {
           return false;
         });
         const metodoMatch = venta.metodo_pago?.toLowerCase().includes(termino);
-        return idMatch || numeroVentaMatch || itemsMatch || metodoMatch;
+        const estadoMatch = venta.estado?.toLowerCase().includes(termino);
+        const totalMatch = terminoNumerico
+          ? String(venta.total ?? '').replace(/[^\d]/g, '').includes(terminoNumerico)
+          : false;
+        const cliente = venta.cliente || {};
+        const clienteMatch = [
+          cliente.nombre,
+          cliente.documento,
+          cliente.telefono,
+          cliente.email,
+          cliente.direccion,
+          venta.cliente_nombre,
+          venta.cliente_telefono
+        ]
+          .filter(Boolean)
+          .some(value => value.toString().toLowerCase().includes(termino));
+        return idMatch || numeroVentaMatch || itemsMatch || metodoMatch || estadoMatch || totalMatch || clienteMatch;
       });
     }
 
@@ -972,6 +1014,18 @@ const HistorialVentas = () => {
           <h1>Historial de Ventas</h1>
           <p>Gestiona devoluciones, cambios y reimprime recibos</p>
         </div>
+        <span
+          className={`historial-connection-badge ${
+            isOnline ? 'historial-connection-badge--online' : 'historial-connection-badge--offline'
+          }`}
+        >
+          {isSyncing && pendingOutboxCount > 0 ? (
+            <span className="historial-connection-spinner" aria-hidden="true" />
+          ) : (
+            <span className="historial-connection-dot" aria-hidden="true" />
+          )}
+          {isOnline ? (isSyncing && pendingOutboxCount > 0 ? 'Sincronizando…' : 'Conectado') : 'Sin internet'}
+        </span>
         <button 
           className="btn-refresh"
           onClick={() => refetch()}

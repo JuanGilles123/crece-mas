@@ -190,3 +190,20 @@ export const generarCodigoVenta = async (organizationId, metodoPago, forzarUnico
   // #endregion agent log
   return `${abrev}-${fecha}-${timestamp}`;
 };
+
+export const generarCodigoVentaLocal = (metodoPago) => {
+  const abreviaciones = {
+    'Efectivo': 'EF',
+    'Transferencia': 'TR',
+    'Tarjeta': 'TA',
+    'Nequi': 'NE',
+    'Mixto': 'MX',
+    'COTIZACION': 'COT'
+  };
+
+  const abrev = abreviaciones[metodoPago] || 'VT';
+  const fecha = new Date().toISOString().split('T')[0].replace(/-/g, '');
+  const timestamp = Date.now();
+  const random = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
+  return `${abrev}-${fecha}-${timestamp}${random}`;
+};

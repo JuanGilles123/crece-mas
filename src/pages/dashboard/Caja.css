@@ -17,6 +17,64 @@
   min-width: 0;
 }
 
+.caja-connection-badge {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.18rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  line-height: 1;
+  border: 1px solid transparent;
+}
+
+.caja-connection-badge--online {
+  background: #ecfdf5;
+  border-color: #86efac;
+  color: #166534;
+}
+
+.caja-connection-badge--offline {
+  background: #fff7ed;
+  border-color: #fdba74;
+  color: #9a3412;
+}
+
+.caja-connection-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #22c55e;
+  display: inline-block;
+}
+
+.caja-connection-badge--offline .caja-connection-dot {
+  background: #f97316;
+}
+
+.caja-connection-spinner {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: 2px solid rgba(14, 116, 144, 0.2);
+  border-top-color: #0ea5e9;
+  display: inline-block;
+  animation: caja-connection-spin 0.9s linear infinite;
+}
+
+@keyframes caja-connection-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* Sección de Pedidos Listos - Sidebar izquierdo en desktop */
 .caja-pedidos-section {
   background: white;

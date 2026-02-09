@@ -132,7 +132,7 @@ export function AuthProvider({ children }) {
 
           if (!permsError && perms) {
             setPermissions(perms);
-          } else {
+          } else if (!(typeof navigator !== 'undefined' && !navigator.onLine)) {
             console.error('❌ Error loading permissions:', permsError);
           }
         } else {

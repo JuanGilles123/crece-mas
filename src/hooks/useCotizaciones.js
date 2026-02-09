@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../services/api/supabaseClient';
 import toast from 'react-hot-toast';
+import { getCachedVentas } from '../utils/offlineQueue';
 
 // Hook para obtener cotizaciones pendientes
 export const useCotizaciones = (organizationId) => {
@@ -8,6 +9,14 @@ export const useCotizaciones = (organizationId) => {
     queryKey: ['cotizaciones', organizationId],
     queryFn: async () => {
       if (!organizationId) return [];
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        const cached = await getCachedVentas(organizationId);
+        return (cached || []).filter(venta => {
+          const metodo = (venta.metodo_pago || '').toUpperCase();
+          const estado = (venta.estado || '').toLowerCase();
+          return metodo === 'COTIZACION' || estado === 'cotizacion';
+        });
+      }
       
       try {
         // Función auxiliar para cargar clientes

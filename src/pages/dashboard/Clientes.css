@@ -18,6 +18,12 @@
   margin-bottom: 1.5rem;
 }
 
+.clientes-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
 .clientes-title {
   font-size: 1.875rem;
   font-weight: 700;
@@ -44,6 +50,62 @@
   background: var(--accent-primary-hover);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.clientes-connection-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.18rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  line-height: 1;
+  border: 1px solid transparent;
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.clientes-connection-badge--online {
+  background: #ecfdf5;
+  border-color: #86efac;
+  color: #166534;
+}
+
+.clientes-connection-badge--offline {
+  background: #fff7ed;
+  border-color: #fdba74;
+  color: #9a3412;
+}
+
+.clientes-connection-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #22c55e;
+  display: inline-block;
+}
+
+.clientes-connection-badge--offline .clientes-connection-dot {
+  background: #f97316;
+}
+
+.clientes-connection-spinner {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: 2px solid rgba(14, 116, 144, 0.2);
+  border-top-color: #0ea5e9;
+  display: inline-block;
+  animation: clientes-connection-spin 0.9s linear infinite;
+}
+
+@keyframes clientes-connection-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .clientes-search {
