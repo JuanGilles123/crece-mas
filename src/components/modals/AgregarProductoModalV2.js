@@ -16,6 +16,7 @@ import toast from 'react-hot-toast';
 import { PRODUCT_TYPES, ADDITIONAL_FIELDS, getProductTypeFields } from '../../utils/productTypes';
 import { getBusinessTypeConfig, getDefaultProductType, getAvailableProductTypes, shouldSkipProductTypeSelector } from '../../constants/businessTypes';
 import { generateStoragePath, validateFilename } from '../../utils/fileUtils';
+import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import VariacionesConfig from '../VariacionesConfig';
 import ProductosVinculados from '../ProductosVinculados';
 import './AgregarProductoModalV2.css';
@@ -126,6 +127,7 @@ const createProductSchema = (productType, defaultPermiteToppings = true, isJewel
 const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) => {
   const { user, userProfile, organization } = useAuth();
   const { hasFeature, canPerformAction } = useSubscription();
+  const { isOnline } = useNetworkStatus();
   const isJewelryBusiness = organization?.business_type === 'jewelry_metals';
   const parseWeightValue = useCallback((value) => {
     if (value === '' || value === null || value === undefined) return 0;
@@ -713,6 +715,9 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
       }
 
       if (imagen && puedeSubirImagenes) {
+        if (!isOnline) {
+          toast.error('Sin internet: la imagen no se puede subir. El producto se guardará sin imagen.');
+        } else {
         // Validar el nombre del archivo antes de comprimir
         const validation = validateFilename(imagen.name);
         if (!validation.isValid) {
@@ -727,6 +732,7 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
         const { error: errorUpload } = await supabase.storage.from('productos').upload(nombreArchivo, imagenComprimida);
         if (errorUpload) throw errorUpload;
         imagenPath = nombreArchivo;
+        }
       } else if (imagenUrl && imagenUrl.trim() !== '') {
         imagenPath = imagenUrl.trim();
       }

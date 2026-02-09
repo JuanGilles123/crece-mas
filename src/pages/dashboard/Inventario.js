@@ -20,6 +20,9 @@ import EntradaInventarioModal from '../../components/modals/EntradaInventarioMod
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
+import { useNetworkStatus } from '../../hooks/useNetworkStatus';
+import { useOfflineSync } from '../../hooks/useOfflineSync';
+import { getPendingOutboxCount } from '../../utils/offlineQueue';
 
 // Función para eliminar imagen del storage
 const deleteImageFromStorage = async (imagePath) => {
@@ -42,6 +45,9 @@ const deleteImageFromStorage = async (imagePath) => {
 const Inventario = () => {
   const { user, organization } = useAuth();
   const location = useLocation();
+  const { isOnline } = useNetworkStatus();
+  const { isSyncing } = useOfflineSync();
+  const [pendingOutboxCount, setPendingOutboxCount] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
   const [editarModalOpen, setEditarModalOpen] = useState(false);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
@@ -176,8 +182,31 @@ const Inventario = () => {
   const eliminarProductoMutation = useEliminarProducto();
 
   useEffect(() => {
+    let mounted = true;
+    const loadPending = async () => {
+      try {
+        const count = await getPendingOutboxCount();
+        if (mounted) setPendingOutboxCount(count);
+      } catch (error) {
+        console.warn('No se pudo obtener outbox pendiente:', error);
+      }
+    };
+
+    loadPending();
+    const timer = setInterval(loadPending, 5000);
+    return () => {
+      mounted = false;
+      clearInterval(timer);
+    };
+  }, [isOnline, isSyncing]);
+
+  useEffect(() => {
     const cargarTotalProductos = async () => {
       if (!organization?.id) return;
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        setTotalProductosDb(productos.length);
+        return;
+      }
       const { count, error: countError } = await supabase
         .from('productos')
         .select('id', { count: 'exact', head: true })
@@ -190,7 +219,7 @@ const Inventario = () => {
     };
 
     cargarTotalProductos();
-  }, [organization?.id]);
+  }, [organization?.id, productos.length]);
 
 
   useEffect(() => {
@@ -291,7 +320,13 @@ const Inventario = () => {
   }, [error]);
 
   useEffect(() => {
-    setSeleccionados(prev => prev.filter(id => productos.some(p => p.id === id)));
+    setSeleccionados(prev => {
+      const next = prev.filter(id => productos.some(p => p.id === id));
+      if (next.length === prev.length && next.every((id, index) => id === prev[index])) {
+        return prev;
+      }
+      return next;
+    });
   }, [productos]);
 
   // Handler para cuando se escanea un código de barras
@@ -955,6 +990,18 @@ const Inventario = () => {
           {/* Header con búsqueda y acciones - Separados para mejor control responsive */}
           <div className="inventario-header-wrapper">
             <div className="inventario-actions">
+              <span
+                className={`inventario-connection-badge ${
+                  isOnline ? 'inventario-connection-badge--online' : 'inventario-connection-badge--offline'
+                }`}
+              >
+                {isSyncing && pendingOutboxCount > 0 ? (
+                  <span className="inventario-connection-spinner" aria-hidden="true" />
+                ) : (
+                  <span className="inventario-connection-dot" aria-hidden="true" />
+                )}
+                {isOnline ? (isSyncing && pendingOutboxCount > 0 ? 'Sincronizando…' : 'Conectado') : 'Sin internet'}
+              </span>
               <button className="inventario-btn inventario-btn-primary" onClick={() => setModalOpen(true)}>Nuevo producto</button>
               <button
                 className="inventario-btn inventario-btn-secondary"

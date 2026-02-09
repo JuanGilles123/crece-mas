@@ -222,6 +222,14 @@ export const useSubscription = () => {
 
   // Verificar si puede realizar una acción específica
   const canPerformAction = useCallback(async (action) => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return {
+        allowed: true,
+        reason: null,
+        offline: true,
+        unlimited: false
+      };
+    }
     // VIP siempre puede realizar cualquier acción (calcular dinámicamente)
     const userIsVIP = hasBypassAccess(user, organization);
     const orgIsVIP = organization?.owner_email ? 

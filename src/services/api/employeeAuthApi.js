@@ -48,7 +48,8 @@ export const loginEmployee = async ({ username, code, password }) => {
     token: data.token,
     expiresAt: data.expiresAt,
     employee: data.employee,
-    permissions: data.permissions || []
+    permissions: data.permissions || [],
+    employee_username: payload.username || null
   };
 
   setEmployeeSession(session);

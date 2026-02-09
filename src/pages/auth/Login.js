@@ -33,6 +33,24 @@ const Login = () => {
     e.preventDefault();
     setError('');
     setLoading(true);
+
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      const { data } = await supabase.auth.getSession();
+      const sessionUser = data?.session?.user;
+      if (!sessionUser) {
+        setError('Sin internet: solo puedes entrar si ya habías iniciado sesión en este dispositivo.');
+        setLoading(false);
+        return;
+      }
+      if (email && sessionUser.email && sessionUser.email.toLowerCase() !== email.toLowerCase()) {
+        setError('Sin internet: solo puedes entrar con la cuenta usada anteriormente en este dispositivo.');
+        setLoading(false);
+        return;
+      }
+      navigate('/dashboard');
+      setLoading(false);
+      return;
+    }
     
     // Login normal con email y contraseña (solo owner)
     if (!email.match(/^[^@\s]+@[^@\s]+\.[^@\s]+$/)) {

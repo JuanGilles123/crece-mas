@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../services/api/supabaseClient';
 import toast from 'react-hot-toast';
+import { cacheCreditos, getCachedCreditos, cachePagosCredito, getCachedPagosCredito, enqueuePagoCreditoCreate, enqueuePagoCreditoDelete } from '../utils/offlineQueue';
 
 /**
  * Hook para obtener créditos de una organización
@@ -10,6 +11,10 @@ export const useCreditos = (organizationId, filters = {}) => {
     queryKey: ['creditos', organizationId, filters],
     queryFn: async () => {
       if (!organizationId) return [];
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        const cached = await getCachedCreditos(organizationId);
+        return cached || [];
+      }
       
       try {
         // Primero obtener los créditos sin relaciones para asegurar que se obtengan
@@ -105,7 +110,13 @@ export const useCreditos = (organizationId, filters = {}) => {
           );
         }
 
-        return creditosCombinados;
+        await cacheCreditos(organizationId, creditosCombinados);
+        const cached = await getCachedCreditos(organizationId);
+        const mergedMap = new Map(creditosCombinados.map(credito => [credito.id, credito]));
+        cached.filter(credito => credito.synced === 0).forEach(credito => {
+          mergedMap.set(credito.id, { ...mergedMap.get(credito.id), ...credito });
+        });
+        return Array.from(mergedMap.values());
       } catch (error) {
         console.error('Error en useCreditos:', error);
         return [];
@@ -193,6 +204,9 @@ export const useActualizarCredito = () => {
 
   return useMutation({
     mutationFn: async ({ id, updates }) => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        return { id, ...updates, synced: 0, organization_id: updates.organization_id };
+      }
       const { data, error } = await supabase
         .from('creditos')
         .update({ ...updates, updated_at: new Date().toISOString() })
@@ -210,6 +224,13 @@ export const useActualizarCredito = () => {
     onSuccess: (updatedCredito) => {
       queryClient.invalidateQueries(['creditos', updatedCredito.organization_id]);
       queryClient.invalidateQueries(['credito', updatedCredito.id]);
+      if (updatedCredito?.synced === 0) {
+        queryClient.setQueryData(['creditos', updatedCredito.organization_id], (old = []) => {
+          return old.map(credito => (credito.id === updatedCredito.id ? { ...credito, ...updatedCredito } : credito));
+        });
+        toast.success('Crédito actualizado localmente. Se sincronizará al reconectar.');
+        return;
+      }
       toast.success('Crédito actualizado exitosamente');
     },
     onError: (error) => {
@@ -227,6 +248,9 @@ export const useCrearPagoCredito = () => {
 
   return useMutation({
     mutationFn: async (pagoData) => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        return await enqueuePagoCreditoCreate(pagoData);
+      }
       const { data, error } = await supabase
         .from('pagos_creditos')
         .insert([pagoData])
@@ -248,6 +272,10 @@ export const useCrearPagoCredito = () => {
       queryClient.invalidateQueries(['creditos']);
       queryClient.invalidateQueries(['credito', newPago.credito_id]);
       queryClient.invalidateQueries(['pagos_creditos']);
+      if (newPago?.synced === 0) {
+        toast.success('Pago guardado localmente. Se sincronizará al reconectar.');
+        return;
+      }
       toast.success('Pago registrado exitosamente');
     },
     onError: (error) => {
@@ -268,6 +296,10 @@ export const usePagosCredito = (creditoId) => {
         console.log('usePagosCredito: No hay creditoId');
         return [];
       }
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        const cached = await getCachedPagosCredito(creditoId);
+        return cached || [];
+      }
       
       console.log('usePagosCredito: Buscando pagos para credito_id:', creditoId);
       
@@ -286,7 +318,14 @@ export const usePagosCredito = (creditoId) => {
       
       console.log('usePagosCredito: Pagos encontrados:', data?.length || 0, data);
       
-      return data || [];
+      const pagos = data || [];
+      if (pagos.length > 0) {
+        const orgId = pagos[0]?.organization_id;
+        if (orgId) {
+          await cachePagosCredito(orgId, pagos);
+        }
+      }
+      return pagos;
     },
     enabled: !!creditoId,
     staleTime: 1 * 60 * 1000, // 1 minuto
@@ -303,6 +342,9 @@ export const useEliminarPagoCredito = () => {
 
   return useMutation({
     mutationFn: async ({ id, creditoId, organizationId }) => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        return await enqueuePagoCreditoDelete({ id, creditoId, organizationId });
+      }
       const { error } = await supabase
         .from('pagos_creditos')
         .delete()
@@ -319,6 +361,10 @@ export const useEliminarPagoCredito = () => {
       queryClient.invalidateQueries(['creditos']);
       queryClient.invalidateQueries(['credito', variables.creditoId]);
       queryClient.invalidateQueries(['pagos_creditos', variables.creditoId]);
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        toast.success('Pago eliminado localmente. Se sincronizará al reconectar.');
+        return;
+      }
       toast.success('Pago eliminado exitosamente');
     },
     onError: (error) => {

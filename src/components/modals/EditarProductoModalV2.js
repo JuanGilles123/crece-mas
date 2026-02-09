@@ -14,6 +14,7 @@ import { Plus, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PRODUCT_TYPES, ADDITIONAL_FIELDS, getProductTypeFields } from '../../utils/productTypes';
 import { generateStoragePath, validateFilename } from '../../utils/fileUtils';
+import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import OptimizedProductImage from '../../components/business/OptimizedProductImage';
 import VariacionesConfig from '../VariacionesConfig';
 import ProductosVinculados from '../ProductosVinculados';
@@ -138,6 +139,7 @@ const deleteImageFromStorage = async (imagePath) => {
 const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, varianteActivaId = null, soloEditarVariantes = false }) => {
   const { userProfile, organization } = useAuth();
   const { hasFeature } = useSubscription();
+  const { isOnline } = useNetworkStatus();
   const isJewelryBusiness = organization?.business_type === 'jewelry_metals';
   const parseWeightValue = useCallback((value) => {
     if (value === '' || value === null || value === undefined) return 0;
@@ -622,6 +624,10 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
 
   const guardarVariantes = async () => {
     if (!producto?.id || !producto?.organization_id) return;
+    if (!isOnline) {
+      toast.error('Sin internet: las variantes requieren conexión para guardar.');
+      return;
+    }
     setGuardandoVariantes(true);
 
     try {
@@ -716,6 +722,9 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
 
     try {
       if (imagen && puedeSubirImagenes) {
+        if (!isOnline) {
+          toast.error('Sin internet: la imagen no se puede subir. Se mantendrá la imagen actual.');
+        } else {
         // Validar el nombre del archivo antes de comprimir
         const validation = validateFilename(imagen.name);
         if (!validation.isValid) {
@@ -740,6 +749,7 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
         }
 
         imagenPath = nombreArchivo;
+        }
       } else if (imagenUrl && imagenUrl.trim() !== '') {
         imagenPath = imagenUrl.trim();
       }
@@ -845,7 +855,7 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
       }
 
       actualizarProductoMutation.mutate(
-        { id: producto.id, updates: productoData },
+        { id: producto.id, updates: productoData, organizationId: producto.organization_id },
         {
           onSuccess: () => {
             reset();

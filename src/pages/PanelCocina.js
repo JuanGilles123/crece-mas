@@ -8,6 +8,9 @@ import { usePedidos, useActualizarPedido } from '../hooks/usePedidos';
 import { canUsePedidos, getPedidoEstadoColor } from '../utils/mesasUtils';
 import { supabase } from '../services/api/supabaseClient';
 import OptimizedProductImage from '../components/business/OptimizedProductImage';
+import { useNetworkStatus } from '../hooks/useNetworkStatus';
+import { useOfflineSync } from '../hooks/useOfflineSync';
+import { getPendingOutboxCount } from '../utils/offlineQueue';
 import './PanelCocina.css';
 
 const formatCOP = (value) => {
@@ -82,11 +85,33 @@ const playNotificationSound = () => {
 const PanelCocina = () => {
   const { user, organization } = useAuth();
   const { hasFeature } = useSubscription();
+  const { isOnline } = useNetworkStatus();
+  const { isSyncing } = useOfflineSync();
+  const [pendingOutboxCount, setPendingOutboxCount] = useState(0);
   // Obtener todos los pedidos y filtrar por estados activos
   const { data: todosPedidos = [], isLoading, refetch: refetchPedidos } = usePedidos(organization?.id);
   const actualizarPedido = useActualizarPedido();
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState(null);
   const pedidosPendientesAnteriores = useRef(new Set());
+
+  useEffect(() => {
+    let mounted = true;
+    const loadPending = async () => {
+      try {
+        const count = await getPendingOutboxCount();
+        if (mounted) setPendingOutboxCount(count);
+      } catch (error) {
+        console.warn('No se pudo obtener outbox pendiente:', error);
+      }
+    };
+
+    loadPending();
+    const timer = setInterval(loadPending, 5000);
+    return () => {
+      mounted = false;
+      clearInterval(timer);
+    };
+  }, [isOnline, isSyncing]);
 
   // Verificar acceso
   const acceso = canUsePedidos(organization, hasFeature);
@@ -250,6 +275,18 @@ const PanelCocina = () => {
           </div>
         </div>
         <div className="cocina-header-actions">
+          <span
+            className={`cocina-connection-badge ${
+              isOnline ? 'cocina-connection-badge--online' : 'cocina-connection-badge--offline'
+            }`}
+          >
+            {isSyncing && pendingOutboxCount > 0 ? (
+              <span className="cocina-connection-spinner" aria-hidden="true" />
+            ) : (
+              <span className="cocina-connection-dot" aria-hidden="true" />
+            )}
+            {isOnline ? (isSyncing && pendingOutboxCount > 0 ? 'Sincronizando…' : 'Conectado') : 'Sin internet'}
+          </span>
           <button
             className="cocina-refresh-btn"
             onClick={() => refetchPedidos()}

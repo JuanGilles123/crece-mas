@@ -1,6 +1,7 @@
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../services/api/supabaseClient';
 import toast from 'react-hot-toast';
+import { cacheProductos, getCachedProductos, enqueueProductoCreate, enqueueProductoUpdate, enqueueProductoDelete } from '../utils/offlineQueue';
 
 // Hook para obtener productos (versión simple sin paginación)
 export const useProductos = (organizationId) => {
@@ -8,6 +9,9 @@ export const useProductos = (organizationId) => {
     queryKey: ['productos', organizationId],
     queryFn: async () => {
       if (!organizationId) return [];
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        return await getCachedProductos(organizationId);
+      }
       
       // Select campos necesarios incluyendo created_at y metadata para filtros y métricas
       const { data, error } = await supabase
@@ -41,10 +45,17 @@ export const useProductos = (organizationId) => {
         variantesMap.get(vari.producto_id).push(vari);
       });
 
-      return productos.map(producto => ({
+      const productosConVariantes = productos.map(producto => ({
         ...producto,
         variantes: variantesMap.get(producto.id) || []
       }));
+      await cacheProductos(organizationId, productosConVariantes);
+      const cached = await getCachedProductos(organizationId);
+      const mergedMap = new Map(productosConVariantes.map(producto => [producto.id, producto]));
+      cached.filter(p => p.synced === 0).forEach(producto => {
+        mergedMap.set(producto.id, { ...mergedMap.get(producto.id), ...producto });
+      });
+      return Array.from(mergedMap.values());
     },
     enabled: !!organizationId,
     staleTime: 15 * 60 * 1000, // Aumentado a 15 minutos
@@ -99,6 +110,9 @@ export const useAgregarProducto = () => {
 
   return useMutation({
     mutationFn: async (productoData) => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        return await enqueueProductoCreate(productoData);
+      }
       // Log para debugging (solo en desarrollo)
       if (process.env.NODE_ENV === 'development') {
         console.log('Insertando producto con datos:', {
@@ -130,6 +144,13 @@ export const useAgregarProducto = () => {
       // Invalidar ambas versiones del cache
       queryClient.invalidateQueries(['productos', newProducto.organization_id]);
       queryClient.invalidateQueries(['productos-paginados', newProducto.organization_id]);
+      if (newProducto?.synced === 0) {
+        queryClient.setQueryData(['productos', newProducto.organization_id], (old = []) => {
+          return [newProducto, ...old];
+        });
+        toast.success('Producto guardado localmente. Se sincronizará al reconectar.');
+        return;
+      }
       toast.success('¡Producto agregado exitosamente!');
     },
     onError: (error) => {
@@ -144,7 +165,11 @@ export const useActualizarProducto = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, updates }) => {
+    mutationFn: async ({ id, updates, organizationId }) => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        const orgId = updates.organization_id || organizationId;
+        return await enqueueProductoUpdate({ id, updates, organizationId: orgId });
+      }
       const { data, error } = await supabase
         .from('productos')
         .update(updates)
@@ -162,6 +187,13 @@ export const useActualizarProducto = () => {
       // Invalidar ambas versiones del cache
       queryClient.invalidateQueries(['productos', updatedProducto.organization_id]);
       queryClient.invalidateQueries(['productos-paginados', updatedProducto.organization_id]);
+      if (updatedProducto?.synced === 0) {
+        queryClient.setQueryData(['productos', updatedProducto.organization_id], (old = []) => {
+          return old.map(producto => (producto.id === updatedProducto.id ? { ...producto, ...updatedProducto } : producto));
+        });
+        toast.success('Producto actualizado localmente. Se sincronizará al reconectar.');
+        return;
+      }
       toast.success('¡Producto actualizado exitosamente!');
     },
     onError: (error) => {
@@ -177,6 +209,9 @@ export const useEliminarProducto = () => {
 
   return useMutation({
     mutationFn: async ({ id, organizationId }) => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        return await enqueueProductoDelete({ id, organizationId });
+      }
       const { error } = await supabase
         .from('productos')
         .delete()
@@ -189,10 +224,22 @@ export const useEliminarProducto = () => {
 
       return { id, organizationId };
     },
-    onSuccess: ({ organizationId }) => {
+    onSuccess: ({ organizationId, organization_id, id }) => {
+      const orgId = organizationId || organization_id;
       // Invalidar ambas versiones del cache
-      queryClient.invalidateQueries(['productos', organizationId]);
-      queryClient.invalidateQueries(['productos-paginados', organizationId]);
+      if (orgId) {
+        queryClient.invalidateQueries(['productos', orgId]);
+        queryClient.invalidateQueries(['productos-paginados', orgId]);
+      }
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        if (orgId) {
+          queryClient.setQueryData(['productos', orgId], (old = []) => {
+            return old.filter(producto => producto.id !== id);
+          });
+        }
+        toast.success('Producto eliminado localmente. Se sincronizará al reconectar.');
+        return;
+      }
       toast.success('¡Producto eliminado exitosamente!');
     },
     onError: (error) => {
