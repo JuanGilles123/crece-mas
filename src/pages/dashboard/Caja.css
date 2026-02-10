@@ -4642,7 +4642,20 @@ input.caja-mobile-qty-display,
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.metodo-pago-credito-container {
+  display: flex;
+  justify-content: center;
   margin-bottom: 2rem;
+  padding: 0;
+  background: transparent;
+}
+
+.metodo-pago-card-credito {
+  width: 100%;
+  max-width: 300px;
 }
 
 .metodo-pago-card {
@@ -4651,7 +4664,7 @@ input.caja-mobile-qty-display,
   align-items: center;
   gap: 0.75rem;
   padding: 1.5rem 1rem;
-  background: var(--bg-card);
+  background: var(--bg-tertiary);
   border: 2px solid var(--border-primary);
   border-radius: 12px;
   cursor: pointer;
@@ -4663,7 +4676,6 @@ input.caja-mobile-qty-display,
 
 .metodo-pago-card:hover {
   border-color: var(--accent-primary);
-  background: var(--bg-tertiary);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }

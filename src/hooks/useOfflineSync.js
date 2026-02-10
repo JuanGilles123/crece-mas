@@ -10,18 +10,28 @@ export const useOfflineSync = () => {
     if (typeof navigator !== 'undefined' && !navigator.onLine) return;
     setIsSyncing(true);
     try {
-      await syncOutbox({ supabase });
+      const result = await syncOutbox({ supabase });
+      // Si no hay nada que sincronizar, no mantenemos el estado de syncing
+      if (result?.nothingToSync) {
+        setIsSyncing(false);
+        return;
+      }
     } finally {
       setIsSyncing(false);
     }
   }, [isSyncing]);
 
   useEffect(() => {
-    runSync();
+    // Solo ejecutar sync inicial si estamos online
+    if (navigator.onLine) {
+      runSync();
+    }
+    
     const onOnline = () => runSync();
     window.addEventListener('online', onOnline);
     return () => window.removeEventListener('online', onOnline);
-  }, [runSync]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Dependencias vacías intencionalmente: solo sincronizar al montar y al reconectar
 
   return { isSyncing, runSync };
 };
