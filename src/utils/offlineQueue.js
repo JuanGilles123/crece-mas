@@ -813,6 +813,11 @@ export const syncOutbox = async ({ supabase }) => {
   }
 
   const pending = await db.outbox.where('status').equals('pending').sortBy('created_at');
+  
+  // Si no hay nada pendiente, retornar temprano sin hacer nada
+  if (!pending || pending.length === 0) {
+    return { synced: 0, failed: 0, nothingToSync: true };
+  }
   let synced = 0;
   let failed = 0;
 

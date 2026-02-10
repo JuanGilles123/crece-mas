@@ -1883,9 +1883,11 @@ export default function Caja({
               <span className="metodo-pago-desc">🔒 Plan Estándar</span>
             </button>
           )}
-          
+        </div>
+        
+        <div className="metodo-pago-credito-container">
           <button 
-            className={`metodo-pago-card ${metodoSeleccionado === 'Credito' ? 'selected' : ''}`}
+            className={`metodo-pago-card metodo-pago-card-credito ${metodoSeleccionado === 'Credito' ? 'selected' : ''}`}
             onClick={() => setMetodoSeleccionado('Credito')}
           >
             <Receipt className="metodo-pago-icon" size={32} />
