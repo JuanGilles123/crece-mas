@@ -12,23 +12,23 @@
 # ========================================
 
 # TÍTULOS (NO MODIFICAR)
-# Campos requeridos (joyeria): codigo, nombre, tipo, precio_compra, peso, stock
-# precio_venta es opcional si jewelry_price_mode = variable
-# Campos opcionales: pureza, material, talla, jewelry_price_mode, jewelry_material_type, jewelry_min_margin, jewelry_static_mode, jewelry_static_percent
-codigo,nombre,tipo,precio_compra,precio_venta,stock,stock_minimo,peso,unidad_peso,pureza,material,talla,jewelry_price_mode,jewelry_material_type,jewelry_min_margin,jewelry_static_mode,jewelry_static_percent,categoria,descripcion,imagen,fecha_vencimiento,variante_nombre,variante_codigo,variante_stock,marca,modelo,color,permite_toppings
+# Campos requeridos (joyería): Código, Nombre, Tipo, Peso, Precio de Compra, Stock
+# Precio de Venta es opcional si Tipo de precio = variable
+# Los nombres son EXACTAMENTE como aparecen en el modal de "Agregar Producto"
+Código,Nombre,Tipo,Peso,Unidad de Peso,Pureza,Precio de Compra,Tipo de precio,Precio de Venta,Tipo de material,Margen mínimo (%),Cómo definir el precio estático,Porcentaje sobre compra (%),Stock,Umbral de stock bajo,Permitir agregar toppings/adicionales,Imagen,Categoría,Descripción,Material,Talla,Color,Marca,Modelo,Fecha de Vencimiento,Variante Nombre,Variante Código,Variante Stock
 
 # ========================================
 # EJEMPLOS DE PRODUCTOS (BORRA ESTAS FILAS)
 # ========================================
 
-"JOY-001","Anillo Oro 18k","accesorio",180000,320000,3,1,4.5,"g","18k","Oro","6","fixed","international",15000,"fixed","", "Anillos","Anillo clasico de oro","",,"","","","", "JoyaPlus","Clasico","Dorado","no"
-"JOY-002","Cadena Oro 24k","accesorio",220000,"",2,1,12.3,"g","24k","Oro","", "variable","international",12000,"","", "Cadenas","Cadena con precio por peso","",,"","","","", "JoyaPlus","Premium","Dorado","no"
-"JOY-003","Pulsera Plata 925","accesorio",60000,120000,5,1,8.2,"g","925","Plata","", "fixed","local",8000,"percent","25","Pulseras","Pulsera plata con margen porcentual","",,"","","","", "JoyaPlus","Argolla","Plateado","no"
+"JOY-001","Anillo Oro 18k","accesorio",4.5,"g","18k",180000,"fixed",320000,"international",15000,"fixed","",3,1,"no","","Anillos","Anillo clasico de oro","Oro","6","Dorado","JoyaPlus","Clasico","","","",""
+"JOY-002","Cadena Oro 24k","accesorio",12.3,"g","24k",220000,"variable","","international",12000,"","",2,1,"no","","Cadenas","Cadena con precio por peso","Oro","","Dorado","JoyaPlus","Premium","","","",""
+"JOY-003","Pulsera Plata 925","accesorio",8.2,"g","925",60000,"fixed",120000,"local",8000,"percent","25",5,1,"no","","Pulseras","Pulsera plata con margen porcentual","Plata","","Plateado","JoyaPlus","Argolla","","","",""
 
 # ========================================
 # TUS PRODUCTOS (AGREGA AQUÍ TUS DATOS)
 # ========================================
 
-"","","","","","","","","","","","","","","","","","","","","","","","","","",""
-"","","","","","","","","","","","","","","","","","","","","","","","","","",""
-"","","","","","","","","","","","","","","","","","","","","","","","","","",""
+"","","","","","","","","","","","","","","","","","","","","","","","","","","",""
+"","","","","","","","","","","","","","","","","","","","","","","","","","","",""
+"","","","","","","","","","","","","","","","","","","","","","","","","","","",""

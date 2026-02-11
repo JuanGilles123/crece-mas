@@ -12,31 +12,32 @@
 # ========================================
 
 # TÍTULOS (NO MODIFICAR)
-# Campos requeridos: codigo, nombre, tipo, precio_compra, precio_venta, stock
-# Campos opcionales: permite_toppings (si/no, true/false, 1/0), stock_minimo (número)
-codigo,nombre,tipo,precio_compra,precio_venta,stock,stock_minimo,categoria,descripcion,imagen,fecha_vencimiento,variante_nombre,variante_codigo,variante_stock,marca,modelo,color,talla,material,permite_toppings
+# Campos requeridos: Código, Nombre, Tipo, Precio de Compra, Precio de Venta, Stock
+# Campos opcionales: Permitir agregar toppings/adicionales (si/no, true/false, 1/0), Umbral de stock bajo (número)
+# Los nombres son EXACTAMENTE como aparecen en el modal de "Agregar Producto"
+Código,Nombre,Tipo,Precio de Compra,Precio de Venta,Stock,Umbral de stock bajo,Permitir agregar toppings/adicionales,Imagen,Categoría,Descripción,Peso,Unidad de Peso,Dimensiones (L x A x H),Marca,Modelo,Color,Talla,Material,Fecha de Vencimiento,Duración del Servicio,Ingredientes,Alérgenos,Calorías,Porción,Variante Nombre,Variante Código,Variante Stock
 
 # ========================================
 # EJEMPLOS DE PRODUCTOS (BORRA ESTAS FILAS)
 # ========================================
 
-"SKU-001","Camisa Polo Azul","fisico",25000,45000,10,5,"Ropa","Camisa de algodón 100% color azul marino talla M","","","","","","","MarcaX","Modelo-Polo","Azul","M","Algodón","no"
-"SKU-002","Zapatos Deportivos Nike","fisico",80000,150000,5,3,"Calzado","Zapatos deportivos para running talla 42","","","","","","","Nike","AirRun","Negro","42","Sintético","no"
-"SKU-003","Base Maquillaje","fisico",30000,60000,"",8,"Cosmética","Base líquida para rostro","","","Tono 01","SKU-003-T01",12,"MarcaY","BasePro","Tono 01","","","no"
-"SKU-003","Base Maquillaje","fisico",30000,60000,"",8,"Cosmética","Base líquida para rostro","","","Tono 02","SKU-003-T02",8,"MarcaY","BasePro","Tono 02","","","no"
-"SKU-004","Servicio Manicure","servicio",0,50000,"",,"","Servicio de manicure","","","","","","","","","","","no"
+"SKU-001","Camisa Polo Azul","fisico",25000,45000,10,5,"no","","Ropa","Camisa de algodón 100% color azul marino talla M","0.3","kg","40x30x5 cm","MarcaX","Modelo-Polo","Azul","M","Algodón","","","","","","","","",""
+"SKU-002","Zapatos Deportivos Nike","fisico",80000,150000,5,3,"no","","Calzado","Zapatos deportivos para running talla 42","0.8","kg","","Nike","AirRun","Negro","42","Sintético","","","","","","","","",""
+"SKU-003","Base Maquillaje","fisico",30000,60000,"",8,"no","","Cosmética","Base líquida para rostro","0.05","kg","","MarcaY","BasePro","Tono 01","","","","","","","","","Tono 01","SKU-003-T01",12
+"SKU-003","Base Maquillaje","fisico",30000,60000,"",8,"no","","Cosmética","Base líquida para rostro","0.05","kg","","MarcaY","BasePro","Tono 02","","","","","","","","","Tono 02","SKU-003-T02",8
+"SKU-004","Servicio Manicure","servicio","",50000,"","","no","","Servicios","Servicio de manicure","","","","","","","","","","1 hora","","","","","","",""
 
 # ========================================
 # TUS PRODUCTOS (AGREGA AQUÍ TUS DATOS)
 # ========================================
 
-"","","","","","","","","","","","","","","","","","","",""
-"","","","","","","","","","","","","","","","","","","",""
-"","","","","","","","","","","","","","","","","","","",""
-"","","","","","","","","","","","","","","","","","","",""
-"","","","","","","","","","","","","","","","","","","",""
-"","","","","","","","","","","","","","","","","","","",""
-"","","","","","","","","","","","","","","","","","","",""
-"","","","","","","","","","","","","","","","","","","",""
-"","","","","","","","","","","","","","","","","","","",""
-"","","","","","","","","","","","","","","","","","","",""
+"","","","","","","","","","","","","","","","","","","","","","","","","","","",""
+"","","","","","","","","","","","","","","","","","","","","","","","","","","",""
+"","","","","","","","","","","","","","","","","","","","","","","","","","","",""
+"","","","","","","","","","","","","","","","","","","","","","","","","","","",""
+"","","","","","","","","","","","","","","","","","","","","","","","","","","",""
+"","","","","","","","","","","","","","","","","","","","","","","","","","","",""
+"","","","","","","","","","","","","","","","","","","","","","","","","","","",""
+"","","","","","","","","","","","","","","","","","","","","","","","","","","",""
+"","","","","","","","","","","","","","","","","","","","","","","","","","","",""
+"","","","","","","","","","","","","","","","","","","","","","","","","","","",""

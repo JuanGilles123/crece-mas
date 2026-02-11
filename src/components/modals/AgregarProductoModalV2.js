@@ -323,9 +323,11 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
     }
   }, []);
 
-  const precioCompraWatch = watch('precioCompra');
   const pesoNumerico = parseWeightValue(pesoWatch);
-  const compraPorUnidad = Number((precioCompraWatch || '').toString().replace(/\D/g, '')) || 0;
+  // Usar displayValue que sí es reactivo (es un estado), no numericValue que es un ref
+  const compraPorUnidad = precioCompraInput.displayValue 
+    ? Number(precioCompraInput.displayValue.replace(/\D/g, ''))
+    : 0;
   const costoCompraReal = isJewelryBusiness ? (compraPorUnidad * pesoNumerico) : 0;
   const goldPriceActual = getGoldPriceValue(jewelryMaterialType);
   const minMarginActual = getMinMarginValue(jewelryMaterialType);
@@ -334,7 +336,7 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
   const aplicaPureza = jewelryMaterialType === 'international';
   const purityFactorActual = aplicaPureza ? getPurityFactor(purezaWatch) : 1;
   const precioVentaVariableActual = pesoNumerico && precioBaseGramoActual
-    ? pesoNumerico * precioBaseGramoActual * purityFactorActual
+    ? Math.round(pesoNumerico * precioBaseGramoActual * purityFactorActual * 100) / 100
     : 0;
   const reglaAplicada = diffActual >= minMarginActual ? 'Precio actual' : 'Costo + margen';
 
@@ -343,12 +345,14 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
     const formatted = precioVentaVariableActual ? formatCurrency(precioVentaVariableActual) : '';
     setValue('precioVenta', formatted, { shouldValidate: true });
     precioVentaInput.setValue(precioVentaVariableActual || '');
-  }, [isJewelryBusiness, jewelryPriceMode, precioVentaVariableActual, setValue, precioVentaInput]);
+  }, [isJewelryBusiness, jewelryPriceMode, precioVentaVariableActual, setValue, precioVentaInput, precioCompraInput.displayValue]);
 
   useEffect(() => {
     if (precioVentaModo !== 'porcentaje') return;
 
-    const compraNumerica = Number((precioCompraWatch || '').toString().replace(/\D/g, '')) || 0;
+    const compraNumerica = precioCompraInput.displayValue 
+      ? Number(precioCompraInput.displayValue.replace(/\D/g, ''))
+      : 0;
     const margenNumerico = parseFloat((margenPorcentaje || '').toString().replace(',', '.').replace(/[^0-9.]/g, ''));
 
     if (!compraNumerica || Number.isNaN(margenNumerico)) {
@@ -361,7 +365,7 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
     const ventaFormateada = formatCurrency(ventaCalculada);
     setValue('precioVenta', ventaFormateada || '', { shouldValidate: true });
     precioVentaInput.setValue(ventaCalculada);
-  }, [precioCompraWatch, margenPorcentaje, precioVentaModo, setValue, precioVentaInput]);
+  }, [precioCompraInput.displayValue, margenPorcentaje, precioVentaModo, setValue, precioVentaInput]);
 
   // Resetear cuando cambia el tipo
   useEffect(() => {

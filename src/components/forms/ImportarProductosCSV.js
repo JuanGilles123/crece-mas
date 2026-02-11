@@ -123,7 +123,7 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
     const aplicaPureza = materialType === 'international';
     const purityFactor = aplicaPureza ? getPurityFactor(pureza) : 1;
     if (!peso || !precioBaseGramo) return 0;
-    return peso * precioBaseGramo * purityFactor;
+    return Math.round(peso * precioBaseGramo * purityFactor * 100) / 100;
   };
 
   // Función para procesar imagen desde Excel
@@ -297,11 +297,12 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
           const normalizarHeader = (valor) => String(valor || '')
             .toLowerCase()
             .replace(/\*/g, '')
+            .replace(/\b(de|del|la|el|los|las)\b/g, '')
             .replace(/[_\s\-()]/g, '');
           const headersNormalizados = headers.map(normalizarHeader);
           const requiredHeaders = isJewelryBusiness
-            ? ['nombre', 'tipo', 'preciocompra', 'peso', 'stock']
-            : ['nombre', 'tipo', 'preciocompra', 'precioventa', 'stock'];
+            ? ['nombre', 'preciocompra', 'peso', 'stock']
+            : ['nombre', 'preciocompra', 'precioventa', 'stock'];
           const missingHeaders = requiredHeaders.filter(req => !headersNormalizados.some(h => h.includes(req)));
           if (missingHeaders.length > 0) {
             resolve({
@@ -358,7 +359,12 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
                 const nombreNormalizado = nombreBuscado.toLowerCase().replace(/[_\s-*()]/g, '');
                 for (const clave of clavesObjeto) {
                   const claveNormalizada = clave.toLowerCase().replace(/[_\s-*()]/g, '');
-                  if (claveNormalizada === nombreNormalizado || claveNormalizada.includes(nombreNormalizado) || nombreNormalizado.includes(claveNormalizada)) {
+                  // Evitar matches parciales cuando la diferencia de longitud es muy grande (ej: 'stock' vs 'stockminimo')
+                  const diffLength = Math.abs(claveNormalizada.length - nombreNormalizado.length);
+                  const isExact = claveNormalizada === nombreNormalizado;
+                  const isPartial = (claveNormalizada.includes(nombreNormalizado) || nombreNormalizado.includes(claveNormalizada)) && diffLength <= 3;
+                  
+                  if (isExact || isPartial) {
                     const valor = obj[clave];
                     if (valor !== undefined && valor !== null && String(valor).trim() !== '') {
                       return String(valor).trim();
@@ -386,65 +392,68 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
               return '';
             };
 
-            const codigoRaw = buscarCampoFlexibleLocal(producto, ['codigo', 'codigo_producto', 'sku', 'barcode', 'codigo_barras']) || '';
-            const nombre = buscarCampoFlexibleLocal(producto, ['nombre', 'name', 'producto', 'product', 'descripcion', 'description']) || '';
-            const tipoRaw = buscarCampoFlexibleLocal(producto, ['tipo', 'type', 'categoria', 'category']) || 'fisico';
+            const codigoRaw = buscarCampoFlexibleLocal(producto, ['Codigo', 'codigo', 'código', 'codigo_producto', 'sku', 'barcode', 'codigo_barras']) || '';
+            const nombre = buscarCampoFlexibleLocal(producto, ['Nombre', 'nombre', 'name', 'producto', 'product']) || '';
+            const tipoRaw = buscarCampoExactoLocal(producto, ['Tipo', 'tipo', 'type']) || 'fisico';
             const tipo = tipoRaw.toLowerCase();
-            const precioCompra = buscarCampoFlexibleLocal(producto, ['precio_compra', 'precio compra', 'costo', 'cost']) || '';
-            const precioVenta = buscarCampoFlexibleLocal(producto, ['precio_venta', 'precio venta', 'precio', 'price']) || '';
-            const stock = buscarCampoFlexibleLocal(producto, ['stock', 'cantidad', 'quantity', 'inventario', 'inventory']) || '';
-            const imagen = buscarCampoFlexibleLocal(producto, ['imagen', 'image', 'imagen_url', 'url_imagen']) || '';
-            const fechaVencimiento = buscarCampoFlexibleLocal(producto, ['fecha_vencimiento', 'fecha vencimiento', 'vencimiento']) || '';
-            const varianteNombre = buscarCampoExactoLocal(producto, ['variante_nombre', 'variante nombre', 'variante']) || '';
-            const varianteCodigo = buscarCampoExactoLocal(producto, ['variante_codigo', 'variante codigo']) || '';
-            const varianteStock = buscarCampoExactoLocal(producto, ['variante_stock', 'variante stock']) || '';
+            const precioCompra = buscarCampoFlexibleLocal(producto, ['Precio de Compra', 'precio_compra', 'precio de compra', 'costo', 'cost']) || '';
+            const precioVenta = buscarCampoFlexibleLocal(producto, ['Precio de Venta', 'precio_venta', 'precio de venta', 'precio', 'price']) || '';
+            const stock = buscarCampoFlexibleLocal(producto, ['Stock', 'stock', 'cantidad', 'quantity']) || '';
+            const imagen = buscarCampoFlexibleLocal(producto, ['Imagen', 'imagen', 'image', 'imagen_url']) || '';
+            const fechaVencimiento = buscarCampoFlexibleLocal(producto, ['Fecha de Vencimiento', 'fecha_vencimiento', 'fecha de vencimiento', 'vencimiento']) || '';
+            const varianteNombre = buscarCampoExactoLocal(producto, ['Variante Nombre', 'variante_nombre', 'variante nombre', 'variante']) || '';
+            const varianteCodigo = buscarCampoExactoLocal(producto, ['Variante Codigo', 'variante_codigo', 'variante código', 'variante codigo']) || '';
+            const varianteStock = buscarCampoExactoLocal(producto, ['Variante Stock', 'variante_stock', 'variante stock']) || '';
             const stockMinimoRaw = buscarCampoFlexibleLocal(producto, [
+              'Umbral de stock bajo',
               'stock_minimo',
               'stock minimo',
-              'min_stock',
-              'stock_min',
+              'umbral de stock bajo',
               'umbral_stock_bajo'
             ]) || '';
             const permiteToppingsRaw = buscarCampoFlexibleLocal(producto, [
+              'Permitir agregar toppings/adicionales',
               'permite_toppings',
-              'permite_topping',
-              'toppings',
-              'permite_adicionales',
-              'permite_adicional'
+              'permitir agregar toppings/adicionales',
+              'permite_topping'
             ]) || '';
-            const pesoRaw = buscarCampoFlexibleLocal(producto, ['peso', 'peso_gramos', 'weight', 'gramos']) || '';
-            const unidadPesoRaw = buscarCampoFlexibleLocal(producto, ['unidad_peso', 'unidad peso', 'unidad', 'u_peso', 'unidad_de_peso']) || '';
-            const purezaRaw = buscarCampoFlexibleLocal(producto, ['pureza', 'quilates', 'kilates', 'karat', 'kt']) || '';
+            const pesoRaw = buscarCampoFlexibleLocal(producto, ['Peso', 'peso', 'peso_gramos', 'weight']) || '';
+            const unidadPesoRaw = buscarCampoFlexibleLocal(producto, ['Unidad de Peso', 'unidad_peso', 'unidad de peso', 'unidad peso']) || '';
+            const purezaRaw = buscarCampoFlexibleLocal(producto, ['Pureza', 'pureza', 'quilates', 'kilates', 'karat', 'kt']) || '';
             const jewelryPriceModeRaw = buscarCampoFlexibleLocal(producto, [
+              'Tipo de precio',
               'jewelry_price_mode',
-              'modo_precio',
               'modo_precio_joyeria',
-              'precio_variable',
-              'precio_por_peso'
+              'tipo de precio',
+              'modo_precio'
             ]) || '';
             const jewelryMaterialTypeRaw = buscarCampoFlexibleLocal(producto, [
+              'Tipo de material',
               'jewelry_material_type',
-              'tipo_material',
-              'material_type',
-              'oro_local',
-              'oro_internacional'
+              'tipo_material_joyeria',
+              'tipo de material',
+              'tipo_material'
             ]) || '';
             const jewelryMinMarginRaw = buscarCampoFlexibleLocal(producto, [
+              'Margen minimo (%)',
               'jewelry_min_margin',
-              'margen_minimo',
-              'margen_min',
-              'min_margin'
+              'margen_minimo_joyeria',
+              'margen mínimo (%)',
+              'margen_minimo'
             ]) || '';
             const jewelryStaticModeRaw = buscarCampoFlexibleLocal(producto, [
+              'Como definir el precio estatico',
               'jewelry_static_mode',
-              'modo_precio_fijo',
-              'modo_fijo'
+              'modo_estatico_joyeria',
+              'cómo definir el precio estático',
+              'modo_precio_fijo'
             ]) || '';
             const jewelryStaticPercentRaw = buscarCampoFlexibleLocal(producto, [
+              'Porcentaje sobre compra (%)',
               'jewelry_static_percent',
-              'porcentaje_margen',
-              'margen_porcentaje',
-              'percent'
+              'porcentaje_estatico_joyeria',
+              'porcentaje sobre compra (%)',
+              'porcentaje_margen'
             ]) || '';
             
             // Validar tipo de producto
@@ -473,11 +482,11 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
               : 'na';
 
             if (isJewelryBusiness && jewelryPriceMode === '') {
-              agregarProblema('jewelry_price_mode', 'El modo de precio debe ser "fixed" o "variable"', jewelryPriceModeRaw);
+              agregarProblema('modo_precio_joyeria', 'El modo de precio debe ser "fixed" o "variable"', jewelryPriceModeRaw);
             }
 
             if (isJewelryBusiness && jewelryMaterialType === '') {
-              agregarProblema('jewelry_material_type', 'El tipo de material debe ser "local", "international" o "na"', jewelryMaterialTypeRaw);
+              agregarProblema('tipo_material_joyeria', 'El tipo de material debe ser "local", "international" o "na"', jewelryMaterialTypeRaw);
             }
 
             if (!isJewelryBusiness || jewelryPriceMode !== 'variable') {
@@ -611,10 +620,10 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
             // Usar valores numéricos convertidos
             const pesoFinal = isJewelryBusiness ? pesoNum : 0;
             const compraPorUnidad = isJewelryBusiness ? (precioCompraNum || 0) : (precioCompraNum || 0);
-            const precioCompraFinal = isJewelryBusiness
+            const precioCompraFinal = Math.round((isJewelryBusiness
               ? (compraPorUnidad * (pesoFinal || 0))
-              : (precioCompraNum || 0);
-            const precioVentaFinal = isJewelryBusiness && jewelryPriceMode === 'variable'
+              : (precioCompraNum || 0)) * 100) / 100;
+            const precioVentaFinal = Math.round((isJewelryBusiness && jewelryPriceMode === 'variable'
               ? calcularPrecioVentaJoyeria({
                   compraPorUnidad,
                   peso: pesoFinal,
@@ -622,7 +631,7 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
                   pureza: purezaRaw,
                   minMarginOverride: jewelryMinMarginNum
                 })
-              : (precioVentaNum || 0);
+              : (precioVentaNum || 0)) * 100) / 100;
             const stockFinal = stockNum || 0;
 
             // Crear producto final (solo con columnas que existen en la tabla)
@@ -655,11 +664,30 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
             
             // Agregar campos opcionales desde metadata si existen
             const metadata = {};
-            const camposMetadata = ['peso', 'unidad_peso', 'dimensiones', 'marca', 'modelo', 'color', 'talla', 'material', 'categoria', 
-                                   'duracion', 'descripcion', 'ingredientes', 'alergenos', 'calorias', 'porcion', 'variaciones', 'pureza'];
             
-            camposMetadata.forEach(campo => {
-              const valor = producto[campo] || producto[campo.toUpperCase()] || producto[campo.replace('_', ' ').toUpperCase()] || '';
+            // Mapeo de campos metadata con nombres exactos del CSV primero
+            const camposMetadataMap = {
+              'peso': ['Peso', 'peso', 'peso_gramos', 'weight'],
+              'unidad_peso': ['Unidad de Peso', 'unidad_peso', 'unidad de peso'],
+              'categoria': ['Categoria', 'categoria', 'category'],
+              'descripcion': ['Descripcion', 'descripcion', 'description'],
+              'material': ['Material', 'material'],
+              'talla': ['Talla', 'talla', 'size'],
+              'color': ['Color', 'color'],
+              'marca': ['Marca', 'marca', 'brand'],
+              'modelo': ['Modelo', 'modelo', 'model'],
+              'dimensiones': ['dimensiones', 'dimensions'],
+              'duracion': ['duracion', 'duration'],
+              'ingredientes': ['ingredientes', 'ingredients'],
+              'alergenos': ['alergenos', 'allergens'],
+              'calorias': ['calorias', 'calories'],
+              'porcion': ['porcion', 'portion'],
+              'variaciones': ['variaciones', 'variations'],
+              'pureza': ['Pureza', 'pureza', 'quilates', 'karat']
+            };
+            
+            Object.keys(camposMetadataMap).forEach(campo => {
+              const valor = buscarCampoFlexibleLocal(producto, camposMetadataMap[campo]);
               if (valor && valor.toString().trim() !== '') {
                 metadata[campo] = valor.toString().trim();
               }
@@ -794,7 +822,12 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
       const nombreNormalizado = nombreBuscado.toLowerCase().replace(/[_\s-*()]/g, '');
       for (const clave of clavesObjeto) {
         const claveNormalizada = clave.toLowerCase().replace(/[_\s-*()]/g, '');
-        if (claveNormalizada === nombreNormalizado || claveNormalizada.includes(nombreNormalizado) || nombreNormalizado.includes(claveNormalizada)) {
+        // Evitar matches parciales cuando la diferencia de longitud es muy grande (ej: 'stock' vs 'stockminimo')
+        const diffLength = Math.abs(claveNormalizada.length - nombreNormalizado.length);
+        const isExact = claveNormalizada === nombreNormalizado;
+        const isPartial = (claveNormalizada.includes(nombreNormalizado) || nombreNormalizado.includes(claveNormalizada)) && diffLength <= 3;
+        
+        if (isExact || isPartial) {
           const valor = obj[clave];
           if (valor !== undefined && valor !== null && String(valor).trim() !== '') {
             if (debug) console.log(`  ✓ Encontrado flexible: ${clave} (buscado: ${nombreBuscado}) = "${valor}"`);
@@ -906,11 +939,12 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
     const normalizarHeader = (valor) => String(valor || '')
       .toLowerCase()
       .replace(/\*/g, '')
+      .replace(/\b(de|del|la|el|los|las)\b/g, '')
       .replace(/[_\s\-()]/g, '');
     const headersNormalizados = headers.map(normalizarHeader);
     const requiredHeaders = isJewelryBusiness
-      ? ['nombre', 'tipo', 'preciocompra', 'peso', 'stock']
-      : ['nombre', 'tipo', 'preciocompra', 'precioventa', 'stock'];
+      ? ['nombre', 'preciocompra', 'peso', 'stock']
+      : ['nombre', 'preciocompra', 'precioventa', 'stock'];
     const missingHeaders = requiredHeaders.filter(req => !headersNormalizados.some(h => h.includes(req)));
     if (missingHeaders.length > 0) {
       return {
@@ -1005,77 +1039,77 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
       // Buscar campos de forma flexible usando los headers normalizados
       if (debugMode) console.log(`\nBuscando campos para fila ${numeroFila}:`);
       
-      const codigoRaw = buscarCampoFlexible(producto, ['codigo', 'codigo_producto', 'sku', 'barcode', 'codigo_barras'], debugMode) || '';
+      const codigoRaw = buscarCampoFlexible(producto, ['Codigo', 'codigo', 'código', 'codigo_producto', 'sku', 'barcode', 'codigo_barras'], debugMode) || '';
       // Buscar nombre (puede ser: nombre, name, producto, product, etc.)
-      const nombre = buscarCampoFlexible(producto, ['nombre', 'name', 'producto', 'product', 'descripcion', 'description'], debugMode) || '';
+      const nombre = buscarCampoFlexible(producto, ['Nombre', 'nombre', 'name', 'producto', 'product'], debugMode) || '';
       
-      // Buscar tipo
-      const tipoRaw = buscarCampoFlexible(producto, ['tipo', 'type', 'categoria', 'category'], debugMode) || 'fisico';
+      // Buscar tipo (búsqueda exacta para evitar confusión con "Tipo de precio" y "Categoria")
+      const tipoRaw = buscarCampoExacto(producto, ['Tipo', 'tipo', 'type']) || 'fisico';
       const tipo = tipoRaw.toLowerCase();
       
       // Buscar precio de compra (puede ser: precio_compra, precio compra, costo, cost, etc.)
-      const precioCompra = buscarCampoFlexible(producto, ['precio_compra', 'costo', 'cost'], debugMode) || '';
+      const precioCompra = buscarCampoFlexible(producto, ['Precio de Compra', 'precio_compra', 'precio de compra', 'costo', 'cost'], debugMode) || '';
       
       // Buscar precio de venta (puede ser: precio_venta, precio venta, precio, price, etc.)
-      const precioVenta = buscarCampoFlexible(producto, ['precio_venta', 'precio', 'price'], debugMode) || '';
+      const precioVenta = buscarCampoFlexible(producto, ['Precio de Venta', 'precio_venta', 'precio de venta', 'precio', 'price'], debugMode) || '';
       
       // Buscar stock (puede ser: stock, cantidad, quantity, inventario, etc.)
-      const stock = buscarCampoFlexible(producto, ['stock', 'cantidad', 'quantity', 'inventario', 'inventory'], debugMode) || '';
+      const stock = buscarCampoFlexible(producto, ['Stock', 'stock', 'cantidad', 'quantity'], debugMode) || '';
       
       // Buscar imagen
-      const imagen = buscarCampoFlexible(producto, ['imagen', 'image', 'imagen_url', 'url_imagen'], debugMode) || '';
-      const fechaVencimiento = buscarCampoFlexible(producto, ['fecha_vencimiento', 'fecha vencimiento', 'vencimiento'], debugMode) || '';
-      const varianteNombre = buscarCampoExacto(producto, ['variante_nombre', 'variante nombre', 'variante']) || '';
-      const varianteCodigo = buscarCampoExacto(producto, ['variante_codigo', 'variante codigo']) || '';
-      const varianteStock = buscarCampoExacto(producto, ['variante_stock', 'variante stock']) || '';
+      const imagen = buscarCampoFlexible(producto, ['Imagen', 'imagen', 'image', 'imagen_url'], debugMode) || '';
+      const fechaVencimiento = buscarCampoFlexible(producto, ['Fecha de Vencimiento', 'fecha_vencimiento', 'fecha de vencimiento', 'vencimiento'], debugMode) || '';
+      const varianteNombre = buscarCampoExacto(producto, ['Variante Nombre', 'variante_nombre', 'variante nombre', 'variante']) || '';
+      const varianteCodigo = buscarCampoExacto(producto, ['Variante Codigo', 'variante_codigo', 'variante código', 'variante codigo']) || '';
+      const varianteStock = buscarCampoExacto(producto, ['Variante Stock', 'variante_stock', 'variante stock']) || '';
       const stockMinimoRaw = buscarCampoFlexible(
         producto,
-        ['stock_minimo', 'stock minimo', 'min_stock', 'stock_min', 'umbral_stock_bajo'],
+        ['Umbral de stock bajo', 'stock_minimo', 'stock minimo', 'umbral de stock bajo', 'umbral_stock_bajo'],
         debugMode
       ) || '';
       const permiteToppingsRaw = buscarCampoFlexible(
         producto,
-        ['permite_toppings', 'permite_topping', 'toppings', 'permite_adicionales', 'permite_adicional'],
+        ['Permitir agregar toppings/adicionales', 'permite_toppings', 'permitir agregar toppings/adicionales', 'permite_topping'],
         debugMode
       ) || '';
       const pesoRaw = buscarCampoFlexible(
         producto,
-        ['peso', 'peso_gramos', 'weight', 'gramos'],
+        ['Peso', 'peso', 'peso_gramos', 'weight'],
         debugMode
       ) || '';
       const unidadPesoRaw = buscarCampoFlexible(
         producto,
-        ['unidad_peso', 'unidad peso', 'unidad', 'u_peso', 'unidad_de_peso'],
+        ['Unidad de Peso', 'unidad_peso', 'unidad de peso', 'unidad peso'],
         debugMode
       ) || '';
       const purezaRaw = buscarCampoFlexible(
         producto,
-        ['pureza', 'quilates', 'kilates', 'karat', 'kt'],
+        ['Pureza', 'pureza', 'quilates', 'kilates', 'karat', 'kt'],
         debugMode
       ) || '';
       const jewelryPriceModeRaw = buscarCampoFlexible(
         producto,
-        ['jewelry_price_mode', 'modo_precio', 'modo_precio_joyeria', 'precio_variable', 'precio_por_peso'],
+        ['Tipo de precio', 'jewelry_price_mode', 'modo_precio_joyeria', 'tipo de precio', 'modo_precio'],
         debugMode
       ) || '';
       const jewelryMaterialTypeRaw = buscarCampoFlexible(
         producto,
-        ['jewelry_material_type', 'tipo_material', 'material_type', 'oro_local', 'oro_internacional'],
+        ['Tipo de material', 'jewelry_material_type', 'tipo_material_joyeria', 'tipo de material', 'tipo_material'],
         debugMode
       ) || '';
       const jewelryMinMarginRaw = buscarCampoFlexible(
         producto,
-        ['jewelry_min_margin', 'margen_minimo', 'margen_min', 'min_margin'],
+        ['Margen minimo (%)', 'jewelry_min_margin', 'margen_minimo_joyeria', 'margen mínimo (%)', 'margen_minimo'],
         debugMode
       ) || '';
       const jewelryStaticModeRaw = buscarCampoFlexible(
         producto,
-        ['jewelry_static_mode', 'modo_precio_fijo', 'modo_fijo'],
+        ['Como definir el precio estatico', 'jewelry_static_mode', 'modo_estatico_joyeria', 'cómo definir el precio estático', 'modo_precio_fijo'],
         debugMode
       ) || '';
       const jewelryStaticPercentRaw = buscarCampoFlexible(
         producto,
-        ['jewelry_static_percent', 'porcentaje_margen', 'margen_porcentaje', 'percent'],
+        ['Porcentaje sobre compra (%)', 'jewelry_static_percent', 'porcentaje_estatico_joyeria', 'porcentaje sobre compra (%)', 'porcentaje_margen'],
         debugMode
       ) || '';
       
@@ -1115,11 +1149,11 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
         : 'na';
 
       if (isJewelryBusiness && jewelryPriceMode === '') {
-        agregarProblema('jewelry_price_mode', 'El modo de precio debe ser "fixed" o "variable"', jewelryPriceModeRaw);
+        agregarProblema('modo_precio_joyeria', 'El modo de precio debe ser "fixed" o "variable"', jewelryPriceModeRaw);
       }
 
       if (isJewelryBusiness && jewelryMaterialType === '') {
-        agregarProblema('jewelry_material_type', 'El tipo de material debe ser "local", "international" o "na"', jewelryMaterialTypeRaw);
+        agregarProblema('tipo_material_joyeria', 'El tipo de material debe ser "local", "international" o "na"', jewelryMaterialTypeRaw);
       }
 
       if (!isJewelryBusiness || jewelryPriceMode !== 'variable') {
@@ -1253,10 +1287,10 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
       // Usar valores numéricos convertidos
       const pesoFinal = isJewelryBusiness ? pesoNum : 0;
       const compraPorUnidad = isJewelryBusiness ? (precioCompraNum || 0) : (precioCompraNum || 0);
-      const precioCompraFinal = isJewelryBusiness
+      const precioCompraFinal = Math.round((isJewelryBusiness
         ? (compraPorUnidad * (pesoFinal || 0))
-        : (precioCompraNum || 0);
-      const precioVentaFinal = isJewelryBusiness && jewelryPriceMode === 'variable'
+        : (precioCompraNum || 0)) * 100) / 100;
+      const precioVentaFinal = Math.round((isJewelryBusiness && jewelryPriceMode === 'variable'
         ? calcularPrecioVentaJoyeria({
             compraPorUnidad,
             peso: pesoFinal,
@@ -1264,7 +1298,7 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
             pureza: purezaRaw,
             minMarginOverride: jewelryMinMarginNum
           })
-        : (precioVentaNum || 0);
+        : (precioVentaNum || 0)) * 100) / 100;
       const stockFinal = stockNum || 0;
 
       // Crear producto final (solo con columnas que existen en la tabla)
@@ -1297,11 +1331,30 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
       
       // Agregar campos opcionales desde metadata si existen
       const metadata = {};
-      const camposMetadata = ['peso', 'unidad_peso', 'dimensiones', 'marca', 'modelo', 'color', 'talla', 'material', 'categoria', 
-                             'duracion', 'descripcion', 'ingredientes', 'alergenos', 'calorias', 'porcion', 'variaciones', 'pureza'];
       
-      camposMetadata.forEach(campo => {
-        const valor = producto[campo] || producto[campo.toUpperCase()] || producto[campo.replace('_', ' ').toUpperCase()] || '';
+      // Mapeo de campos metadata con nombres exactos del CSV primero
+      const camposMetadataMap = {
+        'peso': ['Peso', 'peso', 'peso_gramos', 'weight'],
+        'unidad_peso': ['Unidad de Peso', 'unidad_peso', 'unidad de peso'],
+        'categoria': ['Categoria', 'categoria', 'category'],
+        'descripcion': ['Descripcion', 'descripcion', 'description'],
+        'material': ['Material', 'material'],
+        'talla': ['Talla', 'talla', 'size'],
+        'color': ['Color', 'color'],
+        'marca': ['Marca', 'marca', 'brand'],
+        'modelo': ['Modelo', 'modelo', 'model'],
+        'dimensiones': ['dimensiones', 'dimensions'],
+        'duracion': ['duracion', 'duration'],
+        'ingredientes': ['ingredientes', 'ingredients'],
+        'alergenos': ['alergenos', 'allergens'],
+        'calorias': ['calorias', 'calories'],
+        'porcion': ['porcion', 'portion'],
+        'variaciones': ['variaciones', 'variations'],
+        'pureza': ['Pureza', 'pureza', 'quilates', 'karat']
+      };
+      
+      Object.keys(camposMetadataMap).forEach(campo => {
+        const valor = buscarCampoFlexible(producto, camposMetadataMap[campo]);
         if (valor && valor.toString().trim() !== '') {
           metadata[campo] = valor.toString().trim();
         }
@@ -1847,10 +1900,10 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
                   <li><strong>Campos requeridos:</strong> codigo, nombre, tipo, precio_compra, precio_venta, stock</li>
                 )}
                 {isJewelryBusiness && (
-                  <li><strong>Joyería:</strong> precio_venta es opcional si jewelry_price_mode = variable</li>
+                  <li><strong>Joyería:</strong> precio_venta es opcional si modo_precio_joyeria = variable</li>
                 )}
                 {isJewelryBusiness && (
-                  <li><strong>Joyería:</strong> jewelry_price_mode (fixed/variable), jewelry_material_type (local/international/na), pureza (24k, 18k, 925...)</li>
+                  <li><strong>Joyería:</strong> modo_precio_joyeria (fixed/variable), tipo_material_joyeria (local/international/na), pureza (24k, 18k, 925...)</li>
                 )}
                 <li><strong>Campo opcional:</strong> permite_toppings (si/no, true/false, 1/0)</li>
                 <li><strong>Campo opcional:</strong> stock_minimo (número, umbral por producto)</li>
