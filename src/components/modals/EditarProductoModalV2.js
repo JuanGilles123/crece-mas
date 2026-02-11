@@ -276,8 +276,10 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
   const jewelryMaterialType = watch('jewelry_material_type');
   const pesoWatch = watch('peso');
   const purezaWatch = watch('pureza');
-  const precioCompraWatch = watch('precioCompra');
-  const compraPorUnidad = Number((precioCompraWatch || '').toString().replace(/\D/g, '')) || 0;
+  // Usar displayValue que sí es reactivo (es un estado), no numericValue que es un ref
+  const compraPorUnidad = precioCompraInput.displayValue 
+    ? Number(precioCompraInput.displayValue.replace(/\D/g, ''))
+    : 0;
   const pesoNumerico = parseWeightValue(pesoWatch);
   const costoCompraReal = isJewelryBusiness ? (compraPorUnidad * pesoNumerico) : 0;
   const goldPriceActual = getGoldPriceValue(jewelryMaterialType);
@@ -287,7 +289,7 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
   const aplicaPureza = jewelryMaterialType === 'international';
   const purityFactorActual = aplicaPureza ? getPurityFactor(purezaWatch) : 1;
   const precioVentaVariableActual = pesoNumerico && precioBaseGramoActual
-    ? pesoNumerico * precioBaseGramoActual * purityFactorActual
+    ? Math.round(pesoNumerico * precioBaseGramoActual * purityFactorActual * 100) / 100
     : 0;
   const reglaAplicada = diffActual >= minMarginActual ? 'Precio actual' : 'Costo + margen';
 
@@ -311,7 +313,7 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
     const formatted = precioVentaVariableActual ? formatCurrency(precioVentaVariableActual) : '';
     setValue('precioVenta', formatted, { shouldValidate: true });
     precioVentaInput.setValue(precioVentaVariableActual || '');
-  }, [isJewelryBusiness, jewelryPriceMode, precioVentaVariableActual, setValue, precioVentaInput]);
+  }, [isJewelryBusiness, jewelryPriceMode, precioVentaVariableActual, setValue, precioVentaInput, precioCompraInput.displayValue]);
 
   useEffect(() => {
     if (!isJewelryBusiness || jewelryPriceMode !== 'fixed') return;
@@ -329,10 +331,9 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
       setValue('nombre', producto.nombre || '');
       const pesoProducto = parseWeightValue(metadata?.peso);
       const compraPorUnidad = metadata?.jewelry_compra_por_unidad !== undefined && metadata?.jewelry_compra_por_unidad !== null
-        ? Number(metadata.jewelry_compra_por_unidad)
-        : (pesoProducto > 0 ? (Number(producto.precio_compra || 0) / pesoProducto) : Number(producto.precio_compra || 0));
+        ? Math.round(Number(metadata.jewelry_compra_por_unidad))
+        : (pesoProducto > 0 ? Math.round(Number(producto.precio_compra || 0) / pesoProducto) : Math.round(Number(producto.precio_compra || 0)));
       setValue('precioCompra', compraPorUnidad ? compraPorUnidad.toString() : '');
-      setValue('precioVenta', producto.precio_venta?.toString() || '');
       setValue('stock', producto.stock?.toString() || '');
       setValue('tipo', producto.tipo || 'fisico');
       setValue('fecha_vencimiento', producto.fecha_vencimiento || '');
@@ -383,7 +384,10 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
       // Cargar permite_toppings
       setValue('permite_toppings', metadata?.permite_toppings !== undefined ? metadata.permite_toppings : true);
       setValue('umbral_stock_bajo', metadata?.umbral_stock_bajo?.toString() || '');
+      
+      // IMPORTANTE: Cargar jewelry_price_mode ANTES de cargar el precio de venta
       setValue('jewelry_price_mode', metadata?.jewelry_price_mode || 'fixed');
+      setValue('jewelry_material_type', metadata?.jewelry_material_type || 'na');
       setValue('jewelry_static_mode', metadata?.jewelry_static_mode || 'fixed');
       setValue(
         'jewelry_static_percent',
@@ -391,7 +395,6 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
           ? String(metadata.jewelry_static_percent)
           : ''
       );
-      setValue('jewelry_material_type', metadata?.jewelry_material_type || 'na');
       setValue(
         'jewelry_min_margin',
         metadata?.jewelry_min_margin !== undefined && metadata?.jewelry_min_margin !== null
@@ -399,12 +402,24 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
           : ''
       );
 
-      // Actualizar currency inputs solo cuando cambia el producto (por ID)
+      // Actualizar currency inputs
       precioCompraInput.setValue(compraPorUnidad || '');
-      precioVentaInput.setValue(producto.precio_venta || '');
       stockInput.setValue(producto.stock || '');
+      
+      // Para productos de joyería con precio variable, el precio de venta se calculará automáticamente
+      // en el useEffect que depende de jewelryPriceMode, peso, etc.
+      const esJoyeriaVariable = isJewelryBusiness && metadata?.jewelry_price_mode === 'variable';
+      if (!esJoyeriaVariable) {
+        // Solo para productos NO variables, establecer el precio guardado
+        setValue('precioVenta', producto.precio_venta?.toString() || '');
+        precioVentaInput.setValue(producto.precio_venta || '');
+      } else {
+        // Para variables, limpiar y dejar que el useEffect lo calcule
+        setValue('precioVenta', '');
+        precioVentaInput.setValue('');
+      }
     }
-  }, [producto, setValue, precioCompraInput, precioVentaInput, stockInput, parseWeightValue]);
+  }, [producto, setValue, precioCompraInput, precioVentaInput, stockInput, parseWeightValue, isJewelryBusiness]);
 
   // Refs para detección global de código de barras (funciona aunque el cursor no esté en el campo código)
   const globalBarcodeBufferRef = useRef('');

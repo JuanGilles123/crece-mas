@@ -165,7 +165,7 @@ const Inventario = () => {
     const aplicaPureza = materialType === 'international';
     const purityFactor = aplicaPureza ? getPurityFactor(metadata?.pureza) : 1;
     if (!peso || !precioBaseGramo) return 0;
-    return peso * precioBaseGramo * purityFactor;
+    return Math.round(peso * precioBaseGramo * purityFactor * 100) / 100;
   }, [getGoldPriceLocal, getGoldPriceGlobal, getPurityFactor, organization?.jewelry_min_margin_local, organization?.jewelry_min_margin_international, parseNumber]);
   const umbralStockBajo = Number(user?.user_metadata?.umbralStockBajo ?? 10);
   const umbralStockBajoSeguro = Number.isFinite(umbralStockBajo) && umbralStockBajo > 0 ? umbralStockBajo : 10;
@@ -793,23 +793,43 @@ const Inventario = () => {
     setEliminandoSeleccionados(true);
     try {
       const productosAEliminar = productos.filter(p => seleccionados.includes(p.id));
+      
+      // Eliminar imágenes primero
       for (const producto of productosAEliminar) {
         if (producto.imagen && !producto.imagen.startsWith('http://') && !producto.imagen.startsWith('https://') && !producto.imagen.startsWith('data:')) {
           await deleteImageFromStorage(producto.imagen);
         }
       }
 
-      const { error: deleteError } = await supabase
-        .from('productos')
-        .delete()
-        .in('id', seleccionados);
+      // Dividir en lotes de 100 para evitar error 400 con grandes cantidades
+      const BATCH_SIZE = 100;
+      const totalBatches = Math.ceil(seleccionados.length / BATCH_SIZE);
+      
+      for (let i = 0; i < totalBatches; i++) {
+        const start = i * BATCH_SIZE;
+        const end = start + BATCH_SIZE;
+        const batch = seleccionados.slice(start, end);
+        
+        const { error: deleteError } = await supabase
+          .from('productos')
+          .delete()
+          .in('id', batch);
 
-      if (deleteError) {
-        throw deleteError;
+        if (deleteError) {
+          throw deleteError;
+        }
+        
+        // Mostrar progreso si hay múltiples lotes
+        if (totalBatches > 1) {
+          toast.success(`Eliminando... ${Math.min(end, seleccionados.length)}/${seleccionados.length}`, {
+            id: 'delete-progress',
+            duration: 1000
+          });
+        }
       }
 
       setSeleccionados([]);
-      toast.success('Productos eliminados');
+      toast.success(`${seleccionados.length} productos eliminados correctamente`);
       refetch();
     } catch (err) {
       console.error('Error eliminando seleccionados:', err);

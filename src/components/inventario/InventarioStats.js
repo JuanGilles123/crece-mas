@@ -155,7 +155,7 @@ const InventarioStats = ({ productos, totalProductosOverride }) => {
     const diff = goldPrice - compraPorUnidad;
     const precioBaseGramo = diff >= minMargin ? goldPrice : (compraPorUnidad + minMargin);
     if (!peso || !goldPrice) return 0;
-    return peso * precioBaseGramo * (aplicaPureza ? getPurityFactor(pureza) : 1);
+    return Math.round(peso * precioBaseGramo * (aplicaPureza ? getPurityFactor(pureza) : 1) * 100) / 100;
   };
 
   // Valor de venta en stock (precio_venta * stock) con precios actuales

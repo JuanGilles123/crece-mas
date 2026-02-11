@@ -163,13 +163,47 @@ const DashboardHome = () => {
     };
   }, [ordenesCompra, estadisticasEgresos]);
 
-  // Calcular utilidad
+  // Calcular utilidad real (diferencia entre precio de venta y precio de compra)
   const utilidad = useMemo(() => {
-    return {
-      utilidadHoy: metricasVentas.ventasHoy - metricasEgresos.egresosHoy,
-      utilidadMes: metricasVentas.ventasMes - metricasEgresos.egresosMes
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const finHoy = new Date();
+    finHoy.setHours(23, 59, 59, 999);
+    const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    
+    // Filtrar ventas de hoy y del mes
+    const ventasHoy = ventas.filter(v => {
+      const fechaVenta = new Date(v.created_at);
+      return fechaVenta >= hoy && fechaVenta <= finHoy;
+    });
+    
+    const ventasMes = ventas.filter(v => {
+      const fechaVenta = new Date(v.created_at);
+      return fechaVenta >= inicioMes;
+    });
+    
+    // Calcular utilidad de cada venta
+    const calcularUtilidadVenta = (venta) => {
+      if (!venta.items || !Array.isArray(venta.items)) return 0;
+      
+      return venta.items.reduce((utilidadTotal, item) => {
+        // Soportar múltiples nombres de campos
+        const precioVenta = parseFloat(item.precio_venta || item.precio || item.precio_unitario || 0);
+        const precioCompra = parseFloat(item.precio_compra || 0);
+        const cantidad = parseFloat(item.cantidad || item.qty || 0);
+        const utilidadItem = (precioVenta - precioCompra) * cantidad;
+        return utilidadTotal + utilidadItem;
+      }, 0);
     };
-  }, [metricasVentas, metricasEgresos]);
+    
+    const utilidadHoy = ventasHoy.reduce((sum, v) => sum + calcularUtilidadVenta(v), 0);
+    const utilidadMes = ventasMes.reduce((sum, v) => sum + calcularUtilidadVenta(v), 0);
+    
+    return {
+      utilidadHoy,
+      utilidadMes
+    };
+  }, [ventas]);
 
   const umbralStockBajo = Number(user?.user_metadata?.umbralStockBajo ?? 10);
   const umbralStockBajoSeguro = Number.isFinite(umbralStockBajo) && umbralStockBajo > 0 ? umbralStockBajo : 10;

@@ -125,7 +125,18 @@ export default function CajaOptimizada() {
           producto_id: item.id,
           cantidad: item.qty,
           precio_unitario: item.precio_venta,
+          precio_compra: item.precio_compra || 0,
           subtotal: item.qty * item.precio_venta
+        })),
+        items: cart.map(item => ({
+          id: item.id,
+          nombre: item.nombre,
+          qty: item.qty,
+          cantidad: item.qty,
+          precio_venta: item.precio_venta,
+          precio_compra: item.precio_compra || 0,
+          precio: item.precio_venta,
+          precio_unitario: item.precio_venta
         })),
         subtotal,
         impuestos,
