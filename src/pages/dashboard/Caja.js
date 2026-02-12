@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../services/api/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import { useSubscription } from '../../hooks/useSubscription';
@@ -45,6 +46,570 @@ function formatCOP(value) {
     return "$" + value.toLocaleString("es-CO");
   }
 }
+
+// Componente para métodos de pago (extraído y memoizado)
+const MetodosPago = React.memo(({ 
+  metodoSeleccionado, 
+  setMetodoSeleccionado, 
+  total, 
+  hasFeature, 
+  setMostrandoMetodosPago,
+  handleSeleccionarMetodoPago,
+  pedidosOcultos
+}) => (
+  <div className={`metodos-pago-overlay ${pedidosOcultos ? 'pedidos-ocultos' : ''}`}>
+    <div className="metodos-pago-container">
+      <div className="metodos-pago-header">
+        <h3>Selecciona el método de pago</h3>
+        <p className="metodos-pago-total">Total a pagar: <span>{formatCOP(total)}</span></p>
+      </div>
+      
+      <div className="metodos-pago-grid">
+        <button 
+          className={`metodo-pago-card ${metodoSeleccionado === 'Efectivo' ? 'selected' : ''}`}
+          onClick={() => setMetodoSeleccionado('Efectivo')}
+        >
+          <span className="metodo-pago-check">✓</span>
+          <Banknote className="metodo-pago-icon" size={32} />
+          <span className="metodo-pago-label">Efectivo</span>
+          <span className="metodo-pago-desc">Pago en efectivo</span>
+        </button>
+        
+        {hasFeature('multiplePaymentMethods') ? (
+          <>
+            <button 
+              className={`metodo-pago-card ${metodoSeleccionado === 'Transferencia' ? 'selected' : ''}`}
+              onClick={() => setMetodoSeleccionado('Transferencia')}
+            >
+              <span className="metodo-pago-check">✓</span>
+              <CreditCard className="metodo-pago-icon" size={32} />
+              <span className="metodo-pago-label">Transferencia</span>
+              <span className="metodo-pago-desc">Transferencia bancaria</span>
+            </button>
+            
+            <button 
+              className={`metodo-pago-card ${metodoSeleccionado === 'Nequi' ? 'selected' : ''}`}
+              onClick={() => setMetodoSeleccionado('Nequi')}
+            >
+              <span className="metodo-pago-check">✓</span>
+              <Smartphone className="metodo-pago-icon" size={32} />
+              <span className="metodo-pago-label">Nequi</span>
+              <span className="metodo-pago-desc">Pago móvil</span>
+            </button>
+          </>
+        ) : (
+          <>
+            <button 
+              className="metodo-pago-card metodo-pago-card-locked"
+              onClick={() => toast.error('Los métodos de pago adicionales están disponibles en el plan Estándar')}
+              style={{ opacity: 0.5, cursor: 'not-allowed' }}
+            >
+              <Lock className="metodo-pago-icon" size={32} />
+              <span className="metodo-pago-label">Transferencia</span>
+              <span className="metodo-pago-desc">🔒 Plan Estándar</span>
+            </button>
+            
+            <button 
+              className="metodo-pago-card metodo-pago-card-locked"
+              onClick={() => toast.error('Los métodos de pago adicionales están disponibles en el plan Estándar')}
+              style={{ opacity: 0.5, cursor: 'not-allowed' }}
+            >
+              <Lock className="metodo-pago-icon" size={32} />
+              <span className="metodo-pago-label">Nequi</span>
+              <span className="metodo-pago-desc">🔒 Plan Estándar</span>
+            </button>
+          </>
+        )}
+        
+        {hasFeature('mixedPayments') ? (
+          <button 
+            className={`metodo-pago-card ${metodoSeleccionado === 'Mixto' ? 'selected' : ''}`}
+            onClick={() => setMetodoSeleccionado('Mixto')}
+          >
+            <span className="metodo-pago-check">✓</span>
+            <Wallet className="metodo-pago-icon" size={32} />
+            <span className="metodo-pago-label">Mixto</span>
+            <span className="metodo-pago-desc">Varios métodos</span>
+          </button>
+        ) : (
+          <button 
+            className="metodo-pago-card metodo-pago-card-locked"
+            onClick={() => toast.error('Los pagos mixtos están disponibles en el plan Estándar')}
+            style={{ opacity: 0.5, cursor: 'not-allowed' }}
+          >
+            <Lock className="metodo-pago-icon" size={32} />
+            <span className="metodo-pago-label">Mixto</span>
+            <span className="metodo-pago-desc">🔒 Plan Estándar</span>
+          </button>
+        )}
+      </div>
+      
+      <div className="metodo-pago-credito-container">
+        <button 
+          className={`metodo-pago-card metodo-pago-card-credito ${metodoSeleccionado === 'Credito' ? 'selected' : ''}`}
+          onClick={() => setMetodoSeleccionado('Credito')}
+        >
+          <span className="metodo-pago-check">✓</span>
+          <Receipt className="metodo-pago-icon" size={32} />
+          <span className="metodo-pago-label">Crédito</span>
+          <span className="metodo-pago-desc">Venta a crédito / Fiado</span>
+        </button>
+      </div>
+      
+      <div className="metodos-pago-actions">
+        <button 
+          className="metodos-pago-cancelar"
+          onClick={() => {
+            setMostrandoMetodosPago(false);
+            setMetodoSeleccionado(null);
+          }}
+        >
+          Cancelar
+        </button>
+        <button 
+          className="metodos-pago-continuar"
+          onClick={() => {
+            if (metodoSeleccionado) {
+              handleSeleccionarMetodoPago(metodoSeleccionado);
+              setMetodoSeleccionado(null);
+            }
+          }}
+          disabled={!metodoSeleccionado}
+        >
+          Continuar
+        </button>
+      </div>
+    </div>
+  </div>
+));
+
+// Componente para pago en efectivo (extraído y memoizado)
+const PagoEfectivo = React.memo(({
+  montoEntregado,
+  setMontoEntregado,
+  total,
+  handleValorPredefinido,
+  handleCancelarPagoEfectivo,
+  handleConfirmarPagoEfectivo,
+  pedidosOcultos
+}) => {
+  // Estado local para el input que se actualiza en tiempo real
+  const [inputValue, setInputValue] = React.useState(montoEntregado);
+  // Estado para controlar si se deben mostrar los cálculos (solo cuando el usuario termine de escribir)
+  const [mostrarCalculos, setMostrarCalculos] = React.useState(false);
+  const montoEntregadoRef = React.useRef(montoEntregado);
+  const valoresComunes = [1000, 5000, 10000, 20000, 50000, 100000];
+  
+  // Actualizar ref cuando montoEntregado cambia externamente
+  React.useEffect(() => {
+    montoEntregadoRef.current = montoEntregado;
+    setInputValue(montoEntregado);
+    setMostrarCalculos(true);
+  }, [montoEntregado]);
+
+  // Debounce: actualizar montoEntregado solo después de que el usuario deje de escribir
+  React.useEffect(() => {
+    if (inputValue === montoEntregadoRef.current) {
+      return;
+    }
+
+    setMostrarCalculos(false);
+
+    const timer = setTimeout(() => {
+      if (inputValue !== montoEntregadoRef.current) {
+        setMontoEntregado(inputValue);
+        setMostrarCalculos(true);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [inputValue, setMontoEntregado]);
+
+  // Calcular monto y cambio usando useMemo (no se recalcula en cada render)
+  const monto = React.useMemo(() => {
+    return parseFloat(montoEntregado.replace(/[^\d]/g, '')) || 0;
+  }, [montoEntregado]);
+  
+  const cambio = React.useMemo(() => {
+    return monto - total;
+  }, [monto, total]);
+
+  return (
+    <div className={`pago-efectivo-overlay ${pedidosOcultos ? 'pedidos-ocultos' : ''}`}>
+      <div className="pago-efectivo-container">
+        <div className="pago-efectivo-header">
+          <h3>Pago en Efectivo</h3>
+          <p>Total a pagar: {formatCOP(total)}</p>
+        </div>
+        
+        <div className="pago-efectivo-content">
+          <div className="pago-efectivo-input-section">
+            <label className="pago-efectivo-label">Monto entregado por el cliente</label>
+            <input
+              type="text"
+              value={inputValue}
+              onChange={(e) => {
+                const value = e.target.value;
+                const cleanValue = value.replace(/[^\d,.]/g, '');
+                setInputValue(cleanValue);
+              }}
+              onBlur={() => {
+                setMontoEntregado(inputValue);
+                setMostrarCalculos(true);
+              }}
+              className="pago-efectivo-input"
+              placeholder="Ingresa el monto"
+              autoFocus
+              style={{ 
+                transition: 'none',
+                willChange: 'auto',
+                backfaceVisibility: 'hidden',
+                transform: 'translateZ(0)',
+                WebkitBackfaceVisibility: 'hidden',
+                WebkitTransform: 'translateZ(0)'
+              }}
+            />
+          </div>
+
+          <div className="pago-efectivo-valores-comunes">
+            <div className="pago-efectivo-subtitle-container">
+              <p className="pago-efectivo-subtitle">Valores comunes:</p>
+              <button 
+                className="pago-efectivo-limpiar-btn"
+                onClick={() => {
+                  setInputValue('');
+                  setMontoEntregado('');
+                }}
+                title="Limpiar monto"
+              >
+                Limpiar
+              </button>
+            </div>
+            <div className="pago-efectivo-botones">
+              {valoresComunes.map((valor, index) => (
+                <button
+                  key={index}
+                  className="pago-efectivo-btn-valor"
+                  onClick={() => handleValorPredefinido(valor)}
+                >
+                  {formatCOP(valor)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className={`pago-efectivo-cambio ${(!mostrarCalculos || monto === 0) ? 'hidden' : ''}`}>
+            <div className="pago-efectivo-cambio-item">
+              <span>Monto entregado:</span>
+              <span>{formatCOP(monto)}</span>
+            </div>
+            <div className="pago-efectivo-cambio-item">
+              <span>Total a pagar:</span>
+              <span>{formatCOP(total)}</span>
+            </div>
+            <div className={`pago-efectivo-cambio-item pago-efectivo-cambio-total ${cambio < 0 ? 'negativo' : 'positivo'}`}>
+              <span>Cambio:</span>
+              <span>
+                {cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambio)}
+              </span>
+            </div>
+          </div>
+        </div>
+        
+        <div className="pago-efectivo-actions">
+          <button 
+            className="pago-efectivo-btn pago-efectivo-cancelar"
+            onClick={handleCancelarPagoEfectivo}
+          >
+            Cancelar
+          </button>
+          <button 
+            className="pago-efectivo-btn pago-efectivo-confirmar"
+            onClick={handleConfirmarPagoEfectivo}
+            disabled={monto < total}
+          >
+            Confirmar Pago
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+// Componente para pago mixto (extraído y memoizado)
+const PagoMixto = React.memo(({
+  montoMixto1,
+  setMontoMixto1,
+  montoMixto2,
+  setMontoMixto2,
+  metodoMixto1,
+  setMetodoMixto1,
+  metodoMixto2,
+  setMetodoMixto2,
+  total,
+  handleValorPredefinidoMixto,
+  handleCancelarPagoMixto,
+  handleConfirmarPagoMixto,
+  pedidosOcultos
+}) => {
+  const [inputValue1, setInputValue1] = React.useState(montoMixto1);
+  const [inputValue2, setInputValue2] = React.useState(montoMixto2);
+  const [mostrarCalculos, setMostrarCalculos] = React.useState(false);
+  const montoMixto1Ref = React.useRef(montoMixto1);
+  const montoMixto2Ref = React.useRef(montoMixto2);
+  const valoresComunes = [10000, 20000, 50000, 100000];
+
+  React.useEffect(() => {
+    montoMixto1Ref.current = montoMixto1;
+    montoMixto2Ref.current = montoMixto2;
+    setInputValue1(montoMixto1);
+    setInputValue2(montoMixto2);
+    setMostrarCalculos(true);
+  }, [montoMixto1, montoMixto2]);
+
+  React.useEffect(() => {
+    if (inputValue1 === montoMixto1Ref.current) return;
+    setMostrarCalculos(false);
+    const timer = setTimeout(() => {
+      if (inputValue1 !== montoMixto1Ref.current) {
+        setMontoMixto1(inputValue1);
+        setMostrarCalculos(true);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [inputValue1, setMontoMixto1]);
+
+  React.useEffect(() => {
+    if (inputValue2 === montoMixto2Ref.current) return;
+    setMostrarCalculos(false);
+    const timer = setTimeout(() => {
+      if (inputValue2 !== montoMixto2Ref.current) {
+        setMontoMixto2(inputValue2);
+        setMostrarCalculos(true);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [inputValue2, setMontoMixto2]);
+
+  const monto1 = React.useMemo(() => {
+    return parseFloat(montoMixto1.replace(/[^\d]/g, '')) || 0;
+  }, [montoMixto1]);
+  
+  const monto2 = React.useMemo(() => {
+    return parseFloat(montoMixto2.replace(/[^\d]/g, '')) || 0;
+  }, [montoMixto2]);
+  
+  const sumaMontos = React.useMemo(() => {
+    return monto1 + monto2;
+  }, [monto1, monto2]);
+  
+  const diferencia = React.useMemo(() => {
+    return total - sumaMontos;
+  }, [total, sumaMontos]);
+  
+  const hayEfectivo = React.useMemo(() => {
+    return metodoMixto1 === 'Efectivo' || metodoMixto2 === 'Efectivo';
+  }, [metodoMixto1, metodoMixto2]);
+  
+  const cambio = React.useMemo(() => {
+    return hayEfectivo && sumaMontos > total ? sumaMontos - total : 0;
+  }, [hayEfectivo, sumaMontos, total]);
+
+  return (
+    <div className={`pago-efectivo-overlay ${pedidosOcultos ? 'pedidos-ocultos' : ''}`}>
+      <div className="pago-efectivo-container">
+        <div className="pago-efectivo-header">
+          <h3>Pago Mixto</h3>
+          <p>Total a pagar: {formatCOP(total)}</p>
+        </div>
+        
+        <div className="pago-efectivo-content">
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label className="pago-efectivo-label" style={{ marginBottom: '0.5rem', display: 'block' }}>
+              Primer método de pago:
+            </label>
+            <select
+              value={metodoMixto1}
+              onChange={(e) => setMetodoMixto1(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                fontSize: '1rem',
+                marginBottom: '0.75rem'
+              }}
+            >
+              <option value="Efectivo">Efectivo</option>
+              <option value="Transferencia">Transferencia</option>
+              <option value="Tarjeta">Tarjeta</option>
+              <option value="Nequi">Nequi</option>
+            </select>
+            
+            <label className="pago-efectivo-label">Monto del primer método:</label>
+            <input
+              type="text"
+              value={inputValue1}
+              onChange={(e) => {
+                const value = e.target.value;
+                const cleanValue = value.replace(/[^\d,.]/g, '');
+                setInputValue1(cleanValue);
+              }}
+              onBlur={() => {
+                setMontoMixto1(inputValue1);
+                setMostrarCalculos(true);
+              }}
+              className="pago-efectivo-input"
+              placeholder="Ingresa el monto"
+              style={{ 
+                transition: 'none',
+                willChange: 'auto',
+                backfaceVisibility: 'hidden',
+                transform: 'translateZ(0)',
+                WebkitBackfaceVisibility: 'hidden',
+                WebkitTransform: 'translateZ(0)'
+              }}
+            />
+            
+            <div className="pago-efectivo-botones">
+              {valoresComunes.map((valor, index) => (
+                <button
+                  key={index}
+                  className="pago-efectivo-btn-valor"
+                  onClick={() => handleValorPredefinidoMixto(valor, true)}
+                >
+                  {formatCOP(valor)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label className="pago-efectivo-label" style={{ marginBottom: '0.5rem', display: 'block' }}>
+              Segundo método de pago:
+            </label>
+            <select
+              value={metodoMixto2}
+              onChange={(e) => setMetodoMixto2(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                fontSize: '1rem',
+                marginBottom: '0.75rem'
+              }}
+            >
+              <option value="Efectivo">Efectivo</option>
+              <option value="Transferencia">Transferencia</option>
+              <option value="Tarjeta">Tarjeta</option>
+              <option value="Nequi">Nequi</option>
+            </select>
+            
+            <label className="pago-efectivo-label">Monto del segundo método:</label>
+            <input
+              type="text"
+              value={inputValue2}
+              onChange={(e) => {
+                const value = e.target.value;
+                const cleanValue = value.replace(/[^\d,.]/g, '');
+                setInputValue2(cleanValue);
+              }}
+              onBlur={() => {
+                setMontoMixto2(inputValue2);
+                setMostrarCalculos(true);
+              }}
+              className="pago-efectivo-input"
+              placeholder="Ingresa el monto"
+              style={{ 
+                transition: 'none',
+                willChange: 'auto',
+                backfaceVisibility: 'hidden',
+                transform: 'translateZ(0)',
+                WebkitBackfaceVisibility: 'hidden',
+                WebkitTransform: 'translateZ(0)'
+              }}
+            />
+            
+            <div className="pago-efectivo-botones">
+              {valoresComunes.map((valor, index) => (
+                <button
+                  key={index}
+                  className="pago-efectivo-btn-valor"
+                  onClick={() => handleValorPredefinidoMixto(valor, false)}
+                >
+                  {formatCOP(valor)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className={`pago-mixto-cambio ${(!mostrarCalculos || monto1 === 0 || monto2 === 0) ? 'hidden' : ''}`} style={{ marginTop: '1rem' }}>
+            <div className="pago-efectivo-cambio-item">
+              <span>{metodoMixto1}:</span>
+              <span>{formatCOP(monto1)}</span>
+            </div>
+            <div className="pago-efectivo-cambio-item">
+              <span>{metodoMixto2}:</span>
+              <span>{formatCOP(monto2)}</span>
+            </div>
+            <div className="pago-efectivo-cambio-item">
+              <span>Suma:</span>
+              <span>{formatCOP(sumaMontos)}</span>
+            </div>
+            <div className="pago-efectivo-cambio-item">
+              <span>Total a pagar:</span>
+              <span>{formatCOP(total)}</span>
+            </div>
+            <div className={`pago-efectivo-cambio-item pago-efectivo-cambio-total ${hayEfectivo && cambio > 0 ? 'positivo' : 'hidden-inline'}`}>
+              <span>Cambio a devolver:</span>
+              <span>{formatCOP(cambio)}</span>
+            </div>
+            <div className={`pago-efectivo-cambio-item pago-efectivo-cambio-total ${
+              !hayEfectivo ? (diferencia < -1 ? 'negativo' : diferencia > 1 ? 'negativo' : 'positivo') : 'hidden-inline'
+            }`}>
+              <span>Diferencia:</span>
+              <span>
+                {diferencia < -1 
+                  ? `Sobran ${formatCOP(Math.abs(diferencia))}` 
+                  : diferencia > 1
+                  ? `Faltan ${formatCOP(diferencia)}`
+                  : 'Correcto ✓'
+                }
+              </span>
+            </div>
+            <div className={`pago-efectivo-cambio-item pago-efectivo-cambio-total negativo ${hayEfectivo && diferencia > 1 ? '' : 'hidden-inline'}`}>
+              <span>Faltan:</span>
+              <span>{formatCOP(diferencia)}</span>
+            </div>
+          </div>
+        </div>
+        
+        <div className="pago-efectivo-actions">
+          <button 
+            className="pago-efectivo-btn pago-efectivo-cancelar"
+            onClick={handleCancelarPagoMixto}
+          >
+            Cancelar
+          </button>
+          <button 
+            className="pago-efectivo-btn pago-efectivo-confirmar"
+            onClick={handleConfirmarPagoMixto}
+            disabled={
+              monto1 <= 0 || 
+              monto2 <= 0 || 
+              metodoMixto1 === metodoMixto2 ||
+              (!hayEfectivo && Math.abs(diferencia) > 1) ||
+              (hayEfectivo && diferencia > 1)
+            }
+          >
+            Confirmar Pago Mixto
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+});
 
 export default function Caja({ 
   mode = 'venta', // 'venta' | 'pedido'
@@ -343,6 +908,9 @@ export default function Caja({
   const { data: clientes = [] } = useClientes(organization?.id);
   const crearClienteMutation = useCrearCliente();
   const crearCreditoMutation = useCrearCredito();
+  
+  // Hook para invalidar queries
+  const queryClient = useQueryClient();
 
   // Hook para guardar y actualizar cotización
   const guardarCotizacionMutation = useGuardarCotizacion();
@@ -350,20 +918,28 @@ export default function Caja({
 
   // Hook para pedidos pendientes de pago
   const { data: todosPedidos = [] } = usePedidos(organization?.id);
+  // eslint-disable-next-line no-unused-vars
   const actualizarPedido = useActualizarPedido();
   const crearPedido = useCrearPedido();
   
   // Filtrar pedidos listos para pago (solo estado "listo", excluir "completado", excluir sin items)
   // Excluir pedidos con pago_inmediato o con venta_id (ya fueron pagados)
   const pedidosPendientesPago = useMemo(() => {
-    const pedidosFiltrados = todosPedidos.filter(p => 
-      p.estado === 'listo' && 
-      !p.pago_inmediato &&
-      !p.venta_id && // Excluir pedidos que ya tienen una venta asociada (ya fueron pagados)
-      p.items && 
-      Array.isArray(p.items) && 
-      p.items.length > 0
-    );
+    const pedidosFiltrados = todosPedidos.filter(p => {
+      // Solo pedidos en estado "listo"
+      if (p.estado !== 'listo') return false;
+      
+      // Excluir pedidos con pago inmediato (ya pagados al tomar el pedido)
+      if (p.pago_inmediato) return false;
+      
+      // Excluir pedidos que ya tienen una venta asociada (solo si la columna existe)
+      if (p.hasOwnProperty('venta_id') && p.venta_id) return false;
+      
+      // Solo pedidos con items válidos
+      if (!p.items || !Array.isArray(p.items) || p.items.length === 0) return false;
+      
+      return true;
+    });
     
     // Aplicar filtro de búsqueda si existe
     if (!queryPedidos.trim()) {
@@ -371,7 +947,7 @@ export default function Caja({
     }
     
     const queryLower = queryPedidos.toLowerCase().trim();
-    return pedidosFiltrados.filter(p => {
+    const pedidosFiltradosConBusqueda = pedidosFiltrados.filter(p => {
       // Buscar por número de pedido
       if (p.numero_pedido?.toLowerCase().includes(queryLower)) return true;
       // Buscar por nombre de cliente
@@ -382,9 +958,12 @@ export default function Caja({
       if (p.mesa?.numero?.toString().includes(queryLower)) return true;
       return false;
     });
+    
+    return pedidosFiltradosConBusqueda;
   }, [todosPedidos, queryPedidos]);
   
   const [mostrandoPedidosPendientes, setMostrandoPedidosPendientes] = useState(false);
+  // eslint-disable-next-line no-unused-vars
   const [pedidoIdActual, setPedidoIdActual] = useState(null);
   const [pedidosConsolidados, setPedidosConsolidados] = useState([]); // IDs de todos los pedidos consolidados
   
@@ -578,25 +1157,35 @@ export default function Caja({
           try {
             let filePath = producto.imagen;
             
-            // Extraer la ruta del archivo
-            if (filePath.includes('/storage/v1/object/public/productos/')) {
-              filePath = filePath.split('/storage/v1/object/public/productos/')[1];
-            } else if (filePath.includes('/storage/v1/object/sign/productos/')) {
-              filePath = filePath.split('/storage/v1/object/sign/productos/')[1].split('?')[0];
-            } else if (filePath.includes('productos/')) {
-              const parts = filePath.split('productos/');
-              if (parts.length > 1) {
-                filePath = parts[1].split('?')[0];
+            // Si ya es una URL de Supabase, extraer la ruta del archivo
+            if (filePath.includes('/storage/v1/object/')) {
+              // Extraer la ruta después de 'productos/'
+              const match = filePath.match(/productos\/(.+?)(\?|$)/);
+              if (match && match[1]) {
+                filePath = match[1];
+              } else {
+                // Si no se puede extraer correctamente, saltar esta imagen
+                return;
               }
             }
             
             filePath = filePath.trim();
+            
+            // Validar que la ruta no esté vacía
+            if (!filePath || filePath === '' || filePath === 'null' || filePath === 'undefined') {
+              return;
+            }
             
             // Decodificar la ruta si viene codificada
             try {
               filePath = decodeURIComponent(filePath);
             } catch (e) {
               // Si falla la decodificación, usar el original
+            }
+            
+            // Validar formato de ruta (debe contener organization_id o estructura válida)
+            if (!filePath.includes('/') || filePath.length < 10) {
+              return;
             }
             
             // Generar signed URL y precargarla
@@ -731,7 +1320,22 @@ export default function Caja({
 
           if (itemsCarrito.length > 0) {
             setCart(itemsCarrito);
-            toast.success('Pedido cargado. Procede con el pago.');
+            
+            // Si es pago inmediato, procesar automáticamente
+            if (pedido.esPagoInmediato && pedido.metodoPagoSeleccionado && pedido.pedidoId) {
+              // Procesar el pago inmediatamente
+              setTimeout(async () => {
+                try {
+                  await procesarPagoConPedido(pedido.pedidoId, pedido.metodoPagoSeleccionado);
+                  toast.success('Pago procesado correctamente');
+                } catch (error) {
+                  console.error('Error procesando pago automático:', error);
+                  toast.error('Error al procesar el pago automáticamente. Procesa manualmente.');
+                }
+              }, 1000);
+            } else {
+              toast.success('Pedido cargado. Procede con el pago.');
+            }
           }
           
           // Limpiar localStorage
@@ -741,6 +1345,7 @@ export default function Caja({
         localStorage.removeItem('pedidoParaPagar');
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productos]);
 
   // Cargar cotización desde localStorage si existe
@@ -1652,543 +2257,9 @@ export default function Caja({
     setDatosVentaConfirmada(null);
   };
 
-  // Componente para pago en efectivo
-  const PagoEfectivo = () => {
-    // Estado local para el input que se actualiza en tiempo real
-    const [inputValue, setInputValue] = useState(montoEntregado);
-    // Estado para controlar si se deben mostrar los cálculos (solo cuando el usuario termine de escribir)
-    const [mostrarCalculos, setMostrarCalculos] = useState(false);
-    const montoEntregadoRef = useRef(montoEntregado);
-    const valoresComunes = [1000, 5000, 10000, 20000, 50000, 100000];
-    
-    // Actualizar ref cuando montoEntregado cambia externamente
-    useEffect(() => {
-      montoEntregadoRef.current = montoEntregado;
-      setInputValue(montoEntregado);
-      setMostrarCalculos(true); // Mostrar cálculos cuando cambia externamente (botones de valores comunes)
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [montoEntregado]);
-
-    // Debounce: actualizar montoEntregado solo después de que el usuario deje de escribir
-    useEffect(() => {
-      // Solo actualizar si el valor del input es diferente y no es una actualización externa
-      if (inputValue === montoEntregadoRef.current) {
-        return; // No hacer nada si ya están sincronizados
-      }
-
-      // Ocultar cálculos mientras el usuario está escribiendo
-      setMostrarCalculos(false);
-
-      const timer = setTimeout(() => {
-        // Verificar nuevamente antes de actualizar (por si cambió externamente)
-        if (inputValue !== montoEntregadoRef.current) {
-          setMontoEntregado(inputValue);
-          setMostrarCalculos(true); // Mostrar cálculos después del debounce
-        }
-      }, 500); // Esperar 500ms después de que el usuario deje de escribir
-
-      return () => clearTimeout(timer);
-    }, [inputValue]);
-
-    // Calcular monto y cambio solo cuando montoEntregado cambie (no en cada keystroke)
-    const monto = parseFloat(montoEntregado.replace(/[^\d]/g, '')) || 0;
-    const cambio = monto - total;
-
-    return (
-      <div className="pago-efectivo-overlay">
-        <div className="pago-efectivo-container">
-          <div className="pago-efectivo-header">
-            <h3>Pago en Efectivo</h3>
-            <p>Total a pagar: {formatCOP(total)}</p>
-          </div>
-          
-          <div className="pago-efectivo-content">
-            <div className="pago-efectivo-input-section">
-              <label className="pago-efectivo-label">Monto entregado por el cliente</label>
-              <input
-                type="text"
-                value={inputValue}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  // Permitir solo números y comas/puntos para formato
-                  const cleanValue = value.replace(/[^\d,.]/g, '');
-                  // Actualizar solo el estado local (no causa recálculos)
-                  setInputValue(cleanValue);
-                }}
-                onBlur={() => {
-                  // Actualizar inmediatamente cuando el usuario termine de escribir
-                  setMontoEntregado(inputValue);
-                  setMostrarCalculos(true); // Mostrar cálculos al salir del input
-                }}
-                className="pago-efectivo-input"
-                placeholder="Ingresa el monto"
-                autoFocus
-                style={{ 
-                  transition: 'none',
-                  willChange: 'auto',
-                  backfaceVisibility: 'hidden',
-                  transform: 'translateZ(0)',
-                  WebkitBackfaceVisibility: 'hidden',
-                  WebkitTransform: 'translateZ(0)'
-                }}
-              />
-            </div>
-
-            <div className="pago-efectivo-valores-comunes">
-              <div className="pago-efectivo-subtitle-container">
-                <p className="pago-efectivo-subtitle">Valores comunes:</p>
-                <button 
-                  className="pago-efectivo-limpiar-btn"
-                  onClick={() => {
-                    setInputValue('');
-                    setMontoEntregado('');
-                  }}
-                  title="Limpiar monto"
-                >
-                  Limpiar
-                </button>
-              </div>
-              <div className="pago-efectivo-botones">
-                {valoresComunes.map((valor, index) => (
-                  <button
-                    key={index}
-                    className="pago-efectivo-btn-valor"
-                    onClick={() => handleValorPredefinido(valor)}
-                  >
-                    {formatCOP(valor)}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {mostrarCalculos && monto > 0 && (
-              <div className="pago-efectivo-cambio">
-                <div className="pago-efectivo-cambio-item">
-                  <span>Monto entregado:</span>
-                  <span>{formatCOP(monto)}</span>
-                </div>
-                <div className="pago-efectivo-cambio-item">
-                  <span>Total a pagar:</span>
-                  <span>{formatCOP(total)}</span>
-                </div>
-                <div className={`pago-efectivo-cambio-item pago-efectivo-cambio-total ${cambio < 0 ? 'negativo' : 'positivo'}`}>
-                  <span>Cambio:</span>
-                  <span>
-                    {cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambio)}
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-          
-          <div className="pago-efectivo-actions">
-            <button 
-              className="pago-efectivo-btn pago-efectivo-cancelar"
-              onClick={handleCancelarPagoEfectivo}
-            >
-              Cancelar
-            </button>
-            <button 
-              className="pago-efectivo-btn pago-efectivo-confirmar"
-              onClick={handleConfirmarPagoEfectivo}
-              disabled={monto < total}
-            >
-              Confirmar Pago
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // Componente para métodos de pago
-  const MetodosPago = () => (
-    <div className="metodos-pago-overlay">
-      <div className="metodos-pago-container">
-        <div className="metodos-pago-header">
-          <h3>Selecciona el método de pago</h3>
-          <p className="metodos-pago-total">Total a pagar: <span>{formatCOP(total)}</span></p>
-        </div>
-        
-        <div className="metodos-pago-grid">
-          <button 
-            className={`metodo-pago-card ${metodoSeleccionado === 'Efectivo' ? 'selected' : ''}`}
-            onClick={() => setMetodoSeleccionado('Efectivo')}
-          >
-            <Banknote className="metodo-pago-icon" size={32} />
-            <span className="metodo-pago-label">Efectivo</span>
-            <span className="metodo-pago-desc">Pago en efectivo</span>
-          </button>
-          
-          {hasFeature('multiplePaymentMethods') ? (
-            <>
-              <button 
-                className={`metodo-pago-card ${metodoSeleccionado === 'Transferencia' ? 'selected' : ''}`}
-                onClick={() => setMetodoSeleccionado('Transferencia')}
-              >
-                <CreditCard className="metodo-pago-icon" size={32} />
-                <span className="metodo-pago-label">Transferencia</span>
-                <span className="metodo-pago-desc">Transferencia bancaria</span>
-              </button>
-              
-              <button 
-                className={`metodo-pago-card ${metodoSeleccionado === 'Nequi' ? 'selected' : ''}`}
-                onClick={() => setMetodoSeleccionado('Nequi')}
-              >
-                <Smartphone className="metodo-pago-icon" size={32} />
-                <span className="metodo-pago-label">Nequi</span>
-                <span className="metodo-pago-desc">Pago móvil</span>
-              </button>
-            </>
-          ) : (
-            <>
-              <button 
-                className="metodo-pago-card metodo-pago-card-locked"
-                onClick={() => toast.error('Los métodos de pago adicionales están disponibles en el plan Estándar')}
-                style={{ opacity: 0.5, cursor: 'not-allowed' }}
-              >
-                <Lock className="metodo-pago-icon" size={32} />
-                <span className="metodo-pago-label">Transferencia</span>
-                <span className="metodo-pago-desc">🔒 Plan Estándar</span>
-              </button>
-              
-              <button 
-                className="metodo-pago-card metodo-pago-card-locked"
-                onClick={() => toast.error('Los métodos de pago adicionales están disponibles en el plan Estándar')}
-                style={{ opacity: 0.5, cursor: 'not-allowed' }}
-              >
-                <Lock className="metodo-pago-icon" size={32} />
-                <span className="metodo-pago-label">Nequi</span>
-                <span className="metodo-pago-desc">🔒 Plan Estándar</span>
-              </button>
-            </>
-          )}
-          
-          {hasFeature('mixedPayments') ? (
-            <button 
-              className={`metodo-pago-card ${metodoSeleccionado === 'Mixto' ? 'selected' : ''}`}
-              onClick={() => setMetodoSeleccionado('Mixto')}
-            >
-              <Wallet className="metodo-pago-icon" size={32} />
-              <span className="metodo-pago-label">Mixto</span>
-              <span className="metodo-pago-desc">Varios métodos</span>
-            </button>
-          ) : (
-            <button 
-              className="metodo-pago-card metodo-pago-card-locked"
-              onClick={() => toast.error('Los pagos mixtos están disponibles en el plan Estándar')}
-              style={{ opacity: 0.5, cursor: 'not-allowed' }}
-            >
-              <Lock className="metodo-pago-icon" size={32} />
-              <span className="metodo-pago-label">Mixto</span>
-              <span className="metodo-pago-desc">🔒 Plan Estándar</span>
-            </button>
-          )}
-        </div>
-        
-        <div className="metodo-pago-credito-container">
-          <button 
-            className={`metodo-pago-card metodo-pago-card-credito ${metodoSeleccionado === 'Credito' ? 'selected' : ''}`}
-            onClick={() => setMetodoSeleccionado('Credito')}
-          >
-            <Receipt className="metodo-pago-icon" size={32} />
-            <span className="metodo-pago-label">Crédito</span>
-            <span className="metodo-pago-desc">Venta a crédito / Fiado</span>
-          </button>
-        </div>
-        
-        <div className="metodos-pago-actions">
-          <button 
-            className="metodos-pago-cancelar"
-            onClick={() => {
-              setMostrandoMetodosPago(false);
-              setMetodoSeleccionado(null);
-            }}
-          >
-            Cancelar
-          </button>
-          <button 
-            className="metodos-pago-continuar"
-            onClick={() => {
-              if (metodoSeleccionado) {
-                handleSeleccionarMetodoPago(metodoSeleccionado);
-                setMetodoSeleccionado(null);
-              }
-            }}
-            disabled={!metodoSeleccionado}
-          >
-            Continuar
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  // Componente para pago mixto
-  const PagoMixto = () => {
-    // Estados locales para los inputs con debounce
-    const [inputValue1, setInputValue1] = useState(montoMixto1);
-    const [inputValue2, setInputValue2] = useState(montoMixto2);
-    const [montoCalculado1, setMontoCalculado1] = useState(montoMixto1);
-    const [montoCalculado2, setMontoCalculado2] = useState(montoMixto2);
-    const montoMixto1Ref = useRef(montoMixto1);
-    const montoMixto2Ref = useRef(montoMixto2);
-    const valoresComunes = [10000, 20000, 50000, 100000];
-
-    // Actualizar refs cuando los montos cambian externamente
-    useEffect(() => {
-      montoMixto1Ref.current = montoMixto1;
-      montoMixto2Ref.current = montoMixto2;
-      setInputValue1(montoMixto1);
-      setInputValue2(montoMixto2);
-      setMontoCalculado1(montoMixto1);
-      setMontoCalculado2(montoMixto2);
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [montoMixto1, montoMixto2]);
-
-    // Debounce para monto1 - aumentar tiempo a 1000ms
-    useEffect(() => {
-      if (inputValue1 === montoMixto1Ref.current) {
-        return;
-      }
-      const timer = setTimeout(() => {
-        if (inputValue1 !== montoMixto1Ref.current) {
-          setMontoMixto1(inputValue1);
-          setMontoCalculado1(inputValue1);
-        }
-      }, 1000); // Aumentado a 1000ms
-      return () => clearTimeout(timer);
-    }, [inputValue1]);
-
-    // Debounce para monto2 - aumentar tiempo a 1000ms
-    useEffect(() => {
-      if (inputValue2 === montoMixto2Ref.current) {
-        return;
-      }
-      const timer = setTimeout(() => {
-        if (inputValue2 !== montoMixto2Ref.current) {
-          setMontoMixto2(inputValue2);
-          setMontoCalculado2(inputValue2);
-        }
-      }, 1000); // Aumentado a 1000ms
-      return () => clearTimeout(timer);
-    }, [inputValue2]);
-
-    // Calcular montos usando los valores calculados (sin parpadeo)
-    const monto1 = parseFloat(montoCalculado1.replace(/[^\d]/g, '')) || 0;
-    const monto2 = parseFloat(montoCalculado2.replace(/[^\d]/g, '')) || 0;
-    const sumaMontos = monto1 + monto2;
-    const diferencia = total - sumaMontos;
-    
-    // Calcular cambio si hay efectivo
-    const hayEfectivo = metodoMixto1 === 'Efectivo' || metodoMixto2 === 'Efectivo';
-    const cambio = hayEfectivo && sumaMontos > total ? sumaMontos - total : 0;
 
 
-    return (
-      <div className="pago-efectivo-overlay">
-        <div className="pago-efectivo-container">
-          <div className="pago-efectivo-header">
-            <h3>Pago Mixto</h3>
-            <p>Total a pagar: {formatCOP(total)}</p>
-          </div>
-          
-          <div className="pago-efectivo-content">
-            {/* Método 1 */}
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label className="pago-efectivo-label" style={{ marginBottom: '0.5rem', display: 'block' }}>
-                Primer método de pago:
-              </label>
-              <select
-                value={metodoMixto1}
-                onChange={(e) => setMetodoMixto1(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px',
-                  fontSize: '1rem',
-                  marginBottom: '0.75rem'
-                }}
-              >
-                <option value="Efectivo">Efectivo</option>
-                <option value="Transferencia">Transferencia</option>
-                <option value="Tarjeta">Tarjeta</option>
-                <option value="Nequi">Nequi</option>
-              </select>
-              
-              <label className="pago-efectivo-label">Monto del primer método:</label>
-              <input
-                type="text"
-                value={inputValue1}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  const cleanValue = value.replace(/[^\d,.]/g, '');
-                  setInputValue1(cleanValue);
-                }}
-                onBlur={() => {
-                  setMontoMixto1(inputValue1);
-                  setMontoCalculado1(inputValue1);
-                }}
-                className="pago-efectivo-input"
-                placeholder="Ingresa el monto"
-                style={{ 
-                  transition: 'none',
-                  willChange: 'auto',
-                  backfaceVisibility: 'hidden',
-                  transform: 'translateZ(0)',
-                  WebkitBackfaceVisibility: 'hidden',
-                  WebkitTransform: 'translateZ(0)'
-                }}
-              />
-              
-              <div className="pago-efectivo-botones">
-                {valoresComunes.map((valor, index) => (
-                  <button
-                    key={index}
-                    className="pago-efectivo-btn-valor"
-                    onClick={() => handleValorPredefinidoMixto(valor, true)}
-                  >
-                    {formatCOP(valor)}
-                  </button>
-                ))}
-              </div>
-            </div>
 
-            {/* Método 2 */}
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label className="pago-efectivo-label" style={{ marginBottom: '0.5rem', display: 'block' }}>
-                Segundo método de pago:
-              </label>
-              <select
-                value={metodoMixto2}
-                onChange={(e) => setMetodoMixto2(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px',
-                  fontSize: '1rem',
-                  marginBottom: '0.75rem'
-                }}
-              >
-                <option value="Efectivo">Efectivo</option>
-                <option value="Transferencia">Transferencia</option>
-                <option value="Tarjeta">Tarjeta</option>
-                <option value="Nequi">Nequi</option>
-              </select>
-              
-              <label className="pago-efectivo-label">Monto del segundo método:</label>
-              <input
-                type="text"
-                value={inputValue2}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  const cleanValue = value.replace(/[^\d,.]/g, '');
-                  setInputValue2(cleanValue);
-                }}
-                onBlur={() => {
-                  setMontoMixto2(inputValue2);
-                  setMontoCalculado2(inputValue2);
-                }}
-                className="pago-efectivo-input"
-                placeholder="Ingresa el monto"
-                style={{ 
-                  transition: 'none',
-                  willChange: 'auto',
-                  backfaceVisibility: 'hidden',
-                  transform: 'translateZ(0)',
-                  WebkitBackfaceVisibility: 'hidden',
-                  WebkitTransform: 'translateZ(0)'
-                }}
-              />
-              
-              <div className="pago-efectivo-botones">
-                {valoresComunes.map((valor, index) => (
-                  <button
-                    key={index}
-                    className="pago-efectivo-btn-valor"
-                    onClick={() => handleValorPredefinidoMixto(valor, false)}
-                  >
-                    {formatCOP(valor)}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Resumen - Mostrar siempre que haya valores */}
-            {monto1 > 0 && monto2 > 0 && (
-              <div className="pago-efectivo-cambio" style={{ marginTop: '1rem' }}>
-                <div className="pago-efectivo-cambio-item">
-                  <span>{metodoMixto1}:</span>
-                  <span>{formatCOP(monto1)}</span>
-                </div>
-                <div className="pago-efectivo-cambio-item">
-                  <span>{metodoMixto2}:</span>
-                  <span>{formatCOP(monto2)}</span>
-                </div>
-                <div className="pago-efectivo-cambio-item">
-                  <span>Suma:</span>
-                  <span>{formatCOP(sumaMontos)}</span>
-                </div>
-                <div className="pago-efectivo-cambio-item">
-                  <span>Total a pagar:</span>
-                  <span>{formatCOP(total)}</span>
-                </div>
-                {hayEfectivo && cambio > 0 && (
-                  <div className="pago-efectivo-cambio-item pago-efectivo-cambio-total positivo">
-                    <span>Cambio a devolver:</span>
-                    <span>{formatCOP(cambio)}</span>
-                  </div>
-                )}
-                {!hayEfectivo && (
-                  <div className={`pago-efectivo-cambio-item pago-efectivo-cambio-total ${diferencia < -1 ? 'negativo' : diferencia > 1 ? 'negativo' : 'positivo'}`}>
-                    <span>Diferencia:</span>
-                    <span>
-                      {diferencia < -1 
-                        ? `Sobran ${formatCOP(Math.abs(diferencia))}` 
-                        : diferencia > 1
-                        ? `Faltan ${formatCOP(diferencia)}`
-                        : 'Correcto ✓'
-                      }
-                    </span>
-                  </div>
-                )}
-                {hayEfectivo && diferencia > 1 && (
-                  <div className="pago-efectivo-cambio-item pago-efectivo-cambio-total negativo">
-                    <span>Faltan:</span>
-                    <span>{formatCOP(diferencia)}</span>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-          
-          <div className="pago-efectivo-actions">
-            <button 
-              className="pago-efectivo-btn pago-efectivo-cancelar"
-              onClick={handleCancelarPagoMixto}
-            >
-              Cancelar
-            </button>
-            <button 
-              className="pago-efectivo-btn pago-efectivo-confirmar"
-              onClick={handleConfirmarPagoMixto}
-              disabled={
-                monto1 <= 0 || 
-                monto2 <= 0 || 
-                metodoMixto1 === metodoMixto2 ||
-                (!hayEfectivo && Math.abs(diferencia) > 1) ||
-                (hayEfectivo && diferencia > 1)
-              }
-            >
-              Confirmar Pago Mixto
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   // Función para procesar el pago de un pedido ya creado
   const procesarPagoConPedido = async (pedidoId, metodoPago, detallesPago = null) => {
@@ -2306,6 +2377,12 @@ export default function Caja({
         setConfirmacionExito(true);
         setDatosVentaConfirmada({ ...ventaData, id: ventaData.numero_venta });
 
+        // Invalidar cache de pedidos para refrescar la lista inmediatamente
+        if (organization?.id) {
+          await queryClient.invalidateQueries(['pedidos', organization.id]);
+          await queryClient.refetchQueries(['pedidos', organization.id]);
+        }
+
         if (onPedidoGuardado) {
           onPedidoGuardado({ id: pedidoId, ...ventaData });
         } else {
@@ -2329,19 +2406,56 @@ export default function Caja({
         return;
       }
 
-      // Actualizar todos los pedidos consolidados: asociar la venta pero mantener el estado actual
-      // Los pedidos se marcarán como "completados" cuando se finalice la preparación
-      const { error: pedidoError } = await supabase
-        .from('pedidos')
-        .update({
-          venta_id: ventaResult.id
-          // NO cambiar el estado aquí, se cambiará cuando se finalice la preparación
-        })
-        .in('id', pedidosAActualizar);
+      // Actualizar todos los pedidos consolidados: asociar la venta y marcar como completado si están listos
+      if (pedidosAActualizar.length > 0) {
+        console.log(`💾 Actualizando ${pedidosAActualizar.length} pedido(s) con venta_id ${ventaResult.id}`);
+        
+        // Obtener el estado actual de cada pedido para decidir el nuevo estado
+        const { data: pedidosData, error: pedidosQueryError } = await supabase
+          .from('pedidos')
+          .select('id, estado, numero_pedido')
+          .in('id', pedidosAActualizar);
 
-      if (pedidoError) {
-        console.error('Error actualizando pedido:', pedidoError);
-        // No fallar si no se puede actualizar el pedido, la venta ya se guardó
+        if (pedidosQueryError) {
+          console.error('❌ Error consultando pedidos:', pedidosQueryError.message);
+          toast.error(`Error al consultar pedidos: ${pedidosQueryError.message}`);
+          return;
+        }
+
+        // Actualizar cada pedido individualmente según su estado actual
+        for (const pedido of pedidosData || []) {
+          let updateData = {
+            venta_id: ventaResult.id
+          };
+          
+          // Si el pedido está "listo", marcarlo como "completado" inmediatamente
+          if (pedido.estado === 'listo') {
+            updateData.estado = 'completado';
+            updateData.completado_at = new Date().toISOString();
+            console.log(`✅ Pedido ${pedido.numero_pedido} (${pedido.estado}) → completado por pago confirmado`);
+          }
+          // Si está en otros estados, solo asignar venta_id sin cambiar estado
+          else {
+            console.log(`📝 Pedido ${pedido.numero_pedido} (${pedido.estado}) → asignando venta_id sin cambiar estado`);
+          }
+
+          const { error: pedidoUpdateError } = await supabase
+            .from('pedidos')
+            .update(updateData)
+            .eq('id', pedido.id);
+
+          if (pedidoUpdateError) {
+            console.error(`❌ Error actualizando pedido ${pedido.numero_pedido}:`, pedidoUpdateError.message);
+            
+            // Si es error de columna no existe, mostrar mensaje específico
+            if (pedidoUpdateError.code === '42703' && pedidoUpdateError.message.includes('venta_id')) {
+              toast.error('⚠️ Migración requerida: Ejecuta docs/ADD_VENTA_ID_TO_PEDIDOS.sql en Supabase');
+              return;
+            }
+          }
+        }
+        
+        console.log(`✅ Todos los pedidos actualizados exitosamente con venta_id`);
       }
 
       // Actualizar stock de productos y toppings
@@ -2509,6 +2623,8 @@ export default function Caja({
       // Limpiar carrito y estados
       setCart([]);
       setVieneDePedidos(false); // Resetear flag cuando se vacía el carrito
+      setPedidoIdActual(null); // Limpiar referencia al pedido actual
+      setPedidosConsolidados([]); // Limpiar pedidos consolidados
       setProcesandoVenta(false);
       setMostrandoMetodosPago(false);
       setMostrandoPagoEfectivo(false);
@@ -2520,6 +2636,12 @@ export default function Caja({
       setConfirmacionCargando(false);
       setConfirmacionExito(true);
       setDatosVentaConfirmada(ventaResult);
+
+      // Invalidar cache de pedidos para refrescar la lista inmediatamente
+      if (organization?.id) {
+        await queryClient.invalidateQueries(['pedidos', organization.id]);
+        await queryClient.refetchQueries(['pedidos', organization.id]);
+      }
 
       // Llamar callback si existe
       if (onPedidoGuardado) {
@@ -2854,6 +2976,13 @@ export default function Caja({
       setConfirmacionCargando(false);
       setConfirmacionExito(true);
       setDatosVentaConfirmada({ ...ventaData, id: ventaData.numero_venta });
+      
+      // Invalidar cache de pedidos para refrescar la lista inmediatamente
+      if (organization?.id) {
+        await queryClient.invalidateQueries(['pedidos', organization.id]);
+        await queryClient.refetchQueries(['pedidos', organization.id]);
+      }
+      
       toast.success('Venta guardada localmente. Se sincronizará al reconectar.');
       return;
     }
@@ -3001,66 +3130,7 @@ export default function Caja({
     }
 
     try {
-      
-      // Si hay pedidos asociados (viene de "Pagar ahora" o pedidos consolidados), actualizar su estado según el tipo de pago
-      const pedidosAActualizar = pedidosConsolidados.length > 0 ? pedidosConsolidados : (pedidoIdActual ? [pedidoIdActual] : []);
-      
-      if (pedidosAActualizar.length > 0) {
-        try {
-          // Obtener todos los pedidos para verificar su estado actual
-          const { data: pedidosData, error: pedidosError } = await supabase
-            .from('pedidos')
-            .select('id, estado, mesa_id, pago_inmediato')
-            .in('id', pedidosAActualizar);
-          
-          if (pedidosError) {
-            // Error silencioso
-          }
-          
-          // Actualizar cada pedido según su estado actual y tipo de pago
-          for (const pedido of pedidosData || []) {
-            try {
-              let nuevoEstado;
-              
-              // Si el pedido ya está "listo", al pagarlo debe ir a "completado"
-              if (pedido.estado === 'listo') {
-                nuevoEstado = 'completado';
-              } 
-              // Si el pago es anticipado (pago_inmediato = true), el pedido debe ir a "pendiente"
-              else if (pedido.pago_inmediato) {
-                nuevoEstado = 'pendiente';
-              } 
-              // Si no es pago anticipado y el pedido está en "pendiente", va a "en_preparacion"
-              else if (pedido.estado === 'pendiente') {
-                nuevoEstado = 'en_preparacion';
-              }
-              // Si ya está en "en_preparacion", mantenerlo o avanzar según corresponda
-              else if (pedido.estado === 'en_preparacion') {
-                // Si ya está en preparación, no cambiar el estado (ya fue tomado por el chef)
-                continue;
-              }
-              // Para cualquier otro caso, no cambiar el estado
-              else {
-                continue;
-              }
-              
-              await actualizarPedido.mutateAsync({
-                id: pedido.id,
-                organizationId: organization.id,
-                estado: nuevoEstado
-              });
-            } catch (error) {
-              // Continuar con los demás pedidos aunque uno falle
-            }
-          }
-          
-          setPedidoIdActual(null);
-          setPedidosConsolidados([]);
-        } catch (error) {
-          toast.error('La venta se completó pero hubo un error al actualizar los pedidos');
-          // No fallar la venta si falla la actualización del pedido
-        }
-      }
+      // Los pedidos ya fueron actualizados arriba en la sección principal de procesamiento
       
       // Actualizar stock de productos y toppings
       for (const item of cart) {
@@ -3296,6 +3366,12 @@ export default function Caja({
         }, 2000);
       }, 1500);
       
+      // Invalidar cache de pedidos para refrescar la lista inmediatamente
+      if (organization?.id) {
+        await queryClient.invalidateQueries(['pedidos', organization.id]);
+        await queryClient.refetchQueries(['pedidos', organization.id]);
+      }
+      
       // Recargar productos para actualizar stock
       await refetchProductos();
       
@@ -3473,7 +3549,7 @@ export default function Caja({
       )}
 
       {/* Contenedor principal con pedidos a la izquierda y productos/carrito a la derecha */}
-      <div className="caja-layout-wrapper">
+      <div className={`caja-layout-wrapper ${pedidosPendientesPago.length === 0 ? 'sin-pedidos' : ''}`}>
         {/* Sección de pedidos pendientes de pago - Sidebar izquierdo */}
       {pedidosPendientesPago.length > 0 && (
         <div className="caja-pedidos-section">
@@ -4722,11 +4798,47 @@ export default function Caja({
       )}
 
       {/* Métodos de pago */}
-      {mostrandoMetodosPago && <MetodosPago />}
+      {mostrandoMetodosPago && (
+        <MetodosPago 
+          metodoSeleccionado={metodoSeleccionado}
+          setMetodoSeleccionado={setMetodoSeleccionado}
+          total={total}
+          hasFeature={hasFeature}
+          setMostrandoMetodosPago={setMostrandoMetodosPago}
+          handleSeleccionarMetodoPago={handleSeleccionarMetodoPago}
+          pedidosOcultos={!mostrandoPedidosPendientes}
+        />
+      )}
 
       {/* Pago en efectivo */}
-      {mostrandoPagoEfectivo && <PagoEfectivo />}
-      {mostrandoPagoMixto && <PagoMixto />}
+      {mostrandoPagoEfectivo && (
+        <PagoEfectivo 
+          montoEntregado={montoEntregado}
+          setMontoEntregado={setMontoEntregado}
+          total={total}
+          handleValorPredefinido={handleValorPredefinido}
+          handleCancelarPagoEfectivo={handleCancelarPagoEfectivo}
+          handleConfirmarPagoEfectivo={handleConfirmarPagoEfectivo}
+          pedidosOcultos={!mostrandoPedidosPendientes}
+        />
+      )}
+      {mostrandoPagoMixto && (
+        <PagoMixto 
+          montoMixto1={montoMixto1}
+          setMontoMixto1={setMontoMixto1}
+          montoMixto2={montoMixto2}
+          setMontoMixto2={setMontoMixto2}
+          metodoMixto1={metodoMixto1}
+          setMetodoMixto1={setMetodoMixto1}
+          metodoMixto2={metodoMixto2}
+          setMetodoMixto2={setMetodoMixto2}
+          total={total}
+          handleValorPredefinidoMixto={handleValorPredefinidoMixto}
+          handleCancelarPagoMixto={handleCancelarPagoMixto}
+          handleConfirmarPagoMixto={handleConfirmarPagoMixto}
+          pedidosOcultos={!mostrandoPedidosPendientes}
+        />
+      )}
 
       {/* Recibo de venta */}
       {ventaCompletada && mostrarFacturaPantalla && (
