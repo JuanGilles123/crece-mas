@@ -217,26 +217,34 @@ const PanelCocina = () => {
     }
     
     try {
-      // Si se está marcando como "listo", verificar si tiene pago_inmediato y venta_id
+      // Si se está marcando como "listo", verificar si ya fue pagado
       if (nuevoEstado === 'listo') {
-        // Obtener el pedido completo para verificar pago_inmediato y venta_id
-        const { data: pedido, error: pedidoError } = await supabase
-          .from('pedidos')
-          .select('pago_inmediato, venta_id')
-          .eq('id', pedidoId)
-          .single();
-        
-        if (pedidoError) {
-          console.error('Error obteniendo pedido:', pedidoError);
-        } else if (pedido && pedido.pago_inmediato && pedido.venta_id) {
-          // Si tiene pago_inmediato y ya tiene venta_id, marcar directamente como completado
-          await actualizarPedido.mutateAsync({
-            id: pedidoId,
-            organizationId: organization.id,
-            estado: 'completado',
-            chefId: null
-          });
-          return;
+        try {
+          // Obtener el pedido completo para verificar si ya fue pagado
+          const { data: pedido, error: pedidoError } = await supabase
+            .from('pedidos')
+            .select('pago_inmediato, venta_id, estado, numero_pedido')
+            .eq('id', pedidoId)
+            .single();
+          
+          if (pedidoError) {
+            // Si hay error (ej: columna venta_id no existe), continuar normalmente
+            console.warn('No se pudo verificar estado de pago (posible migración pendiente):', pedidoError.message);
+          } else if (pedido) {
+            // Si fue pagado (tiene pago_inmediato O venta_id), marcar directamente como completado
+            if (pedido.pago_inmediato || pedido.venta_id) {
+              console.log(`✅ Pedido ${pedido.numero_pedido} ya fue pagado, completando automáticamente`);
+              await actualizarPedido.mutateAsync({
+                id: pedidoId,
+                organizationId: organization.id,
+                estado: 'completado',
+                chefId: null
+              });
+              return;
+            }
+          }
+        } catch (error) {
+          console.warn('Error verificando estado de pago, continuando normalmente:', error.message);
         }
       }
       
@@ -279,13 +287,13 @@ const PanelCocina = () => {
             className={`cocina-connection-badge ${
               isOnline ? 'cocina-connection-badge--online' : 'cocina-connection-badge--offline'
             }`}
+            title={isOnline ? (isSyncing && pendingOutboxCount > 0 ? 'Sincronizando…' : 'Conectado') : 'Sin internet'}
           >
             {isSyncing && pendingOutboxCount > 0 ? (
               <span className="cocina-connection-spinner" aria-hidden="true" />
             ) : (
               <span className="cocina-connection-dot" aria-hidden="true" />
             )}
-            {isOnline ? (isSyncing && pendingOutboxCount > 0 ? 'Sincronizando…' : 'Conectado') : 'Sin internet'}
           </span>
           <button
             className="cocina-refresh-btn"
