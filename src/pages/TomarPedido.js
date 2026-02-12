@@ -659,6 +659,8 @@ const TomarPedido = () => {
       // 2. Guardar el pedido en localStorage para que la caja lo cargue
       const pedidoParaCaja = {
         pedidoId: pedidoCreado.id,
+        esPagoInmediato: true, // ← CRUCIAL: Marcar como pago inmediato
+        metodoPagoSeleccionado: metodoPagoSeleccionado, // ← Incluir método de pago
         items: items.map(item => ({
           id: item.producto_id,
           nombre: item.producto_nombre,
