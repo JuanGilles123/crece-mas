@@ -176,6 +176,8 @@ const Inventario = () => {
     }
     return umbralStockBajoSeguro;
   }, [umbralStockBajoSeguro]);
+  
+  const isJewelryBusiness = organization?.business_type === 'jewelry_metals';
 
   // React Query hooks - usar organization?.id en lugar de user?.id
   const { data: productos = [], isLoading: cargando, error, refetch, isFetching } = useProductos(organization?.id);
@@ -745,8 +747,8 @@ const Inventario = () => {
 
   // Guardar producto en Supabase (ahora manejado por React Query en AgregarProductoModal)
   const handleAgregarProducto = async (nuevo) => {
-    // Esta función ya no es necesaria ya que React Query maneja la mutación
-    // en el componente AgregarProductoModal
+    // Forzar refetch para asegurar que la lista se actualice inmediatamente
+    await refetch();
   };
 
   // Editar producto
@@ -865,9 +867,11 @@ const Inventario = () => {
     }
   };
 
-  const handleProductosImportados = () => {
+  const handleProductosImportados = async () => {
     // React Query invalidará automáticamente la cache y recargará los productos
     setCsvModalOpen(false);
+    // Forzar actualización inmediata
+    await refetch();
   };
 
   const exportarInventarioExcel = () => {
@@ -1020,7 +1024,7 @@ const Inventario = () => {
                 ) : (
                   <span className="inventario-connection-dot" aria-hidden="true" />
                 )}
-                {isOnline ? (isSyncing && pendingOutboxCount > 0 ? 'Sincronizando…' : 'Conectado') : 'Sin internet'}
+                {isOnline ? (isSyncing && pendingOutboxCount > 0 ? 'Sincronizando…' : '') : 'Sin internet'}
               </span>
               <button className="inventario-btn inventario-btn-primary" onClick={() => setModalOpen(true)}>Nuevo producto</button>
               <button
@@ -1175,7 +1179,39 @@ const Inventario = () => {
                   }}
                 />
                 <div className="inventario-lista-info">
+
                   <div className="inventario-nombre" title={prod.nombre}>{prod.nombre}</div>
+                  {isJewelryBusiness && (
+                    <div style={{ display: 'flex', gap: '0.2rem', marginBottom: '0.2rem', flexWrap: 'wrap' }}>
+                      {prod.metadata?.peso && (
+                        <span style={{ 
+                            fontSize: '0.65rem', 
+                            backgroundColor: '#f3f4f6', 
+                            padding: '1px 4px', 
+                            borderRadius: '3px',
+                            color: '#374151',
+                            border: '1px solid #e5e7eb',
+                            fontWeight: 500
+                        }}>
+                          {prod.metadata.peso} {organization?.jewelry_weight_unit || 'g'}
+                        </span>
+                      )}
+                      
+                      {prod.metadata?.jewelry_material_type && prod.metadata.jewelry_material_type !== 'na' && (
+                        <span style={{ 
+                            fontSize: '0.65rem', 
+                            backgroundColor: prod.metadata.jewelry_material_type === 'local' ? '#eff6ff' : '#fff7ed', 
+                            color: prod.metadata.jewelry_material_type === 'local' ? '#2563eb' : '#ea580c',
+                            padding: '1px 4px', 
+                            borderRadius: '3px',
+                            border: `1px solid ${prod.metadata.jewelry_material_type === 'local' ? '#bfdbfe' : '#ffedd5'}`,
+                            fontWeight: 600
+                        }}>
+                          {prod.metadata.jewelry_material_type === 'local' ? 'Nac' : 'Int'}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   <div className="inventario-lista-precios">
                     <span style={{color:'var(--accent-primary)',fontWeight:700}}>Compra: {prod.precio_compra?.toLocaleString('es-CO')}</span>
                     <span style={{color:'var(--accent-success)',fontWeight:700}}>Venta: {getCurrentVentaPrice(prod).toLocaleString('es-CO')}</span>
@@ -1234,6 +1270,37 @@ const Inventario = () => {
                 />
                 <div className="inventario-info">
                   <div className="inventario-nombre" title={prod.nombre}>{prod.nombre}</div>
+                  {isJewelryBusiness && (
+                    <div style={{ display: 'flex', gap: '0.2rem', justifyContent: 'center', marginBottom: '0.2rem', flexWrap: 'wrap' }}>
+                      {prod.metadata?.peso && (
+                        <span style={{ 
+                            fontSize: '0.65rem', 
+                            backgroundColor: '#f3f4f6', 
+                            padding: '1px 4px', 
+                            borderRadius: '3px',
+                            color: '#374151',
+                            border: '1px solid #e5e7eb',
+                            fontWeight: 500
+                        }}>
+                          {prod.metadata.peso} {organization?.jewelry_weight_unit || 'g'}
+                        </span>
+                      )}
+                      
+                      {prod.metadata?.jewelry_material_type && prod.metadata.jewelry_material_type !== 'na' && (
+                        <span style={{ 
+                            fontSize: '0.65rem', 
+                            backgroundColor: prod.metadata.jewelry_material_type === 'local' ? '#eff6ff' : '#fff7ed', 
+                            color: prod.metadata.jewelry_material_type === 'local' ? '#2563eb' : '#ea580c',
+                            padding: '1px 4px', 
+                            borderRadius: '3px',
+                            border: `1px solid ${prod.metadata.jewelry_material_type === 'local' ? '#bfdbfe' : '#ffedd5'}`,
+                            fontWeight: 600
+                        }}>
+                          {prod.metadata.jewelry_material_type === 'local' ? 'Nac' : 'Int'}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   <div style={{display:'flex',gap:'0.8rem',justifyContent:'center',marginBottom:2}}>
                     <span style={{color:'var(--accent-primary)',fontWeight:700,fontSize:'0.85rem'}}>Compra: {prod.precio_compra?.toLocaleString('es-CO')}</span>
                     <span style={{color:'var(--accent-success)',fontWeight:700,fontSize:'0.85rem'}}>Venta: {getCurrentVentaPrice(prod).toLocaleString('es-CO')}</span>

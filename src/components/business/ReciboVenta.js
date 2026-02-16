@@ -809,13 +809,14 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
                   {venta.items.map((item, idx) => {
                     const tieneToppings = item.toppings && Array.isArray(item.toppings) && item.toppings.length > 0;
                     const tieneVariaciones = item.variaciones && Object.keys(item.variaciones).length > 0;
+                    const tieneJewelryInfo = item.metadata && (item.metadata.peso || item.metadata.material || (item.metadata.jewelry_material_type && item.metadata.jewelry_material_type !== 'na'));
                     const precioItemBase = item.precio_venta || 0;
                     const precioToppings = tieneToppings 
                       ? item.toppings.reduce((sum, t) => sum + (t.precio || 0) * (t.cantidad || 1), 0)
                       : 0;
                     const precioTotalItem = item.precio_total || (precioItemBase + precioToppings);
                     const totalItem = precioTotalItem * item.qty;
-                    const tieneDetalles = tieneToppings || tieneVariaciones;
+                    const tieneDetalles = tieneToppings || tieneVariaciones || tieneJewelryInfo;
 
                     return (
                       <React.Fragment key={idx}>
@@ -840,6 +841,50 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
                               {item.variant_nombre && (
                                 <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>
                                   Variante: {item.variant_nombre}
+                                </div>
+                              )}
+                              {/* Mostrar información de joyería */}
+                              {tieneJewelryInfo && (
+                                <div style={{
+                                  marginTop: '0.25rem',
+                                  fontSize: '0.75rem',
+                                  color: '#6b7280',
+                                  display: 'flex',
+                                  flexWrap: 'wrap',
+                                  gap: '0.5rem'
+                                }}>
+                                  {item.metadata.peso && (
+                                    <span style={{
+                                      backgroundColor: '#f3f4f6',
+                                      padding: '0.1rem 0.3rem',
+                                      borderRadius: '3px',
+                                      fontWeight: '500'
+                                    }}>
+                                      Peso: {item.metadata.peso}g
+                                    </span>
+                                  )}
+                                  {item.metadata.material && (
+                                    <span style={{
+                                      backgroundColor: '#f3f4f6',
+                                      padding: '0.1rem 0.3rem',
+                                      borderRadius: '3px',
+                                      fontWeight: '500'
+                                    }}>
+                                      Material: {item.metadata.material}
+                                    </span>
+                                  )}
+                                  {item.metadata.jewelry_material_type && item.metadata.jewelry_material_type !== 'na' && (
+                                    <span style={{
+                                      backgroundColor: item.metadata.jewelry_material_type === 'local' ? '#fef3c7' : '#dbeafe',
+                                      color: item.metadata.jewelry_material_type === 'local' ? '#92400e' : '#1e40af',
+                                      padding: '0.1rem 0.3rem',
+                                      borderRadius: '3px',
+                                      fontWeight: '500',
+                                      fontSize: '0.7rem'
+                                    }}>
+                                      {item.metadata.jewelry_material_type === 'local' ? 'Nacional' : 'Internacional'}
+                                    </span>
+                                  )}
                                 </div>
                               )}
                               {tieneVariaciones && (
@@ -918,10 +963,14 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
                             <td colSpan="3" style={{
                               padding: '0.25rem 0.5rem',
                               fontSize: '0.75rem',
-                              color: '#6b7280',
-                              fontStyle: 'italic'
+                              color: '#6b7280'
                             }}>
-                              Precio base: {formatCOP(precioItemBase)} {tieneToppings && `+ Toppings: ${formatCOP(precioToppings)}`} = {formatCOP(precioTotalItem)} c/u
+                              {/* Mostrar precio unitario y total solo cuando cantidad > 1 */}
+                              {item.qty > 1 && (
+                                <div style={{ fontStyle: 'italic', textAlign: 'center' }}>
+                                  Precio unitario: {formatCOP(precioTotalItem)} | Total: {formatCOP(totalItem)}
+                                </div>
+                              )}
                             </td>
                           </tr>
                         )}

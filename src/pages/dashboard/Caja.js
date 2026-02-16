@@ -28,7 +28,7 @@ import DescuentoModal from '../../components/modals/DescuentoModal';
 import ConsultarPrecioModal from '../../components/modals/ConsultarPrecioModal';
 import ToppingsSelector from '../../components/ToppingsSelector';
 import VariacionesSelector from '../../components/VariacionesSelector';
-import { ShoppingCart, Trash2, CheckCircle, CreditCard, Banknote, Smartphone, Wallet, ArrowLeft, Save, Plus, X, UserCircle, Lock, Percent, List, ArrowRight, Package, Receipt, Search, DollarSign } from 'lucide-react';
+import { ShoppingCart, Trash2, CheckCircle, CreditCard, Banknote, Smartphone, Wallet, ArrowLeft, Save, Plus, X, UserCircle, Lock, Percent, List, ArrowRight, Package, Receipt, Search, DollarSign, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
 import './Caja.css';
 
@@ -142,9 +142,7 @@ const MetodosPago = React.memo(({
             <span className="metodo-pago-desc">🔒 Plan Estándar</span>
           </button>
         )}
-      </div>
-      
-      <div className="metodo-pago-credito-container">
+
         <button 
           className={`metodo-pago-card metodo-pago-card-credito ${metodoSeleccionado === 'Credito' ? 'selected' : ''}`}
           onClick={() => setMetodoSeleccionado('Credito')}
@@ -249,9 +247,18 @@ const PagoEfectivo = React.memo(({
               type="text"
               value={inputValue}
               onChange={(e) => {
-                const value = e.target.value;
-                const cleanValue = value.replace(/[^\d,.]/g, '');
-                setInputValue(cleanValue);
+                // Eliminar caracteres no numéricos
+                const rawValue = e.target.value.replace(/\D/g, '');
+                
+                if (rawValue === '') {
+                  setInputValue('');
+                } else {
+                  // Formatear con separadores de miles
+                  const numberValue = parseInt(rawValue, 10);
+                  // Usar Intl.NumberFormat para formato colombiano (puntos para miles)
+                  const formattedValue = new Intl.NumberFormat('es-CO').format(numberValue);
+                  setInputValue(formattedValue);
+                }
               }}
               onBlur={() => {
                 setMontoEntregado(inputValue);
@@ -451,9 +458,14 @@ const PagoMixto = React.memo(({
               type="text"
               value={inputValue1}
               onChange={(e) => {
-                const value = e.target.value;
-                const cleanValue = value.replace(/[^\d,.]/g, '');
-                setInputValue1(cleanValue);
+                const rawValue = e.target.value.replace(/\D/g, '');
+                if (rawValue === '') {
+                  setInputValue1('');
+                } else {
+                  const numberValue = parseInt(rawValue, 10);
+                  const formattedValue = new Intl.NumberFormat('es-CO').format(numberValue);
+                  setInputValue1(formattedValue);
+                }
               }}
               onBlur={() => {
                 setMontoMixto1(inputValue1);
@@ -511,9 +523,14 @@ const PagoMixto = React.memo(({
               type="text"
               value={inputValue2}
               onChange={(e) => {
-                const value = e.target.value;
-                const cleanValue = value.replace(/[^\d,.]/g, '');
-                setInputValue2(cleanValue);
+                const rawValue = e.target.value.replace(/\D/g, '');
+                if (rawValue === '') {
+                  setInputValue2('');
+                } else {
+                  const numberValue = parseInt(rawValue, 10);
+                  const formattedValue = new Intl.NumberFormat('es-CO').format(numberValue);
+                  setInputValue2(formattedValue);
+                }
               }}
               onBlur={() => {
                 setMontoMixto2(inputValue2);
@@ -2334,21 +2351,30 @@ export default function Caja({
           productosIds: descuento.productosIds
         } : null,
         metodo_pago: metodoPagoFinal,
-        items: cart.map(item => ({
-          id: item.id,
-          nombre: item.nombre,
-          qty: item.qty,
-          cantidad: item.qty,
-          precio_venta: item.precio_venta,
-          precio_compra: item.precio_compra || 0,
-          precio: item.precio_venta,
-          precio_unitario: item.precio_venta,
-          toppings: item.toppings || [],
-          variaciones: item.variaciones || {},
-          variant_id: item.variant_id || null,
-          variant_nombre: item.variant_nombre || null,
-          notas: item.notas || null
-        })),
+        items: cart.map(item => {
+          const producto = productos.find(p => p.id === item.id);
+          return {
+            id: item.id,
+            nombre: item.nombre,
+            qty: item.qty,
+            cantidad: item.qty,
+            precio_venta: item.precio_venta,
+            precio_compra: item.precio_compra || 0,
+            precio: item.precio_venta,
+            precio_unitario: item.precio_venta,
+            toppings: item.toppings || [],
+            variaciones: item.variaciones || {},
+            metadata: {
+              ...item.metadata,
+              peso: item.metadata?.peso || producto?.metadata?.peso,
+              material: item.metadata?.material || producto?.metadata?.material,
+              jewelry_material_type: item.metadata?.jewelry_material_type || producto?.metadata?.jewelry_material_type,
+            },
+            variant_id: item.variant_id || null,
+            variant_nombre: item.variant_nombre || null,
+            notas: item.notas || null
+          };
+        }),
         fecha: fechaVenta,
         created_at: fechaVenta,
         pago_cliente: montoPagoCliente,
@@ -2937,21 +2963,30 @@ export default function Caja({
           productosIds: descuento.productosIds
         } : null,
         metodo_pago: metodoPagoFinal,
-        items: cart.map(item => ({
-          id: item.id,
-          nombre: item.nombre,
-          qty: item.qty,
-          cantidad: item.qty,
-          precio_venta: item.precio_venta,
-          precio_compra: item.precio_compra || 0,
-          precio: item.precio_venta,
-          precio_unitario: item.precio_venta,
-          toppings: item.toppings || [],
-          variaciones: item.variaciones || {},
-          variant_id: item.variant_id || null,
-          variant_nombre: item.variant_nombre || null,
-          notas: item.notas || null
-        })),
+        items: cart.map(item => {
+          const producto = productos.find(p => p.id === item.id);
+          return {
+            id: item.id,
+            nombre: item.nombre,
+            qty: item.qty,
+            cantidad: item.qty,
+            precio_venta: item.precio_venta,
+            precio_compra: item.precio_compra || 0,
+            precio: item.precio_venta,
+            precio_unitario: item.precio_venta,
+            toppings: item.toppings || [],
+            variaciones: item.variaciones || {},
+            metadata: {
+              ...item.metadata,
+              peso: item.metadata?.peso || producto?.metadata?.peso,
+              material: item.metadata?.material || producto?.metadata?.material,
+              jewelry_material_type: item.metadata?.jewelry_material_type || producto?.metadata?.jewelry_material_type,
+            },
+            variant_id: item.variant_id || null,
+            variant_nombre: item.variant_nombre || null,
+            notas: item.notas || null
+          };
+        }),
         fecha: fechaVenta,
         created_at: fechaVenta,
         pago_cliente: metodoActual === 'Credito' ? 0 : montoPagoCliente,
@@ -3012,21 +3047,30 @@ export default function Caja({
             productosIds: descuento.productosIds
           } : null,
           metodo_pago: metodoPagoFinal,
-          items: cart.map(item => ({
-            id: item.id,
-            nombre: item.nombre,
-            qty: item.qty,
-            cantidad: item.qty,
-            precio_venta: item.precio_venta,
-            precio_compra: item.precio_compra || 0,
-            precio: item.precio_venta,
-            precio_unitario: item.precio_venta,
-            toppings: item.toppings || [],
-            variaciones: item.variaciones || {},
-            variant_id: item.variant_id || null,
-            variant_nombre: item.variant_nombre || null,
-            notas: item.notas || null
-          })),
+          items: cart.map(item => {
+            const producto = productos.find(p => p.id === item.id);
+            return {
+              id: item.id,
+              nombre: item.nombre,
+              qty: item.qty,
+              cantidad: item.qty,
+              precio_venta: item.precio_venta,
+              precio_compra: item.precio_compra || 0,
+              precio: item.precio_venta,
+              precio_unitario: item.precio_venta,
+              toppings: item.toppings || [],
+              variaciones: item.variaciones || {},
+              metadata: {
+                ...item.metadata,
+                peso: item.metadata?.peso || producto?.metadata?.peso,
+                material: item.metadata?.material || producto?.metadata?.material,
+                jewelry_material_type: item.metadata?.jewelry_material_type || producto?.metadata?.jewelry_material_type,
+              },
+              variant_id: item.variant_id || null,
+              variant_nombre: item.variant_nombre || null,
+              notas: item.notas || null
+            };
+          }),
           fecha: fechaVenta,
           created_at: fechaVenta,
           pago_cliente: metodoActual === 'Credito' ? 0 : montoPagoCliente,
@@ -3778,33 +3822,55 @@ export default function Caja({
         <div className="caja-search-wrapper">
           {isJewelryBusiness && (
             <div className="caja-metal-prices">
-              <div className="caja-metal-price-field">
-                <label>Oro internacional ({organization?.jewelry_weight_unit || 'g'})</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  className="caja-metal-input"
-                  placeholder="Ej: 240.000"
-                  value={goldPriceGlobalInput.displayValue}
-                  onChange={(e) => {
-                    goldPriceGlobalInput.handleChange(e);
-                    setGoldPriceGlobal(goldPriceGlobalInput.getNumericValue());
-                  }}
-                />
+              <div style={{
+                  gridColumn: '1 / -1', 
+                  fontSize: '0.7rem', 
+                  color: '#92400e', 
+                  marginBottom: '0.25rem', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '0.35rem',
+                  backgroundColor: '#fffbeb',
+                  padding: '0.35rem 0.5rem',
+                  borderRadius: '6px',
+                  border: '1px solid #fde68a'
+              }}>
+                <Info size={14} style={{flexShrink: 0}} />
+                <span>Editar según los precios actuales del oro</span>
               </div>
               <div className="caja-metal-price-field">
-                <label>Oro nacional ({organization?.jewelry_weight_unit || 'g'})</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  className="caja-metal-input"
-                  placeholder="Ej: 255.000"
-                  value={goldPriceLocalInput.displayValue}
-                  onChange={(e) => {
-                    goldPriceLocalInput.handleChange(e);
-                    setGoldPriceLocal(goldPriceLocalInput.getNumericValue());
-                  }}
-                />
+                <label style={{ marginLeft: 'calc(24px + 0.5rem)' }}>Oro internacional ({organization?.jewelry_weight_unit || 'g'})</label>
+                <div className="caja-metal-input-wrapper">
+                  <span className="caja-metal-currency-symbol">$</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    className="caja-metal-input"
+                    placeholder="240.000"
+                    value={goldPriceGlobalInput.displayValue}
+                    onChange={(e) => {
+                      goldPriceGlobalInput.handleChange(e);
+                      setGoldPriceGlobal(goldPriceGlobalInput.getNumericValue());
+                    }}
+                  />
+                </div>
+              </div>
+              <div className="caja-metal-price-field">
+                <label style={{ marginLeft: 'calc(24px + 0.5rem)' }}>Oro nacional ({organization?.jewelry_weight_unit || 'g'})</label>
+                <div className="caja-metal-input-wrapper">
+                  <span className="caja-metal-currency-symbol">$</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    className="caja-metal-input"
+                    placeholder="255.000"
+                    value={goldPriceLocalInput.displayValue}
+                    onChange={(e) => {
+                      goldPriceLocalInput.handleChange(e);
+                      setGoldPriceLocal(goldPriceLocalInput.getNumericValue());
+                    }}
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -3867,6 +3933,26 @@ export default function Caja({
                 <div className="caja-product-info">
                   <p className="caja-product-name" title={producto.nombre}>{producto.nombre}</p>
                   <p className="caja-product-stock">Stock: {producto.stock !== null && producto.stock !== undefined ? parseFloat(producto.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '0'}</p>
+                  {/* Mostrar información de joyería en tarjetas de productos */}
+                  {isJewelryBusiness && producto.metadata && (
+                    <div className="caja-product-jewelry-info">
+                      {producto.metadata.peso && (
+                        <span className="caja-product-jewelry-tag">
+                          {producto.metadata.peso}g
+                        </span>
+                      )}
+                      {producto.metadata.material && (
+                        <span className="caja-product-jewelry-tag">
+                          {producto.metadata.material}
+                        </span>
+                      )}
+                      {producto.metadata.jewelry_material_type && producto.metadata.jewelry_material_type !== 'na' && (
+                        <span className="caja-product-jewelry-tag caja-product-jewelry-type">
+                          {producto.metadata.jewelry_material_type === 'local' ? 'Nac' : 'Int'}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <span className="caja-product-price">
                   {formatCOP(isJewelryBusiness ? getJewelryUnitPrice(producto) : producto.precio_venta)}
@@ -4058,6 +4144,35 @@ export default function Caja({
                         <div className="caja-cart-item-variantes">
                           <span className="caja-cart-item-variaciones-label">Variante: </span>
                           <span className="caja-cart-item-variaciones-list">{item.variant_nombre}</span>
+                        </div>
+                      )}
+                      {/* Mostrar peso y material para joyerías */}
+                      {isJewelryBusiness && (item.metadata || productoCompleto?.metadata) && (
+                        <div className="caja-cart-item-jewelry-info">
+                          {(item.metadata?.peso || productoCompleto?.metadata?.peso) && (
+                            <div className="caja-cart-item-jewelry-detail">
+                              <span className="caja-cart-item-jewelry-label">Peso: </span>
+                              <span className="caja-cart-item-jewelry-value">
+                                {item.metadata?.peso || productoCompleto?.metadata?.peso}g
+                              </span>
+                            </div>
+                          )}
+                          {(item.metadata?.material || productoCompleto?.metadata?.material) && (
+                            <div className="caja-cart-item-jewelry-detail">
+                              <span className="caja-cart-item-jewelry-label">Material: </span>
+                              <span className="caja-cart-item-jewelry-value">
+                                {item.metadata?.material || productoCompleto?.metadata?.material}
+                              </span>
+                            </div>
+                          )}
+                          {(item.metadata?.jewelry_material_type || productoCompleto?.metadata?.jewelry_material_type) && 
+                           (item.metadata?.jewelry_material_type || productoCompleto?.metadata?.jewelry_material_type) !== 'na' && (
+                            <div className="caja-cart-item-jewelry-detail caja-cart-item-jewelry-type">
+                              <span className="caja-cart-item-jewelry-value">
+                                {(item.metadata?.jewelry_material_type || productoCompleto?.metadata?.jewelry_material_type) === 'local' ? 'Nacional' : 'Internacional'}
+                              </span>
+                            </div>
+                          )}
                         </div>
                       )}
                       {item.toppings && Array.isArray(item.toppings) && item.toppings.length > 0 && (

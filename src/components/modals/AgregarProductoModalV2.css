@@ -326,7 +326,7 @@
   display: inline-block;
   margin-top: 1rem;
   border-radius: 8px;
-  overflow: hidden;
+  overflow: visible; /* Permitir que el botón sobresalga si es necesario, o visible para z-index */
   border: 2px solid #e5e7eb;
 }
 
@@ -340,17 +340,31 @@
   position: absolute;
   top: 8px;
   right: 8px;
-  background: rgba(239, 68, 68, 0.9);
+  background: #ef4444;
   border: none;
-  border-radius: 50%;
-  width: 28px;
-  height: 28px;
-  display: flex;
+  border-radius: 8px; /* Cambiado a 8px para que sea cuadrado redondeado como en la imagen */
+  width: 32px;
+  height: 32px;
+  display: flex !important;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: white;
+  color: white !important; /* Forzar color blanco */
   transition: all 0.2s ease;
+  z-index: 100; /* Aumentar z-index */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  padding: 0 !important; /* Eliminar padding por defecto de botones */
+}
+
+.remove-image-btn svg {
+  color: white !important;
+  width: 18px !important;
+  height: 18px !important;
+  stroke: white !important;
+  stroke-width: 2.5 !important;
+  display: block !important; /* Asegurar que se muestre */
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 .remove-image-btn:hover {

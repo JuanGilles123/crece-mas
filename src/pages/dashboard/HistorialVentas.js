@@ -1350,6 +1350,7 @@ const HistorialVentas = () => {
                 {ventaSeleccionada.items?.map((item, idx) => {
                   const tieneVariaciones = item.variaciones && Object.keys(item.variaciones).length > 0;
                   const tieneToppings = item.toppings && Array.isArray(item.toppings) && item.toppings.length > 0;
+                  const tieneJewelryInfo = item.metadata && (item.metadata.peso || item.metadata.material || (item.metadata.jewelry_material_type && item.metadata.jewelry_material_type !== 'na'));
                   return (
                     <div key={idx} style={{ padding: '0.75rem', borderBottom: idx < ventaSeleccionada.items.length - 1 ? '1px solid #e5e7eb' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -1362,6 +1363,56 @@ const HistorialVentas = () => {
                         <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.15rem' }}>
                           Cantidad: {item.qty} | Precio unitario: {formatCOP(item.precio_venta || item.precio || 0)}
                         </div>
+                        {/* Información de joyería */}
+                        {tieneJewelryInfo && organization?.business_type === 'jewelry_metals' && (
+                          <div style={{ 
+                            marginTop: '0.35rem', 
+                            fontSize: '0.8rem', 
+                            display: 'flex', 
+                            flexWrap: 'wrap', 
+                            gap: '0.5rem' 
+                          }}>
+                            {item.metadata.peso && (
+                              <span style={{
+                                backgroundColor: '#fef3c7',
+                                color: '#92400e',
+                                padding: '0.15rem 0.4rem',
+                                borderRadius: '4px',
+                                fontSize: '0.75rem',
+                                fontWeight: '500',
+                                border: '1px solid #fbbf24'
+                              }}>
+                                Peso: {item.metadata.peso}g
+                              </span>
+                            )}
+                            {item.metadata.material && (
+                              <span style={{
+                                backgroundColor: '#e0f2fe',
+                                color: '#0277bd',
+                                padding: '0.15rem 0.4rem',
+                                borderRadius: '4px',
+                                fontSize: '0.75rem',
+                                fontWeight: '500',
+                                border: '1px solid #29b6f6'
+                              }}>
+                                Material: {item.metadata.material}
+                              </span>
+                            )}
+                            {item.metadata.jewelry_material_type && item.metadata.jewelry_material_type !== 'na' && (
+                              <span style={{
+                                backgroundColor: item.metadata.jewelry_material_type === 'local' ? '#f0f9ff' : '#f8fafc',
+                                color: item.metadata.jewelry_material_type === 'local' ? '#0c4a6e' : '#475569',
+                                padding: '0.15rem 0.4rem',
+                                borderRadius: '4px',
+                                fontSize: '0.75rem',
+                                fontWeight: '600',
+                                border: item.metadata.jewelry_material_type === 'local' ? '1px solid #0ea5e9' : '1px solid #64748b'
+                              }}>
+                                {item.metadata.jewelry_material_type === 'local' ? 'Nacional' : 'Internacional'}
+                              </span>
+                            )}
+                          </div>
+                        )}
                         {tieneVariaciones && (
                           <div style={{ marginTop: '0.35rem', fontSize: '0.8rem', color: '#6b7280' }}>
                             <div style={{ fontWeight: '500', color: '#4b5563', marginBottom: '0.2rem' }}>
