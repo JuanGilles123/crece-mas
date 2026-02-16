@@ -266,29 +266,45 @@
   overflow: visible;
   word-wrap: break-word;
   overflow-wrap: break-word;
-  min-height: 140px;
-  height: auto;
+  min-height: 160px;
+  height: 100%; /* Asegura que ocupe todo el alto disponible en el grid */
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  position: relative;
 }
 
-.metrica-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
-  border-color: var(--accent-primary);
+.metrica-card svg {
+  margin-bottom: 0.5rem;
+  color: var(--accent-primary);
+  flex-shrink: 0;
 }
 
-/* Colores neutros para todas las métricas */
-.metrica-card.ventas,
-.metrica-card.ventas-mes,
-.metrica-card.egresos,
-.metrica-card.egresos-mes {
-  background: var(--bg-secondary);
-  border-color: var(--border-primary);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+.metrica-card h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0; /* Aumentado margen inferior */
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+.metrica-card p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 0;
+  /* Elimina margin-bottom: auto para que el texto quede pegado arriba */
+}
+
+.metrica-subinfo {
+  margin-top: auto;
+  width: 100%;
+  display: flex;
+  align-items: center; /* Mejor alineación vertical */
+  justify-content: center;
+  padding-top: 0.75rem;
+  min-height: 2rem; /* Altura mínima para consistencia */
 }
 
 .metrica-card.utilidad.positivo {
@@ -322,13 +338,7 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.metrica-card svg {
-  color: var(--text-secondary);
-  margin-bottom: 0.75rem;
-  flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-}
+
 
 .metrica-card.ventas svg,
 .metrica-card.ventas-mes svg,
@@ -373,13 +383,7 @@
   color: rgba(239, 68, 68, 0.8);
 }
 
-.metrica-subinfo {
-  margin-top: 0.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
+
 
 .metrica-badge {
   display: inline-flex;
@@ -407,26 +411,6 @@
   line-height: 1.4;
 }
 
-.metrica-card h3 {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0.4rem 0;
-  line-height: 1.2;
-  word-break: break-word;
-}
-
-.metrica-card p {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  margin: 0;
-  line-height: 1.3;
-}
-
-/* Banner de Plan */
-.plan-banner-container {
-  width: 100%;
-}
 
 .plan-banner {
   background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);

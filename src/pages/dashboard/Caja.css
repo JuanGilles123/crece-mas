@@ -1175,25 +1175,50 @@
 }
 
 .caja-metal-price-field label {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
-.caja-metal-input {
+.caja-metal-input-wrapper {
+  position: relative;
   width: 100%;
-  padding: 0.45rem 0.6rem;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.caja-metal-currency-symbol {
+  color: black;
+  font-weight: 600;
+  font-size: 0.9rem;
+  pointer-events: none;
+  min-width: 0.7rem; /* Ensure consistent width if needed */
+  text-align: center;
+}width: 24px; /* Same width as search icon */
+  text-align: center;
+  flex-shrink: 0;
+  display: flex;
+  justify-content
+.caja-metal-input {
+  flex: 1; /* Allow input to shrink/grow */
+  min-width: 0; /* Important for flex items */
+  padding: 0.55rem 0.6rem;
+  border: 1px solid #fbbf24;
   border-radius: 8px;
-  font-size: 0.85rem;
-  background: #F2F2F7;
-  color: #000;
+  font-size: 0.9rem;
+  background: #fffbeb;
+  color: black;
   outline: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
 }
 
 .caja-metal-input:focus {
-  border-color: #007AFF;
-  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
-  background: white;
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+  background: #fff;
 }
 
 .caja-search-container {
@@ -2044,6 +2069,7 @@
   max-width: 100%;
   text-transform: uppercase;
   letter-spacing: 0.2px;
+  text-align: left;
 }
 
 /* Mantener centrado verticalmente incluso con extras */
@@ -4811,10 +4837,13 @@ input.caja-mobile-qty-display,
   background: var(--bg-card);
   border-radius: 1rem;
   padding: 2rem;
-  max-width: 600px;
+  max-width: min(600px, 95vw);
   width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   animation: slideIn 0.3s ease-out;
+  box-sizing: border-box;
 }
 
 @keyframes slideIn {
@@ -4855,7 +4884,7 @@ input.caja-mobile-qty-display,
 
 .metodos-pago-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 1rem;
   margin-bottom: 1rem;
 }
@@ -4869,21 +4898,28 @@ input.caja-mobile-qty-display,
 }
 
 .metodo-pago-card-credito {
-  width: 100%;
-  max-width: 300px;
+  /* Estilos específicos para el botón crédito dentro del grid */
+}
+
+@media (min-width: 600px) {
+  .metodos-pago-grid .metodo-pago-card-credito {
+    grid-column: 1 / -1;
+    justify-self: center;
+    width: calc((100% - 1rem) / 2);
+  }
 }
 
 .metodo-pago-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.75rem;
-  padding: 1.5rem 1rem;
+  gap: 0.5rem;
+  padding: 1rem 0.5rem;
   background: var(--bg-tertiary);
   border: 2px solid transparent;
   border-radius: 12px;
   cursor: pointer;
-  min-height: 130px;
+  min-height: 100px;
   justify-content: center;
   position: relative;
   will-change: auto;
@@ -4937,7 +4973,7 @@ input.caja-mobile-qty-display,
 }
 
 .metodo-pago-label {
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 600;
   color: var(--text-primary);
   text-align: center;
@@ -4997,16 +5033,17 @@ input.caja-mobile-qty-display,
   opacity: 0.6;
 }
 
-/* Responsive para métodos de pago */
+/* Responsive para métodos de pago - Mejoras para zoom */
 @media (max-width: 768px) {
   .metodos-pago-container {
     margin: 0.5rem;
     padding: 1.5rem;
     max-width: calc(100vw - 1rem);
+    max-height: calc(100vh - 1rem);
   }
   
   .metodos-pago-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 0.875rem;
   }
   
@@ -5046,10 +5083,11 @@ input.caja-mobile-qty-display,
   .metodos-pago-container {
     margin: 0.5rem;
     padding: 1.25rem;
+    max-height: calc(100vh - 1rem);
   }
   
   .metodos-pago-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 0.75rem;
   }
   
@@ -5079,6 +5117,11 @@ input.caja-mobile-qty-display,
   .metodos-pago-container {
     margin: 0.3rem;
     padding: 1rem;
+    max-height: calc(100vh - 0.6rem);
+  }
+  
+  .metodos-pago-grid {
+    grid-template-columns: 1fr;
   }
   
   .metodo-pago-btn {
@@ -5178,7 +5221,7 @@ input.caja-mobile-qty-display,
 }
 
 .pago-efectivo-input-section {
-  margin-bottom: 1.5rem;
+  margin-bottom: 2.5rem;
 }
 
 .pago-efectivo-label {
@@ -5250,6 +5293,7 @@ input.caja-mobile-qty-display,
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 0.5rem;
+  margin-top: 1.5rem;
 }
 
 .pago-efectivo-btn-valor {
@@ -6348,5 +6392,98 @@ input.caja-mobile-qty-display,
   
   .pago-efectivo-overlay.pedidos-ocultos .pago-efectivo-container {
     max-height: calc(100vh - 6rem);
+  }
+}
+
+/* Estilos para información de joyería en tarjetas de productos */
+.caja-product-jewelry-info {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.2rem;
+  margin-top: 0.3rem;
+  overflow: hidden;
+  justify-content: center;
+}
+
+.caja-product-jewelry-tag {
+  font-size: 0.6rem;
+  padding: 0.1rem 0.25rem;
+  background-color: #f3f4f6;
+  color: #374151;
+  border-radius: 3px;
+  font-weight: 500;
+  text-align: center;
+  border: 1px solid #e5e7eb;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.caja-product-jewelry-type {
+  background-color: #dbeafe !important;
+  color: #1e40af !important;
+  border-color: #3b82f6 !important;
+  font-weight: 600;
+}
+
+/* Responsive para tags de joyería en productos */
+@media (max-width: 768px) {
+  .caja-product-jewelry-info {
+    gap: 0.15rem;
+    margin-top: 0.25rem;
+  }
+  
+  .caja-product-jewelry-tag {
+    font-size: 0.55rem;
+    padding: 0.08rem 0.2rem;
+  }
+}
+
+/* Estilos para información de joyería en el carrito */
+.caja-cart-item-jewelry-info {
+  margin-top: 0.35rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+}
+
+.caja-cart-item-jewelry-detail {
+  display: flex;
+  align-items: center;
+  background-color: #f3f4f6;
+  padding: 0.15rem 0.35rem;
+  border-radius: 4px;
+  border: 1px solid #e5e7eb;
+}
+
+.caja-cart-item-jewelry-label {
+  font-weight: 500;
+  color: #374151;
+  margin-right: 0.25rem;
+}
+
+.caja-cart-item-jewelry-value {
+  color: #1f2937;
+  font-weight: 600;
+}
+
+.caja-cart-item-jewelry-type {
+  background-color: #f0f9ff !important;
+  border-color: #0ea5e9 !important;
+}
+
+.caja-cart-item-jewelry-type .caja-cart-item-jewelry-value {
+  color: #0c4a6e !important;
+  font-weight: 700;
+}
+
+/* Responsivo para información de joyería */
+@media (max-width: 768px) {
+  .caja-cart-item-jewelry-info {
+    font-size: 0.7rem;
+  }
+  
+  .caja-cart-item-jewelry-detail {
+    padding: 0.1rem 0.25rem;
   }
 }

@@ -277,6 +277,7 @@ const TopNav = ({ menuGroups, userProfile, onMenuClick }) => {
   const handleItemClick = () => {
     setOpenDropdown(null);
     setNotificationsOpen(false);
+    setHoveredItem(null); // Asegurar que el tooltip se oculte al hacer click
     if (onMenuClick) onMenuClick();
   };
 

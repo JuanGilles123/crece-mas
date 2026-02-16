@@ -242,21 +242,21 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
       stock: producto?.stock?.toString() || '',
       tipo: selectedType,
       fecha_vencimiento: producto?.fecha_vencimiento || '',
-      peso: metadata?.peso || '',
+      peso: metadata?.peso ? String(metadata.peso) : '',
       unidad_peso: metadata?.unidad_peso || (isJewelryBusiness ? (organization?.jewelry_weight_unit || 'g') : 'kg'),
       dimensiones: metadata?.dimensiones || '',
       marca: metadata?.marca || '',
       modelo: metadata?.modelo || '',
       color: metadata?.color || '',
-      talla: metadata?.talla || '',
+      talla: metadata?.talla ? String(metadata.talla) : '',
       material: metadata?.material || '',
       categoria: metadata?.categoria || '',
-      duracion: metadata?.duracion || '',
+      duracion: metadata?.duracion ? String(metadata.duracion) : '',
       descripcion: metadata?.descripcion || '',
       ingredientes: metadata?.ingredientes || '',
       alergenos: metadata?.alergenos || '',
-      calorias: metadata?.calorias || '',
-      porcion: metadata?.porcion || '',
+      calorias: metadata?.calorias ? String(metadata.calorias) : '',
+      porcion: metadata?.porcion ? String(metadata.porcion) : '',
       variaciones: metadata?.variaciones || '',
       pureza: metadata?.pureza || '',
       permite_toppings: metadata?.permite_toppings !== undefined ? metadata.permite_toppings : true,
@@ -366,11 +366,17 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
       
       // Cargar campos de metadata
       Object.keys(ADDITIONAL_FIELDS).forEach(fieldId => {
-        if (metadata[fieldId]) {
-          setValue(fieldId, metadata[fieldId]);
+        if (metadata[fieldId] !== undefined && metadata[fieldId] !== null) {
+          // Asegurar que valores numéricos se conviertan a string para zod, excepto booleanos
+          const valueToSet = typeof metadata[fieldId] === 'boolean' 
+            ? metadata[fieldId] 
+            : String(metadata[fieldId]);
+            
+          setValue(fieldId, valueToSet);
+          
           // Si el campo no está en los opcionales del tipo, agregarlo a additionalFields
-          const typeFields = getProductTypeFields(producto.tipo || 'fisico');
-          if (!typeFields.optional.includes(fieldId)) {
+          const typeFields = getProductTypeFields(producto.tipo || selectedType || 'fisico');
+          if (typeFields.name !== 'Variaciones' && !typeFields.optional.includes(fieldId)) {
             setAdditionalFields(prev => {
               if (!prev.includes(fieldId)) {
                 return [...prev, fieldId];
@@ -419,7 +425,7 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
         precioVentaInput.setValue('');
       }
     }
-  }, [producto, setValue, precioCompraInput, precioVentaInput, stockInput, parseWeightValue, isJewelryBusiness]);
+  }, [producto, setValue, precioCompraInput, precioVentaInput, stockInput, parseWeightValue, isJewelryBusiness, selectedType]);
 
   // Refs para detección global de código de barras (funciona aunque el cursor no esté en el campo código)
   const globalBarcodeBufferRef = useRef('');
@@ -1518,7 +1524,7 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
             </div>
 
             {!modoSoloVariantes && (
-              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
+              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem', justifyContent: 'center' }}>
                 <button type="button" className="inventario-btn inventario-btn-secondary" onClick={agregarVariante}>
                   + Agregar variante
                 </button>

@@ -6,6 +6,10 @@
   "installCommand": "npm ci",
   "rewrites": [
     {
+      "source": "/auth/employee-login",
+      "destination": "https://ywilkhfkuwhsjvojocso.supabase.co/functions/v1/employee-login"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

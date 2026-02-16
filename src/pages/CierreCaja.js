@@ -166,7 +166,8 @@ const CierreCaja = () => {
         const estado = (venta.estado || '').toLowerCase();
         const esCredito = venta.es_credito === true || metodo === 'CREDITO';
         // Excluir cotizaciones y créditos: método COTIZACION/CREDITO o estado cotizacion
-        return metodo !== 'COTIZACION' && metodo !== 'CREDITO' && estado !== 'cotizacion' && !esCredito;
+        // También excluir devoluciones y cambios para que no sumen al total esperado
+        return metodo !== 'COTIZACION' && metodo !== 'CREDITO' && estado !== 'cotizacion' && estado !== 'devolucion' && estado !== 'cambio' && !esCredito;
       });
 
       // Separar ventas a crédito para mostrarlas aparte
