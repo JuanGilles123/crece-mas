@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../../services/api/supabaseClient';
+// ...existing imports...
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, ArrowLeft, TrendingUp, Users, BarChart3, Phone, Globe } from 'lucide-react';
@@ -64,7 +65,7 @@ const Registro = () => {
       setError(validationError);
       return;
     }
-    
+
     try {
       // Registro en Supabase Auth
       const { data, error: signUpError } = await supabase.auth.signUp({
@@ -90,47 +91,46 @@ const Registro = () => {
         return;
       }
 
-      // Si el registro fue exitoso, enviar correo de bienvenida y mostrar confirmación
-      if (data.user) {
-        try {
-          await supabase.functions.invoke('send-welcome', {
+      // ...eliminar aceptación automática legal...
+
+      try {
+        await supabase.functions.invoke('send-welcome', {
+          body: {
+            userId: data.user.id,
+            email: data.user.email,
+            name: data.user.user_metadata?.full_name || email.split('@')[0]
+          }
+        });
+      } catch (welcomeError) {
+        console.warn('No se pudo enviar correo de bienvenida:', welcomeError);
+      }
+
+      try {
+        const { data: verifyData, error: verifyError } = await supabase.functions.invoke(
+          'send-verify-email',
+          {
             body: {
               userId: data.user.id,
               email: data.user.email,
-              name: data.user.user_metadata?.full_name || email.split('@')[0]
-            }
-          });
-        } catch (welcomeError) {
-          console.warn('No se pudo enviar correo de bienvenida:', welcomeError);
-        }
-
-        try {
-          const { data: verifyData, error: verifyError } = await supabase.functions.invoke(
-            'send-verify-email',
-            {
-              body: {
-                userId: data.user.id,
-                email: data.user.email,
-                redirectTo: window.location.origin,
-              },
-            }
-          );
-
-          if (verifyError || verifyData?.skipped || verifyData?.success === false) {
-            const { error: resendError } = await supabase.auth.resend({
-              type: 'signup',
-              email: data.user.email,
-            });
-            if (resendError) {
-              console.warn('No se pudo reenviar correo con Supabase:', resendError);
-            }
+              redirectTo: window.location.origin,
+            },
           }
-        } catch (verifyError) {
-          console.warn('No se pudo enviar correo de verificación:', verifyError);
-        }
+        );
 
-        setShowConfirmation(true);
+        if (verifyError || verifyData?.skipped || verifyData?.success === false) {
+          const { error: resendError } = await supabase.auth.resend({
+            type: 'signup',
+            email: data.user.email,
+          });
+          if (resendError) {
+            console.warn('No se pudo reenviar correo con Supabase:', resendError);
+          }
+        }
+      } catch (verifyError) {
+        console.warn('No se pudo enviar correo de verificación:', verifyError);
       }
+
+      setShowConfirmation(true);
     } catch (error) {
       setError('Error inesperado durante el registro.');
     }

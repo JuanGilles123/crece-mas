@@ -317,9 +317,9 @@ video {
 }
 
 /* Prevenir scroll horizontal accidental */
-body {
+/* body {
   overflow-x: hidden;
-}
+} */
 
 /* === SAFE AREA SUPPORT === */
 /* Para dispositivos con notch */

@@ -41,10 +41,10 @@ export function AuthProvider({ children }) {
       // Obtener organización principal (si es owner) o buscar en team_members
       let orgId = profile.organization_id;
       let effectiveRole = profile.role;
-      
+
       // Verificar si hay una organización seleccionada manualmente
       const selectedOrgId = localStorage.getItem('selected_organization_id');
-      
+
       // Obtener TODAS las organizaciones del usuario
       const { data: memberships } = await supabase
         .from('team_members')
@@ -52,12 +52,11 @@ export function AuthProvider({ children }) {
         .eq('user_id', userId)
         .eq('status', 'active')
         .order('joined_at', { ascending: false });
-      
+
       // Si hay una organización seleccionada manualmente, usarla
       if (selectedOrgId) {
         // Verificar que el usuario tiene acceso a esa organización
         const selectedMembership = memberships?.find(m => m.organization_id === selectedOrgId);
-        
         if (selectedMembership) {
           orgId = selectedOrgId;
           effectiveRole = selectedMembership.role;
@@ -71,7 +70,7 @@ export function AuthProvider({ children }) {
           console.warn('⚠️ Organización seleccionada no válida, usando por defecto');
         }
       }
-      
+
       // Si no hay orgId aún, usar la primera membresía o la principal
       if (!orgId && memberships && memberships.length > 0) {
         orgId = memberships[0].organization_id;
@@ -93,7 +92,7 @@ export function AuthProvider({ children }) {
             try {
               const { data: email, error: emailError } = await supabase
                 .rpc('get_user_email', { user_id: org.owner_id });
-              
+
               if (!emailError && email) {
                 ownerEmail = email;
               }
@@ -101,12 +100,12 @@ export function AuthProvider({ children }) {
               console.warn('Could not fetch owner email via RPC:', err);
             }
           }
-          
+
           const orgWithOwnerEmail = {
             ...org,
             owner_email: ownerEmail
           };
-          
+
           setOrganization(orgWithOwnerEmail);
 
           if (orgWithOwnerEmail?.logo_url) {
@@ -132,7 +131,7 @@ export function AuthProvider({ children }) {
 
           if (!permsError && perms) {
             setPermissions(perms);
-          } else if (!(typeof navigator !== 'undefined' && !navigator.onLine)) {
+          } else {
             console.error('❌ Error loading permissions:', permsError);
           }
         } else {
@@ -144,7 +143,7 @@ export function AuthProvider({ children }) {
     } catch (error) {
       console.error('❌ Error loading user data:', error);
     }
-  }, []); // Dependencias vacías porque setUserProfile, setOrganization, setPermissions son estables
+  }, []);
 
   useEffect(() => {
     const isEmployeePath = location.pathname.startsWith('/empleado') ||
@@ -152,7 +151,7 @@ export function AuthProvider({ children }) {
     const employeeSession = isEmployeePath ? getEmployeeSession() : null;
     setIsEmployeeMode(!!employeeSession && isEmployeePath);
 
-      if (isEmployeePath) {
+    if (isEmployeePath) {
       if (!employeeSession) {
         setUser(null);
         setUserProfile(null);
@@ -211,16 +210,16 @@ export function AuthProvider({ children }) {
       setUser(session?.user ?? null);
       if (session?.user) {
         loadUserProfile(session.user.id);
-        
+
         // Auto-aceptar invitación pendiente si existe token en localStorage
         const pendingToken = localStorage.getItem('pending_invitation_token');
         const isProcessing = localStorage.getItem('processing_invitation');
-        
+
         // Solo procesar si hay token, NO se está procesando, y es un evento SIGNED_IN
         if (pendingToken && !isProcessing && (event === 'SIGNED_IN' || event === 'USER_UPDATED')) {
           // Marcar como procesando INMEDIATAMENTE
           localStorage.setItem('processing_invitation', 'true');
-          
+
           try {
             // Buscar la invitación con el token
             const { data: invitation, error: invError } = await supabase
@@ -265,7 +264,7 @@ export function AuthProvider({ children }) {
             // Actualizar el estado de la invitación
             await supabase
               .from('team_invitations')
-              .update({ 
+              .update({
                 status: 'accepted',
                 accepted_at: new Date().toISOString()
               })
@@ -273,7 +272,7 @@ export function AuthProvider({ children }) {
             // Limpiar tokens
             localStorage.removeItem('pending_invitation_token');
             localStorage.removeItem('processing_invitation');
-            
+
             // Recargar perfil después de 1 segundo
             setTimeout(() => {
               loadUserProfile(session.user.id).then(() => {

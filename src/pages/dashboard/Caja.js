@@ -651,6 +651,7 @@ export default function Caja({
   
   const esModoPedido = mode === 'pedido';
   const [query, setQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState(null);
   const isJewelryBusiness = organization?.business_type === 'jewelry_metals';
   const [goldPriceGlobal, setGoldPriceGlobal] = useState(0);
   const [goldPriceLocal, setGoldPriceLocal] = useState(0);
@@ -1174,6 +1175,12 @@ export default function Caja({
           try {
             let filePath = producto.imagen;
             
+            // Verificar si es una URL externa (Unsplash, etc.) y saltarla
+            if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+              // Si es una URL externa, no intentar crear signed URL
+              return;
+            }
+            
             // Si ya es una URL de Supabase, extraer la ruta del archivo
             if (filePath.includes('/storage/v1/object/')) {
               // Extraer la ruta después de 'productos/'
@@ -1480,14 +1487,45 @@ export default function Caja({
     return index;
   }, [productos]);
 
-  const filteredProducts = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return productos;
-    return productos.filter((p) => {
-      const textoCompleto = productosSearchIndex.get(String(p.id)) || '';
-      return textoCompleto.includes(q);
+  const getProductCategory = (p) => {
+    if (p.categoria) return p.categoria;
+    if (p.category) return p.category;
+    if (p.metadata) {
+      try {
+        const meta = typeof p.metadata === 'string' ? JSON.parse(p.metadata) : p.metadata;
+        return meta?.categoria;
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  };
+
+  const categoryNames = useMemo(() => {
+    const cats = new Set();
+    productos.forEach((p) => {
+      const cat = getProductCategory(p);
+      if (cat) cats.add(cat);
     });
-  }, [query, productos, productosSearchIndex]);
+    return Array.from(cats).filter(Boolean).sort();
+  }, [productos]);
+
+  const filteredProducts = useMemo(() => {
+    let result = productos;
+
+    if (selectedCategory) {
+      result = result.filter(p => getProductCategory(p) === selectedCategory);
+    }
+
+    const q = query.trim().toLowerCase();
+    if (q) {
+      return result.filter((p) => {
+        const textoCompleto = productosSearchIndex.get(String(p.id)) || '';
+        return textoCompleto.includes(q);
+      });
+    }
+    return result;
+  }, [query, productos, productosSearchIndex, selectedCategory]);
 
   const ventasPorProducto = useMemo(() => {
     const map = new Map();
@@ -3904,6 +3942,29 @@ export default function Caja({
             </button>
           </div>
         </div>
+
+        {/* Categorías */}
+        {categoryNames && categoryNames.length > 0 && (
+          <div className="caja-categories-wrapper">
+            <div className="caja-categories-container">
+              <button
+                className={`caja-category-pill ${!selectedCategory ? 'active' : ''}`}
+                onClick={() => setSelectedCategory(null)}
+              >
+                Todos
+              </button>
+              {categoryNames.map((category) => (
+                <button
+                  key={category}
+                  className={`caja-category-pill ${selectedCategory === category ? 'active' : ''}`}
+                  onClick={() => setSelectedCategory(category)}
+                >
+                  {category}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="caja-products-list">
           {sortedProducts.map((producto, index) => (

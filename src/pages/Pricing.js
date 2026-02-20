@@ -15,6 +15,7 @@ import {
 import { useSubscription } from '../hooks/useSubscription';
 import LottieLoader from '../components/ui/LottieLoader';
 import { supabase } from '../services/api/supabaseClient';
+// ...existing imports...
 import toast from 'react-hot-toast';
 import './Pricing.css';
 
@@ -153,6 +154,8 @@ const Pricing = () => {
         navigate('/login');
         return;
       }
+
+      // ...eliminar aceptación legal automática...
 
       // Obtener el plan_id de la base de datos usando el slug
       const { data: dbPlan, error: planError } = await supabase
