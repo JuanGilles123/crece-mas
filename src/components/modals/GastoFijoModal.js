@@ -12,7 +12,6 @@ import './ProveedorModal.css';
 const gastoFijoSchema = z.object({
   nombre: z.string().min(1, 'El nombre es requerido').max(255, 'El nombre es muy largo'),
   descripcion: z.string().optional(),
-  monto: z.string().min(1, 'El monto es requerido'),
   frecuencia: z.enum(['diario', 'semanal', 'quincenal', 'mensual', 'bimestral', 'trimestral', 'semestral', 'anual']),
   dia_pago: z.string().optional(),
   metodo_pago: z.enum(['efectivo', 'transferencia', 'tarjeta', 'cheque']).default('transferencia'),
@@ -72,14 +71,12 @@ const GastoFijoModal = ({ open, onClose, gasto = null }) => {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-    reset,
-    setValue
+    reset
   } = useForm({
     resolver: zodResolver(gastoFijoSchema),
     defaultValues: {
       nombre: '',
       descripcion: '',
-      monto: '',
       frecuencia: 'mensual',
       dia_pago: '',
       metodo_pago: 'transferencia',
@@ -100,7 +97,6 @@ const GastoFijoModal = ({ open, onClose, gasto = null }) => {
         reset({
           nombre: gasto.nombre || '',
           descripcion: gasto.descripcion || '',
-          monto: montoInicial,
           frecuencia: gasto.frecuencia || 'mensual',
           dia_pago: gasto.dia_pago?.toString() || '',
           metodo_pago: gasto.metodo_pago || 'transferencia',
@@ -116,7 +112,6 @@ const GastoFijoModal = ({ open, onClose, gasto = null }) => {
         reset({
           nombre: '',
           descripcion: '',
-          monto: '',
           frecuencia: 'mensual',
           dia_pago: '',
           metodo_pago: 'transferencia',
@@ -131,8 +126,18 @@ const GastoFijoModal = ({ open, onClose, gasto = null }) => {
     }
   }, [open, gasto, reset, setMontoValue, resetMonto]);
 
+  // Función optimizada para manejar input de monto
+  const handleMontoChange = (e) => {
+    montoInput.handleChange(e);
+    // No llamamos setValue porque monto no está registrado en el formulario
+  };
+
   const onSubmit = async (data) => {
     try {
+      // Validar monto manualmente ya que no está registrado en el formulario
+      if (!montoInput.displayValue || montoInput.numericValue <= 0) {
+        throw new Error('El monto es requerido');
+      }
       // Si la categoría es un texto (categoría predefinida), buscar si existe o guardarla en notas
       let categoriaId = data.categoria_id || null;
       let notasFinal = data.notas || null;
@@ -233,16 +238,11 @@ const GastoFijoModal = ({ open, onClose, gasto = null }) => {
                     id="monto"
                     type="text"
                     value={montoInput.displayValue}
-                    onChange={(e) => {
-                      montoInput.handleChange(e);
-                      setValue('monto', montoInput.displayValue, { shouldValidate: true });
-                    }}
-                    onBlur={() => {
-                      setValue('monto', montoInput.displayValue, { shouldValidate: true });
-                    }}
+                    onChange={handleMontoChange}
                     className={errors.monto ? 'error' : ''}
                     placeholder="0"
                     style={{ flex: 1 }}
+                    autoComplete="off"
                   />
                 </div>
                 {errors.monto && <span className="error-message">{errors.monto.message}</span>}

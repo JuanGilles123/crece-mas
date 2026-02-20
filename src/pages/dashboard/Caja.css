@@ -4793,6 +4793,60 @@ input.caja-mobile-qty-display,
   background: #a8a8a8;
 }
 
+/* Categorías */
+.caja-categories-wrapper {
+  margin-bottom: 0.75rem;
+  width: 100%;
+}
+
+.caja-categories-container {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  scrollbar-width: thin;
+}
+
+.caja-categories-container::-webkit-scrollbar {
+  height: 4px;
+}
+
+.caja-categories-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.caja-categories-container::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 4px;
+}
+
+.caja-category-pill {
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  background-color: white;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.caja-category-pill:hover {
+  background-color: #f8fafc;
+  color: #475569;
+  border-color: #cbd5e1;
+}
+
+.caja-category-pill.active {
+  background-color: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+}
+
 /* Animaciones */
 @keyframes shimmer {
   0% {

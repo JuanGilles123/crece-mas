@@ -20,16 +20,14 @@ export const useCurrencyInput = (initialValue = '') => {
   );
   const numericValueRef = useRef(0);
 
-  // Manejar cambio en el input - OPTIMIZADO
+  // Manejar cambio en el input - OPTIMIZADO SIN DEPENDENCIAS CIRCULARES
   const handleChange = useCallback((e) => {
     const newValue = e.target.value;
     
     // Permitir campo completamente vacío para poder borrar
     if (newValue === '' || newValue === null || newValue === undefined) {
       numericValueRef.current = 0;
-      if (displayValue !== '') {
-        setDisplayValue('');
-      }
+      setDisplayValue('');
       return '';
     }
     
@@ -38,36 +36,28 @@ export const useCurrencyInput = (initialValue = '') => {
     if (numero) {
       const formatted = numero.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
       numericValueRef.current = parseInt(numero, 10);
-      if (formatted !== displayValue) {
-        setDisplayValue(formatted);
-      }
+      setDisplayValue(formatted);
       return formatted;
     } else {
       // Si solo quedan caracteres no numéricos, permitir campo vacío
       numericValueRef.current = 0;
-      if (displayValue !== '') {
-        setDisplayValue('');
-      }
+      setDisplayValue('');
       return '';
     }
-  }, [displayValue]);
+  }, []); // Sin dependencias
 
-  // Establecer valor programáticamente
+  // Establecer valor programáticamente SIN DEPENDENCIAS CIRCULARES
   const setValue = useCallback((value) => {
     const numero = value.toString().replace(/\D/g, '');
     if (numero) {
       const formatted = numero.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
       numericValueRef.current = parseInt(numero, 10);
-      if (formatted !== displayValue) {
-        setDisplayValue(formatted);
-      }
+      setDisplayValue(formatted);
     } else {
       numericValueRef.current = 0;
-      if (displayValue !== '') {
-        setDisplayValue('');
-      }
+      setDisplayValue('');
     }
-  }, [displayValue]);
+  }, []); // Sin dependencias
 
   // Resetear valor
   const reset = useCallback(() => {

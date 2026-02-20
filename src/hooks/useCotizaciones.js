@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../services/api/supabaseClient';
 import toast from 'react-hot-toast';
 import { getCachedVentas } from '../utils/offlineQueue';
+import { getEmployeeSession } from '../utils/employeeSession';
 
 // Hook para obtener cotizaciones pendientes
 export const useCotizaciones = (organizationId) => {
@@ -106,10 +107,15 @@ export const useGuardarCotizacion = () => {
 
   return useMutation({
     mutationFn: async (cotizacionData) => {
+      // Determinar IDs de actor (usuario o empleado)
+      const employeeSession = getEmployeeSession();
+      const isEmployee = employeeSession?.employee?.id;
+      
       // Construir objeto con solo campos básicos que sabemos que existen
       const dataToInsert = {
         organization_id: cotizacionData.organization_id,
-        user_id: cotizacionData.user_id,
+        user_id: isEmployee ? null : (cotizacionData.user_id || null),
+        employee_id: isEmployee ? employeeSession.employee.id : null,
         total: cotizacionData.total,
         metodo_pago: cotizacionData.metodo_pago || 'COTIZACION', // Valor especial para cotizaciones (metodo_pago tiene NOT NULL)
         items: cotizacionData.items,

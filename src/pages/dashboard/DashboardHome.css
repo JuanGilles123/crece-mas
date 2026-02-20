@@ -277,9 +277,61 @@
 }
 
 .metrica-card svg {
-  margin-bottom: 0.5rem;
-  color: var(--accent-primary);
+  margin-bottom: 0.75rem;
+  padding: 0.65rem;
+  border-radius: 12px;
+  background-color: var(--bg-icon, rgba(139, 92, 246, 0.1));
+  color: var(--text-icon, var(--accent-primary));
   flex-shrink: 0;
+  width: 48px !important;
+  height: 48px !important;
+  transition: all 0.3s ease;
+}
+
+.metrica-card:hover svg {
+  transform: scale(1.1) rotate(5deg);
+  background-color: var(--bg-icon-hover, rgba(139, 92, 246, 0.2));
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* --- Variaciones de color para cada tipo de métrica --- */
+
+/* Grupo Informativo (Azul - Unifica Ventas, Clientes, Promedio, Productos, Órdenes) */
+.metricas-grid .metrica-card.ventas,
+.metricas-grid .metrica-card.ventas-mes,
+.metricas-grid .metrica-card.promedio,
+.metricas-grid .metrica-card.productos,
+.metricas-grid .metrica-card.clientes,
+.metricas-grid .metrica-card.ordenes { 
+  --bg-icon: rgba(59, 130, 246, 0.1);
+  --text-icon: #3B82F6;
+  --bg-icon-hover: rgba(59, 130, 246, 0.25);
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.02) 0%, rgba(59, 130, 246, 0.08) 100%) !important;
+  border-color: rgba(59, 130, 246, 0.2) !important;
+}
+
+/* Grupo Alertas/Atención (Naranja - Unifica Bajo Stock, Vencimientos, Utilidad Negativa) */
+.metricas-grid .metrica-card.utilidad.negativo,
+.metricas-grid .metrica-card.utilidad-mes.negativo,
+.metricas-grid .metrica-card.egresos,
+.metricas-grid .metrica-card.egresos-mes,
+.metricas-grid .metrica-card.alerta,
+.metricas-grid .metrica-card.vencimiento {
+  --bg-icon: rgba(249, 115, 22, 0.1);
+  --text-icon: #F97316;
+  --bg-icon-hover: rgba(249, 115, 22, 0.25);
+  background: linear-gradient(180deg, rgba(249, 115, 22, 0.02) 0%, rgba(249, 115, 22, 0.08) 100%) !important;
+  border-color: rgba(249, 115, 22, 0.2) !important;
+}
+
+/* Grupo Éxito (Verde - Utilidad Positiva) */
+.metricas-grid .metrica-card.utilidad.positivo,
+.metricas-grid .metrica-card.utilidad-mes.positivo {
+  --bg-icon: rgba(16, 185, 129, 0.1);
+  --text-icon: #10B981;
+  --bg-icon-hover: rgba(16, 185, 129, 0.25);
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.02) 0%, rgba(16, 185, 129, 0.08) 100%) !important;
+  border-color: rgba(16, 185, 129, 0.2) !important;
 }
 
 .metrica-card h3 {

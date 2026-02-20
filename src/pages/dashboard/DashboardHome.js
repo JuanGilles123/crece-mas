@@ -601,7 +601,6 @@ const DashboardHome = () => {
               <p>Ventas Hoy</p>
               <div className="metrica-subinfo">
                 <span className="metrica-badge positivo">
-                  <ArrowUpRight size={14} />
                   {metricasVentas.cantidadVentasHoy} ventas
                 </span>
               </div>
@@ -689,7 +688,7 @@ const DashboardHome = () => {
           <h2><Package size={20} /> Resumen Operativo</h2>
           <div className="metricas-grid">
             <motion.div 
-              className="metrica-card"
+              className="metrica-card productos"
               whileHover={{ scale: 1.05, y: -5 }}
               whileTap={{ scale: 0.95 }}
             >
@@ -699,7 +698,7 @@ const DashboardHome = () => {
             </motion.div>
 
             <motion.div 
-              className="metrica-card"
+              className="metrica-card clientes"
               whileHover={{ scale: 1.05, y: -5 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => navigate('/dashboard/clientes')}
@@ -711,7 +710,7 @@ const DashboardHome = () => {
             </motion.div>
 
             <motion.div 
-              className="metrica-card"
+              className="metrica-card promedio"
               whileHover={{ scale: 1.05, y: -5 }}
               whileTap={{ scale: 0.95 }}
             >
@@ -745,7 +744,7 @@ const DashboardHome = () => {
             </motion.div>
 
             <motion.div 
-              className="metrica-card"
+              className="metrica-card ordenes"
               whileHover={{ scale: 1.05, y: -5 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => navigate('/dashboard/egresos')}
