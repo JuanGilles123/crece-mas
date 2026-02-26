@@ -30,35 +30,35 @@ export const useVentas = (organizationId, limit = 100, historyDays = null) => {
         const merged = [...cached, ...pending.map(v => ({ ...v, id: v.id || v.temp_id }))];
         return applyFilters(merged);
       }
-      
+
       try {
         // Construir query base
         let query = supabase
           .from('ventas')
           .select('*')
           .eq('organization_id', organizationId);
-        
+
         // Aplicar límite de días si existe (plan gratuito = 7 días)
         if (historyDays !== null && historyDays !== undefined) {
           const fechaLimite = new Date();
           fechaLimite.setDate(fechaLimite.getDate() - historyDays);
           query = query.gte('created_at', fechaLimite.toISOString());
         }
-        
+
         // Aplicar orden y límite
         const { data: ventasData, error: ventasError } = await query
           .order('created_at', { ascending: false })
           .limit(limit);
-        
+
         if (ventasError) {
           console.error('Error fetching ventas:', ventasError);
           throw new Error('Error al cargar ventas');
         }
-        
+
         if (!ventasData || ventasData.length === 0) {
           return [];
         }
-        
+
         // Cargar clientes para las ventas que tienen cliente_id
         const ventasConCliente = ventasData.filter(v => v.cliente_id);
         if (ventasConCliente.length > 0) {
@@ -67,7 +67,7 @@ export const useVentas = (organizationId, limit = 100, historyDays = null) => {
             .from('clientes')
             .select('id, nombre, documento, telefono, email, direccion')
             .in('id', clienteIds);
-          
+
           // Mapear clientes a las ventas
           const clientesMap = new Map((clientesData || []).map(c => [c.id, c]));
           const ventasConClienteMap = ventasData.map(venta => ({

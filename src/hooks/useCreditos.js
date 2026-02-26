@@ -15,14 +15,15 @@ export const useCreditos = (organizationId, filters = {}) => {
         const cached = await getCachedCreditos(organizationId);
         return cached || [];
       }
-      
+
       try {
         // Primero obtener los créditos sin relaciones para asegurar que se obtengan
         let query = supabase
           .from('creditos')
           .select('*')
-          .eq('organization_id', organizationId);
-        
+          .eq('organization_id', organizationId)
+          .neq('estado', 'anulado'); // Excluir créditos anulados
+
         // Aplicar filtros
         if (filters.estado) {
           if (filters.estado === 'vencido') {
@@ -34,32 +35,32 @@ export const useCreditos = (organizationId, filters = {}) => {
             query = query.eq('estado', filters.estado);
           }
         }
-        
+
         if (filters.cliente_id) {
           query = query.eq('cliente_id', filters.cliente_id);
         }
-        
+
         if (filters.vencidos) {
           query = query.lt('fecha_vencimiento', new Date().toISOString().split('T')[0])
-                      .in('estado', ['pendiente', 'parcial', 'vencido']);
+            .in('estado', ['pendiente', 'parcial', 'vencido']);
         }
-        
+
         const { data: creditosData, error: creditosError } = await query
           .order('created_at', { ascending: false });
-        
+
         if (creditosError) {
           console.error('Error fetching creditos:', creditosError);
           throw creditosError;
         }
-        
+
         if (!creditosData || creditosData.length === 0) {
           return [];
         }
-        
+
         // Obtener clientes y ventas por separado para evitar problemas con relaciones
         const clienteIds = [...new Set(creditosData.map(c => c.cliente_id).filter(Boolean))];
         const ventaIds = [...new Set(creditosData.map(c => c.venta_id).filter(Boolean))];
-        
+
         // Cargar clientes
         let clientesMap = new Map();
         if (clienteIds.length > 0) {
@@ -67,12 +68,12 @@ export const useCreditos = (organizationId, filters = {}) => {
             .from('clientes')
             .select('id, nombre, documento, telefono, email, direccion')
             .in('id', clienteIds);
-          
+
           if (clientesData) {
             clientesMap = new Map(clientesData.map(c => [c.id, c]));
           }
         }
-        
+
         // Cargar ventas (incluyendo items para mostrar productos)
         let ventasMap = new Map();
         if (ventaIds.length > 0) {
@@ -80,12 +81,12 @@ export const useCreditos = (organizationId, filters = {}) => {
             .from('ventas')
             .select('id, numero_venta, total, created_at, items')
             .in('id', ventaIds);
-          
+
           if (ventasData) {
             ventasMap = new Map(ventasData.map(v => [v.id, v]));
           }
         }
-        
+
         // Combinar datos
         const creditosCombinados = creditosData.map(credito => ({
           ...credito,
@@ -136,7 +137,7 @@ export const useCredito = (creditoId) => {
     queryKey: ['credito', creditoId],
     queryFn: async () => {
       if (!creditoId) return null;
-      
+
       const { data, error } = await supabase
         .from('creditos')
         .select(`
@@ -147,12 +148,12 @@ export const useCredito = (creditoId) => {
         `)
         .eq('id', creditoId)
         .single();
-      
+
       if (error) {
         console.error('Error fetching credito:', error);
         throw error;
       }
-      
+
       return data;
     },
     enabled: !!creditoId,
@@ -300,24 +301,24 @@ export const usePagosCredito = (creditoId) => {
         const cached = await getCachedPagosCredito(creditoId);
         return cached || [];
       }
-      
+
       console.log('usePagosCredito: Buscando pagos para credito_id:', creditoId);
-      
+
       // Primero intentar sin la relación con auth.users para evitar problemas
       const { data, error } = await supabase
         .from('pagos_creditos')
         .select('*')
         .eq('credito_id', creditoId)
         .order('created_at', { ascending: false });
-      
+
       if (error) {
         console.error('Error fetching pagos credito:', error);
         console.error('Error details:', JSON.stringify(error, null, 2));
         throw error;
       }
-      
+
       console.log('usePagosCredito: Pagos encontrados:', data?.length || 0, data);
-      
+
       const pagos = data || [];
       if (pagos.length > 0) {
         const orgId = pagos[0]?.organization_id;
@@ -382,25 +383,25 @@ export const useEstadisticasCreditos = (organizationId) => {
     queryKey: ['estadisticas_creditos', organizationId],
     queryFn: async () => {
       if (!organizationId) return null;
-      
+
       try {
         const { data: creditos, error } = await supabase
           .from('creditos')
           .select('monto_total, monto_pagado, monto_pendiente, estado, fecha_vencimiento')
           .eq('organization_id', organizationId);
-        
+
         if (error) {
           throw error;
         }
-        
+
         const totalPendiente = creditos
           .filter(c => c.estado !== 'pagado' && c.estado !== 'cancelado')
           .reduce((sum, c) => sum + parseFloat(c.monto_pendiente || 0), 0);
-        
+
         const totalPagado = creditos
           .filter(c => c.estado === 'pagado')
           .reduce((sum, c) => sum + parseFloat(c.monto_total || 0), 0);
-        
+
         const vencidos = creditos.filter(c => {
           if (!c.fecha_vencimiento) return false;
           const fechaVenc = new Date(c.fecha_vencimiento);
@@ -408,9 +409,9 @@ export const useEstadisticasCreditos = (organizationId) => {
           hoy.setHours(0, 0, 0, 0);
           return fechaVenc < hoy && c.estado !== 'pagado' && c.estado !== 'cancelado';
         });
-        
+
         const totalVencido = vencidos.reduce((sum, c) => sum + parseFloat(c.monto_pendiente || 0), 0);
-        
+
         return {
           totalCreditos: creditos.length,
           totalPendiente,
