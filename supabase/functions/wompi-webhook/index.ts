@@ -255,7 +255,7 @@ serve(async (req) => {
         const updateData: any = {
           status: 'approved', // Cambiado de 'completed' a 'approved' para cumplir con la constraint
           wompi_transaction_id: transactionId,
-          payment_date: new Date().toISOString(),
+          completed_at: new Date().toISOString(),
         }
         
         // Actualizar reference si no estaba guardado o es diferente
@@ -271,6 +271,11 @@ serve(async (req) => {
 
         if (paymentUpdateError) {
           console.error('❌ Error actualizando pago:', paymentUpdateError)
+          // Si falla la actualización del pago, retornamos error para que no siga e intente más tarde
+          return new Response(
+            JSON.stringify({ error: 'Error actualizando pago en BD', details: paymentUpdateError }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+          )
         } else {
           console.log('✅ Pago actualizado a approved')
         }
@@ -316,6 +321,8 @@ serve(async (req) => {
 
           if (updateError) {
             console.error('❌ Error actualizando suscripción:', updateError)
+            // No detenemos el flujo completo pero es importante loguearlo como json
+            console.error('   Detalles:', JSON.stringify(updateError, null, 2))
           } else {
             subscriptionId = updatedSub.id
             console.log('✅ Suscripción actualizada:', subscriptionId)
@@ -354,6 +361,7 @@ serve(async (req) => {
 
           if (linkPaymentError) {
             console.error('❌ Error vinculando pago con suscripción:', linkPaymentError)
+            console.error('   Detalles:', JSON.stringify(linkPaymentError, null, 2))
           } else {
             console.log('✅ Pago vinculado con suscripción:', subscriptionId)
           }
@@ -369,6 +377,7 @@ serve(async (req) => {
 
           if (orgUpdateError) {
             console.error('❌ Error actualizando organización:', orgUpdateError)
+            console.error('   Detalles:', JSON.stringify(orgUpdateError, null, 2))
           } else {
             console.log('✅ Organización actualizada con suscripción:', subscriptionId)
           }

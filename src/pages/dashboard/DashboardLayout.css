@@ -5,9 +5,11 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
-  height: 100dvh; /* Dynamic viewport height para móviles */
+  height: 100dvh;
+  /* Dynamic viewport height para móviles */
   background: #F2F2F7;
-  overflow: visible; /* Permitir que tooltips sobresalgan */
+  overflow: visible;
+  /* Permitir que tooltips sobresalgan */
   margin: 0;
   padding: 0;
   position: relative;
@@ -27,8 +29,8 @@
   -webkit-backdrop-filter: blur(60px) saturate(200%);
   border-right: 1px solid rgba(255, 255, 255, 0.4);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04),
-              0 0 0 1px rgba(255, 255, 255, 0.6) inset,
-              0 0 80px rgba(255, 255, 255, 0.1) inset;
+    0 0 0 1px rgba(255, 255, 255, 0.6) inset,
+    0 0 80px rgba(255, 255, 255, 0.1) inset;
   border-radius: 0 24px 24px 0;
   margin: 12px 0;
   padding: 4px 0;
@@ -81,7 +83,8 @@ body[data-modal-open="true"] .dashboard-sidebar:hover {
   min-height: 70px;
   overflow: hidden;
   flex-shrink: 0;
-  order: -1; /* Primero en el orden */
+  order: -1;
+  /* Primero en el orden */
 }
 
 .dashboard-sidebar:hover .dashboard-logo {
@@ -125,7 +128,8 @@ body[data-modal-open="true"] .dashboard-sidebar:hover {
   position: relative;
   z-index: 100;
   flex-shrink: 0;
-  order: 0; /* Mantener después del logo */
+  order: 0;
+  /* Mantener después del logo */
 }
 
 .dashboard-sidebar:hover .org-switcher-container {
@@ -150,9 +154,12 @@ body[data-modal-open="true"] .dashboard-sidebar:hover {
   padding: 16px 8px;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  flex: 0 1 auto; /* Permitir crecimiento pero no ocupar todo el espacio */
-  min-height: 0; /* Permitir scroll si es necesario */
-  order: 1; /* Mover después del logo y org switcher */
+  flex: 0 1 auto;
+  /* Permitir crecimiento pero no ocupar todo el espacio */
+  min-height: 0;
+  /* Permitir scroll si es necesario */
+  order: 1;
+  /* Mover después del logo y org switcher */
 }
 
 .dashboard-sidebar:hover .dashboard-nav {
@@ -238,7 +245,8 @@ body[data-modal-open="true"] .dashboard-sidebar:hover {
   flex-direction: column;
   min-width: 0;
   background: #F2F2F7;
-  overflow: visible; /* Cambiado a visible para permitir que dropdowns sobresalgan */
+  overflow: visible;
+  /* Cambiado a visible para permitir que dropdowns sobresalgan */
   margin: 0;
   padding-top: 0;
   width: 100%;
@@ -283,7 +291,8 @@ body[data-modal-open="true"] .dashboard-sidebar:hover {
   margin: 0;
   background: #F2F2F7;
   overflow-y: auto;
-  overflow-x: visible; /* Cambiado a visible para permitir que dropdowns sobresalgan */
+  overflow-x: visible;
+  /* Cambiado a visible para permitir que dropdowns sobresalgan */
   -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
@@ -294,7 +303,7 @@ body[data-modal-open="true"] .dashboard-sidebar:hover {
 
 @media (max-width: 768px) {
   .dashboard-content {
-    padding: 16px;
+    padding: 4px;
   }
 }
 
@@ -351,18 +360,19 @@ body[data-modal-open="true"] .dashboard-sidebar:hover {
 @media (max-width: 768px) {
   .dashboard-layout {
     position: relative;
-    padding-bottom: 60px; /* Espacio para bottom nav */
+    padding-bottom: 60px;
+    /* Espacio para bottom nav */
   }
-  
+
   .sidebar-toggle {
     display: none !important;
   }
-  
+
   /* Ajustar contenido para bottom nav */
   .dashboard-content {
     padding-bottom: 80px;
   }
-  
+
   /* Sidebar as overlay en móvil */
   .dashboard-sidebar {
     position: fixed;
@@ -373,7 +383,7 @@ body[data-modal-open="true"] .dashboard-sidebar:hover {
     z-index: 1000;
     box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
   }
-  
+
   /* Backdrop cuando sidebar está abierto */
   .dashboard-sidebar:not(.collapsed)::before {
     content: '';
@@ -386,34 +396,39 @@ body[data-modal-open="true"] .dashboard-sidebar:hover {
     z-index: -1;
     animation: fadeIn 0.3s ease;
   }
-  
+
   @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
   }
-  
+
   .dashboard-main {
     width: 100%;
     margin-left: 0;
   }
-  
+
   .dashboard-nav a {
     padding: 14px 16px;
     font-size: 17px;
   }
-  
+
   .dashboard-content {
     padding: 1rem;
   }
-  
+
   .dashboard-header {
     padding: 0.8rem 1rem;
   }
-  
+
   .sidebar-toggle {
     display: none !important;
   }
-  
+
   .sidebar-overlay {
     position: fixed;
     top: 0;
@@ -434,26 +449,26 @@ body[data-modal-open="true"] .dashboard-sidebar:hover {
     padding: 1rem 0.8rem;
     gap: 1.5rem;
   }
-  
+
   .dashboard-logo-img {
     max-width: 100px;
     max-height: 50px;
   }
-  
+
   .dashboard-nav {
     gap: 1rem;
   }
-  
+
   .dashboard-nav a {
     font-size: 14px;
     padding: 10px 12px;
     min-height: 44px;
   }
-  
+
   .dashboard-content {
-    padding: 0.8rem;
+    padding: 0;
   }
-  
+
   .dashboard-header {
     padding: 0.6rem 0.8rem;
   }
@@ -465,7 +480,7 @@ body[data-modal-open="true"] .dashboard-sidebar:hover {
     font-size: 13px;
     padding: 8px 10px;
   }
-  
+
   .dashboard-logo-img {
     max-width: 70px;
     max-height: 35px;
@@ -505,14 +520,15 @@ body[data-modal-open="true"] .dashboard-sidebar:hover {
   border-radius: 12px;
   width: 100%;
   text-align: center;
-  transition: padding 0.3s cubic-bezier(0.16, 1, 0.3, 1), 
-              transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: padding 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   -webkit-tap-highlight-color: transparent;
   display: flex;
   justify-content: center;
   align-items: center;
   flex-shrink: 0;
-  order: 2; /* Al final, después de los menús */
+  order: 2;
+  /* Al final, después de los menús */
 }
 
 /* Cuando sidebar está colapsado, centrar el badge y hacerlo más pequeño */
@@ -547,10 +563,10 @@ body[data-modal-open="true"] .dashboard-sidebar:hover {
   gap: 8px;
   width: 100%;
   transition: padding 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-              width 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-              min-width 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-              max-width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    width 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    min-width 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    max-width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
   -webkit-tap-highlight-color: transparent;
   box-sizing: border-box;
@@ -658,8 +674,8 @@ body[data-modal-open="true"] .dashboard-sidebar:hover {
   -webkit-backdrop-filter: blur(60px) saturate(200%);
   border-right: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.9),
-              0 0 0 1px rgba(255, 255, 255, 0.15) inset,
-              0 0 80px rgba(255, 255, 255, 0.03) inset;
+    0 0 0 1px rgba(255, 255, 255, 0.15) inset,
+    0 0 80px rgba(255, 255, 255, 0.03) inset;
   border-radius: 0 24px 24px 0;
   margin: 12px 0;
   padding: 4px 0;
