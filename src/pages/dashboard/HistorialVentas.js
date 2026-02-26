@@ -13,12 +13,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useProductos } from '../../hooks/useProductos';
 import { supabase } from '../../services/api/supabaseClient';
 import ReciboVenta from '../../components/business/ReciboVenta';
-import { 
-  Search, 
-  RefreshCw, 
-  Printer, 
-  RotateCcw, 
-  Repeat, 
+import {
+  Search,
+  RefreshCw,
+  Printer,
+  RotateCcw,
+  Repeat,
   Eye,
   Calendar,
   X,
@@ -44,7 +44,7 @@ const HistorialVentas = () => {
   const historyDays = getLimit('historyDays');
   const { data: ventas = [], isLoading, refetch } = useVentas(userProfile?.organization_id, 500, historyDays);
   const { data: cotizaciones = [] } = useCotizaciones(userProfile?.organization_id);
-  
+
   useEffect(() => {
     let mounted = true;
     const loadPending = async () => {
@@ -63,7 +63,7 @@ const HistorialVentas = () => {
       clearInterval(timer);
     };
   }, [isOnline, isSyncing]);
-  
+
   // Combinar ventas y cotizaciones, ordenar por fecha
   const todasLasVentas = useMemo(() => {
     const combinadas = [...ventas, ...cotizaciones];
@@ -78,14 +78,14 @@ const HistorialVentas = () => {
   const [fechaEspecifica, setFechaEspecifica] = useState('');
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
-  
+
   // Hook para detectar código de barras
   const handleBarcodeScanned = useCallback((barcode) => {
     // Buscar en ventas por código de barras
     setBusqueda(barcode);
     toast('Buscando por código de barras...', { icon: '🔍' }); // TODO: Reemplazar con icono
   }, []);
-  
+
   const { inputRef: barcodeInputRef, handleKeyDown: handleBarcodeKeyDown, handleInputChange: handleBarcodeInputChange } = useBarcodeScanner(handleBarcodeScanned, {
     minLength: 3,
     maxTimeBetweenChars: 100,
@@ -95,10 +95,12 @@ const HistorialVentas = () => {
   const [mostrandoRecibo, setMostrandoRecibo] = useState(false);
   const [mostrandoDevolucion, setMostrandoDevolucion] = useState(false);
   const [mostrandoCambio, setMostrandoCambio] = useState(false);
+  const [mostrandoAnulacion, setMostrandoAnulacion] = useState(false);
   const [ventaParaAccion, setVentaParaAccion] = useState(null);
   const [mostrandoDetalles, setMostrandoDetalles] = useState(false);
   const [historialCambios, setHistorialCambios] = useState([]);
   const [cargandoHistorial, setCargandoHistorial] = useState(false);
+  const [procesandoAnulacion, setProcesandoAnulacion] = useState(false);
 
   const obtenerCreditoRelacionado = useCallback(async (ventaActual) => {
     if (!organization?.id || !ventaActual?.id) return null;
@@ -149,18 +151,18 @@ const HistorialVentas = () => {
 
   // Cargar cambios para todas las ventas
   const [ventasConCambios, setVentasConCambios] = useState(new Map());
-  
+
   useEffect(() => {
     const cargarCambios = async () => {
       if (!organization?.id || ventas.length === 0) return;
-      
+
       try {
         const { data: cambios, error } = await supabase
           .from('devoluciones')
           .select('venta_id, tipo, fecha')
           .eq('organization_id', organization.id)
           .order('fecha', { ascending: false });
-        
+
         // Si la tabla no existe (PGRST205, 42P01, 404) o hay otro error relacionado, simplemente no cargar cambios
         if (error) {
           // Códigos de error cuando la tabla no existe: PGRST205, 42P01, 404
@@ -177,7 +179,7 @@ const HistorialVentas = () => {
             return;
           }
         }
-        
+
         // Agrupar cambios por venta_id
         const cambiosMap = new Map();
         if (cambios) {
@@ -195,7 +197,7 @@ const HistorialVentas = () => {
         setVentasConCambios(new Map());
       }
     };
-    
+
     cargarCambios();
   }, [organization?.id, ventas.length]);
 
@@ -212,7 +214,7 @@ const HistorialVentas = () => {
       porcentaje_iva: cotizacion.porcentaje_iva || 19,
       cliente_id: cotizacion.cliente_id || null
     }));
-    
+
     // Navegar a Caja
     navigate('/dashboard/caja');
     toast.success('Cotización cargada. Puedes continuar con la venta.');
@@ -236,7 +238,7 @@ const HistorialVentas = () => {
       cliente: cotizacion.cliente || null,
       numero_venta: cotizacion.numero_venta || null
     };
-    
+
     setVentaSeleccionada(cotizacionRecibo);
     setMostrandoRecibo(true);
   };
@@ -284,11 +286,11 @@ const HistorialVentas = () => {
     if (filtroFecha !== 'todos') {
       const hoy = new Date();
       hoy.setHours(0, 0, 0, 0);
-      
+
       filtradas = filtradas.filter(venta => {
         const fechaVenta = new Date(venta.created_at || venta.fecha);
         fechaVenta.setHours(0, 0, 0, 0);
-        
+
         switch (filtroFecha) {
           case 'hoy':
             return fechaVenta.getTime() === hoy.getTime();
@@ -361,7 +363,7 @@ const HistorialVentas = () => {
     setVentaSeleccionada(venta);
     setMostrandoDetalles(true);
     setCargandoHistorial(true);
-    
+
     // Cargar historial de cambios desde la tabla devoluciones (si existe)
     try {
       const { data: cambios, error } = await supabase
@@ -369,7 +371,7 @@ const HistorialVentas = () => {
         .select('*')
         .eq('venta_id', venta.id)
         .order('fecha', { ascending: false });
-      
+
       // Si la tabla no existe (PGRST205) o hay otro error, simplemente no cargar historial
       if (error) {
         // Códigos de error cuando la tabla no existe: PGRST205, 42P01
@@ -410,7 +412,7 @@ const HistorialVentas = () => {
       cliente: venta.cliente || null,
       numero_venta: venta.numero_venta || null
     };
-    
+
     setVentaSeleccionada(ventaRecibo);
     setMostrandoRecibo(true);
   };
@@ -432,9 +434,132 @@ const HistorialVentas = () => {
     return `${id}::${variante}`;
   };
 
+  const procesarEliminarCotizacion = async (venta) => {
+    if (!window.confirm(`¿Estás seguro de eliminar permanentemente la cotización #${venta.numero_venta}? Esta acción no se puede deshacer.`)) {
+      return;
+    }
+
+    try {
+      setProcesandoAnulacion(true);
+      const { error } = await supabase
+        .from('ventas')
+        .delete()
+        .eq('id', venta.id);
+
+      if (error) throw error;
+
+      toast.success('Cotización eliminada correctamente');
+      if (typeof refetch === 'function') refetch();
+    } catch (error) {
+      console.error('Error eliminando cotización:', error);
+      toast.error('Error al eliminar la cotización');
+    } finally {
+      setProcesandoAnulacion(false);
+    }
+  };
+
+  const iniciarAnulacion = (venta) => {
+    setVentaParaAccion(venta);
+    setMostrandoAnulacion(true);
+  };
+
+  const procesarAnulacion = async () => {
+    if (!ventaParaAccion) return;
+
+    try {
+      setProcesandoAnulacion(true);
+
+      // 1. Obtener la venta actual con sus items para restaurar el stock
+      const { data: ventaDB, error: errorVenta } = await supabase
+        .from('ventas')
+        .select('*')
+        .eq('id', ventaParaAccion.id)
+        .single();
+
+      if (errorVenta || !ventaDB) {
+        throw new Error('No se pudo cargar la venta para anular');
+      }
+
+      const items = ventaDB.items || [];
+
+      // 2. Restaurar Stock
+      for (const item of items) {
+        if (item.es_topping || (typeof item.id === 'string' && item.id.startsWith('topping_'))) {
+          const toppingId = item.topping_id || (typeof item.id === 'string' ? item.id.replace('topping_', '') : item.id);
+          const { data: topping } = await supabase.from('toppings').select('stock').eq('id', toppingId).single();
+          if (topping && topping.stock !== null) {
+            await supabase.from('toppings').update({ stock: topping.stock + (item.qty || 1) }).eq('id', toppingId);
+          }
+        } else if (item.variant_id) {
+          const { data: variante } = await supabase.from('product_variants').select('stock').eq('id', item.variant_id).single();
+          if (variante && variante.stock !== null) {
+            await supabase.from('product_variants').update({ stock: variante.stock + (item.qty || 1) }).eq('id', item.variant_id);
+          }
+        } else {
+          // Producto normal o con metadata vinculada
+          const { data: producto } = await supabase.from('productos').select('stock, metadata').eq('id', item.id).single();
+          if (producto) {
+            if (producto.stock !== null) {
+              await supabase.from('productos').update({ stock: producto.stock + (item.qty || 1) }).eq('id', item.id);
+            }
+
+            // Restaurar productos vinculados
+            let metadata = producto.metadata;
+            if (typeof metadata === 'string') {
+              try { metadata = JSON.parse(metadata); } catch (e) { metadata = null; }
+            }
+            if (metadata?.productos_vinculados && Array.isArray(metadata.productos_vinculados)) {
+              for (const pv of metadata.productos_vinculados) {
+                if (!pv.producto_id) continue;
+                const qtyRestaurar = parseFloat(pv.cantidad || 0) * parseFloat(item.qty || 1);
+                const { data: pVinculado } = await supabase.from('productos').select('stock').eq('id', pv.producto_id).single();
+                if (pVinculado && pVinculado.stock !== null) {
+                  const nuevoStockObj = Math.round((parseFloat(pVinculado.stock) + qtyRestaurar) * 100) / 100;
+                  await supabase.from('productos').update({ stock: nuevoStockObj }).eq('id', pv.producto_id);
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // 3. Si era crédito, anular también el crédito o borrar sus pagos (marcarlo como anulado)
+      if (ventaDB.es_credito || ventaDB.credito_id) {
+        let credId = ventaDB.credito_id;
+        if (!credId) {
+          const { data: credDB } = await supabase.from('creditos').select('id').eq('venta_id', ventaDB.id).maybeSingle();
+          if (credDB) credId = credDB.id;
+        }
+
+        if (credId) {
+          await supabase.from('creditos').update({ estado: 'anulado' }).eq('id', credId);
+        }
+      }
+
+      // 4. Marcar la venta como anulada (total=0, items vacíos)
+      const { error: updateError } = await supabase
+        .from('ventas')
+        .update({ total: 0, items: [] })
+        .eq('id', ventaDB.id);
+
+      if (updateError) throw updateError;
+
+      toast.success('Venta cancelada correctamente. Stock restaurado.');
+      setMostrandoAnulacion(false);
+      setVentaParaAccion(null);
+      if (typeof refetch === 'function') refetch();
+
+    } catch (error) {
+      console.error('Error anulando venta:', error);
+      toast.error('Ocurrió un error al anular la venta.');
+    } finally {
+      setProcesandoAnulacion(false);
+    }
+  };
+
   const procesarCambio = async (venta, itemsACambiar, itemsNuevos, metodoPago = null, montoEntregado = null) => {
     try {
-      
+
       // Calcular total de productos devueltos
       const totalDevolucion = itemsACambiar.reduce((sum, item) => {
         const precioItem = item.precio_venta || item.precio || 0;
@@ -446,7 +571,7 @@ const HistorialVentas = () => {
         const precioItem = item.precio_venta || 0;
         return sum + (precioItem * item.qty);
       }, 0);
-      
+
       const diferencia = totalNuevo - totalDevolucion;
 
       // Obtener la venta actualizada desde la BD
@@ -464,7 +589,7 @@ const HistorialVentas = () => {
       const itemsOriginales = ventaActual.items || [];
       const itemsActualizados = [];
       const itemsACambiarMap = new Map();
-      
+
       // Crear mapa de items a cambiar por ID + variante
       itemsACambiar.forEach(item => {
         const key = obtenerKeyItem(item);
@@ -523,7 +648,7 @@ const HistorialVentas = () => {
         items: itemsActualizados,
         total: nuevoTotal
       };
-      
+
       // Si hay diferencia y se especificó método de pago
       if (diferencia !== 0 && metodoPago) {
         // Si la diferencia es positiva (cliente paga), actualizar método de pago
@@ -556,7 +681,7 @@ const HistorialVentas = () => {
         total_nuevo_calculado: nuevoTotal,
         fecha: new Date().toISOString()
       };
-      
+
       // Intentar guardar en tabla de auditoría (si existe, si no, solo loguear)
       try {
         const { error: insertError } = await supabase.from('devoluciones').insert([registroCambio]);
@@ -754,12 +879,12 @@ const HistorialVentas = () => {
 
       // Validar que los stocks se actualizaron correctamente
       const stocksActualizados = stockRestaurado === itemsACambiar.length && stockReducido === itemsNuevos.length;
-      
+
       let mensaje = diferencia > 0
         ? `Cambio procesado. Cliente pagó ${formatCOP(diferencia)} adicionales (${metodoPago || 'No especificado'}).`
         : diferencia < 0
-        ? `Cambio procesado. Cliente recibió ${formatCOP(Math.abs(diferencia))} de diferencia.`
-        : `Cambio procesado. Total equivalente.`;
+          ? `Cambio procesado. Cliente recibió ${formatCOP(Math.abs(diferencia))} de diferencia.`
+          : `Cambio procesado. Total equivalente.`;
 
       // Agregar información de stocks al mensaje si no se actualizaron todos
       if (!stocksActualizados) {
@@ -769,7 +894,7 @@ const HistorialVentas = () => {
       if (esVentaCredito && (!creditoActualizado || !pagoCambioRegistrado)) {
         mensaje += ' (Revisa créditos: no se pudo actualizar todo correctamente)';
       }
-      
+
       toast.success(mensaje);
       setMostrandoCambio(false);
       setVentaParaAccion(null);
@@ -802,7 +927,7 @@ const HistorialVentas = () => {
       const itemsOriginales = ventaActual.items || [];
       const itemsActualizados = [];
       const itemsDevolverMap = new Map();
-      
+
       // Crear mapa de items a devolver por ID + variante
       itemsDevolver.forEach(item => {
         const key = obtenerKeyItem(item);
@@ -857,7 +982,7 @@ const HistorialVentas = () => {
         motivo: 'Devolución de cliente',
         fecha: new Date().toISOString()
       };
-      
+
       // Intentar guardar en tabla de auditoría (si existe, si no, solo loguear)
       try {
         const { error: insertError } = await supabase.from('devoluciones').insert([registroDevolucion]);
@@ -970,8 +1095,8 @@ const HistorialVentas = () => {
       if (restockTargets === 0) {
         // No hay items con stock para restaurar (servicios u otros)
       } else if (stockRestaurado === restockTargets) {
-        const mensaje = esDevolucionCompleta 
-          ? `Devolución completa procesada. Venta anulada. Total revertido: ${formatCOP(totalDevolucion)}`
+        const mensaje = esDevolucionCompleta
+          ? `Devolución completa procesada. Venta cancelada. Total revertido: ${formatCOP(totalDevolucion)}`
           : `Devolución parcial procesada. ${itemsDevolver.length} producto(s) devuelto(s). Total ajustado: ${formatCOP(ventaActual.total)} → ${formatCOP(nuevoTotal)}`;
 
         toast.success(creditoActualizado ? mensaje : `${mensaje} (Revisa créditos: no se pudo actualizar)`);
@@ -1015,9 +1140,8 @@ const HistorialVentas = () => {
           <p>Gestiona devoluciones, cambios y reimprime recibos</p>
         </div>
         <span
-          className={`historial-connection-badge ${
-            isOnline ? 'historial-connection-badge--online' : 'historial-connection-badge--offline'
-          }`}
+          className={`historial-connection-badge ${isOnline ? 'historial-connection-badge--online' : 'historial-connection-badge--offline'
+            }`}
         >
           {isSyncing && pendingOutboxCount > 0 ? (
             <span className="historial-connection-spinner" aria-hidden="true" />
@@ -1026,7 +1150,7 @@ const HistorialVentas = () => {
           )}
           {isOnline ? (isSyncing && pendingOutboxCount > 0 ? 'Sincronizando…' : 'Conectado') : 'Sin internet'}
         </span>
-        <button 
+        <button
           className="btn-refresh"
           onClick={() => refetch()}
           title="Actualizar"
@@ -1056,7 +1180,7 @@ const HistorialVentas = () => {
             }}
           />
           {busqueda && (
-            <button 
+            <button
               className="clear-search"
               onClick={() => setBusqueda('')}
             >
@@ -1067,8 +1191,8 @@ const HistorialVentas = () => {
 
         <div className="filtro-fecha">
           <Calendar size={18} className="filtro-fecha-icon-outside" />
-          <select 
-            value={filtroFecha} 
+          <select
+            value={filtroFecha}
             onChange={(e) => {
               setFiltroFecha(e.target.value);
               if (e.target.value !== 'especifica' && e.target.value !== 'rango') {
@@ -1093,10 +1217,10 @@ const HistorialVentas = () => {
               value={fechaEspecifica}
               onChange={(e) => setFechaEspecifica(e.target.value)}
               className="filtro-fecha-input"
-              title={fechaEspecifica ? new Date(fechaEspecifica).toLocaleDateString('es-CO', { 
-                day: '2-digit', 
-                month: '2-digit', 
-                year: 'numeric' 
+              title={fechaEspecifica ? new Date(fechaEspecifica).toLocaleDateString('es-CO', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
               }) : 'Seleccionar fecha'}
             />
           )}
@@ -1107,10 +1231,10 @@ const HistorialVentas = () => {
                 value={fechaInicio}
                 onChange={(e) => setFechaInicio(e.target.value)}
                 className="filtro-fecha-input"
-                title={fechaInicio ? new Date(fechaInicio).toLocaleDateString('es-CO', { 
-                  day: '2-digit', 
-                  month: '2-digit', 
-                  year: 'numeric' 
+                title={fechaInicio ? new Date(fechaInicio).toLocaleDateString('es-CO', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric'
                 }) : 'Seleccionar fecha inicio'}
               />
               <span className="filtro-fecha-separador">-</span>
@@ -1119,10 +1243,10 @@ const HistorialVentas = () => {
                 value={fechaFin}
                 onChange={(e) => setFechaFin(e.target.value)}
                 className="filtro-fecha-input"
-                title={fechaFin ? new Date(fechaFin).toLocaleDateString('es-CO', { 
-                  day: '2-digit', 
-                  month: '2-digit', 
-                  year: 'numeric' 
+                title={fechaFin ? new Date(fechaFin).toLocaleDateString('es-CO', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric'
                 }) : 'Seleccionar fecha fin'}
               />
             </>
@@ -1194,9 +1318,15 @@ const HistorialVentas = () => {
                   )}
                 </div>
                 <div className={`venta-total ${venta.total === 0 ? 'devuelta' : ''}`}>
-                  {formatCOP(venta.total || 0)}
-                  {venta.total === 0 && (
-                    <span className="total-note">(Ajustado)</span>
+                  {(venta.total === 0 && (!venta.items || venta.items.length === 0)) ? (
+                    <span style={{ color: '#ef4444', fontWeight: '600', fontSize: '0.85rem' }}>ANULADA</span>
+                  ) : (
+                    <>
+                      {formatCOP(venta.total || 0)}
+                      {venta.total === 0 && (
+                        <span className="total-note">(Ajustado)</span>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -1212,13 +1342,13 @@ const HistorialVentas = () => {
                       {item.variant_nombre ? ` · ${item.variant_nombre}` : ''}
                       {item.variaciones && Object.keys(item.variaciones).length > 0
                         ? ` · Var: ${Object.entries(item.variaciones)
-                            .map(([key, value]) => `${key}: ${typeof value === 'boolean' ? (value ? 'Sí' : 'No') : String(value)}`)
-                            .join(', ')}`
+                          .map(([key, value]) => `${key}: ${typeof value === 'boolean' ? (value ? 'Sí' : 'No') : String(value)}`)
+                          .join(', ')}`
                         : ''}
                       {item.toppings && Array.isArray(item.toppings) && item.toppings.length > 0
                         ? ` · Top: ${item.toppings
-                            .map((topping) => `${topping.nombre}${topping.cantidad > 1 ? ` (x${topping.cantidad})` : ''}`)
-                            .join(', ')}`
+                          .map((topping) => `${topping.nombre}${topping.cantidad > 1 ? ` (x${topping.cantidad})` : ''}`)
+                          .join(', ')}`
                         : ''}
                     </span>
                   ))}
@@ -1278,7 +1408,7 @@ const HistorialVentas = () => {
                     </button>
                   </>
                 )}
-                {venta.total > 0 && venta.estado !== 'cotizacion' && venta.metodo_pago !== 'COTIZACION' && (
+                {venta.total > 0 && venta.estado !== 'cotizacion' && !(venta.total === 0 && (!venta.items || venta.items.length === 0)) && venta.metodo_pago !== 'COTIZACION' && (
                   <>
                     <button
                       className="btn-action btn-return"
@@ -1296,7 +1426,28 @@ const HistorialVentas = () => {
                       <Repeat size={16} />
                       Cambiar
                     </button>
+                    <button
+                      className="btn-action"
+                      style={{ color: '#ef4444', backgroundColor: '#fef2f2', border: '1px solid #fca5a5' }}
+                      onClick={() => iniciarAnulacion(venta)}
+                      title="Anular Venta Completa"
+                    >
+                      <Trash2 size={16} />
+                      Anular
+                    </button>
                   </>
+                )}
+                {(venta.estado === 'cotizacion' || venta.metodo_pago === 'COTIZACION') && (
+                  <button
+                    className="btn-action"
+                    style={{ color: '#ef4444', backgroundColor: '#fef2f2', border: '1px solid #fca5a5' }}
+                    onClick={() => procesarEliminarCotizacion(venta)}
+                    title="Eliminar Cotización Permanentemente"
+                    disabled={procesandoAnulacion}
+                  >
+                    <Trash2 size={16} />
+                    Eliminar
+                  </button>
                 )}
               </div>
             </motion.div>
@@ -1312,7 +1463,7 @@ const HistorialVentas = () => {
           setHistorialCambios([]);
         }}>
           <div className="modal-content modal-detalles-venta" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <button 
+            <button
               className="modal-close"
               onClick={() => {
                 setMostrandoDetalles(false);
@@ -1322,9 +1473,9 @@ const HistorialVentas = () => {
             >
               <X size={24} />
             </button>
-            
+
             <h2 style={{ marginBottom: '1.5rem' }}>Detalles de Venta #{ventaSeleccionada.id?.slice(0, 8)}</h2>
-            
+
             {/* Información básica */}
             <div style={{ marginBottom: '2rem', padding: '1rem', background: '#f9fafb', borderRadius: '8px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
@@ -1365,12 +1516,12 @@ const HistorialVentas = () => {
                         </div>
                         {/* Información de joyería */}
                         {tieneJewelryInfo && organization?.business_type === 'jewelry_metals' && (
-                          <div style={{ 
-                            marginTop: '0.35rem', 
-                            fontSize: '0.8rem', 
-                            display: 'flex', 
-                            flexWrap: 'wrap', 
-                            gap: '0.5rem' 
+                          <div style={{
+                            marginTop: '0.35rem',
+                            fontSize: '0.8rem',
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: '0.5rem'
                           }}>
                             {item.metadata.peso && (
                               <span style={{
@@ -1462,9 +1613,9 @@ const HistorialVentas = () => {
                     <div key={idx} style={{ padding: '1rem', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.75rem' }}>
                         <div>
-                          <span style={{ 
-                            padding: '0.25rem 0.75rem', 
-                            borderRadius: '4px', 
+                          <span style={{
+                            padding: '0.25rem 0.75rem',
+                            borderRadius: '4px',
                             fontSize: '0.875rem',
                             fontWeight: '600',
                             background: cambio.tipo === 'cambio' ? '#dbeafe' : '#fee2e2',
@@ -1502,7 +1653,7 @@ const HistorialVentas = () => {
                           )}
                           {cambio.diferencia !== undefined && cambio.diferencia !== 0 && (
                             <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: cambio.diferencia > 0 ? '#fef3c7' : '#d1fae5', borderRadius: '4px' }}>
-                              <strong>Diferencia:</strong> {cambio.diferencia > 0 
+                              <strong>Diferencia:</strong> {cambio.diferencia > 0
                                 ? `Cliente pagó ${formatCOP(cambio.diferencia)} adicionales`
                                 : `Cliente recibió ${formatCOP(Math.abs(cambio.diferencia))} de diferencia`
                               }
@@ -1535,7 +1686,7 @@ const HistorialVentas = () => {
             ) : null}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '2rem' }}>
-              <button 
+              <button
                 className="btn-cancel"
                 onClick={() => {
                   setMostrandoDetalles(false);
@@ -1554,13 +1705,13 @@ const HistorialVentas = () => {
       {mostrandoRecibo && ventaSeleccionada && (
         <div className="modal-overlay" onClick={() => setMostrandoRecibo(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <button 
+            <button
               className="modal-close"
               onClick={() => setMostrandoRecibo(false)}
             >
               <X size={24} />
             </button>
-            <ReciboVenta 
+            <ReciboVenta
               venta={ventaSeleccionada}
               mostrarCerrar={true}
               onCerrar={() => {
@@ -1568,6 +1719,37 @@ const HistorialVentas = () => {
                 setVentaSeleccionada(null);
               }}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Modal de confirmación anulación */}
+      {mostrandoAnulacion && ventaParaAccion && (
+        <div className="modal-overlay" onClick={() => !procesandoAnulacion && setMostrandoAnulacion(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px', textAlign: 'center' }}>
+            <h3 style={{ color: '#dc2626', marginBottom: '1rem', fontSize: '1.25rem' }}>Anular Venta</h3>
+            <p style={{ marginBottom: '1.5rem', color: '#4b5563' }}>
+              ¿Estás seguro de que deseas anular esta venta (<strong>#{ventaParaAccion.numero_venta}</strong>)?
+              <br /><br />
+              <strong>Atención:</strong> Esta acción devolverá los productos al inventario y eliminará este ingreso de los reportes y cierres de caja.
+            </p>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+              <button
+                className="btn-cancel"
+                onClick={() => setMostrandoAnulacion(false)}
+                disabled={procesandoAnulacion}
+              >
+                Cancelar
+              </button>
+              <button
+                className="btn-confirm"
+                style={{ backgroundColor: '#ef4444' }}
+                onClick={procesarAnulacion}
+                disabled={procesandoAnulacion}
+              >
+                {procesandoAnulacion ? 'Anulando...' : 'Sí, Anular Venta'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1606,7 +1788,7 @@ const ModalDevolucion = ({ venta, onConfirmar, onCancelar }) => {
   // Agrupar productos por ID para manejar duplicados
   const itemsAgrupados = React.useMemo(() => {
     if (!venta.items) return [];
-    
+
     const agrupados = {};
     venta.items.forEach(item => {
       const itemId = item.id || item.producto_id;
@@ -1623,7 +1805,7 @@ const ModalDevolucion = ({ venta, onConfirmar, onCancelar }) => {
         };
       }
     });
-    
+
     return Object.values(agrupados);
   }, [venta.items]);
 
@@ -1707,45 +1889,45 @@ const ModalDevolucion = ({ venta, onConfirmar, onCancelar }) => {
                       >
                         -
                       </button>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          value={String(seleccionado.qty || 1)}
-                          onChange={(e) => {
-                            const valor = e.target.value.replace(/\D/g, '');
-                            const nuevaCantidad = valor ? Math.max(1, Math.min(parseInt(valor, 10), cantidadDisponible)) : 1;
-                            actualizarCantidad(item.id, nuevaCantidad);
-                          }}
-                          onClick={(e) => e.stopPropagation()}
-                          onFocus={(e) => e.target.select()}
-                          className="qty-input"
-                          style={{
-                            width: '36px',
-                            height: '24px',
-                            minWidth: '36px',
-                            maxWidth: '36px',
-                            minHeight: '24px',
-                            maxHeight: '24px',
-                            display: 'block',
-                            visibility: 'visible',
-                            opacity: 1,
-                            position: 'relative',
-                            zIndex: 10000,
-                            backgroundColor: 'white',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '4px',
-                            textAlign: 'center',
-                            fontSize: '0.9rem',
-                            fontWeight: 700,
-                            color: '#1a1a1a',
-                            WebkitTextFillColor: '#1a1a1a',
-                            padding: 0,
-                            margin: 0,
-                            lineHeight: '24px',
-                            boxSizing: 'border-box'
-                          }}
-                        />
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={String(seleccionado.qty || 1)}
+                        onChange={(e) => {
+                          const valor = e.target.value.replace(/\D/g, '');
+                          const nuevaCantidad = valor ? Math.max(1, Math.min(parseInt(valor, 10), cantidadDisponible)) : 1;
+                          actualizarCantidad(item.id, nuevaCantidad);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        onFocus={(e) => e.target.select()}
+                        className="qty-input"
+                        style={{
+                          width: '36px',
+                          height: '24px',
+                          minWidth: '36px',
+                          maxWidth: '36px',
+                          minHeight: '24px',
+                          maxHeight: '24px',
+                          display: 'block',
+                          visibility: 'visible',
+                          opacity: 1,
+                          position: 'relative',
+                          zIndex: 10000,
+                          backgroundColor: 'white',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '4px',
+                          textAlign: 'center',
+                          fontSize: '0.9rem',
+                          fontWeight: 700,
+                          color: '#1a1a1a',
+                          WebkitTextFillColor: '#1a1a1a',
+                          padding: 0,
+                          margin: 0,
+                          lineHeight: '24px',
+                          boxSizing: 'border-box'
+                        }}
+                      />
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -1804,7 +1986,7 @@ const ModalCambio = ({ venta, onConfirmar, onCancelar }) => {
   // Agrupar productos por ID para manejar duplicados
   const itemsAgrupados = React.useMemo(() => {
     if (!venta.items) return [];
-    
+
     const agrupados = {};
     venta.items.forEach(item => {
       const itemId = item.id || item.producto_id;
@@ -1821,7 +2003,7 @@ const ModalCambio = ({ venta, onConfirmar, onCancelar }) => {
         };
       }
     });
-    
+
     return Object.values(agrupados);
   }, [venta.items]);
 
@@ -1833,8 +2015,8 @@ const ModalCambio = ({ venta, onConfirmar, onCancelar }) => {
       // Filtrar por búsqueda
       if (busqueda.trim()) {
         const q = busqueda.toLowerCase();
-        return p.nombre.toLowerCase().includes(q) || 
-               p.codigo?.toLowerCase().includes(q);
+        return p.nombre.toLowerCase().includes(q) ||
+          p.codigo?.toLowerCase().includes(q);
       }
       return true;
     });
@@ -1869,8 +2051,8 @@ const ModalCambio = ({ venta, onConfirmar, onCancelar }) => {
     setItemsNuevos(prev => {
       const existe = prev.find(p => p.id === producto.id);
       if (existe) {
-        return prev.map(p => 
-          p.id === producto.id 
+        return prev.map(p =>
+          p.id === producto.id
             ? { ...p, qty: (p.qty || 1) + 1 }
             : p
         );
@@ -1945,7 +2127,7 @@ const ModalCambio = ({ venta, onConfirmar, onCancelar }) => {
         toast.error('Selecciona un método de pago');
         return;
       }
-      
+
       // Si es efectivo, validar monto
       if (metodoPago === 'Efectivo') {
         const monto = parseFloat(montoEntregado.replace(/[^\d]/g, '')) || 0;
@@ -1959,7 +2141,7 @@ const ModalCambio = ({ venta, onConfirmar, onCancelar }) => {
       }
     }
   };
-  
+
   const handleValorPredefinido = (valor) => {
     const montoActual = parseFloat(montoEntregado.replace(/[^\d]/g, '')) || 0;
     const nuevoMonto = montoActual + valor;
@@ -1973,11 +2155,11 @@ const ModalCambio = ({ venta, onConfirmar, onCancelar }) => {
       <div className="modal-content modal-cambio">
         <h2>Cambio de Productos</h2>
         <p className="modal-subtitle">
-          {paso === 1 
+          {paso === 1
             ? 'Paso 1: Selecciona los productos a cambiar'
             : paso === 2
-            ? 'Paso 2: Selecciona los productos nuevos'
-            : 'Paso 3: Método de pago'
+              ? 'Paso 2: Selecciona los productos nuevos'
+              : 'Paso 3: Método de pago'
           }
         </p>
 
@@ -2214,11 +2396,11 @@ const ModalCambio = ({ venta, onConfirmar, onCancelar }) => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.875rem', fontWeight: '600', color: diferencia > 0 ? '#ef4444' : diferencia < 0 ? '#10b981' : '#6b7280' }}>
                   <span>Diferencia:</span>
                   <span>
-                    {diferencia > 0 
+                    {diferencia > 0
                       ? `Cliente paga: ${formatCOP(diferencia)}`
                       : diferencia < 0
-                      ? `Cliente recibe: ${formatCOP(Math.abs(diferencia))}`
-                      : 'Total equivalente'
+                        ? `Cliente recibe: ${formatCOP(Math.abs(diferencia))}`
+                        : 'Total equivalente'
                     }
                   </span>
                 </div>
@@ -2435,13 +2617,13 @@ const ModalCambio = ({ venta, onConfirmar, onCancelar }) => {
             className="btn-confirm"
             onClick={handleConfirmar}
             disabled={
-              paso === 1 ? itemsACambiar.length === 0 
-              : paso === 2 ? itemsNuevos.length === 0
-              : diferencia > 0 && (
-                !metodoPago ||
-                (metodoPago === 'Credito' && !puedeCredito) ||
-                (metodoPago === 'Efectivo' && (!montoEntregado || parseFloat(montoEntregado.replace(/[^\d]/g, '')) < diferencia))
-              )
+              paso === 1 ? itemsACambiar.length === 0
+                : paso === 2 ? itemsNuevos.length === 0
+                  : diferencia > 0 && (
+                    !metodoPago ||
+                    (metodoPago === 'Credito' && !puedeCredito) ||
+                    (metodoPago === 'Efectivo' && (!montoEntregado || parseFloat(montoEntregado.replace(/[^\d]/g, '')) < diferencia))
+                  )
             }
           >
             <Repeat size={18} />

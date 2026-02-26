@@ -1,7 +1,10 @@
+
 import React, { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
+
+import { useNavigate } from 'react-router-dom';
+
 import { supabase } from '../../services/api/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import { useSubscription } from '../../hooks/useSubscription';
@@ -28,6 +31,8 @@ import DescuentoModal from '../../components/modals/DescuentoModal';
 import ConsultarPrecioModal from '../../components/modals/ConsultarPrecioModal';
 import ToppingsSelector from '../../components/ToppingsSelector';
 import VariacionesSelector from '../../components/VariacionesSelector';
+import LottieLoader from '../../components/ui/LottieLoader';
+
 import { ShoppingCart, Trash2, CheckCircle, CreditCard, Banknote, Smartphone, Wallet, ArrowLeft, Save, Plus, X, UserCircle, Lock, Percent, List, ArrowRight, Package, Receipt, Search, DollarSign, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
 import './Caja.css';
@@ -37,10 +42,10 @@ import './Caja.css';
 // Utilidad: formato COP
 function formatCOP(value) {
   try {
-    return new Intl.NumberFormat("es-CO", { 
-      style: "currency", 
-      currency: "COP", 
-      maximumFractionDigits: 0 
+    return new Intl.NumberFormat("es-CO", {
+      style: "currency",
+      currency: "COP",
+      maximumFractionDigits: 0
     }).format(value);
   } catch {
     return "$" + value.toLocaleString("es-CO");
@@ -48,11 +53,11 @@ function formatCOP(value) {
 }
 
 // Componente para métodos de pago (extraído y memoizado)
-const MetodosPago = React.memo(({ 
-  metodoSeleccionado, 
-  setMetodoSeleccionado, 
-  total, 
-  hasFeature, 
+const MetodosPago = React.memo(({
+  metodoSeleccionado,
+  setMetodoSeleccionado,
+  total,
+  hasFeature,
   setMostrandoMetodosPago,
   handleSeleccionarMetodoPago,
   pedidosOcultos
@@ -63,9 +68,9 @@ const MetodosPago = React.memo(({
         <h3>Selecciona el método de pago</h3>
         <p className="metodos-pago-total">Total a pagar: <span>{formatCOP(total)}</span></p>
       </div>
-      
+
       <div className="metodos-pago-grid">
-        <button 
+        <button
           className={`metodo-pago-card ${metodoSeleccionado === 'Efectivo' ? 'selected' : ''}`}
           onClick={() => setMetodoSeleccionado('Efectivo')}
         >
@@ -74,10 +79,10 @@ const MetodosPago = React.memo(({
           <span className="metodo-pago-label">Efectivo</span>
           <span className="metodo-pago-desc">Pago en efectivo</span>
         </button>
-        
+
         {hasFeature('multiplePaymentMethods') ? (
           <>
-            <button 
+            <button
               className={`metodo-pago-card ${metodoSeleccionado === 'Transferencia' ? 'selected' : ''}`}
               onClick={() => setMetodoSeleccionado('Transferencia')}
             >
@@ -86,8 +91,8 @@ const MetodosPago = React.memo(({
               <span className="metodo-pago-label">Transferencia</span>
               <span className="metodo-pago-desc">Transferencia bancaria</span>
             </button>
-            
-            <button 
+
+            <button
               className={`metodo-pago-card ${metodoSeleccionado === 'Nequi' ? 'selected' : ''}`}
               onClick={() => setMetodoSeleccionado('Nequi')}
             >
@@ -99,7 +104,7 @@ const MetodosPago = React.memo(({
           </>
         ) : (
           <>
-            <button 
+            <button
               className="metodo-pago-card metodo-pago-card-locked"
               onClick={() => toast.error('Los métodos de pago adicionales están disponibles en el plan Estándar')}
               style={{ opacity: 0.5, cursor: 'not-allowed' }}
@@ -108,8 +113,8 @@ const MetodosPago = React.memo(({
               <span className="metodo-pago-label">Transferencia</span>
               <span className="metodo-pago-desc">🔒 Plan Estándar</span>
             </button>
-            
-            <button 
+
+            <button
               className="metodo-pago-card metodo-pago-card-locked"
               onClick={() => toast.error('Los métodos de pago adicionales están disponibles en el plan Estándar')}
               style={{ opacity: 0.5, cursor: 'not-allowed' }}
@@ -120,9 +125,9 @@ const MetodosPago = React.memo(({
             </button>
           </>
         )}
-        
+
         {hasFeature('mixedPayments') ? (
-          <button 
+          <button
             className={`metodo-pago-card ${metodoSeleccionado === 'Mixto' ? 'selected' : ''}`}
             onClick={() => setMetodoSeleccionado('Mixto')}
           >
@@ -132,7 +137,7 @@ const MetodosPago = React.memo(({
             <span className="metodo-pago-desc">Varios métodos</span>
           </button>
         ) : (
-          <button 
+          <button
             className="metodo-pago-card metodo-pago-card-locked"
             onClick={() => toast.error('Los pagos mixtos están disponibles en el plan Estándar')}
             style={{ opacity: 0.5, cursor: 'not-allowed' }}
@@ -143,7 +148,7 @@ const MetodosPago = React.memo(({
           </button>
         )}
 
-        <button 
+        <button
           className={`metodo-pago-card metodo-pago-card-credito ${metodoSeleccionado === 'Credito' ? 'selected' : ''}`}
           onClick={() => setMetodoSeleccionado('Credito')}
         >
@@ -153,9 +158,9 @@ const MetodosPago = React.memo(({
           <span className="metodo-pago-desc">Venta a crédito / Fiado</span>
         </button>
       </div>
-      
+
       <div className="metodos-pago-actions">
-        <button 
+        <button
           className="metodos-pago-cancelar"
           onClick={() => {
             setMostrandoMetodosPago(false);
@@ -164,7 +169,7 @@ const MetodosPago = React.memo(({
         >
           Cancelar
         </button>
-        <button 
+        <button
           className="metodos-pago-continuar"
           onClick={() => {
             if (metodoSeleccionado) {
@@ -197,7 +202,7 @@ const PagoEfectivo = React.memo(({
   const [mostrarCalculos, setMostrarCalculos] = React.useState(false);
   const montoEntregadoRef = React.useRef(montoEntregado);
   const valoresComunes = [1000, 5000, 10000, 20000, 50000, 100000];
-  
+
   // Actualizar ref cuando montoEntregado cambia externamente
   React.useEffect(() => {
     montoEntregadoRef.current = montoEntregado;
@@ -227,7 +232,7 @@ const PagoEfectivo = React.memo(({
   const monto = React.useMemo(() => {
     return parseFloat(montoEntregado.replace(/[^\d]/g, '')) || 0;
   }, [montoEntregado]);
-  
+
   const cambio = React.useMemo(() => {
     return monto - total;
   }, [monto, total]);
@@ -239,7 +244,7 @@ const PagoEfectivo = React.memo(({
           <h3>Pago en Efectivo</h3>
           <p>Total a pagar: {formatCOP(total)}</p>
         </div>
-        
+
         <div className="pago-efectivo-content">
           <div className="pago-efectivo-input-section">
             <label className="pago-efectivo-label">Monto entregado por el cliente</label>
@@ -249,7 +254,7 @@ const PagoEfectivo = React.memo(({
               onChange={(e) => {
                 // Eliminar caracteres no numéricos
                 const rawValue = e.target.value.replace(/\D/g, '');
-                
+
                 if (rawValue === '') {
                   setInputValue('');
                 } else {
@@ -267,7 +272,7 @@ const PagoEfectivo = React.memo(({
               className="pago-efectivo-input"
               placeholder="Ingresa el monto"
               autoFocus
-              style={{ 
+              style={{
                 transition: 'none',
                 willChange: 'auto',
                 backfaceVisibility: 'hidden',
@@ -281,7 +286,7 @@ const PagoEfectivo = React.memo(({
           <div className="pago-efectivo-valores-comunes">
             <div className="pago-efectivo-subtitle-container">
               <p className="pago-efectivo-subtitle">Valores comunes:</p>
-              <button 
+              <button
                 className="pago-efectivo-limpiar-btn"
                 onClick={() => {
                   setInputValue('');
@@ -317,20 +322,20 @@ const PagoEfectivo = React.memo(({
             <div className={`pago-efectivo-cambio-item pago-efectivo-cambio-total ${cambio < 0 ? 'negativo' : 'positivo'}`}>
               <span>Cambio:</span>
               <span>
-                {cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambio)}
+                {cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))} ` : formatCOP(cambio)}
               </span>
             </div>
           </div>
         </div>
-        
+
         <div className="pago-efectivo-actions">
-          <button 
+          <button
             className="pago-efectivo-btn pago-efectivo-cancelar"
             onClick={handleCancelarPagoEfectivo}
           >
             Cancelar
           </button>
-          <button 
+          <button
             className="pago-efectivo-btn pago-efectivo-confirmar"
             onClick={handleConfirmarPagoEfectivo}
             disabled={monto < total}
@@ -401,23 +406,23 @@ const PagoMixto = React.memo(({
   const monto1 = React.useMemo(() => {
     return parseFloat(montoMixto1.replace(/[^\d]/g, '')) || 0;
   }, [montoMixto1]);
-  
+
   const monto2 = React.useMemo(() => {
     return parseFloat(montoMixto2.replace(/[^\d]/g, '')) || 0;
   }, [montoMixto2]);
-  
+
   const sumaMontos = React.useMemo(() => {
     return monto1 + monto2;
   }, [monto1, monto2]);
-  
+
   const diferencia = React.useMemo(() => {
     return total - sumaMontos;
   }, [total, sumaMontos]);
-  
+
   const hayEfectivo = React.useMemo(() => {
     return metodoMixto1 === 'Efectivo' || metodoMixto2 === 'Efectivo';
   }, [metodoMixto1, metodoMixto2]);
-  
+
   const cambio = React.useMemo(() => {
     return hayEfectivo && sumaMontos > total ? sumaMontos - total : 0;
   }, [hayEfectivo, sumaMontos, total]);
@@ -429,7 +434,7 @@ const PagoMixto = React.memo(({
           <h3>Pago Mixto</h3>
           <p>Total a pagar: {formatCOP(total)}</p>
         </div>
-        
+
         <div className="pago-efectivo-content">
           <div style={{ marginBottom: '1.5rem' }}>
             <label className="pago-efectivo-label" style={{ marginBottom: '0.5rem', display: 'block' }}>
@@ -452,7 +457,7 @@ const PagoMixto = React.memo(({
               <option value="Tarjeta">Tarjeta</option>
               <option value="Nequi">Nequi</option>
             </select>
-            
+
             <label className="pago-efectivo-label">Monto del primer método:</label>
             <input
               type="text"
@@ -473,7 +478,7 @@ const PagoMixto = React.memo(({
               }}
               className="pago-efectivo-input"
               placeholder="Ingresa el monto"
-              style={{ 
+              style={{
                 transition: 'none',
                 willChange: 'auto',
                 backfaceVisibility: 'hidden',
@@ -482,7 +487,7 @@ const PagoMixto = React.memo(({
                 WebkitTransform: 'translateZ(0)'
               }}
             />
-            
+
             <div className="pago-efectivo-botones">
               {valoresComunes.map((valor, index) => (
                 <button
@@ -517,7 +522,7 @@ const PagoMixto = React.memo(({
               <option value="Tarjeta">Tarjeta</option>
               <option value="Nequi">Nequi</option>
             </select>
-            
+
             <label className="pago-efectivo-label">Monto del segundo método:</label>
             <input
               type="text"
@@ -538,7 +543,7 @@ const PagoMixto = React.memo(({
               }}
               className="pago-efectivo-input"
               placeholder="Ingresa el monto"
-              style={{ 
+              style={{
                 transition: 'none',
                 willChange: 'auto',
                 backfaceVisibility: 'hidden',
@@ -547,7 +552,7 @@ const PagoMixto = React.memo(({
                 WebkitTransform: 'translateZ(0)'
               }}
             />
-            
+
             <div className="pago-efectivo-botones">
               {valoresComunes.map((valor, index) => (
                 <button
@@ -582,16 +587,14 @@ const PagoMixto = React.memo(({
               <span>Cambio a devolver:</span>
               <span>{formatCOP(cambio)}</span>
             </div>
-            <div className={`pago-efectivo-cambio-item pago-efectivo-cambio-total ${
-              !hayEfectivo ? (diferencia < -1 ? 'negativo' : diferencia > 1 ? 'negativo' : 'positivo') : 'hidden-inline'
-            }`}>
+            <div className={`pago-efectivo-cambio-item pago-efectivo-cambio-total ${!hayEfectivo ? (diferencia < -1 ? 'negativo' : diferencia > 1 ? 'negativo' : 'positivo') : 'hidden-inline'}`}>
               <span>Diferencia:</span>
               <span>
-                {diferencia < -1 
-                  ? `Sobran ${formatCOP(Math.abs(diferencia))}` 
+                {diferencia < -1
+                  ? `Sobran ${formatCOP(Math.abs(diferencia))} `
                   : diferencia > 1
-                  ? `Faltan ${formatCOP(diferencia)}`
-                  : 'Correcto ✓'
+                    ? `Faltan ${formatCOP(diferencia)} `
+                    : 'Correcto ✓'
                 }
               </span>
             </div>
@@ -601,20 +604,20 @@ const PagoMixto = React.memo(({
             </div>
           </div>
         </div>
-        
+
         <div className="pago-efectivo-actions">
-          <button 
+          <button
             className="pago-efectivo-btn pago-efectivo-cancelar"
             onClick={handleCancelarPagoMixto}
           >
             Cancelar
           </button>
-          <button 
+          <button
             className="pago-efectivo-btn pago-efectivo-confirmar"
             onClick={handleConfirmarPagoMixto}
             disabled={
-              monto1 <= 0 || 
-              monto2 <= 0 || 
+              monto1 <= 0 ||
+              monto2 <= 0 ||
               metodoMixto1 === metodoMixto2 ||
               (!hayEfectivo && Math.abs(diferencia) > 1) ||
               (hayEfectivo && diferencia > 1)
@@ -628,7 +631,160 @@ const PagoMixto = React.memo(({
   );
 });
 
-export default function Caja({ 
+// Componente para pago de Crédito con Abono Inicial (extraído y memoizado)
+const PagoCredito = React.memo(({
+  total,
+  pedidosOcultos,
+  hasFeature,
+  abonoInicial,
+  setAbonoInicial,
+  metodoPagoAbono,
+  setMetodoPagoAbono,
+  handleCancelarPagoCredito,
+  handleConfirmarPagoCredito
+}) => {
+  const [inputValue, setInputValue] = React.useState(abonoInicial);
+  const [mostrarCalculos, setMostrarCalculos] = React.useState(false);
+  const abonoInicialRef = React.useRef(abonoInicial);
+
+  React.useEffect(() => {
+    abonoInicialRef.current = abonoInicial;
+    setInputValue(abonoInicial);
+    setMostrarCalculos(true);
+  }, [abonoInicial]);
+
+  React.useEffect(() => {
+    if (inputValue === abonoInicialRef.current) return;
+    setMostrarCalculos(false);
+    const timer = setTimeout(() => {
+      if (inputValue !== abonoInicialRef.current) {
+        setAbonoInicial(inputValue);
+        setMostrarCalculos(true);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [inputValue, setAbonoInicial]);
+
+  const montoAbono = React.useMemo(() => {
+    return parseFloat(abonoInicial.replace(/[^\d]/g, '')) || 0;
+  }, [abonoInicial]);
+
+  const nuevoPendiente = React.useMemo(() => {
+    return total - montoAbono;
+  }, [total, montoAbono]);
+
+  // Si abona más que el total se frena
+  const esAbonoExcesivo = montoAbono > total;
+
+  return (
+    <div className={`pago-efectivo-overlay ${pedidosOcultos ? 'pedidos-ocultos' : ''}`}>
+      <div className="pago-efectivo-container">
+        <div className="pago-efectivo-header">
+          <h3>Venta a Crédito / Fiado</h3>
+          <p>Total deuda: {formatCOP(total)}</p>
+        </div>
+
+        <div className="pago-efectivo-content">
+          <p style={{ marginBottom: '1rem', color: '#666', fontSize: '0.9rem' }}>
+            Puedes registrar un abono inicial (opcional). Si dejas el campo en blanco o en cero, el crédito se creará por la totalidad de {formatCOP(total)}.
+          </p>
+
+          <label className="pago-efectivo-label">Monto del abono inicial (Opcional):</label>
+          <input
+            type="text"
+            value={inputValue}
+            onChange={(e) => {
+              const rawValue = e.target.value.replace(/\D/g, '');
+              if (rawValue === '') {
+                setInputValue('');
+              } else {
+                const numberValue = parseInt(rawValue, 10);
+                const formattedValue = new Intl.NumberFormat('es-CO').format(numberValue);
+                setInputValue(formattedValue);
+              }
+            }}
+            onBlur={() => {
+              setAbonoInicial(inputValue);
+              setMostrarCalculos(true);
+            }}
+            className="pago-efectivo-input"
+            placeholder="Ej. 10000"
+            style={{
+              transition: 'none',
+              willChange: 'auto',
+              backfaceVisibility: 'hidden',
+              transform: 'translateZ(0)',
+              WebkitBackfaceVisibility: 'hidden',
+              WebkitTransform: 'translateZ(0)'
+            }}
+          />
+
+          <label className="pago-efectivo-label" style={{ marginTop: '1rem' }}>Método de pago del abono:</label>
+          <select
+            value={metodoPagoAbono}
+            onChange={(e) => setMetodoPagoAbono(e.target.value)}
+            disabled={montoAbono === 0}
+            style={{
+              width: '100%',
+              padding: '0.75rem',
+              border: '1px solid #e5e7eb',
+              borderRadius: '8px',
+              fontSize: '1rem',
+              marginBottom: '0.75rem',
+              opacity: montoAbono === 0 ? 0.5 : 1
+            }}
+          >
+            <option value="Efectivo">Efectivo</option>
+            {hasFeature('multiplePaymentMethods') && (
+              <>
+                <option value="Transferencia">Transferencia</option>
+                <option value="Nequi">Nequi</option>
+                <option value="Tarjeta">Tarjeta</option>
+              </>
+            )}
+          </select>
+
+          <div className={`pago-efectivo-cambio ${(!mostrarCalculos || montoAbono === 0) ? 'hidden' : ''}`} style={{ marginTop: '1rem' }}>
+            <div className="pago-efectivo-cambio-item">
+              <span>Total a pagar:</span>
+              <span>{formatCOP(total)}</span>
+            </div>
+            <div className="pago-efectivo-cambio-item">
+              <span>Abono Inicial:</span>
+              <span style={{ color: '#16a34a' }}>- {formatCOP(montoAbono)}</span>
+            </div>
+            <div className={`pago-efectivo-cambio-item pago-efectivo-cambio-total ${esAbonoExcesivo ? 'negativo' : 'positivo'}`}>
+              <span>Nuevo Saldo Pendiente:</span>
+              <span>
+                {esAbonoExcesivo
+                  ? 'El abono supera la deuda'
+                  : formatCOP(nuevoPendiente)}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="pago-efectivo-actions">
+          <button
+            className="pago-efectivo-btn pago-efectivo-cancelar"
+            onClick={handleCancelarPagoCredito}
+          >
+            Atrás
+          </button>
+          <button
+            className="pago-efectivo-btn pago-efectivo-confirmar"
+            onClick={handleConfirmarPagoCredito}
+            disabled={esAbonoExcesivo}
+          >
+            Confirmar Crédito
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+export default function Caja({
   mode = 'venta', // 'venta' | 'pedido'
   // Props para modo pedido
   tipoPedido = null,
@@ -648,7 +804,7 @@ export default function Caja({
   const navigate = useNavigate();
   const { isOnline } = useNetworkStatus();
   const { isSyncing } = useOfflineSync();
-  
+
   const esModoPedido = mode === 'pedido';
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -657,7 +813,7 @@ export default function Caja({
   const [goldPriceLocal, setGoldPriceLocal] = useState(0);
   const goldPriceGlobalInput = useCurrencyInput('');
   const goldPriceLocalInput = useCurrencyInput('');
-  
+
   const [queryPedidos, setQueryPedidos] = useState(""); // Buscador para pedidos listos para pagar
   const [cart, setCart] = useState([]);
   const [method, setMethod] = useState("Efectivo");
@@ -681,6 +837,9 @@ export default function Caja({
   const [confirmacionExito, setConfirmacionExito] = useState(false);
   const [datosVentaConfirmada, setDatosVentaConfirmada] = useState(null);
   const [metodoSeleccionado, setMetodoSeleccionado] = useState(null);
+  const [mostrandoPagoCredito, setMostrandoPagoCredito] = useState(false);
+  const [abonoInicialCredito, setAbonoInicialCredito] = useState('');
+  const [metodoPagoAbonoCredito, setMetodoPagoAbonoCredito] = useState('Efectivo');
   const [guardandoCotizacion, setGuardandoCotizacion] = useState(false);
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
   const [mostrandoModalSeleccionCliente, setMostrandoModalSeleccionCliente] = useState(false);
@@ -697,6 +856,8 @@ export default function Caja({
     direccion: ''
   });
   const [fechaVencimientoCredito, setFechaVencimientoCredito] = useState('');
+  const [abonoInicialModalCredito, setAbonoInicialModalCredito] = useState('');
+  const [metodoAbonoModalCredito, setMetodoAbonoModalCredito] = useState('Efectivo');
   const [mostrandoModalCredito, setMostrandoModalCredito] = useState(false);
   const [pendingOutboxCount, setPendingOutboxCount] = useState(0);
   // Leer preferencia de mostrar factura desde user_metadata
@@ -741,7 +902,7 @@ export default function Caja({
 
   useEffect(() => {
     if (!isJewelryBusiness) return;
-    const storageKey = organization?.id ? `jewelry_prices:${organization.id}` : null;
+    const storageKey = organization?.id ? `jewelry_prices:${organization.id} ` : null;
     if (storageKey) {
       const stored = localStorage.getItem(storageKey);
       if (stored) {
@@ -785,7 +946,7 @@ export default function Caja({
 
   useEffect(() => {
     if (!isJewelryBusiness || !organization?.id) return;
-    const storageKey = `jewelry_prices:${organization.id}`;
+    const storageKey = `jewelry_prices:${organization.id} `;
     localStorage.setItem(
       storageKey,
       JSON.stringify({
@@ -810,7 +971,7 @@ export default function Caja({
   }, [isJewelryBusiness, organization?.jewelry_national_adjust_pct, goldPriceGlobal, goldPriceLocalInput]);
 
   // Precio del oro se mantiene manual por el momento (sin API).
-  
+
   // Estados para selectores de toppings y variaciones
   const [mostrandoToppingsSelector, setMostrandoToppingsSelector] = useState(false);
   const [productoParaToppings, setProductoParaToppings] = useState(null);
@@ -822,35 +983,35 @@ export default function Caja({
   // eslint-disable-next-line no-unused-vars
   const [toppingsSeleccionados, setToppingsSeleccionados] = useState([]);
   const [variacionesSeleccionadas, setVariacionesSeleccionadas] = useState({});
-  
+
   // Verificar si hay una apertura de caja activa (solo en modo venta)
   const { data: aperturaActiva, isLoading: cargandoApertura, refetch: refetchApertura } = useAperturaCajaActiva(
     esModoPedido ? null : organization?.id, // No verificar apertura en modo pedido
     esModoPedido ? null : user?.id
   );
-  
+
   // En modo pedido, forzar aperturaActiva a null para evitar problemas
   const aperturaActivaFinal = esModoPedido ? null : aperturaActiva;
-  
+
   // Mostrar modal de apertura automáticamente solo una vez al cargar si no hay apertura activa (solo en modo venta)
   const [modalMostradoInicialmente, setModalMostradoInicialmente] = useState(false);
   const [modalCerradoManualmente, setModalCerradoManualmente] = useState(false);
   const getFechaClave = () => new Date().toISOString().slice(0, 10);
   const aperturaPromptStorageKey = 'caja_apertura_prompt_day';
-  
+
   const puedeAbrirCaja = hasPermission('caja.open') || hasPermission('cierre.create') || ['owner', 'admin'].includes(userProfile?.role);
 
   useEffect(() => {
     // En modo pedido, no verificar apertura de caja
     if (esModoPedido) return;
-    
+
     // Si hay una apertura activa, asegurarse de que el modal esté cerrado y resetear estados
     if (aperturaActivaFinal && mostrarModalApertura) {
       setMostrarModalApertura(false);
       setModalCerradoManualmente(false);
       setModalMostradoInicialmente(false);
     }
-    
+
     // Si NO hay apertura activa (después de un cierre), resetear el estado para permitir nueva apertura
     if (!cargandoApertura && !aperturaActivaFinal && organization?.id) {
       // Si había una apertura antes y ahora no hay, significa que se cerró la caja
@@ -864,7 +1025,7 @@ export default function Caja({
         return () => clearTimeout(timer);
       }
     }
-    
+
     // Solo mostrar el modal automáticamente si:
     // 1. No está cargando
     // 2. No hay apertura activa
@@ -890,7 +1051,7 @@ export default function Caja({
       localStorage.setItem(aperturaPromptStorageKey, hoy);
     }
   }, [esModoPedido]);
-  
+
   // Cerrar automáticamente el carrito móvil cuando esté vacío
   useEffect(() => {
     if (cart.length === 0 && showCartMobile) {
@@ -920,15 +1081,13 @@ export default function Caja({
       setMostrandoModalCredito(true);
     }
   }, [creditoPendienteCliente, clienteSeleccionado]);
-  
+
   // Hooks para clientes
+  const queryClient = useQueryClient();
   // eslint-disable-next-line no-unused-vars
   const { data: clientes = [] } = useClientes(organization?.id);
   const crearClienteMutation = useCrearCliente();
   const crearCreditoMutation = useCrearCredito();
-  
-  // Hook para invalidar queries
-  const queryClient = useQueryClient();
 
   // Hook para guardar y actualizar cotización
   const guardarCotizacionMutation = useGuardarCotizacion();
@@ -939,31 +1098,31 @@ export default function Caja({
   // eslint-disable-next-line no-unused-vars
   const actualizarPedido = useActualizarPedido();
   const crearPedido = useCrearPedido();
-  
+
   // Filtrar pedidos listos para pago (solo estado "listo", excluir "completado", excluir sin items)
   // Excluir pedidos con pago_inmediato o con venta_id (ya fueron pagados)
   const pedidosPendientesPago = useMemo(() => {
     const pedidosFiltrados = todosPedidos.filter(p => {
       // Solo pedidos en estado "listo"
       if (p.estado !== 'listo') return false;
-      
+
       // Excluir pedidos con pago inmediato (ya pagados al tomar el pedido)
       if (p.pago_inmediato) return false;
-      
+
       // Excluir pedidos que ya tienen una venta asociada (solo si la columna existe)
       if (p.hasOwnProperty('venta_id') && p.venta_id) return false;
-      
+
       // Solo pedidos con items válidos
       if (!p.items || !Array.isArray(p.items) || p.items.length === 0) return false;
-      
+
       return true;
     });
-    
+
     // Aplicar filtro de búsqueda si existe
     if (!queryPedidos.trim()) {
       return pedidosFiltrados;
     }
-    
+
     const queryLower = queryPedidos.toLowerCase().trim();
     const pedidosFiltradosConBusqueda = pedidosFiltrados.filter(p => {
       // Buscar por número de pedido
@@ -976,15 +1135,15 @@ export default function Caja({
       if (p.mesa?.numero?.toString().includes(queryLower)) return true;
       return false;
     });
-    
+
     return pedidosFiltradosConBusqueda;
   }, [todosPedidos, queryPedidos]);
-  
+
   const [mostrandoPedidosPendientes, setMostrandoPedidosPendientes] = useState(false);
   // eslint-disable-next-line no-unused-vars
   const [pedidoIdActual, setPedidoIdActual] = useState(null);
   const [pedidosConsolidados, setPedidosConsolidados] = useState([]); // IDs de todos los pedidos consolidados
-  
+
   // Agrupar pedidos por mesa (solo mesas con más de un pedido)
   const pedidosPorMesa = useMemo(() => {
     const agrupados = {};
@@ -1010,7 +1169,7 @@ export default function Caja({
     });
     return agrupadosFiltrados;
   }, [pedidosPendientesPago]);
-  
+
   // Pedidos individuales (sin mesa o con mesa que tiene solo un pedido)
   const pedidosIndividuales = useMemo(() => {
     // Primero obtener todas las mesas agrupadas (sin filtrar)
@@ -1024,7 +1183,7 @@ export default function Caja({
         todasLasMesas[mesaId].push(pedido);
       }
     });
-    
+
     // Filtrar pedidos que:
     // 1. No tienen mesa, O
     // 2. Tienen mesa pero solo hay un pedido en esa mesa
@@ -1034,12 +1193,12 @@ export default function Caja({
       return todasLasMesas[mesaId]?.length === 1; // Con mesa pero solo un pedido
     });
   }, [pedidosPendientesPago]);
-  
+
   // Función para cargar todos los pedidos de una mesa
   // Puede recibir un array de pedidos directamente o un mesaId para buscarlos
   const cargarTodosPedidosMesa = (pedidosOMesaId) => {
     let pedidosMesa = [];
-    
+
     // Si es un array, usar directamente
     if (Array.isArray(pedidosOMesaId)) {
       pedidosMesa = pedidosOMesaId;
@@ -1047,13 +1206,13 @@ export default function Caja({
       // Si es un ID, buscar los pedidos
       const mesaId = pedidosOMesaId;
       const mesaIdStr = String(mesaId);
-      
+
       // Buscar en pedidosPorMesa primero
       const grupo = Object.values(pedidosPorMesa).find(g => {
         const gMesaId = g.mesa?.id || g.mesa_id;
         return gMesaId && String(gMesaId) === mesaIdStr;
       });
-      
+
       if (grupo && grupo.pedidos) {
         pedidosMesa = grupo.pedidos;
       } else {
@@ -1064,12 +1223,12 @@ export default function Caja({
         });
       }
     }
-    
+
     if (pedidosMesa.length === 0) {
       toast.error('No se encontraron pedidos para esta mesa');
       return;
     }
-    
+
     // Usar la misma lógica de consolidación que cargarPedidoEnCarrito
     const todosItems = [];
     pedidosMesa.forEach(p => {
@@ -1096,13 +1255,13 @@ export default function Caja({
       // Consolidar items duplicados
       const itemsConsolidados = todosItems.reduce((acc, item) => {
         const variacionesKey = JSON.stringify(item.variaciones || {});
-        const key = `${item.id}-${item.precio_venta}-${JSON.stringify(item.toppings)}-${variacionesKey}-${item.notas || ''}`;
+        const key = `${item.id} -${item.precio_venta} -${JSON.stringify(item.toppings)} -${variacionesKey} -${item.notas || ''} `;
         const existente = acc.find(i => {
           const iVariacionesKey = JSON.stringify(i.variaciones || {});
-          const iKey = `${i.id}-${i.precio_venta}-${JSON.stringify(i.toppings)}-${iVariacionesKey}-${i.notas || ''}`;
+          const iKey = `${i.id} -${i.precio_venta} -${JSON.stringify(i.toppings)} -${iVariacionesKey} -${i.notas || ''} `;
           return iKey === key;
         });
-        
+
         if (existente) {
           existente.qty += item.qty;
         } else {
@@ -1115,7 +1274,7 @@ export default function Caja({
       setPedidoIdActual(pedidosMesa[0].id); // Mantener el ID del primer pedido para compatibilidad
       setPedidosConsolidados(pedidosMesa.map(p => p.id));
       setMostrandoPedidosPendientes(false);
-      toast.success(`${pedidosMesa.length} pedido${pedidosMesa.length > 1 ? 's' : ''} de la mesa ${pedidosMesa[0].mesa.numero} cargado${pedidosMesa.length > 1 ? 's' : ''}`);
+      toast.success(`${pedidosMesa.length} pedido${pedidosMesa.length > 1 ? 's' : ''} de la mesa ${pedidosMesa[0].mesa.numero} cargado${pedidosMesa.length > 1 ? 's' : ''} `);
     } else {
       toast.error('No se pudieron cargar los productos de los pedidos');
     }
@@ -1126,22 +1285,22 @@ export default function Caja({
     const checkScreenSize = () => {
       const wide = window.innerWidth >= 769; // Tablet y desktop
       setIsWideScreen(wide);
-      
+
       // En pantallas amplias, siempre mostrar los pedidos cuando hay pedidos disponibles
       if (wide && pedidosPendientesPago.length > 0) {
         setMostrandoPedidosPendientes(true);
       }
     };
-    
+
     // Verificar al cargar y cuando cambie el tamaño de pantalla
     checkScreenSize();
     window.addEventListener('resize', checkScreenSize);
-    
+
     return () => {
       window.removeEventListener('resize', checkScreenSize);
     };
   }, [pedidosPendientesPago.length]);
-  
+
   // Asegurar que en pantallas amplias siempre se muestren los pedidos si hay pedidos disponibles
   useEffect(() => {
     if (isWideScreen && pedidosPendientesPago.length > 0 && !mostrandoPedidosPendientes) {
@@ -1152,35 +1311,35 @@ export default function Caja({
   // Cargar productos usando React Query (optimizado con cache)
   const { data: productosData = [], isLoading: productosLoading, refetch: refetchProductos } = useProductos(organization?.id);
   const { data: ventasData = [], isLoading: ventasLoading } = useVentas(organization?.id, 2000, 30);
-  
+
   // Cargar toppings para mostrarlos como productos individuales
   const { data: toppingsData = [], isLoading: toppingsLoading, isFetched: toppingsFetched } = useToppings(organization?.id);
-  
+
   // Precargar imágenes cuando se cargan los productos (similar a Inventario)
   useEffect(() => {
     if (productosData.length > 0 && organization?.id && supabase) {
       // Precargar imágenes de productos con imagen válida
       const productosConImagen = productosData.filter(
-        p => p.imagen && 
-        p.imagen.trim() !== '' && 
-        p.imagen !== 'null' && 
-        p.imagen !== 'undefined'
+        p => p.imagen &&
+          p.imagen.trim() !== '' &&
+          p.imagen !== 'null' &&
+          p.imagen !== 'undefined'
       );
-      
+
       if (productosConImagen.length > 0) {
         // Precargar las primeras 30 imágenes (las más visibles)
         const imagenesAPrecargar = productosConImagen.slice(0, 30);
-        
+
         imagenesAPrecargar.forEach(async (producto) => {
           try {
             let filePath = producto.imagen;
-            
+
             // Verificar si es una URL externa (Unsplash, etc.) y saltarla
             if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
               // Si es una URL externa, no intentar crear signed URL
               return;
             }
-            
+
             // Si ya es una URL de Supabase, extraer la ruta del archivo
             if (filePath.includes('/storage/v1/object/')) {
               // Extraer la ruta después de 'productos/'
@@ -1192,31 +1351,31 @@ export default function Caja({
                 return;
               }
             }
-            
+
             filePath = filePath.trim();
-            
+
             // Validar que la ruta no esté vacía
             if (!filePath || filePath === '' || filePath === 'null' || filePath === 'undefined') {
               return;
             }
-            
+
             // Decodificar la ruta si viene codificada
             try {
               filePath = decodeURIComponent(filePath);
             } catch (e) {
               // Si falla la decodificación, usar el original
             }
-            
+
             // Validar formato de ruta (debe contener organization_id o estructura válida)
             if (!filePath.includes('/') || filePath.length < 10) {
               return;
             }
-            
+
             // Generar signed URL y precargarla
             const { data, error } = await supabase.storage
               .from('productos')
               .createSignedUrl(filePath, 3600);
-            
+
             if (!error && data?.signedUrl) {
               // Guardar en cache global inmediatamente
               const globalImageCache = (window.__imageCache || new Map());
@@ -1225,7 +1384,7 @@ export default function Caja({
                 timestamp: Date.now()
               });
               window.__imageCache = globalImageCache;
-              
+
               // Precargar la imagen en el navegador
               const img = new Image();
               img.src = data.signedUrl;
@@ -1237,11 +1396,11 @@ export default function Caja({
       }
     }
   }, [productosData, organization?.id]);
-  
+
   // Combinar productos y toppings usando useMemo para evitar actualizaciones infinitas
   const productosCombinados = useMemo(() => {
     let productos = [];
-    
+
     // Agregar productos
     if (productosData.length > 0) {
       // El hook useProductos ya filtra por organization_id en la consulta
@@ -1258,11 +1417,11 @@ export default function Caja({
         productos = productosData;
       }
     }
-    
+
     // Agregar toppings como productos individuales solo para negocio de comida
     if (organization?.business_type === 'food' && toppingsData.length > 0) {
       const toppingsComoProductos = toppingsData.map(topping => ({
-        id: `topping_${topping.id}`, // Prefijo para identificar que es un topping
+        id: `topping_${topping.id} `, // Prefijo para identificar que es un topping
         nombre: topping.nombre,
         precio_venta: topping.precio || 0,
         precio_compra: topping.precio_compra || 0,
@@ -1276,9 +1435,11 @@ export default function Caja({
       }));
       productos = [...productos, ...toppingsComoProductos];
     }
-    
+
     return productos;
   }, [productosData, toppingsData, organization?.id, organization?.business_type]);
+
+
 
   const areProductosIguales = (a, b) => {
     if (a === b) return true;
@@ -1314,17 +1475,17 @@ export default function Caja({
         if (pedido.items && pedido.items.length > 0) {
           // Marcar que viene de pedidos
           setVieneDePedidos(true);
-          
+
           // Guardar el ID del pedido
           if (pedido.pedidoId) {
             setPedidoIdActual(pedido.pedidoId);
           }
-          
+
           // Guardar el nombre del cliente del pedido si existe
           if (pedido.clienteNombre || pedido.cliente_nombre) {
             setClienteNombrePedido(pedido.clienteNombre || pedido.cliente_nombre);
           }
-          
+
           // Mapear los items del pedido al formato del carrito
           const itemsCarrito = pedido.items.map(item => {
             const productoCompleto = productos.find(p => p.id === item.id);
@@ -1344,7 +1505,7 @@ export default function Caja({
 
           if (itemsCarrito.length > 0) {
             setCart(itemsCarrito);
-            
+
             // Si es pago inmediato, procesar automáticamente
             if (pedido.esPagoInmediato && pedido.metodoPagoSeleccionado && pedido.pedidoId) {
               // Procesar el pago inmediatamente
@@ -1361,7 +1522,7 @@ export default function Caja({
               toast.success('Pedido cargado. Procede con el pago.');
             }
           }
-          
+
           // Limpiar localStorage
           localStorage.removeItem('pedidoParaPagar');
         }
@@ -1383,7 +1544,7 @@ export default function Caja({
           if (cotizacion.id) {
             setCotizacionId(cotizacion.id);
           }
-          
+
           // Mapear los items de la cotización al formato del carrito
           const itemsCarrito = cotizacion.items.map(item => {
             // Buscar el producto completo en la lista de productos
@@ -1401,7 +1562,7 @@ export default function Caja({
 
           if (itemsCarrito.length > 0) {
             setCart(itemsCarrito);
-            
+
             // Cargar cliente si existe
             if (cotizacion.cliente_id) {
               // Buscar el cliente en la lista de clientes
@@ -1416,7 +1577,7 @@ export default function Caja({
                     .select('*')
                     .eq('id', cotizacion.cliente_id)
                     .single();
-                  
+
                   if (!error && data) {
                     setClienteSeleccionado(data);
                   }
@@ -1424,16 +1585,16 @@ export default function Caja({
                 cargarCliente();
               }
             }
-            
+
             // Guardar copia original para comparar cambios después
             localStorage.setItem('cotizacionOriginal', JSON.stringify({
               items: cotizacion.items,
               total: cotizacion.total
             }));
-            
+
             toast.success('Cotización cargada');
           }
-          
+
           // Limpiar localStorage
           localStorage.removeItem('cotizacionRetomar');
         }
@@ -1445,8 +1606,13 @@ export default function Caja({
 
   const productosSearchIndex = useMemo(() => {
     const index = new Map();
-    productos.forEach((p) => {
+    // Indexar todos los productos
+    const unicosMap = new Map();
+    productos.forEach(p => unicosMap.set(String(p.id), p));
+
+    Array.from(unicosMap.values()).forEach((p) => {
       const camposDirectos = [
+
         p.nombre,
         p.codigo,
         p.tipo
@@ -1454,12 +1620,12 @@ export default function Caja({
 
       const metadata = typeof p.metadata === 'string'
         ? (() => {
-            try {
-              return JSON.parse(p.metadata);
-            } catch {
-              return {};
-            }
-          })()
+          try {
+            return JSON.parse(p.metadata);
+          } catch {
+            return {};
+          }
+        })()
         : (p.metadata || {});
 
       const camposMetadata = [
@@ -1567,13 +1733,46 @@ export default function Caja({
     return filteredProducts;
   }, [filteredProducts]);
 
+  // --- LÓGICA DE PAGINACIÓN VIRTUAL (SCROLL INFINITO) ---
+  const [visibleCount, setVisibleCount] = useState(50);
+  const loadingObserverRef = useRef(null);
+
+  // Reiniciar la cantidad visible cuando cambian los filtros, la búsqueda o la categoría
+  useEffect(() => {
+    setVisibleCount(50);
+  }, [query, selectedCategory]);
+
+  const handleObserver = useCallback((entries) => {
+    const target = entries[0];
+    if (target.isIntersecting && visibleCount < sortedProducts.length) {
+      setVisibleCount((prev) => Math.min(prev + 50, sortedProducts.length));
+    }
+  }, [visibleCount, sortedProducts.length]);
+
+  useEffect(() => {
+    const option = {
+      root: null,
+      rootMargin: "200px",
+      threshold: 0
+    };
+    const observer = new IntersectionObserver(handleObserver, option);
+    if (loadingObserverRef.current) observer.observe(loadingObserverRef.current);
+
+    return () => observer.disconnect();
+  }, [handleObserver]);
+
+  // Tomar solo la rebanada (slice) visible de los productos ordenados
+  const visibleProducts = useMemo(() => {
+    return sortedProducts.slice(0, visibleCount);
+  }, [sortedProducts, visibleCount]);
+
   // Calcular subtotal incluyendo precios de toppings
   const subtotal = useMemo(() => {
     return cart.reduce((sum, item) => {
       // Precio base del producto
       const precioBase = item.precio_venta || item.price || 0;
       const cantidad = typeof item.qty === 'number' ? item.qty : 0;
-      
+
       // Sumar precio de toppings (considerando cantidad de cada topping)
       let precioToppings = 0;
       if (item.toppings && Array.isArray(item.toppings)) {
@@ -1583,18 +1782,18 @@ export default function Caja({
           return toppingSum + (precioTopping * cantidadTopping);
         }, 0);
       }
-      
+
       // Precio total del item (producto + toppings) * cantidad del producto
       const precioItemTotal = (precioBase + precioToppings) * cantidad;
-      
+
       return sum + precioItemTotal;
     }, 0);
   }, [cart]);
-  
+
   // Calcular descuento
   const montoDescuento = useMemo(() => {
     if (!descuento.valor || descuento.valor <= 0) return 0;
-    
+
     if (descuento.alcance === 'total') {
       // Descuento sobre el total
       if (descuento.tipo === 'porcentaje') {
@@ -1621,11 +1820,11 @@ export default function Caja({
       return descuentoProductos;
     }
   }, [subtotal, descuento, cart]);
-  
+
   const total = useMemo(() => Math.max(0, subtotal - montoDescuento), [subtotal, montoDescuento]);
 
   const addToCartRef = useRef(null);
-  
+
   const normalizeStockValue = (value) => Number(value ?? 0) || 0;
 
   const getGoldPriceForProduct = useCallback((producto) => {
@@ -1721,9 +1920,9 @@ export default function Caja({
     const cantidadEnCarrito = cart
       .filter(item => item.id === productoConPrecio.id && (item.variant_id || null) === (variante?.id || null))
       .reduce((sum, item) => sum + (item.qty || 0), 0);
-    
+
     if (stockDisponible !== null && stockDisponible !== undefined && cantidadEnCarrito >= stockDisponible) {
-      toast.error(`No hay suficiente stock. Disponible: ${parseFloat(stockDisponible).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`);
+      toast.error(`No hay suficiente stock.Disponible: ${parseFloat(stockDisponible).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} `);
       return;
     }
 
@@ -1736,13 +1935,13 @@ export default function Caja({
     }
 
     // Verificar si el producto permite toppings (por defecto true si no está definido)
-    const permiteToppings = productoConPrecio.metadata?.permite_toppings !== undefined 
-      ? productoConPrecio.metadata.permite_toppings 
+    const permiteToppings = productoConPrecio.metadata?.permite_toppings !== undefined
+      ? productoConPrecio.metadata.permite_toppings
       : true;
-    
+
     // Verificar si el producto tiene variaciones
     const tieneVariaciones = productoConPrecio.metadata?.variaciones_config && productoConPrecio.metadata.variaciones_config.length > 0;
-    
+
     // Si tiene variaciones, mostrar selector de variaciones primero
     if (tieneVariaciones) {
       setProductoParaVariaciones(productoConPrecio);
@@ -1751,7 +1950,7 @@ export default function Caja({
       setMostrandoVariacionesSelector(true);
       return;
     }
-    
+
     // Si permite toppings, mostrar selector de toppings
     if (permiteToppings) {
       setProductoParaToppings(productoConPrecio);
@@ -1762,10 +1961,10 @@ export default function Caja({
       agregarProductoConToppingsYVariaciones(productoConPrecio, [], {}, variante);
     }
   }
-  
+
   // Guardar referencia a addToCart para usar en el hook de código de barras
   addToCartRef.current = addToCart;
-  
+
   // Hook para detectar código de barras
   const handleBarcodeScanned = useCallback((barcode) => {
     const barcodeLower = barcode?.toLowerCase?.().trim?.() || '';
@@ -1788,10 +1987,10 @@ export default function Caja({
     }
 
     // Buscar producto por código de barras exacto
-    const producto = productos.find(p => 
+    const producto = productos.find(p =>
       p.codigo && p.codigo.toLowerCase() === barcodeLower
     );
-    
+
     if (producto && addToCartRef.current) {
       // Agregar al carrito automáticamente
       addToCartRef.current(producto);
@@ -1800,62 +1999,62 @@ export default function Caja({
         updateSearchQuery('');
         // El foco se mantendrá automáticamente por el hook
       }, 100);
-      toast.success(`Producto agregado: ${producto.nombre}`);
+      toast.success(`Producto agregado: ${producto.nombre} `);
     } else {
       // Si no se encuentra, buscar por código parcial
       updateSearchQuery(barcode);
       toast('Producto no encontrado por código de barras', { icon: '⚠️' });
     }
   }, [productos, updateSearchQuery]);
-  
+
   const { inputRef: barcodeInputRef, handleKeyDown: handleBarcodeKeyDown, handleInputChange: handleBarcodeInputChange } = useBarcodeScanner(handleBarcodeScanned, {
     minLength: 3,
     maxTimeBetweenChars: 30,
     waitForEndChar: true,
     clearInput: false
   });
-  
+
   // Refs para detección global de código de barras (funciona aunque el cursor no esté en el buscador)
   const globalBarcodeBufferRef = useRef('');
   const globalLastCharTimeRef = useRef(null);
   const globalBarcodeTimeoutRef = useRef(null);
   const globalBarcodeProcessingRef = useRef(false);
-  
+
   // Listener global para detectar códigos de barras en cualquier parte de la página
   useEffect(() => {
     const handleGlobalKeyDown = (e) => {
       // Ignorar si el usuario está escribiendo en un input, textarea o contenteditable
       const target = e.target;
-      const isInputElement = target.tagName === 'INPUT' || 
-                            target.tagName === 'TEXTAREA' || 
-                            target.isContentEditable ||
-                            target.closest('input') ||
-                            target.closest('textarea');
-      
+      const isInputElement = target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable ||
+        target.closest('input') ||
+        target.closest('textarea');
+
       // Si está en el input del buscador, dejar que el hook normal lo maneje
       if (target === barcodeInputRef.current) {
         return;
       }
-      
+
       // Si está en otro input, no procesar como código de barras
       if (isInputElement) {
         return;
       }
-      
+
       // Si es Enter o Tab, podría ser el final del código de barras
       if (e.key === 'Enter' || e.key === 'Tab') {
         e.preventDefault();
         e.stopPropagation();
-        
+
         const barcode = globalBarcodeBufferRef.current.trim();
         if (barcode.length >= 3 && !globalBarcodeProcessingRef.current) {
           globalBarcodeProcessingRef.current = true;
           handleBarcodeScanned(barcode);
-          
+
           // Limpiar buffer
           globalBarcodeBufferRef.current = '';
           globalLastCharTimeRef.current = null;
-          
+
           // Resetear flag después de un delay
           setTimeout(() => {
             globalBarcodeProcessingRef.current = false;
@@ -1863,36 +2062,36 @@ export default function Caja({
         }
         return;
       }
-      
+
       // Si es un carácter imprimible
       if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
         const now = Date.now();
-        
+
         // Si pasó mucho tiempo desde el último carácter, resetear buffer
         if (globalLastCharTimeRef.current && (now - globalLastCharTimeRef.current) > 150) {
           globalBarcodeBufferRef.current = '';
         }
-        
+
         // Agregar carácter al buffer
         globalBarcodeBufferRef.current += e.key;
         globalLastCharTimeRef.current = now;
-        
+
         // Limpiar timeout anterior
         if (globalBarcodeTimeoutRef.current) {
           clearTimeout(globalBarcodeTimeoutRef.current);
         }
-        
+
         // Si después de un tiempo no hay más caracteres, procesar como código de barras
         globalBarcodeTimeoutRef.current = setTimeout(() => {
           const barcode = globalBarcodeBufferRef.current.trim();
           if (barcode.length >= 3 && !globalBarcodeProcessingRef.current) {
             globalBarcodeProcessingRef.current = true;
             handleBarcodeScanned(barcode);
-            
+
             // Limpiar buffer
             globalBarcodeBufferRef.current = '';
             globalLastCharTimeRef.current = null;
-            
+
             // Resetear flag después de un delay
             setTimeout(() => {
               globalBarcodeProcessingRef.current = false;
@@ -1901,10 +2100,10 @@ export default function Caja({
         }, 150);
       }
     };
-    
+
     // Agregar listener global
     window.addEventListener('keydown', handleGlobalKeyDown);
-    
+
     // Limpiar al desmontar
     return () => {
       window.removeEventListener('keydown', handleGlobalKeyDown);
@@ -1914,7 +2113,7 @@ export default function Caja({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [handleBarcodeScanned]);
-  
+
   // Función para agregar producto al carrito después de seleccionar toppings y variaciones
   const agregarProductoConToppingsYVariaciones = (producto, toppings = [], variaciones = {}, variante = null) => {
     // Si se agrega un producto manualmente (no desde un pedido), resetear el flag
@@ -1926,9 +2125,9 @@ export default function Caja({
     const cantidadEnCarrito = cart
       .filter(item => item.id === producto.id && (item.variant_id || null) === (variante?.id || null))
       .reduce((sum, item) => sum + (item.qty || 0), 0);
-    
+
     if (stockDisponible !== null && stockDisponible !== undefined && cantidadEnCarrito >= stockDisponible) {
-      toast.error(`No hay suficiente stock. Disponible: ${parseFloat(stockDisponible).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`);
+      toast.error(`No hay suficiente stock.Disponible: ${parseFloat(stockDisponible).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} `);
       return;
     }
 
@@ -1943,7 +2142,7 @@ export default function Caja({
         const variacionesNuevo = JSON.stringify(variaciones);
         return variacionesItem === variacionesNuevo;
       });
-      
+
       if (idx >= 0) {
         // Si ya existe, aumentar cantidad y mover al inicio
         const next = [...prev];
@@ -1952,11 +2151,11 @@ export default function Caja({
         const item = next.splice(idx, 1)[0];
         return [item, ...next];
       }
-      
+
       // Si es nuevo, agregarlo al inicio con toppings y variaciones
-      return [{ 
-        id: producto.id, 
-        nombre: producto.nombre, 
+      return [{
+        id: producto.id,
+        nombre: producto.nombre,
         precio_venta: producto.precio_venta,
         precio_compra: producto.precio_compra || 0,
         qty: 1,
@@ -1971,27 +2170,27 @@ export default function Caja({
       }, ...prev];
     });
   }
-  
+
   // Función para actualizar notas de un item del carrito
   const actualizarNotasItem = (itemId, notas, itemIndex, toppings, variaciones, variantId) => {
     setCart((prev) => prev.map((item, index) => {
       // Comparar por ID, toppings, variaciones e índice para identificar el item correcto
       if (item.id !== itemId) return item;
       if ((item.variant_id || null) !== (variantId || null)) return item;
-      
+
       const toppingsItem = JSON.stringify((item.toppings || []).map(t => t.id || t).sort());
       const toppingsParam = JSON.stringify((toppings || []).map(t => t.id || t).sort());
       if (toppingsItem !== toppingsParam) return item;
-      
+
       const variacionesItem = JSON.stringify(item.variaciones || {});
       const variacionesParam = JSON.stringify(variaciones || {});
       if (variacionesItem !== variacionesParam) return item;
-      
+
       // Si el índice coincide, actualizar las notas
       if (index === itemIndex) {
         return { ...item, notas: notas };
       }
-      
+
       return item;
     }));
   };
@@ -2016,7 +2215,7 @@ export default function Caja({
 
     const itemEnCarrito = cart[itemIndex];
     console.log('Item en carrito encontrado:', itemEnCarrito);
-    
+
     if (!itemEnCarrito) {
       console.error('Item no encontrado en carrito para index:', itemIndex);
       return;
@@ -2024,10 +2223,10 @@ export default function Caja({
 
     const stockDisponible = obtenerStockDisponibleItem(itemEnCarrito);
     if (stockDisponible !== null && stockDisponible !== undefined && itemEnCarrito.qty >= stockDisponible) {
-      toast.error(`No hay suficiente stock. Disponible: ${parseFloat(stockDisponible).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`);
+      toast.error(`No hay suficiente stock.Disponible: ${parseFloat(stockDisponible).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} `);
       return;
     }
-    
+
     setCart((prev) => {
       const updated = prev.map((i, idx) => {
         if (idx === itemIndex) {
@@ -2037,16 +2236,16 @@ export default function Caja({
         }
         return i;
       });
-      
+
       console.log('INC - Carrito actualizado:', updated);
       return updated;
     });
   };
-  
+
   const dec = (itemIndex) => {
     console.log('DEC llamado para index:', itemIndex);
     setCart((prev) => {
-      const updated = prev.map((i, idx) => 
+      const updated = prev.map((i, idx) =>
         idx === itemIndex ? { ...i, qty: (i.qty || 0) - 1 } : i
       );
       // Eliminar productos con cantidad 0 o menor
@@ -2059,26 +2258,26 @@ export default function Caja({
   const updateQty = (itemIndex, newQty) => {
     const itemEnCarrito = cart[itemIndex];
     const qty = parseInt(newQty, 10);
-    
+
     if (isNaN(qty) || qty < 1) {
       // Si no es un número válido o es menor a 1, eliminar del carrito
       setCart((prev) => prev.filter((_, idx) => idx !== itemIndex));
       return;
     }
-    
+
     const stockDisponible = obtenerStockDisponibleItem(itemEnCarrito);
     if (stockDisponible !== null && stockDisponible !== undefined && qty > stockDisponible) {
-      toast.error(`No hay suficiente stock. Disponible: ${parseFloat(stockDisponible).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`);
+      toast.error(`No hay suficiente stock.Disponible: ${parseFloat(stockDisponible).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} `);
       // Mantener la cantidad anterior si excede el stock
       if (itemEnCarrito) {
-        setCart((prev) => prev.map((i, idx) => 
+        setCart((prev) => prev.map((i, idx) =>
           idx === itemIndex ? { ...i, qty: itemEnCarrito.qty } : i
         ));
       }
       return;
     }
-    
-    setCart((prev) => prev.map((i, idx) => 
+
+    setCart((prev) => prev.map((i, idx) =>
       idx === itemIndex ? { ...i, qty: qty } : i
     ));
   };
@@ -2098,7 +2297,7 @@ export default function Caja({
       toast.error('El carrito está vacío');
       return;
     }
-    
+
     // En modo pedido, mostrar opción de pagar ahora o después
     if (esModoPedido) {
       setMostrandoOpcionPagoPedido(true);
@@ -2125,7 +2324,7 @@ export default function Caja({
       // Generar código de cotización
       const numeroVenta = await generarCodigoVenta(organization.id, 'COTIZACION');
       const { ventaUserId, ventaEmployeeId } = getVentaActorIds();
-      
+
       // Construir objeto de cotización con solo campos básicos requeridos
       const cotizacionData = {
         organization_id: organization.id,
@@ -2148,7 +2347,7 @@ export default function Caja({
             const original = JSON.parse(cotizacionOriginal);
             const itemsIguales = JSON.stringify(original.items) === JSON.stringify(cart);
             const totalIgual = original.total === total;
-            
+
             // Si no hay cambios, no hacer nada
             if (itemsIguales && totalIgual) {
               toast('No hay cambios en la cotización', { icon: 'ℹ️' });
@@ -2159,20 +2358,20 @@ export default function Caja({
             // Si no se puede comparar, continuar con la actualización
           }
         }
-        
+
         // Actualizar cotización existente
         await actualizarCotizacionMutation.mutateAsync({
           id: cotizacionId,
           updates: cotizacionData
         });
-        
+
         toast.success('Cotización actualizada exitosamente');
         setCotizacionId(null); // Limpiar ID después de actualizar
       } else {
         // Crear nueva cotización
         await guardarCotizacionMutation.mutateAsync(cotizacionData);
       }
-      
+
       // Limpiar el carrito después de guardar
       setCart([]);
       setVieneDePedidos(false); // Resetear flag cuando se vacía el carrito
@@ -2188,7 +2387,7 @@ export default function Caja({
   const handleSeleccionarMetodoPago = (metodo) => {
     setMethod(metodo);
     setMostrandoMetodosPago(false);
-    
+
     if (metodo === 'Efectivo') {
       // Mostrar modal de pago en efectivo
       setMontoEntregado('');
@@ -2212,9 +2411,10 @@ export default function Caja({
         setMostrandoModalSeleccionCliente(true);
         return;
       }
-      // Mostrar modal para fecha de vencimiento
-      setFechaVencimientoCredito('');
-      setMostrandoModalCredito(true);
+      // Mostrar overlay para el Abono Inicial
+      setMostrandoMetodosPago(false);
+      setAbonoInicialCredito('');
+      setMostrandoPagoCredito(true);
     } else {
       // Para otros métodos, proceder directamente pasando el método como parámetro
       confirmSale(metodo);
@@ -2280,12 +2480,12 @@ export default function Caja({
     // Si hay efectivo, permitir que el monto sea mayor o igual (puede haber cambio)
     // Si no hay efectivo, los valores deben ser exactos
     if (!hayEfectivo && Math.abs(diferencia) > 1) {
-      toast.error(`La suma de los montos (${formatCOP(sumaMontos)}) debe ser igual al total (${formatCOP(total)})`);
+      toast.error(`La suma de los montos(${formatCOP(sumaMontos)}) debe ser igual al total(${formatCOP(total)})`);
       return;
     }
 
     if (hayEfectivo && diferencia > 1) {
-      toast.error(`El monto entregado (${formatCOP(sumaMontos)}) debe ser mayor o igual al total (${formatCOP(total)})`);
+      toast.error(`El monto entregado(${formatCOP(sumaMontos)}) debe ser mayor o igual al total(${formatCOP(total)})`);
       return;
     }
 
@@ -2312,9 +2512,17 @@ export default function Caja({
     setDatosVentaConfirmada(null);
   };
 
+  const handleConfirmarPagoCredito = () => {
+    // El modal ya valida que no sea excesivo, simplemente continuamos a venta
+    setMostrandoPagoCredito(false);
+    confirmSale('Credito', { abonoInicial: abonoInicialCredito, metodoAbono: metodoPagoAbonoCredito });
+  };
 
-
-
+  const handleCancelarPagoCredito = () => {
+    setMostrandoPagoCredito(false);
+    setAbonoInicialCredito('');
+    setMetodoPagoAbonoCredito('Efectivo');
+  };
 
   // Función para procesar el pago de un pedido ya creado
   const procesarPagoConPedido = async (pedidoId, metodoPago, detallesPago = null) => {
@@ -2348,7 +2556,7 @@ export default function Caja({
     // Si es pago en efectivo, usar el monto del modal
     let montoPagoCliente = total;
     let metodoPagoFinal = metodoActual;
-    
+
     if (metodoActual === "Efectivo") {
       const montoNumero = parseFloat(montoEntregado.replace(/[^\d]/g, ''));
       if (isNaN(montoNumero) || montoNumero < total) {
@@ -2371,9 +2579,9 @@ export default function Caja({
       const pedidosAActualizar = pedidosConsolidados.length > 0 ? pedidosConsolidados : [pedidoId];
       const fechaVenta = new Date().toISOString();
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/67cbae63-1d62-454e-a79c-6473cc85ec06',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H11',location:'Caja.js:2172',message:'venta:codigo_generado',data:{hasNumero:!!numeroVenta,metodo:metodoPagoFinal},timestamp:Date.now()})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/67cbae63-1d62-454e-a79c-6473cc85ec06', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'debug-session', runId: 'pre-fix', hypothesisId: 'H11', location: 'Caja.js:2172', message: 'venta:codigo_generado', data: { hasNumero: !!numeroVenta, metodo: metodoPagoFinal }, timestamp: Date.now() }) }).catch(() => { });
       // #endregion agent log
-      
+
       // Guardar la venta en la base de datos
       const ventaData = {
         organization_id: organization.id,
@@ -2454,7 +2662,7 @@ export default function Caja({
         }
         return;
       }
-      
+
       const { data: ventaResult, error: ventaError } = await supabase
         .from('ventas')
         .insert([ventaData])
@@ -2463,17 +2671,17 @@ export default function Caja({
 
       if (ventaError) {
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/67cbae63-1d62-454e-a79c-6473cc85ec06',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H11',location:'Caja.js:2202',message:'venta:insert_error',data:{status:ventaError?.status||null,code:ventaError?.code||null,details:ventaError?.details||null,message:ventaError?.message||null},timestamp:Date.now()})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/67cbae63-1d62-454e-a79c-6473cc85ec06', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'debug-session', runId: 'pre-fix', hypothesisId: 'H11', location: 'Caja.js:2202', message: 'venta:insert_error', data: { status: ventaError?.status || null, code: ventaError?.code || null, details: ventaError?.details || null, message: ventaError?.message || null }, timestamp: Date.now() }) }).catch(() => { });
         // #endregion agent log
-        toast.error(`Error al guardar la venta: ${ventaError.message}`);
+        toast.error(`Error al guardar la venta: ${ventaError.message} `);
         setProcesandoVenta(false);
         return;
       }
 
       // Actualizar todos los pedidos consolidados: asociar la venta y marcar como completado si están listos
       if (pedidosAActualizar.length > 0) {
-        console.log(`💾 Actualizando ${pedidosAActualizar.length} pedido(s) con venta_id ${ventaResult.id}`);
-        
+        console.log(`💾 Actualizando ${pedidosAActualizar.length} pedido(s) con venta_id ${ventaResult.id} `);
+
         // Obtener el estado actual de cada pedido para decidir el nuevo estado
         const { data: pedidosData, error: pedidosQueryError } = await supabase
           .from('pedidos')
@@ -2482,7 +2690,7 @@ export default function Caja({
 
         if (pedidosQueryError) {
           console.error('❌ Error consultando pedidos:', pedidosQueryError.message);
-          toast.error(`Error al consultar pedidos: ${pedidosQueryError.message}`);
+          toast.error(`Error al consultar pedidos: ${pedidosQueryError.message} `);
           return;
         }
 
@@ -2491,7 +2699,7 @@ export default function Caja({
           let updateData = {
             venta_id: ventaResult.id
           };
-          
+
           // Si el pedido está "listo", marcarlo como "completado" inmediatamente
           if (pedido.estado === 'listo') {
             updateData.estado = 'completado';
@@ -2509,8 +2717,8 @@ export default function Caja({
             .eq('id', pedido.id);
 
           if (pedidoUpdateError) {
-            console.error(`❌ Error actualizando pedido ${pedido.numero_pedido}:`, pedidoUpdateError.message);
-            
+            console.error(`❌ Error actualizando pedido ${pedido.numero_pedido}: `, pedidoUpdateError.message);
+
             // Si es error de columna no existe, mostrar mensaje específico
             if (pedidoUpdateError.code === '42703' && pedidoUpdateError.message.includes('venta_id')) {
               toast.error('⚠️ Migración requerida: Ejecuta docs/ADD_VENTA_ID_TO_PEDIDOS.sql en Supabase');
@@ -2518,7 +2726,7 @@ export default function Caja({
             }
           }
         }
-        
+
         console.log(`✅ Todos los pedidos actualizados exitosamente con venta_id`);
       }
 
@@ -2527,23 +2735,23 @@ export default function Caja({
         // Si es un topping individual, actualizar stock en la tabla toppings
         if (item.es_topping || (typeof item.id === 'string' && item.id.startsWith('topping_'))) {
           const toppingId = item.topping_id || (typeof item.id === 'string' && item.id.startsWith('topping_') ? item.id.replace('topping_', '') : item.id);
-          
+
           // Obtener el topping actual para verificar stock
           const { data: topping, error: toppingError } = await supabase
             .from('toppings')
             .select('stock')
             .eq('id', toppingId)
             .single();
-          
+
           if (!toppingError && topping && topping.stock !== null && topping.stock !== undefined) {
             const nuevoStock = topping.stock - item.qty;
             const { error: stockError } = await supabase
               .from('toppings')
               .update({ stock: nuevoStock })
               .eq('id', toppingId);
-            
+
             if (stockError) {
-              console.error(`Error al actualizar el stock del topping ${item.nombre}:`, stockError);
+              console.error(`Error al actualizar el stock del topping ${item.nombre}: `, stockError);
               toast.error(`Error al actualizar el stock de ${item.nombre}. La venta se guardó pero el stock no se actualizó.`);
             }
           }
@@ -2551,7 +2759,7 @@ export default function Caja({
           // Es un producto normal
           // Primero intentar obtener el producto del array, si no está, obtenerlo de la BD
           let producto = productos.find(p => p.id === item.id);
-          
+
           // Si no está en el array, obtenerlo directamente de la BD
           if (!producto) {
             const { data: productoBD, error: productoBDError } = await supabase
@@ -2559,12 +2767,12 @@ export default function Caja({
               .select('id, nombre, stock, metadata')
               .eq('id', item.id)
               .single();
-            
+
             if (!productoBDError && productoBD) {
               producto = productoBD;
             }
           }
-          
+
           if (item.variant_id) {
             const { data: variante, error: varianteError } = await supabase
               .from('product_variants')
@@ -2580,7 +2788,7 @@ export default function Caja({
                 .eq('id', item.variant_id);
 
               if (stockError) {
-                console.error(`Error al actualizar el stock de la variante ${item.variant_nombre || item.nombre}:`, stockError);
+                console.error(`Error al actualizar el stock de la variante ${item.variant_nombre || item.nombre}: `, stockError);
                 toast.error(`Error al actualizar el stock de ${item.nombre}. La venta se guardó pero el stock de la variante no se actualizó.`);
               }
             }
@@ -2590,13 +2798,13 @@ export default function Caja({
               .from('productos')
               .update({ stock: nuevoStock })
               .eq('id', item.id);
-            
+
             if (stockError) {
-              console.error(`Error al actualizar el stock de ${item.nombre}:`, stockError);
+              console.error(`Error al actualizar el stock de ${item.nombre}: `, stockError);
               toast.error(`Error al actualizar el stock de ${item.nombre}. La venta se guardó pero el stock no se actualizó.`);
             }
           }
-          
+
           // Descontar productos vinculados si existen
           // Parsear metadata si viene como string
           let metadata = producto?.metadata;
@@ -2608,7 +2816,7 @@ export default function Caja({
               metadata = null;
             }
           }
-          
+
           const productosVinculados = metadata?.productos_vinculados;
           if (productosVinculados && Array.isArray(productosVinculados) && productosVinculados.length > 0) {
             for (const productoVinculado of productosVinculados) {
@@ -2617,11 +2825,11 @@ export default function Caja({
                 console.warn('Producto vinculado sin producto_id:', productoVinculado);
                 continue;
               }
-              
+
               // Calcular cantidad a descontar (puede ser fraccionada)
               const cantidadADescontar = parseFloat(productoVinculado.cantidad || 0) * parseFloat(item.qty || 1);
-              
-              console.log(`📦 Descontando producto vinculado:`, {
+
+              console.log(`📦 Descontando producto vinculado: `, {
                 producto_id: productoVinculado.producto_id,
                 producto_nombre: productoVinculado.producto_nombre,
                 cantidad_por_unidad: productoVinculado.cantidad,
@@ -2629,44 +2837,44 @@ export default function Caja({
                 cantidad_total_a_descontar: cantidadADescontar,
                 es_porcion: productoVinculado.es_porcion
               });
-              
+
               // Obtener el producto vinculado actual
               const { data: prodVinculado, error: prodError } = await supabase
                 .from('productos')
                 .select('id, nombre, stock')
                 .eq('id', productoVinculado.producto_id)
                 .single();
-              
+
               if (prodError) {
-                console.error(`Error obteniendo producto vinculado ${productoVinculado.producto_id}:`, prodError);
+                console.error(`Error obteniendo producto vinculado ${productoVinculado.producto_id}: `, prodError);
                 toast.error(`Error al obtener producto vinculado ${productoVinculado.producto_nombre || productoVinculado.producto_id}. La venta se guardó pero el stock no se actualizó.`);
                 continue;
               }
-              
+
               if (prodVinculado && prodVinculado.stock !== null && prodVinculado.stock !== undefined) {
                 // Convertir stock actual a número (puede venir como string)
                 const stockActual = parseFloat(prodVinculado.stock) || 0;
                 const nuevoStockVinculado = Math.max(0, stockActual - cantidadADescontar);
-                
+
                 // Redondear a 2 decimales para evitar problemas de precisión
                 const nuevoStockRedondeado = Math.round(nuevoStockVinculado * 100) / 100;
-                
-                console.log(`📊 Actualizando stock:`, {
+
+                console.log(`📊 Actualizando stock: `, {
                   producto: prodVinculado.nombre,
                   stock_actual: stockActual,
                   cantidad_a_descontar: cantidadADescontar,
                   nuevo_stock: nuevoStockRedondeado
                 });
-                
+
                 const { error: stockVinculadoError } = await supabase
                   .from('productos')
                   .update({ stock: nuevoStockRedondeado })
                   .eq('id', productoVinculado.producto_id);
-                
+
                 if (stockVinculadoError) {
-                  console.error(`❌ Error al actualizar el stock del producto vinculado ${productoVinculado.producto_nombre || prodVinculado.nombre}:`, stockVinculadoError);
-                  console.error(`   Detalles del error:`, JSON.stringify(stockVinculadoError, null, 2));
-                  console.error(`   Valores usados:`, {
+                  console.error(`❌ Error al actualizar el stock del producto vinculado ${productoVinculado.producto_nombre || prodVinculado.nombre}: `, stockVinculadoError);
+                  console.error(`   Detalles del error: `, JSON.stringify(stockVinculadoError, null, 2));
+                  console.error(`   Valores usados: `, {
                     producto_id: productoVinculado.producto_id,
                     stock_actual: stockActual,
                     cantidad_a_descontar: cantidadADescontar,
@@ -2740,65 +2948,65 @@ export default function Caja({
       // Convertir items del carrito al formato de pedido
       // Los toppings individuales ahora se tratan como productos normales
       const itemsData = cart.map(item => {
-          // Si es un topping individual, usar el topping_id como producto_id
-          let productoId = item.id;
-          if (item.es_topping || (typeof item.id === 'string' && item.id.startsWith('topping_'))) {
-            productoId = item.topping_id || (typeof item.id === 'string' && item.id.startsWith('topping_') ? item.id.replace('topping_', '') : item.id);
-          }
-          
-          // Los toppings individuales no tienen toppings anidados
-          const toppingsLimpios = (item.es_topping || (typeof item.id === 'string' && item.id.startsWith('topping_'))) 
-            ? [] 
-            : ((item.toppings || []).map(t => {
-              if (typeof t === 'object' && t !== null) {
-                // Si el topping tiene un ID con prefijo, usar el topping_id original
-                let toppingId = t.id;
-                if (typeof t.id === 'string' && t.id.startsWith('topping_')) {
-                  toppingId = t.id.replace('topping_', '');
-                } else if (t.topping_id) {
-                  toppingId = t.topping_id;
-                }
-                
-                return {
-                  id: toppingId,
-                  nombre: t.nombre,
-                  precio: t.precio,
-                };
+        // Si es un topping individual, usar el topping_id como producto_id
+        let productoId = item.id;
+        if (item.es_topping || (typeof item.id === 'string' && item.id.startsWith('topping_'))) {
+          productoId = item.topping_id || (typeof item.id === 'string' && item.id.startsWith('topping_') ? item.id.replace('topping_', '') : item.id);
+        }
+
+        // Los toppings individuales no tienen toppings anidados
+        const toppingsLimpios = (item.es_topping || (typeof item.id === 'string' && item.id.startsWith('topping_')))
+          ? []
+          : ((item.toppings || []).map(t => {
+            if (typeof t === 'object' && t !== null) {
+              // Si el topping tiene un ID con prefijo, usar el topping_id original
+              let toppingId = t.id;
+              if (typeof t.id === 'string' && t.id.startsWith('topping_')) {
+                toppingId = t.id.replace('topping_', '');
+              } else if (t.topping_id) {
+                toppingId = t.topping_id;
               }
-              return t;
-            }));
 
-          const variacionesLimpias = {};
-          if (item.variaciones && typeof item.variaciones === 'object') {
-            Object.keys(item.variaciones).forEach(key => {
-              const value = item.variaciones[key];
-              if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-                variacionesLimpias[key] = value;
-              }
-            });
-          }
+              return {
+                id: toppingId,
+                nombre: t.nombre,
+                precio: t.precio,
+              };
+            }
+            return t;
+          }));
 
-          // Calcular precio total incluyendo toppings
-          const precioBase = item.precio_venta || item.price || 0;
-          const precioToppings = (toppingsLimpios || []).reduce((sum, topping) => {
-            return sum + (topping.precio || 0) * (topping.cantidad || 1);
-          }, 0);
-          const precioUnitarioConToppings = precioBase + precioToppings;
-          const precioTotal = precioUnitarioConToppings * (item.qty || 1);
+        const variacionesLimpias = {};
+        if (item.variaciones && typeof item.variaciones === 'object') {
+          Object.keys(item.variaciones).forEach(key => {
+            const value = item.variaciones[key];
+            if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+              variacionesLimpias[key] = value;
+            }
+          });
+        }
 
-          return {
-            producto_id: productoId,
-            cantidad: item.qty || 1,
-            precio_unitario: precioBase, // Precio base sin toppings
-            precio_total: precioTotal, // Precio total con toppings y cantidad
-            toppings: toppingsLimpios,
-            variaciones: variacionesLimpias,
-            notas: item.notas?.trim() || null
-          };
-        });
+        // Calcular precio total incluyendo toppings
+        const precioBase = item.precio_venta || item.price || 0;
+        const precioToppings = (toppingsLimpios || []).reduce((sum, topping) => {
+          return sum + (topping.precio || 0) * (topping.cantidad || 1);
+        }, 0);
+        const precioUnitarioConToppings = precioBase + precioToppings;
+        const precioTotal = precioUnitarioConToppings * (item.qty || 1);
+
+        return {
+          producto_id: productoId,
+          cantidad: item.qty || 1,
+          precio_unitario: precioBase, // Precio base sin toppings
+          precio_total: precioTotal, // Precio total con toppings y cantidad
+          toppings: toppingsLimpios,
+          variaciones: variacionesLimpias,
+          notas: item.notas?.trim() || null
+        };
+      });
 
       const prioridad = tipoPedido === 'express' ? 'alta' : 'normal';
-      
+
       const pedidoCreado = await crearPedido.mutateAsync({
         organizationId: organization.id,
         mesaId: mesaSeleccionada?.id || null,
@@ -2865,12 +3073,12 @@ export default function Caja({
       setProcesandoVenta(false);
       return;
     }
-    
+
     // Si es modo pedido, guardar el pedido en lugar de crear una venta
     if (esModoPedido) {
       return await guardarPedido();
     }
-    
+
     if (cart.length === 0) {
       toast.error('El carrito está vacío');
       return;
@@ -2904,26 +3112,26 @@ export default function Caja({
     setConfirmacionCargando(true);
     setConfirmacionExito(false);
     // NO establecer datosVentaConfirmada como null aquí
-    
+
     setProcesandoVenta(true);
-    
+
     // Validar que no se exceda el stock (productos y toppings)
     for (const item of cart) {
       // Si es un topping individual, validar stock en la tabla toppings
       if (item.es_topping || (typeof item.id === 'string' && item.id.startsWith('topping_'))) {
         const toppingId = item.topping_id || (typeof item.id === 'string' && item.id.startsWith('topping_') ? item.id.replace('topping_', '') : item.id);
-        
+
         // Buscar el topping en la lista de productos (que incluye toppings)
         const topping = productos.find(p => (p.es_topping && p.topping_id === toppingId) || p.id === item.id);
-        
+
         if (!topping) {
           toast.error(`Error: Topping ${item.nombre} no encontrado`);
           setProcesandoVenta(false);
           return;
         }
-        
+
         if (topping.stock !== null && topping.stock !== undefined && item.qty > topping.stock) {
-          toast.error(`No hay suficiente stock para ${item.nombre}. Disponible: ${parseFloat(topping.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`);
+          toast.error(`No hay suficiente stock para ${item.nombre}.Disponible: ${parseFloat(topping.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} `);
           setProcesandoVenta(false);
           return;
         }
@@ -2952,22 +3160,23 @@ export default function Caja({
           }
 
           if (stockVariante !== null && stockVariante !== undefined && item.qty > stockVariante) {
-            toast.error(`No hay suficiente stock para ${item.nombre} (${item.variant_nombre || 'Variante'}). Disponible: ${parseFloat(stockVariante).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`);
+            toast.error(`No hay suficiente stock para ${item.nombre} (${item.variant_nombre || 'Variante'}).Disponible: ${parseFloat(stockVariante).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} `);
             setProcesandoVenta(false);
             return;
           }
         } else if (producto.stock !== null && producto.stock !== undefined && item.qty > producto.stock) {
-          toast.error(`No hay suficiente stock para ${item.nombre}. Disponible: ${parseFloat(producto.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`);
+          toast.error(`No hay suficiente stock para ${item.nombre}.Disponible: ${parseFloat(producto.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} `);
           setProcesandoVenta(false);
           return;
         }
       }
     }
-    
+
     // Si es pago en efectivo, usar el monto del modal
     let montoPagoCliente = total;
     let metodoPagoFinal = metodoActual;
-    
+    let tieneAbono = false;
+
     if (metodoActual === "Efectivo") {
       const montoNumero = parseFloat(montoEntregado.replace(/[^\d]/g, ''));
       if (isNaN(montoNumero) || montoNumero < total) {
@@ -2980,8 +3189,13 @@ export default function Caja({
       // Guardar solo "Mixto" sin el detalle
       metodoPagoFinal = 'Mixto';
       montoPagoCliente = detallesPagoMixto.monto1 + detallesPagoMixto.monto2;
+    } else if (metodoActual === 'Credito') {
+      // Para credito evaluar si hay un abono inicial
+      const abonoInicial = detallesPagoMixto?.abonoInicial ? parseFloat(detallesPagoMixto.abonoInicial.replace(/[^\d]/g, '')) || 0 : 0;
+      montoPagoCliente = abonoInicial;
+      tieneAbono = abonoInicial > 0;
     }
-    
+
     const { ventaUserId, ventaEmployeeId } = getVentaActorIds();
     const fechaVenta = new Date().toISOString();
 
@@ -3049,13 +3263,13 @@ export default function Caja({
       setConfirmacionCargando(false);
       setConfirmacionExito(true);
       setDatosVentaConfirmada({ ...ventaData, id: ventaData.numero_venta });
-      
+
       // Invalidar cache de pedidos para refrescar la lista inmediatamente
       if (organization?.id) {
         await queryClient.invalidateQueries(['pedidos', organization.id]);
         await queryClient.refetchQueries(['pedidos', organization.id]);
       }
-      
+
       toast.success('Venta guardada localmente. Se sincronizará al reconectar.');
       return;
     }
@@ -3069,7 +3283,7 @@ export default function Caja({
       try {
         // Generar código de venta amigable (forzar único en reintentos)
         const numeroVenta = await generarCodigoVenta(organization.id, metodoPagoFinal, intento > 0);
-        
+
         // Guardar la venta en la base de datos
         const ventaData = {
           organization_id: organization.id,
@@ -3111,24 +3325,24 @@ export default function Caja({
           }),
           fecha: fechaVenta,
           created_at: fechaVenta,
-          pago_cliente: metodoActual === 'Credito' ? 0 : montoPagoCliente,
+          pago_cliente: montoPagoCliente,
           detalles_pago_mixto: metodoActual === "Mixto" && detallesPagoMixto ? detallesPagoMixto : null,
           numero_venta: numeroVenta,
           cliente_id: clienteSeleccionado?.id || null,
           es_credito: metodoActual === 'Credito'
         };
-        
+
         const { data: result, error: ventaError } = await supabase
           .from('ventas')
           .insert([ventaData])
           .select();
-        
+
         if (ventaError) {
           // Detectar error de clave duplicada
-          const esDuplicado = ventaError.code === '23505' || 
-                             ventaError.message?.includes('duplicate key') ||
-                             ventaError.message?.includes('idx_ventas_numero_venta_unique');
-          
+          const esDuplicado = ventaError.code === '23505' ||
+            ventaError.message?.includes('duplicate key') ||
+            ventaError.message?.includes('idx_ventas_numero_venta_unique');
+
           if (esDuplicado && intento < maxIntentos - 1) {
             intento++;
             // Esperar un poco antes de reintentar para evitar condiciones de carrera
@@ -3136,32 +3350,32 @@ export default function Caja({
             await new Promise(resolve => setTimeout(resolve, tiempoEspera));
             continue;
           }
-          
-          toast.error(`Error al guardar la venta: ${ventaError.message}`);
+
+          toast.error(`Error al guardar la venta: ${ventaError.message} `);
           setProcesandoVenta(false);
           return;
         }
-        
+
         if (!result || result.length === 0) {
           toast.error('Error: No se pudo obtener el ID de la venta');
           setProcesandoVenta(false);
           return;
         }
-        
+
         ventaResult = result;
         exito = true;
       } catch (error) {
         // Si no es un error de duplicado o ya agotamos los intentos, mostrar error
-        const esDuplicado = error.code === '23505' || 
-                           error.message?.includes('duplicate key') ||
-                           error.message?.includes('idx_ventas_numero_venta_unique');
-        
+        const esDuplicado = error.code === '23505' ||
+          error.message?.includes('duplicate key') ||
+          error.message?.includes('idx_ventas_numero_venta_unique');
+
         if (!esDuplicado || intento >= maxIntentos - 1) {
-          toast.error(`Error al guardar la venta: ${error.message || 'Error desconocido'}`);
+          toast.error(`Error al guardar la venta: ${error.message || 'Error desconocido'} `);
           setProcesandoVenta(false);
           return;
         }
-        
+
         // Si es duplicado y aún hay intentos, continuar el loop
         intento++;
         const tiempoEsperaActual = 100 * intento;
@@ -3180,31 +3394,53 @@ export default function Caja({
     if (metodoActual === 'Credito' && clienteSeleccionado) {
       try {
         // Calcular fecha de vencimiento (por defecto 30 días desde hoy)
-        const fechaVenc = fechaVencimientoCredito 
+        const fechaVenc = fechaVencimientoCredito
           ? new Date(fechaVencimientoCredito)
           : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-        
+
+        // Si hubo abono, montoPagoCliente tiene el valor
+        const abonoInicial = tieneAbono ? montoPagoCliente : 0;
+        const deudaPendiente = total - abonoInicial;
+
         const creditoData = {
           organization_id: organization.id,
           venta_id: ventaResult[0].id,
           cliente_id: clienteSeleccionado.id,
           monto_total: total,
-          monto_pagado: 0,
-          monto_pendiente: total,
+          monto_pagado: abonoInicial,
+          monto_pendiente: deudaPendiente,
           fecha_vencimiento: fechaVenc.toISOString().split('T')[0],
-          estado: 'pendiente',
-          notas: `Crédito generado automáticamente por venta ${ventaResult[0].numero_venta}`
+          estado: deudaPendiente <= 0 ? 'pagado' : 'pendiente',
+          notas: `Crédito generado automáticamente por venta ${ventaResult[0].numero_venta}${tieneAbono ? ` (Abono Inicial: ${formatCOP(abonoInicial)} en ${detallesPagoMixto.metodoAbono})` : ''}`
         };
-        
+
         const creditoCreado = await crearCreditoMutation.mutateAsync(creditoData);
         creditoId = creditoCreado.id;
-        
+
         // Actualizar la venta con el credito_id
         await supabase
           .from('ventas')
           .update({ credito_id: creditoId })
           .eq('id', ventaResult[0].id);
-        
+
+        // Si hubo abono, registrar el pago del abono
+        if (tieneAbono && abonoInicial > 0) {
+          const pagoAbonoData = {
+            organization_id: organization.id,
+            credito_id: creditoId,
+            monto: abonoInicial,
+            metodo_pago: detallesPagoMixto.metodoAbono,
+            notas: 'Abono inicial al momento de la venta',
+            user_id: ventaUserId || null,
+          };
+          const { error: errorPago } = await supabase
+            .from('pagos_creditos')
+            .insert([pagoAbonoData]);
+          if (errorPago) {
+            console.error('Error registrando abono inicial en pagos_creditos:', errorPago);
+          }
+        }
+
       } catch (error) {
         console.error('Error al crear crédito:', error);
         toast.error('La venta se guardó pero hubo un error al crear el crédito. Por favor, créalo manualmente.');
@@ -3213,29 +3449,29 @@ export default function Caja({
 
     try {
       // Los pedidos ya fueron actualizados arriba en la sección principal de procesamiento
-      
+
       // Actualizar stock de productos y toppings
       for (const item of cart) {
         // Si es un topping individual, actualizar stock en la tabla toppings
         if (item.es_topping || (typeof item.id === 'string' && item.id.startsWith('topping_'))) {
           const toppingId = item.topping_id || (typeof item.id === 'string' && item.id.startsWith('topping_') ? item.id.replace('topping_', '') : item.id);
-          
+
           // Obtener el topping actual para verificar stock
           const { data: topping, error: toppingError } = await supabase
             .from('toppings')
             .select('stock')
             .eq('id', toppingId)
             .single();
-          
+
           if (!toppingError && topping && topping.stock !== null && topping.stock !== undefined) {
             const nuevoStock = topping.stock - item.qty;
             const { error: stockError } = await supabase
               .from('toppings')
               .update({ stock: nuevoStock })
               .eq('id', toppingId);
-            
+
             if (stockError) {
-              console.error(`Error al actualizar el stock del topping ${item.nombre}:`, stockError);
+              console.error(`Error al actualizar el stock del topping ${item.nombre}: `, stockError);
               toast.error(`Error al actualizar el stock de ${item.nombre}. La venta se guardó pero el stock no se actualizó.`);
             }
           }
@@ -3243,7 +3479,7 @@ export default function Caja({
           // Es un producto normal
           // Primero intentar obtener el producto del array, si no está, obtenerlo de la BD
           let producto = productos.find(p => p.id === item.id);
-          
+
           // Si no está en el array, obtenerlo directamente de la BD
           if (!producto) {
             const { data: productoBD, error: productoBDError } = await supabase
@@ -3251,12 +3487,12 @@ export default function Caja({
               .select('id, nombre, stock, metadata')
               .eq('id', item.id)
               .single();
-            
+
             if (!productoBDError && productoBD) {
               producto = productoBD;
             }
           }
-          
+
           if (item.variant_id) {
             const { data: variante, error: varianteError } = await supabase
               .from('product_variants')
@@ -3272,7 +3508,7 @@ export default function Caja({
                 .eq('id', item.variant_id);
 
               if (stockError) {
-                console.error(`Error al actualizar el stock de la variante ${item.variant_nombre || item.nombre}:`, stockError);
+                console.error(`Error al actualizar el stock de la variante ${item.variant_nombre || item.nombre}: `, stockError);
                 toast.error(`Error al actualizar el stock de ${item.nombre}. La venta se guardó pero el stock de la variante no se actualizó.`);
               }
             }
@@ -3282,13 +3518,13 @@ export default function Caja({
               .from('productos')
               .update({ stock: nuevoStock })
               .eq('id', item.id);
-            
+
             if (stockError) {
-              console.error(`Error al actualizar el stock de ${item.nombre}:`, stockError);
+              console.error(`Error al actualizar el stock de ${item.nombre}: `, stockError);
               toast.error(`Error al actualizar el stock de ${item.nombre}. La venta se guardó pero el stock no se actualizó.`);
             }
           }
-          
+
           // Descontar productos vinculados si existen
           // Parsear metadata si viene como string
           let metadata = producto?.metadata;
@@ -3300,7 +3536,7 @@ export default function Caja({
               metadata = null;
             }
           }
-          
+
           const productosVinculados = metadata?.productos_vinculados;
           if (productosVinculados && Array.isArray(productosVinculados) && productosVinculados.length > 0) {
             for (const productoVinculado of productosVinculados) {
@@ -3309,11 +3545,11 @@ export default function Caja({
                 console.warn('Producto vinculado sin producto_id:', productoVinculado);
                 continue;
               }
-              
+
               // Calcular cantidad a descontar (puede ser fraccionada)
               const cantidadADescontar = parseFloat(productoVinculado.cantidad || 0) * parseFloat(item.qty || 1);
-              
-              console.log(`📦 Descontando producto vinculado:`, {
+
+              console.log(`📦 Descontando producto vinculado: `, {
                 producto_id: productoVinculado.producto_id,
                 producto_nombre: productoVinculado.producto_nombre,
                 cantidad_por_unidad: productoVinculado.cantidad,
@@ -3321,44 +3557,44 @@ export default function Caja({
                 cantidad_total_a_descontar: cantidadADescontar,
                 es_porcion: productoVinculado.es_porcion
               });
-              
+
               // Obtener el producto vinculado actual
               const { data: prodVinculado, error: prodError } = await supabase
                 .from('productos')
                 .select('id, nombre, stock')
                 .eq('id', productoVinculado.producto_id)
                 .single();
-              
+
               if (prodError) {
-                console.error(`Error obteniendo producto vinculado ${productoVinculado.producto_id}:`, prodError);
+                console.error(`Error obteniendo producto vinculado ${productoVinculado.producto_id}: `, prodError);
                 toast.error(`Error al obtener producto vinculado ${productoVinculado.producto_nombre || productoVinculado.producto_id}. La venta se guardó pero el stock no se actualizó.`);
                 continue;
               }
-              
+
               if (prodVinculado && prodVinculado.stock !== null && prodVinculado.stock !== undefined) {
                 // Convertir stock actual a número (puede venir como string)
                 const stockActual = parseFloat(prodVinculado.stock) || 0;
                 const nuevoStockVinculado = Math.max(0, stockActual - cantidadADescontar);
-                
+
                 // Redondear a 2 decimales para evitar problemas de precisión
                 const nuevoStockRedondeado = Math.round(nuevoStockVinculado * 100) / 100;
-                
-                console.log(`📊 Actualizando stock:`, {
+
+                console.log(`📊 Actualizando stock: `, {
                   producto: prodVinculado.nombre,
                   stock_actual: stockActual,
                   cantidad_a_descontar: cantidadADescontar,
                   nuevo_stock: nuevoStockRedondeado
                 });
-                
+
                 const { error: stockVinculadoError } = await supabase
                   .from('productos')
                   .update({ stock: nuevoStockRedondeado })
                   .eq('id', productoVinculado.producto_id);
-                
+
                 if (stockVinculadoError) {
-                  console.error(`❌ Error al actualizar el stock del producto vinculado ${productoVinculado.producto_nombre || prodVinculado.nombre}:`, stockVinculadoError);
-                  console.error(`   Detalles del error:`, JSON.stringify(stockVinculadoError, null, 2));
-                  console.error(`   Valores usados:`, {
+                  console.error(`❌ Error al actualizar el stock del producto vinculado ${productoVinculado.producto_nombre || prodVinculado.nombre}: `, stockVinculadoError);
+                  console.error(`   Detalles del error: `, JSON.stringify(stockVinculadoError, null, 2));
+                  console.error(`   Valores usados: `, {
                     producto_id: productoVinculado.producto_id,
                     stock_actual: stockActual,
                     cantidad_a_descontar: cantidadADescontar,
@@ -3375,7 +3611,7 @@ export default function Caja({
           }
         }
       }
-      
+
       // Obtener información del cliente si existe
       // Priorizar cliente seleccionado en caja, si no hay, usar el nombre del pedido
       let clienteInfo = null;
@@ -3394,7 +3630,7 @@ export default function Caja({
           nombre: clienteNombrePedido
         };
       }
-      
+
       // Crear objeto de venta para el recibo
       const ventaRecibo = {
         id: ventaResult[0].id,
@@ -3419,18 +3655,18 @@ export default function Caja({
         cliente: clienteInfo,
         numero_venta: ventaResult[0].numero_venta || null
       };
-      
+
       // Establecer datos y mostrar modal de éxito inmediatamente
       setDatosVentaConfirmada(ventaRecibo);
       setConfirmacionCargando(false);
       setConfirmacionExito(true);
-      
+
       // Simular tiempo de procesamiento para la animación
       setTimeout(() => {
-        
+
         // Toast de éxito
-        toast.success(`¡Venta completada! Total: ${formatCOP(total)}`);
-        
+        toast.success(`¡Venta completada! Total: ${formatCOP(total)} `);
+
         // Después de mostrar éxito, limpiar carrito
         setTimeout(() => {
           setVentaCompletada(ventaRecibo);
@@ -3440,25 +3676,25 @@ export default function Caja({
           setPedidoIdActual(null); // Limpiar pedido actual
           setPedidosConsolidados([]); // Limpiar pedidos consolidados
           setClienteNombrePedido(null); // Limpiar nombre del cliente del pedido
-          
+
           // Si viene de pedidos, mostrar modal de regreso
           if (vieneDePedidos) {
             setMostrarModalRegresarPedidos(true);
           }
         }, 2000);
       }, 1500);
-      
+
       // Invalidar cache de pedidos para refrescar la lista inmediatamente
       if (organization?.id) {
         await queryClient.invalidateQueries(['pedidos', organization.id]);
         await queryClient.refetchQueries(['pedidos', organization.id]);
       }
-      
+
       // Recargar productos para actualizar stock
       await refetchProductos();
-      
+
     } catch (error) {
-      toast.error(`Error al procesar la venta: ${error.message}`);
+      toast.error(`Error al procesar la venta: ${error.message} `);
       setMostrandoConfirmacion(false);
       setConfirmacionCargando(false);
       setConfirmacionExito(false);
@@ -3479,28 +3715,28 @@ export default function Caja({
 
     // Si consolidarTodos es false, solo cargar este pedido
     let pedidosAConsolidar = [pedido];
-    
+
     // Si consolidarTodos es true, buscar todos los pedidos de la misma mesa
     if (consolidarTodos) {
       const mesaId = pedido.mesa_id || pedido.mesa?.id;
       const numeroMesa = pedido.mesa?.numero?.toLowerCase() || '';
-      
+
       // Solo consolidar si tiene mesa_id Y no es un mostrador
       if (mesaId && !numeroMesa.includes('mostrador')) {
         const estadoPedido = pedido.estado;
-        
+
         // Buscar todos los pedidos de la misma mesa con el mismo estado
         const pedidosMismaMesa = pedidosPendientesPago.filter(p => {
           const pMesaId = p.mesa_id || p.mesa?.id;
           const pNumeroMesa = p.mesa?.numero?.toLowerCase() || '';
           // Solo incluir si tiene mesa_id, no es mostrador, y coincide con la mesa y estado
-          return pMesaId && 
-                 !pNumeroMesa.includes('mostrador') &&
-                 pMesaId === mesaId && 
-                 p.estado === estadoPedido && 
-                 p.id !== pedido.id;
+          return pMesaId &&
+            !pNumeroMesa.includes('mostrador') &&
+            pMesaId === mesaId &&
+            p.estado === estadoPedido &&
+            p.id !== pedido.id;
         });
-        
+
         if (pedidosMismaMesa.length > 0) {
           pedidosAConsolidar = [pedido, ...pedidosMismaMesa];
           toast(`Consolidando ${pedidosAConsolidar.length} pedidos de la misma mesa`, { icon: 'ℹ️' });
@@ -3534,13 +3770,13 @@ export default function Caja({
       // Consolidar items duplicados (mismo producto, mismo precio, mismos toppings, mismas variaciones)
       const itemsConsolidados = todosItems.reduce((acc, item) => {
         const variacionesKey = JSON.stringify(item.variaciones || {});
-        const key = `${item.id}-${item.precio_venta}-${JSON.stringify(item.toppings)}-${variacionesKey}-${item.notas || ''}`;
+        const key = `${item.id} -${item.precio_venta} -${JSON.stringify(item.toppings)} -${variacionesKey} -${item.notas || ''} `;
         const existente = acc.find(i => {
           const iVariacionesKey = JSON.stringify(i.variaciones || {});
-          const iKey = `${i.id}-${i.precio_venta}-${JSON.stringify(i.toppings)}-${iVariacionesKey}-${i.notas || ''}`;
+          const iKey = `${i.id} -${i.precio_venta} -${JSON.stringify(i.toppings)} -${iVariacionesKey} -${i.notas || ''} `;
           return iKey === key;
         });
-        
+
         if (existente) {
           existente.qty += item.qty;
         } else {
@@ -3554,7 +3790,7 @@ export default function Caja({
       setPedidosConsolidados(pedidosAConsolidar.map(p => p.id)); // Guardar todos los IDs consolidados
       setMostrandoPedidosPendientes(false);
       toast.success(
-        pedidosAConsolidar.length > 1 
+        pedidosAConsolidar.length > 1
           ? `${pedidosAConsolidar.length} pedidos consolidados cargados en el carrito`
           : 'Pedido cargado en el carrito'
       );
@@ -3572,10 +3808,10 @@ export default function Caja({
             {[...Array(6)].map((_, i) => (
               <div key={i} className="caja-skeleton-product"></div>
             ))}
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
-);
+    );
   }
 
   // No bloquear toda la página, solo la funcionalidad de ventas
@@ -3583,9 +3819,7 @@ export default function Caja({
   return (
     <div className="caja-container">
       <span
-        className={`caja-connection-badge ${
-          isOnline ? 'caja-connection-badge--online' : 'caja-connection-badge--offline'
-        }`}
+        className={`caja-connection-badge ${isOnline ? 'caja-connection-badge--online' : 'caja-connection-badge--offline'}`}
       >
         {isSyncing && pendingOutboxCount > 0 ? (
           <span className="caja-connection-spinner" aria-hidden="true" />
@@ -3612,13 +3846,13 @@ export default function Caja({
                 if (!puedeAbrirCaja) return;
                 // Refetch para verificar el estado actual antes de abrir el modal
                 const { data: aperturaActualizada } = await refetchApertura();
-                
+
                 // Si hay una apertura activa, no mostrar el modal y mostrar mensaje
                 if (aperturaActualizada) {
                   toast.success('La caja ya está abierta');
                   return;
                 }
-                
+
                 setModalCerradoManualmente(false);
                 setMostrarModalApertura(true);
                 setModalMostradoInicialmente(false); // Permitir mostrar el modal de nuevo
@@ -3633,205 +3867,205 @@ export default function Caja({
       {/* Contenedor principal con pedidos a la izquierda y productos/carrito a la derecha */}
       <div className={`caja-layout-wrapper ${pedidosPendientesPago.length === 0 ? 'sin-pedidos' : ''}`}>
         {/* Sección de pedidos pendientes de pago - Sidebar izquierdo */}
-      {pedidosPendientesPago.length > 0 && (
-        <div className="caja-pedidos-section">
-          <div className="caja-pedidos-header">
-            <div className="caja-pedidos-title">
-              <CheckCircle size={20} color="#10B981" />
-              <h3>Pedidos Listos para Pagar</h3>
-            </div>
-            <button
-              className="caja-pedidos-toggle caja-pedidos-toggle-mobile"
-              onClick={() => setMostrandoPedidosPendientes(!mostrandoPedidosPendientes)}
-              aria-label={mostrandoPedidosPendientes ? 'Ocultar pedidos' : 'Mostrar pedidos'}
-            >
-              <div className="caja-pedidos-toggle-icon-container">
-                <List size={20} color="currentColor" strokeWidth={2} />
+        {pedidosPendientesPago.length > 0 && (
+          <div className="caja-pedidos-section">
+            <div className="caja-pedidos-header">
+              <div className="caja-pedidos-title">
+                <CheckCircle size={20} color="#10B981" />
+                <h3>Pedidos Listos para Pagar</h3>
               </div>
-              {pedidosPendientesPago.length > 0 && (
-                <span className="caja-pedidos-toggle-badge">
-                  {pedidosPendientesPago.length}
-                </span>
-              )}
-            </button>
-          </div>
-          
-          {(mostrandoPedidosPendientes || (isWideScreen && pedidosPendientesPago.length > 0)) && (
-            <>
-              {/* Buscador de pedidos */}
-              <div className="caja-pedidos-search-container">
-                <Search size={18} className="caja-pedidos-search-icon-outside" />
-                <input
-                  type="text"
-                  placeholder="Buscar por pedido, cliente, teléfono o mesa..."
-                  className="caja-pedidos-search-input"
-                  value={queryPedidos}
-                  onChange={(e) => setQueryPedidos(e.target.value)}
-                />
-                {queryPedidos && (
-                  <button
-                    className="caja-pedidos-search-clear"
-                    onClick={() => setQueryPedidos('')}
-                    aria-label="Limpiar búsqueda"
-                  >
-                    <X size={16} />
-                  </button>
+              <button
+                className="caja-pedidos-toggle caja-pedidos-toggle-mobile"
+                onClick={() => setMostrandoPedidosPendientes(!mostrandoPedidosPendientes)}
+                aria-label={mostrandoPedidosPendientes ? 'Ocultar pedidos' : 'Mostrar pedidos'}
+              >
+                <div className="caja-pedidos-toggle-icon-container">
+                  <List size={20} color="currentColor" strokeWidth={2} />
+                </div>
+                {pedidosPendientesPago.length > 0 && (
+                  <span className="caja-pedidos-toggle-badge">
+                    {pedidosPendientesPago.length}
+                  </span>
                 )}
-              </div>
-              
-              <div className="caja-pedidos-list">
-                {pedidosPendientesPago.length === 0 ? (
-                  <p className="caja-pedidos-empty">
-                    {queryPedidos ? 'No se encontraron pedidos con ese criterio' : 'No hay pedidos listos para pagar'}
-                  </p>
-                ) : (
-                  <>
-                    {/* Mostrar pedidos agrupados por mesa */}
-                    {Object.values(pedidosPorMesa).map((grupo) => (
-                      <div key={grupo.mesa.id} className={`caja-mesa-group-card ${grupo.pedidos.length > 1 ? 'caja-mesa-group-multiple' : 'caja-mesa-group-single'}`}>
-                        <div className="caja-mesa-group-header">
-                          <div className="caja-mesa-group-title">
-                            <span className="caja-pedido-mesa">{grupo.mesa.numero}</span>
-                            <span className="caja-mesa-pedidos-count">
-                              {grupo.pedidos.length} {grupo.pedidos.length === 1 ? 'pedido' : 'pedidos'}
+              </button>
+            </div>
+
+            {(mostrandoPedidosPendientes || (isWideScreen && pedidosPendientesPago.length > 0)) && (
+              <>
+                {/* Buscador de pedidos */}
+                <div className="caja-pedidos-search-container">
+                  <Search size={18} className="caja-pedidos-search-icon-outside" />
+                  <input
+                    type="text"
+                    placeholder="Buscar por pedido, cliente, teléfono o mesa..."
+                    className="caja-pedidos-search-input"
+                    value={queryPedidos}
+                    onChange={(e) => setQueryPedidos(e.target.value)}
+                  />
+                  {queryPedidos && (
+                    <button
+                      className="caja-pedidos-search-clear"
+                      onClick={() => setQueryPedidos('')}
+                      aria-label="Limpiar búsqueda"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+
+                <div className="caja-pedidos-list">
+                  {pedidosPendientesPago.length === 0 ? (
+                    <p className="caja-pedidos-empty">
+                      {queryPedidos ? 'No se encontraron pedidos con ese criterio' : 'No hay pedidos listos para pagar'}
+                    </p>
+                  ) : (
+                    <>
+                      {/* Mostrar pedidos agrupados por mesa */}
+                      {Object.values(pedidosPorMesa).map((grupo) => (
+                        <div key={grupo.mesa.id} className={`caja - mesa - group - card ${grupo.pedidos.length > 1 ? 'caja-mesa-group-multiple' : 'caja-mesa-group-single'} `}>
+                          <div className="caja-mesa-group-header">
+                            <div className="caja-mesa-group-title">
+                              <span className="caja-pedido-mesa">{grupo.mesa.numero}</span>
+                              <span className="caja-mesa-pedidos-count">
+                                {grupo.pedidos.length} {grupo.pedidos.length === 1 ? 'pedido' : 'pedidos'}
+                              </span>
+                            </div>
+                            <button
+                              className="caja-mesa-cargar-todos-btn"
+                              onClick={() => {
+                                if (grupo.pedidos && grupo.pedidos.length > 0) {
+                                  // Usar directamente los pedidos del grupo
+                                  cargarTodosPedidosMesa(grupo.pedidos);
+                                }
+                              }}
+                              title={`Cargar todos los pedidos de la mesa ${grupo.mesa.numero} `}
+                            >
+                              <Package size={16} />
+                            </button>
+                          </div>
+                          <div className="caja-mesa-pedidos-list">
+                            {grupo.pedidos.map((pedido) => {
+                              const totalPedido = (() => {
+                                if (!pedido.items || pedido.items.length === 0) return pedido.total || 0;
+                                return pedido.items.reduce((sum, item) => {
+                                  const precioBase = item.precio_unitario || item.precio_venta || 0;
+                                  const precioToppings = (item.toppings || []).reduce((toppingSum, topping) => {
+                                    return toppingSum + (topping.precio || 0) * (topping.cantidad || 1);
+                                  }, 0);
+                                  const precioUnitarioConToppings = precioBase + precioToppings;
+                                  return sum + (precioUnitarioConToppings * (item.cantidad || 1));
+                                }, 0);
+                              })();
+
+                              return (
+                                <div key={pedido.id} className="caja-pedido-card caja-pedido-card-in-group">
+                                  <div className="caja-pedido-info">
+                                    <div className="caja-pedido-header-info">
+                                      <h4>{pedido.numero_pedido}</h4>
+                                      <div className="caja-pedido-meta-info">
+                                        {pedido.mesa && (
+                                          <span className="caja-pedido-mesa">{pedido.mesa.numero}</span>
+                                        )}
+                                        {pedido.cliente_nombre && (
+                                          <span className="caja-pedido-cliente">
+                                            {pedido.cliente_nombre}
+                                            {pedido.cliente_telefono && ` - ${pedido.cliente_telefono} `}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <p className="caja-pedido-items">
+                                      {pedido.items?.length || 0} {pedido.items?.length === 1 ? 'item' : 'items'}
+                                    </p>
+                                    <p className="caja-pedido-total">
+                                      Total: {formatCOP(totalPedido > 0 ? totalPedido : (pedido.total || 0))}
+                                    </p>
+                                  </div>
+                                  <button
+                                    className="caja-pedido-cargar-btn"
+                                    onClick={() => cargarPedidoEnCarrito(pedido)}
+                                    disabled={!pedido.items || pedido.items.length === 0}
+                                    title="Cargar pedido"
+                                  >
+                                    <ArrowRight size={16} />
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <div className="caja-mesa-group-total">
+                            <span className="caja-mesa-total-label">Total Mesa:</span>
+                            <span className="caja-mesa-total-amount">
+                              {formatCOP(grupo.pedidos.reduce((sum, pedido) => {
+                                if (!pedido.items || pedido.items.length === 0) return sum + (pedido.total || 0);
+                                return sum + pedido.items.reduce((itemSum, item) => {
+                                  const precioBase = item.precio_unitario || item.precio_venta || 0;
+                                  const precioToppings = (item.toppings || []).reduce((toppingSum, topping) => {
+                                    return toppingSum + (topping.precio || 0) * (topping.cantidad || 1);
+                                  }, 0);
+                                  const precioUnitarioConToppings = precioBase + precioToppings;
+                                  return itemSum + (precioUnitarioConToppings * (item.cantidad || 1));
+                                }, 0);
+                              }, 0))}
                             </span>
                           </div>
-                          <button
-                            className="caja-mesa-cargar-todos-btn"
-                            onClick={() => {
-                              if (grupo.pedidos && grupo.pedidos.length > 0) {
-                                // Usar directamente los pedidos del grupo
-                                cargarTodosPedidosMesa(grupo.pedidos);
-                              }
-                            }}
-                            title={`Cargar todos los pedidos de la mesa ${grupo.mesa.numero}`}
-                          >
-                            <Package size={16} />
-                          </button>
                         </div>
-                        <div className="caja-mesa-pedidos-list">
-                          {grupo.pedidos.map((pedido) => {
-                            const totalPedido = (() => {
-                              if (!pedido.items || pedido.items.length === 0) return pedido.total || 0;
-                              return pedido.items.reduce((sum, item) => {
-                                const precioBase = item.precio_unitario || item.precio_venta || 0;
-                                const precioToppings = (item.toppings || []).reduce((toppingSum, topping) => {
-                                  return toppingSum + (topping.precio || 0) * (topping.cantidad || 1);
-                                }, 0);
-                                const precioUnitarioConToppings = precioBase + precioToppings;
-                                return sum + (precioUnitarioConToppings * (item.cantidad || 1));
-                              }, 0);
-                            })();
-                            
-                            return (
-                              <div key={pedido.id} className="caja-pedido-card caja-pedido-card-in-group">
-                                <div className="caja-pedido-info">
-                                  <div className="caja-pedido-header-info">
-                                    <h4>{pedido.numero_pedido}</h4>
-                                    <div className="caja-pedido-meta-info">
-                                      {pedido.mesa && (
-                                        <span className="caja-pedido-mesa">{pedido.mesa.numero}</span>
-                                      )}
-                                      {pedido.cliente_nombre && (
-                                        <span className="caja-pedido-cliente">
-                                          {pedido.cliente_nombre}
-                                          {pedido.cliente_telefono && ` - ${pedido.cliente_telefono}`}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                  <p className="caja-pedido-items">
-                                    {pedido.items?.length || 0} {pedido.items?.length === 1 ? 'item' : 'items'}
-                                  </p>
-                                  <p className="caja-pedido-total">
-                                    Total: {formatCOP(totalPedido > 0 ? totalPedido : (pedido.total || 0))}
-                                  </p>
-                                </div>
-                                <button
-                                  className="caja-pedido-cargar-btn"
-                                  onClick={() => cargarPedidoEnCarrito(pedido)}
-                                  disabled={!pedido.items || pedido.items.length === 0}
-                                  title="Cargar pedido"
-                                >
-                                  <ArrowRight size={16} />
-                                </button>
-                              </div>
-                            );
-                          })}
-                        </div>
-                        <div className="caja-mesa-group-total">
-                          <span className="caja-mesa-total-label">Total Mesa:</span>
-                          <span className="caja-mesa-total-amount">
-                            {formatCOP(grupo.pedidos.reduce((sum, pedido) => {
-                              if (!pedido.items || pedido.items.length === 0) return sum + (pedido.total || 0);
-                              return sum + pedido.items.reduce((itemSum, item) => {
-                                const precioBase = item.precio_unitario || item.precio_venta || 0;
-                                const precioToppings = (item.toppings || []).reduce((toppingSum, topping) => {
-                                  return toppingSum + (topping.precio || 0) * (topping.cantidad || 1);
-                                }, 0);
-                                const precioUnitarioConToppings = precioBase + precioToppings;
-                                return itemSum + (precioUnitarioConToppings * (item.cantidad || 1));
-                              }, 0);
-                            }, 0))}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                    
-                    {/* Mostrar pedidos individuales (sin mesa o con mesa que tiene solo un pedido) */}
-                    {pedidosIndividuales.map((pedido) => {
-                      const totalPedido = (() => {
-                        if (!pedido.items || pedido.items.length === 0) return pedido.total || 0;
-                        return pedido.items.reduce((sum, item) => {
-                          const precioBase = item.precio_unitario || item.precio_venta || 0;
-                          const precioToppings = (item.toppings || []).reduce((toppingSum, topping) => {
-                            return toppingSum + (topping.precio || 0) * (topping.cantidad || 1);
+                      ))}
+
+                      {/* Mostrar pedidos individuales (sin mesa o con mesa que tiene solo un pedido) */}
+                      {pedidosIndividuales.map((pedido) => {
+                        const totalPedido = (() => {
+                          if (!pedido.items || pedido.items.length === 0) return pedido.total || 0;
+                          return pedido.items.reduce((sum, item) => {
+                            const precioBase = item.precio_unitario || item.precio_venta || 0;
+                            const precioToppings = (item.toppings || []).reduce((toppingSum, topping) => {
+                              return toppingSum + (topping.precio || 0) * (topping.cantidad || 1);
+                            }, 0);
+                            const precioUnitarioConToppings = precioBase + precioToppings;
+                            return sum + (precioUnitarioConToppings * (item.cantidad || 1));
                           }, 0);
-                          const precioUnitarioConToppings = precioBase + precioToppings;
-                          return sum + (precioUnitarioConToppings * (item.cantidad || 1));
-                        }, 0);
-                      })();
-                      
-                      return (
-                        <div key={pedido.id} className="caja-pedido-card">
-                          <div className="caja-pedido-info">
-                            <div className="caja-pedido-header-info">
-                              <h4>{pedido.numero_pedido}</h4>
-                              <div className="caja-pedido-meta-info">
-                                {pedido.mesa && (
-                                  <span className="caja-pedido-mesa">{pedido.mesa.numero}</span>
-                                )}
-                                {pedido.cliente_nombre && (
-                                  <span className="caja-pedido-cliente">
-                                    {pedido.cliente_nombre}
-                                    {pedido.cliente_telefono && ` - ${pedido.cliente_telefono}`}
-                                  </span>
-                                )}
+                        })();
+
+                        return (
+                          <div key={pedido.id} className="caja-pedido-card">
+                            <div className="caja-pedido-info">
+                              <div className="caja-pedido-header-info">
+                                <h4>{pedido.numero_pedido}</h4>
+                                <div className="caja-pedido-meta-info">
+                                  {pedido.mesa && (
+                                    <span className="caja-pedido-mesa">{pedido.mesa.numero}</span>
+                                  )}
+                                  {pedido.cliente_nombre && (
+                                    <span className="caja-pedido-cliente">
+                                      {pedido.cliente_nombre}
+                                      {pedido.cliente_telefono && ` - ${pedido.cliente_telefono} `}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
+                              <p className="caja-pedido-items">
+                                {pedido.items?.length || 0} {pedido.items?.length === 1 ? 'item' : 'items'}
+                              </p>
+                              <p className="caja-pedido-total">
+                                Total: {formatCOP(totalPedido > 0 ? totalPedido : (pedido.total || 0))}
+                              </p>
                             </div>
-                            <p className="caja-pedido-items">
-                              {pedido.items?.length || 0} {pedido.items?.length === 1 ? 'item' : 'items'}
-                            </p>
-                            <p className="caja-pedido-total">
-                              Total: {formatCOP(totalPedido > 0 ? totalPedido : (pedido.total || 0))}
-                            </p>
+                            <button
+                              className="caja-pedido-cargar-btn"
+                              onClick={() => cargarPedidoEnCarrito(pedido)}
+                              disabled={!pedido.items || pedido.items.length === 0}
+                              title="Cargar pedido"
+                            >
+                              <ArrowRight size={16} />
+                            </button>
                           </div>
-                          <button
-                            className="caja-pedido-cargar-btn"
-                            onClick={() => cargarPedidoEnCarrito(pedido)}
-                            disabled={!pedido.items || pedido.items.length === 0}
-                            title="Cargar pedido"
-                          >
-                            <ArrowRight size={16} />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </>
-                )}
-              </div>
-            </>
-          )}
+                        );
+                      })}
+                    </>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         )}
 
@@ -3842,238 +4076,311 @@ export default function Caja({
 
         {/* Contenedor principal para productos y carrito */}
         <div className="caja-main-content">
-        {/* Panel de productos */}
-        <div className="caja-products-panel">
-        {/* Botón de volver cuando está en modo pedido */}
-        {esModoPedido && onCancelar && (
-          <div className="caja-volver-container">
-            <button
-              className="caja-btn-volver"
-              onClick={onCancelar}
-              title="Volver a tomar pedidos"
-            >
-              <ArrowLeft size={18} />
-              <span>Volver</span>
-            </button>
-          </div>
-        )}
-        <div className="caja-search-wrapper">
-          {isJewelryBusiness && (
-            <div className="caja-metal-prices">
-              <div style={{
-                  gridColumn: '1 / -1', 
-                  fontSize: '0.7rem', 
-                  color: '#92400e', 
-                  marginBottom: '0.25rem', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '0.35rem',
-                  backgroundColor: '#fffbeb',
-                  padding: '0.35rem 0.5rem',
-                  borderRadius: '6px',
-                  border: '1px solid #fde68a'
-              }}>
-                <Info size={14} style={{flexShrink: 0}} />
-                <span>Editar según los precios actuales del oro</span>
-              </div>
-              <div className="caja-metal-price-field">
-                <label style={{ marginLeft: 'calc(24px + 0.5rem)' }}>Oro internacional ({organization?.jewelry_weight_unit || 'g'})</label>
-                <div className="caja-metal-input-wrapper">
-                  <span className="caja-metal-currency-symbol">$</span>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    className="caja-metal-input"
-                    placeholder="240.000"
-                    value={goldPriceGlobalInput.displayValue}
-                    onChange={(e) => {
-                      goldPriceGlobalInput.handleChange(e);
-                      setGoldPriceGlobal(goldPriceGlobalInput.getNumericValue());
-                    }}
-                  />
-                </div>
-              </div>
-              <div className="caja-metal-price-field">
-                <label style={{ marginLeft: 'calc(24px + 0.5rem)' }}>Oro nacional ({organization?.jewelry_weight_unit || 'g'})</label>
-                <div className="caja-metal-input-wrapper">
-                  <span className="caja-metal-currency-symbol">$</span>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    className="caja-metal-input"
-                    placeholder="255.000"
-                    value={goldPriceLocalInput.displayValue}
-                    onChange={(e) => {
-                      goldPriceLocalInput.handleChange(e);
-                      setGoldPriceLocal(goldPriceLocalInput.getNumericValue());
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-          <div className="caja-search-container">
-            <Search size={18} className="caja-search-icon-outside" />
-            <input
-              ref={barcodeInputRef}
-              type="text"
-              placeholder="Buscar producto o escanear código de barras..."
-              className="caja-search-input"
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                // El hook manejará la detección de código de barras
-                handleBarcodeInputChange(e);
-              }}
-              onKeyDown={handleBarcodeKeyDown}
-              autoFocus
-              onFocus={(e) => {
-                // Prevenir scroll cuando se enfoca - mantener posición
-                e.target.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
-              }}
-            />
-            <button
-              type="button"
-              className="caja-btn-consultar-precio"
-              onClick={() => setMostrandoConsultarPrecio(true)}
-              title="Consultar precio de producto"
-            >
-              <DollarSign size={18} />
-            </button>
-          </div>
-        </div>
-
-        {/* Categorías */}
-        {categoryNames && categoryNames.length > 0 && (
-          <div className="caja-categories-wrapper">
-            <div className="caja-categories-container">
-              <button
-                className={`caja-category-pill ${!selectedCategory ? 'active' : ''}`}
-                onClick={() => setSelectedCategory(null)}
-              >
-                Todos
-              </button>
-              {categoryNames.map((category) => (
+          {/* Panel de productos */}
+          <div className="caja-products-panel">
+            {/* Botón de volver cuando está en modo pedido */}
+            {esModoPedido && onCancelar && (
+              <div className="caja-volver-container">
                 <button
-                  key={category}
-                  className={`caja-category-pill ${selectedCategory === category ? 'active' : ''}`}
-                  onClick={() => setSelectedCategory(category)}
+                  className="caja-btn-volver"
+                  onClick={onCancelar}
+                  title="Volver a tomar pedidos"
                 >
-                  {category}
+                  <ArrowLeft size={18} />
+                  <span>Volver</span>
                 </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="caja-products-list">
-          {sortedProducts.map((producto, index) => (
-            <motion.div 
-              key={producto.id} 
-              className="caja-product-card"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ 
-                duration: 0.3, 
-                delay: index * 0.05,
-                ease: "easeOut"
-              }}
-              whileHover={{ 
-                scale: 1.02,
-                transition: { duration: 0.2 }
-              }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => addToCart(producto)}
-            >
-              <div className="caja-product-content">
-                <OptimizedProductImage 
-                  imagePath={producto.imagen} 
-                  alt={producto.nombre} 
-                  className="caja-product-image"
+              </div>
+            )}
+            <div className="caja-search-wrapper">
+              {isJewelryBusiness && (
+                <div className="caja-metal-prices">
+                  <div style={{
+                    gridColumn: '1 / -1',
+                    fontSize: '0.7rem',
+                    color: '#92400e',
+                    marginBottom: '0.25rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    backgroundColor: '#fffbeb',
+                    padding: '0.35rem 0.5rem',
+                    borderRadius: '6px',
+                    border: '1px solid #fde68a'
+                  }}>
+                    <Info size={14} style={{ flexShrink: 0 }} />
+                    <span>Editar según los precios actuales del oro</span>
+                  </div>
+                  <div className="caja-metal-price-field">
+                    <label style={{ marginLeft: 'calc(24px + 0.5rem)' }}>Oro internacional ({organization?.jewelry_weight_unit || 'g'})</label>
+                    <div className="caja-metal-input-wrapper">
+                      <span className="caja-metal-currency-symbol">$</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        className="caja-metal-input"
+                        placeholder="240.000"
+                        value={goldPriceGlobalInput.displayValue}
+                        onChange={(e) => {
+                          goldPriceGlobalInput.handleChange(e);
+                          setGoldPriceGlobal(goldPriceGlobalInput.getNumericValue());
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div className="caja-metal-price-field">
+                    <label style={{ marginLeft: 'calc(24px + 0.5rem)' }}>Oro nacional ({organization?.jewelry_weight_unit || 'g'})</label>
+                    <div className="caja-metal-input-wrapper">
+                      <span className="caja-metal-currency-symbol">$</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        className="caja-metal-input"
+                        placeholder="255.000"
+                        value={goldPriceLocalInput.displayValue}
+                        onChange={(e) => {
+                          goldPriceLocalInput.handleChange(e);
+                          setGoldPriceLocal(goldPriceLocalInput.getNumericValue());
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div className="caja-search-container">
+                <Search size={18} className="caja-search-icon-outside" />
+                <input
+                  ref={barcodeInputRef}
+                  type="text"
+                  placeholder="Buscar producto o escanear código de barras..."
+                  className="caja-search-input"
+                  value={query}
+                  onChange={(e) => {
+                    setQuery(e.target.value);
+                    // El hook manejará la detección de código de barras
+                    handleBarcodeInputChange(e);
+                  }}
+                  onKeyDown={handleBarcodeKeyDown}
+                  autoFocus
+                  onFocus={(e) => {
+                    // Prevenir scroll cuando se enfoca - mantener posición
+                    e.target.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+                  }}
                 />
-                <div className="caja-product-info">
-                  <p className="caja-product-name" title={producto.nombre}>{producto.nombre}</p>
-                  <p className="caja-product-stock">Stock: {producto.stock !== null && producto.stock !== undefined ? parseFloat(producto.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '0'}</p>
-                  {/* Mostrar información de joyería en tarjetas de productos */}
-                  {isJewelryBusiness && producto.metadata && (
-                    <div className="caja-product-jewelry-info">
-                      {producto.metadata.peso && (
-                        <span className="caja-product-jewelry-tag">
-                          {producto.metadata.peso}g
-                        </span>
-                      )}
-                      {producto.metadata.material && (
-                        <span className="caja-product-jewelry-tag">
-                          {producto.metadata.material}
-                        </span>
-                      )}
-                      {producto.metadata.jewelry_material_type && producto.metadata.jewelry_material_type !== 'na' && (
-                        <span className="caja-product-jewelry-tag caja-product-jewelry-type">
-                          {producto.metadata.jewelry_material_type === 'local' ? 'Nac' : 'Int'}
-                        </span>
+                <button
+                  type="button"
+                  className="caja-btn-consultar-precio"
+                  onClick={() => setMostrandoConsultarPrecio(true)}
+                  title="Consultar precio de producto"
+                >
+                  <DollarSign size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Categorías */}
+            {categoryNames && categoryNames.length > 0 && (
+              <div className="caja-categories-wrapper">
+                <div className="caja-categories-container">
+                  <button
+                    className={`caja-category-pill ${!selectedCategory ? 'active' : ''}`}
+                    onClick={() => setSelectedCategory(null)}
+                  >
+                    Todos
+                  </button>
+                  {categoryNames.map((category) => (
+                    <button
+                      key={category}
+                      className={`caja-category-pill ${selectedCategory === category ? 'active' : ''}`}
+                      onClick={() => setSelectedCategory(category)}
+                    >
+                      {category}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="caja-products-list">
+              {visibleProducts.map((producto, index) => (
+                <motion.div
+                  key={producto.id}
+                  className="caja-product-card"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    duration: 0.3,
+                    delay: index * 0.05,
+                    ease: "easeOut"
+                  }}
+                  whileHover={{
+                    scale: 1.02,
+                    transition: { duration: 0.2 }
+                  }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => addToCart(producto)}
+                >
+                  <div className="caja-product-content">
+                    <OptimizedProductImage
+                      imagePath={producto.imagen}
+                      alt={producto.nombre}
+                      className="caja-product-image"
+                    />
+                    <div className="caja-product-info">
+                      <p className="caja-product-name" title={producto.nombre}>{producto.nombre}</p>
+                      <p className="caja-product-stock">Stock: {producto.stock !== null && producto.stock !== undefined ? parseFloat(producto.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '0'}</p>
+                      {/* Mostrar información de joyería en tarjetas de productos */}
+                      {isJewelryBusiness && producto.metadata && (
+                        <div className="caja-product-jewelry-info">
+                          {producto.metadata.peso && (
+                            <span className="caja-product-jewelry-tag">
+                              {producto.metadata.peso}g
+                            </span>
+                          )}
+                          {producto.metadata.material && (
+                            <span className="caja-product-jewelry-tag">
+                              {producto.metadata.material}
+                            </span>
+                          )}
+                          {producto.metadata.jewelry_material_type && producto.metadata.jewelry_material_type !== 'na' && (
+                            <span className="caja-product-jewelry-tag caja-product-jewelry-type">
+                              {producto.metadata.jewelry_material_type === 'local' ? 'Nac' : 'Int'}
+                            </span>
+                          )}
+                        </div>
                       )}
                     </div>
-                  )}
+                    <span className="caja-product-price">
+                      {formatCOP(isJewelryBusiness ? getJewelryUnitPrice(producto) : producto.precio_venta)}
+                    </span>
+                  </div>
+                </motion.div>
+              ))}
+
+              {filteredProducts.length === 0 && (
+                <p className="caja-no-products">No se encontraron productos para "{query}"</p>
+              )}
+
+              {/* Div centinela para el Infinite Scroll */}
+              {visibleCount < sortedProducts.length && (
+                <div ref={loadingObserverRef} style={{ height: '50px', display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '1rem', width: '100%', gridColumn: '1 / -1' }}>
+                  <div className="lottie-loader-container" style={{ width: '40px', height: '40px' }}>
+                    <LottieLoader />
+                  </div>
                 </div>
-                <span className="caja-product-price">
-                  {formatCOP(isJewelryBusiness ? getJewelryUnitPrice(producto) : producto.precio_venta)}
-                </span>
-              </div>
-            </motion.div>
-          ))}
+              )}
+            </div>
+          </div>
 
-          {filteredProducts.length === 0 && (
-            <p className="caja-no-products">No se encontraron productos para "{query}"</p>
-          )}
-        </div>
-      </div>
-
-      {/* Panel carrito (desktop) */}
-      <div className="caja-cart-panel">
-        <div className="caja-cart-header">
-          <h2 className="caja-cart-title">
-            <ShoppingCart className="caja-cart-icon" /> {esModoPedido ? 'Carrito de Pedido' : 'Carrito de Venta'}
-            {cart.length > 0 && (
-              <span className="caja-cart-count-badge">
-                {cart.reduce((n, i) => n + (typeof i.qty === 'number' ? i.qty : 0), 0)}
-              </span>
-            )}
-          </h2>
-          {cart.length > 0 && (
-            <div className="caja-cart-header-actions">
-              <div className="caja-cliente-container">
-                <button 
-                  className={`caja-header-icon-btn caja-icon-cliente ${clienteSeleccionado ? 'caja-icon-cliente-selected' : ''}`}
-                  onClick={() => setMostrandoModalSeleccionCliente(true)}
-                  title={clienteSeleccionado ? `Cliente: ${clienteSeleccionado.nombre}` : 'Seleccionar cliente'}
-                >
-                  {clienteSeleccionado ? (
-                    <>
-                      <UserCircle 
-                        size={16} 
-                        strokeWidth={2.5} 
-                        color="#3b82f6"
-                        style={{ 
+          {/* Panel carrito (desktop) */}
+          <div className="caja-cart-panel">
+            <div className="caja-cart-header">
+              <h2 className="caja-cart-title">
+                <ShoppingCart className="caja-cart-icon" /> {esModoPedido ? 'Carrito de Pedido' : 'Carrito de Venta'}
+                {cart.length > 0 && (
+                  <span className="caja-cart-count-badge">
+                    {cart.reduce((n, i) => n + (typeof i.qty === 'number' ? i.qty : 0), 0)}
+                  </span>
+                )}
+              </h2>
+              {cart.length > 0 && (
+                <div className="caja-cart-header-actions">
+                  <div className="caja-cliente-container">
+                    <button
+                      className={`caja-header-icon-btn caja-icon-cliente ${clienteSeleccionado ? 'caja-icon-cliente-selected' : ''}`}
+                      onClick={() => setMostrandoModalSeleccionCliente(true)}
+                      title={clienteSeleccionado ? `Cliente: ${clienteSeleccionado.nombre} ` : 'Seleccionar cliente'}
+                    >
+                      {clienteSeleccionado ? (
+                        <>
+                          <UserCircle
+                            size={16}
+                            strokeWidth={2.5}
+                            color="#3b82f6"
+                            style={{
+                              display: 'block',
+                              position: 'relative',
+                              zIndex: 2,
+                              opacity: 1,
+                              visibility: 'visible',
+                              flexShrink: 0
+                            }}
+                          />
+                          <span className="caja-cliente-nombre-text">
+                            {clienteSeleccionado.nombre.length > 8
+                              ? `${clienteSeleccionado.nombre.substring(0, 8)}...`
+                              : clienteSeleccionado.nombre}
+                          </span>
+                        </>
+                      ) : (
+                        <UserCircle
+                          size={20}
+                          strokeWidth={2.5}
+                          color="#3b82f6"
+                          style={{
+                            display: 'block',
+                            position: 'relative',
+                            zIndex: 2,
+                            opacity: 1,
+                            visibility: 'visible'
+                          }}
+                        />
+                      )}
+                      {clienteSeleccionado && (
+                        <span className="caja-header-icon-badge"></span>
+                      )}
+                    </button>
+                    {clienteSeleccionado && (
+                      <button
+                        className="caja-cliente-remove-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setClienteSeleccionado(null);
+                        }}
+                        title="Eliminar cliente"
+                      >
+                        <Trash2 size={20} strokeWidth={2.5} />
+                      </button>
+                    )}
+                  </div>
+                  {!esModoPedido && (
+                    <button
+                      className="caja-header-icon-btn caja-icon-cotizacion"
+                      onClick={handleGuardarCotizacion}
+                      disabled={guardandoCotizacion}
+                      title="Guardar como cotización"
+                      style={{ position: 'relative', zIndex: 1 }}
+                    >
+                      <Save
+                        size={20}
+                        strokeWidth={2.5}
+                        color="#10b981"
+                        style={{
                           display: 'block',
                           position: 'relative',
                           zIndex: 2,
                           opacity: 1,
-                          visibility: 'visible',
-                          flexShrink: 0
+                          visibility: 'visible'
                         }}
                       />
-                      <span className="caja-cliente-nombre-text">
-                        {clienteSeleccionado.nombre.length > 8 
-                          ? `${clienteSeleccionado.nombre.substring(0, 8)}...` 
-                          : clienteSeleccionado.nombre}
-                      </span>
-                    </>
-                  ) : (
-                    <UserCircle 
-                      size={20} 
-                      strokeWidth={2.5} 
-                      color="#3b82f6"
-                      style={{ 
+                    </button>
+                  )}
+                  <button
+                    className="caja-header-icon-btn caja-icon-descuento"
+                    onClick={() => {
+                      if (hasFeature('advancedSale')) {
+                        setMostrarModalDescuento(true);
+                      } else {
+                        toast.error('Los descuentos están disponibles en el plan Estándar');
+                      }
+                    }}
+                    title={montoDescuento > 0 ? `Descuento: ${descuento.tipo === 'porcentaje' ? `${descuento.valor}%` : formatCOP(descuento.valor)} ` : hasFeature('advancedSale') ? 'Aplicar descuento' : '🔒 Plan Estándar'}
+                    style={{ position: 'relative', zIndex: 1, opacity: hasFeature('advancedSale') ? 1 : 0.5 }}
+                  >
+                    <Percent
+                      size={20}
+                      strokeWidth={2.5}
+                      color="#f59e0b"
+                      style={{
                         display: 'block',
                         position: 'relative',
                         zIndex: 2,
@@ -4081,847 +4388,783 @@ export default function Caja({
                         visibility: 'visible'
                       }}
                     />
-                  )}
-                  {clienteSeleccionado && (
-                    <span className="caja-header-icon-badge"></span>
-                  )}
-                </button>
-                {clienteSeleccionado && (
-                  <button
-                    className="caja-cliente-remove-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setClienteSeleccionado(null);
-                    }}
-                    title="Eliminar cliente"
-                  >
-                    <Trash2 size={20} strokeWidth={2.5} />
+                    {montoDescuento > 0 && (
+                      <span className="caja-header-icon-badge"></span>
+                    )}
                   </button>
-                )}
-              </div>
-              {!esModoPedido && (
-                <button 
-                  className="caja-header-icon-btn caja-icon-cotizacion"
-                  onClick={handleGuardarCotizacion}
-                  disabled={guardandoCotizacion}
-                  title="Guardar como cotización"
-                  style={{ position: 'relative', zIndex: 1 }}
-                >
-                  <Save 
-                    size={20} 
-                    strokeWidth={2.5} 
-                    color="#10b981"
-                    style={{ 
-                      display: 'block',
-                      position: 'relative',
-                      zIndex: 2,
-                      opacity: 1,
-                      visibility: 'visible'
+                  <button
+                    className="caja-header-icon-btn caja-icon-vaciar"
+                    onClick={() => {
+                      setCart([]);
+                      setVieneDePedidos(false); // Resetear flag cuando se vacía el carrito
+                      setPedidoIdActual(null);
+                      setPedidosConsolidados([]);
+                      setClienteNombrePedido(null); // Limpiar nombre del cliente del pedido
+                      setDescuento({ tipo: 'porcentaje', valor: 0, alcance: 'total', productosIds: [] }); // Limpiar descuento
                     }}
-                  />
-                </button>
+                    title="Vaciar carrito"
+                    style={{ position: 'relative', zIndex: 1 }}
+                  >
+                    <Trash2
+                      size={20}
+                      strokeWidth={2.5}
+                      color="#ef4444"
+                      style={{
+                        display: 'block',
+                        position: 'relative',
+                        zIndex: 2,
+                        opacity: 1,
+                        visibility: 'visible'
+                      }}
+                    />
+                  </button>
+                </div>
               )}
-              <button 
-                className="caja-header-icon-btn caja-icon-descuento"
-                onClick={() => {
-                  if (hasFeature('advancedSale')) {
-                    setMostrarModalDescuento(true);
-                  } else {
-                    toast.error('Los descuentos están disponibles en el plan Estándar');
-                  }
-                }}
-                title={montoDescuento > 0 ? `Descuento: ${descuento.tipo === 'porcentaje' ? `${descuento.valor}%` : formatCOP(descuento.valor)}` : hasFeature('advancedSale') ? 'Aplicar descuento' : '🔒 Plan Estándar'}
-                style={{ position: 'relative', zIndex: 1, opacity: hasFeature('advancedSale') ? 1 : 0.5 }}
-              >
-                <Percent 
-                  size={20} 
-                  strokeWidth={2.5} 
-                  color="#f59e0b"
-                  style={{ 
-                    display: 'block',
-                    position: 'relative',
-                    zIndex: 2,
-                    opacity: 1,
-                    visibility: 'visible'
-                  }}
-                />
+            </div>
+
+
+            <div className="caja-cart-items">
+              {cart.length === 0 ? (
+                <p className="caja-empty-cart">Aún no has agregado productos.</p>
+              ) : (
+                <ul className="caja-cart-list">
+                  {cart.map((item, index) => {
+                    // Buscar el producto completo para obtener la imagen
+                    const productoCompleto = productos.find(p => p.id === item.id);
+                    // Crear una clave única que incluya ID, toppings, variaciones e índice
+                    const itemKey = `${item.id} -${JSON.stringify(item.toppings || [])} -${JSON.stringify(item.variaciones || {})} -${index} `;
+                    return (
+                      <li key={itemKey} className="caja-cart-item">
+                        <div className="caja-cart-item-image">
+                          <OptimizedProductImage
+                            imagePath={productoCompleto?.imagen}
+                            alt={item.nombre}
+                            className="caja-cart-item-image-img"
+                          />
+                        </div>
+                        <div className="caja-cart-item-info">
+                          <p className="caja-cart-item-name">{item.nombre}</p>
+                          {item.variant_nombre && (
+                            <div className="caja-cart-item-variantes">
+                              <span className="caja-cart-item-variaciones-label">Variante: </span>
+                              <span className="caja-cart-item-variaciones-list">{item.variant_nombre}</span>
+                            </div>
+                          )}
+                          {/* Mostrar peso y material para joyerías */}
+                          {isJewelryBusiness && (item.metadata || productoCompleto?.metadata) && (
+                            <div className="caja-cart-item-jewelry-info">
+                              {(item.metadata?.peso || productoCompleto?.metadata?.peso) && (
+                                <div className="caja-cart-item-jewelry-detail">
+                                  <span className="caja-cart-item-jewelry-label">Peso: </span>
+                                  <span className="caja-cart-item-jewelry-value">
+                                    {item.metadata?.peso || productoCompleto?.metadata?.peso}g
+                                  </span>
+                                </div>
+                              )}
+                              {(item.metadata?.material || productoCompleto?.metadata?.material) && (
+                                <div className="caja-cart-item-jewelry-detail">
+                                  <span className="caja-cart-item-jewelry-label">Material: </span>
+                                  <span className="caja-cart-item-jewelry-value">
+                                    {item.metadata?.material || productoCompleto?.metadata?.material}
+                                  </span>
+                                </div>
+                              )}
+                              {(item.metadata?.jewelry_material_type || productoCompleto?.metadata?.jewelry_material_type) &&
+                                (item.metadata?.jewelry_material_type || productoCompleto?.metadata?.jewelry_material_type) !== 'na' && (
+                                  <div className="caja-cart-item-jewelry-detail caja-cart-item-jewelry-type">
+                                    <span className="caja-cart-item-jewelry-value">
+                                      {(item.metadata?.jewelry_material_type || productoCompleto?.metadata?.jewelry_material_type) === 'local' ? 'Nacional' : 'Internacional'}
+                                    </span>
+                                  </div>
+                                )}
+                            </div>
+                          )}
+                          {item.toppings && Array.isArray(item.toppings) && item.toppings.length > 0 && (
+                            <div className="caja-cart-item-toppings">
+                              <span className="caja-cart-item-toppings-label">Extras: </span>
+                              <span className="caja-cart-item-toppings-list">
+                                {item.toppings.map((topping, idx) => (
+                                  <span key={idx} className="caja-cart-item-topping-tag">
+                                    {topping.nombre || topping}
+                                    {idx < item.toppings.length - 1 && ', '}
+                                  </span>
+                                ))}
+                              </span>
+                            </div>
+                          )}
+                          {item.variaciones && Object.keys(item.variaciones).length > 0 && (
+                            <div className="caja-cart-item-variaciones">
+                              <span className="caja-cart-item-variaciones-label">Variaciones: </span>
+                              <span className="caja-cart-item-variaciones-list">
+                                {Object.entries(item.variaciones).map(([key, value], idx) => {
+                                  // Formatear la variación para mostrar
+                                  const variacionNombre = key;
+                                  const opcionLabel = typeof value === 'boolean'
+                                    ? (value ? 'Sí' : 'No')
+                                    : String(value);
+                                  return (
+                                    <span key={idx} className="caja-cart-item-variacion-tag">
+                                      {variacionNombre}: {opcionLabel}
+                                      {idx < Object.keys(item.variaciones).length - 1 && ', '}
+                                    </span>
+                                  );
+                                })}
+                              </span>
+                            </div>
+                          )}
+                          {(esModoPedido || vieneDePedidos) && (
+                            <div className="caja-cart-item-notas">
+                              <textarea
+                                placeholder="Notas para este producto..."
+                                value={item.notas || ''}
+                                onChange={(e) => actualizarNotasItem(item.id, e.target.value, index, item.toppings, item.variaciones, item.variant_id)}
+                                className="caja-cart-item-notas-input"
+                                rows={1}
+                                style={{
+                                  width: '100%',
+                                  padding: '0.1rem 0.35rem',
+                                  border: '1px solid rgba(0, 0, 0, 0.1)',
+                                  borderRadius: '4px',
+                                  fontSize: '0.65rem',
+                                  resize: 'vertical',
+                                  minHeight: '18px',
+                                  marginTop: '0.25rem',
+                                  fontFamily: 'inherit',
+                                  lineHeight: '1.2'
+                                }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                        <div className="caja-cart-item-right-section">
+                          <div className="caja-cart-item-controls">
+                            <button
+                              className="caja-qty-btn caja-qty-btn-minus"
+                              onClick={() => dec(index)}
+                              aria-label="Disminuir cantidad"
+                            >
+                              <span className="caja-qty-icon">−</span>
+                            </button>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              className="caja-qty-display"
+                              value={typeof item.qty === 'number' ? item.qty : (item.qty || '')}
+                              style={{
+                                color: '#1a1a1a',
+                                backgroundColor: '#ffffff',
+                                border: '2px solid #4b5563',
+                                fontWeight: '700',
+                                fontSize: '0.9rem'
+                              }}
+                              onChange={(e) => {
+                                const value = e.target.value;
+
+                                // Permitir campo vacío temporalmente mientras se escribe
+                                if (value === '') {
+                                  setCart((prev) => prev.map((i, idx) =>
+                                    idx === index ? { ...i, qty: '' } : i
+                                  ));
+                                  return;
+                                }
+
+                                const numValue = parseInt(value, 10);
+
+                                if (!isNaN(numValue) && numValue >= 1) {
+                                  updateQty(index, numValue);
+                                }
+                              }}
+                              onBlur={(e) => {
+                                const value = e.target.value;
+                                const numValue = parseInt(value, 10);
+
+                                if (value === '' || isNaN(numValue) || numValue < 1) {
+                                  // Si está vacío o es inválido, restaurar cantidad anterior o eliminar
+                                  const itemEnCarrito = cart[index];
+                                  if (itemEnCarrito && typeof itemEnCarrito.qty === 'number' && itemEnCarrito.qty >= 1) {
+                                    setCart((prev) => prev.map((i, idx) =>
+                                      idx === index ? { ...i, qty: itemEnCarrito.qty } : i
+                                    ));
+                                  } else {
+                                    removeItem(index);
+                                  }
+                                } else {
+                                  updateQty(index, numValue);
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.target.blur();
+                                }
+                              }}
+                              min="1"
+                              aria-label="Cantidad"
+                            />
+                            <button
+                              className="caja-qty-btn caja-qty-btn-plus"
+                              onClick={() => inc(index)}
+                              aria-label="Aumentar cantidad"
+                            >
+                              <span className="caja-qty-icon">+</span>
+                            </button>
+                          </div>
+                          <div className="caja-cart-item-price-unit">
+                            {(() => {
+                              // Calcular precio unitario incluyendo toppings (con cantidad de cada topping)
+                              const precioBase = item.precio_venta || item.price || 0;
+                              const precioToppings = (item.toppings && Array.isArray(item.toppings))
+                                ? item.toppings.reduce((sum, topping) => {
+                                  const precioTopping = topping.precio || topping.precio_venta || 0;
+                                  const cantidadTopping = topping.cantidad || 1;
+                                  return sum + (precioTopping * cantidadTopping);
+                                }, 0)
+                                : 0;
+                              return formatCOP(precioBase + precioToppings);
+                            })()} c/u
+                          </div>
+                          <div className="caja-cart-item-total">
+                            {(() => {
+                              // Calcular precio total incluyendo toppings (con cantidad de cada topping)
+                              const precioBase = item.precio_venta || item.price || 0;
+                              const precioToppings = (item.toppings && Array.isArray(item.toppings))
+                                ? item.toppings.reduce((sum, topping) => {
+                                  const precioTopping = topping.precio || topping.precio_venta || 0;
+                                  const cantidadTopping = topping.cantidad || 1;
+                                  return sum + (precioTopping * cantidadTopping);
+                                }, 0)
+                                : 0;
+                              const cantidad = typeof item.qty === 'number' ? item.qty : 0;
+                              return formatCOP((precioBase + precioToppings) * cantidad);
+                            })()}
+                          </div>
+                        </div>
+                        <button
+                          className="caja-remove-btn"
+                          onClick={() => removeItem(index)}
+                          style={{ display: 'none' }}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+
+            <div className="caja-cart-footer">
+              <div className="caja-total-breakdown">
+                <div className="caja-total-row">
+                  <span className="caja-total-label">Subtotal</span>
+                  <span className="caja-total-amount">{formatCOP(subtotal)}</span>
+                </div>
                 {montoDescuento > 0 && (
-                  <span className="caja-header-icon-badge"></span>
+                  <div className="caja-total-row caja-descuento-row">
+                    <span className="caja-total-label">
+                      Descuento
+                      {descuento.tipo === 'porcentaje' && ` (${descuento.valor} %)`}
+                      {descuento.alcance === 'productos' && ' en productos'}
+                    </span>
+                    <span className="caja-total-amount caja-descuento-amount">-{formatCOP(montoDescuento)}</span>
+                  </div>
                 )}
-              </button>
-              <button 
-                className="caja-header-icon-btn caja-icon-vaciar"
-                onClick={() => {
-                  setCart([]);
-                  setVieneDePedidos(false); // Resetear flag cuando se vacía el carrito
-                  setPedidoIdActual(null);
-                  setPedidosConsolidados([]);
-                  setClienteNombrePedido(null); // Limpiar nombre del cliente del pedido
-                  setDescuento({ tipo: 'porcentaje', valor: 0, alcance: 'total', productosIds: [] }); // Limpiar descuento
-                }}
-                title="Vaciar carrito"
-                style={{ position: 'relative', zIndex: 1 }}
-              >
-                <Trash2 
-                  size={20} 
-                  strokeWidth={2.5} 
-                  color="#ef4444"
-                  style={{ 
-                    display: 'block',
-                    position: 'relative',
-                    zIndex: 2,
-                    opacity: 1,
-                    visibility: 'visible'
-                  }}
-                />
-              </button>
-            </div>
-          )}
-        </div>
-
-
-        <div className="caja-cart-items">
-          {cart.length === 0 ? (
-            <p className="caja-empty-cart">Aún no has agregado productos.</p>
-          ) : (
-            <ul className="caja-cart-list">
-              {cart.map((item, index) => {
-                // Buscar el producto completo para obtener la imagen
-                const productoCompleto = productos.find(p => p.id === item.id);
-                // Crear una clave única que incluya ID, toppings, variaciones e índice
-                const itemKey = `${item.id}-${JSON.stringify(item.toppings || [])}-${JSON.stringify(item.variaciones || {})}-${index}`;
-                return (
-                  <li key={itemKey} className="caja-cart-item">
-                    <div className="caja-cart-item-image">
-                      <OptimizedProductImage
-                        imagePath={productoCompleto?.imagen}
-                        alt={item.nombre}
-                        className="caja-cart-item-image-img"
-                      />
-                    </div>
-                    <div className="caja-cart-item-info">
-                      <p className="caja-cart-item-name">{item.nombre}</p>
-                      {item.variant_nombre && (
-                        <div className="caja-cart-item-variantes">
-                          <span className="caja-cart-item-variaciones-label">Variante: </span>
-                          <span className="caja-cart-item-variaciones-list">{item.variant_nombre}</span>
-                        </div>
-                      )}
-                      {/* Mostrar peso y material para joyerías */}
-                      {isJewelryBusiness && (item.metadata || productoCompleto?.metadata) && (
-                        <div className="caja-cart-item-jewelry-info">
-                          {(item.metadata?.peso || productoCompleto?.metadata?.peso) && (
-                            <div className="caja-cart-item-jewelry-detail">
-                              <span className="caja-cart-item-jewelry-label">Peso: </span>
-                              <span className="caja-cart-item-jewelry-value">
-                                {item.metadata?.peso || productoCompleto?.metadata?.peso}g
-                              </span>
-                            </div>
-                          )}
-                          {(item.metadata?.material || productoCompleto?.metadata?.material) && (
-                            <div className="caja-cart-item-jewelry-detail">
-                              <span className="caja-cart-item-jewelry-label">Material: </span>
-                              <span className="caja-cart-item-jewelry-value">
-                                {item.metadata?.material || productoCompleto?.metadata?.material}
-                              </span>
-                            </div>
-                          )}
-                          {(item.metadata?.jewelry_material_type || productoCompleto?.metadata?.jewelry_material_type) && 
-                           (item.metadata?.jewelry_material_type || productoCompleto?.metadata?.jewelry_material_type) !== 'na' && (
-                            <div className="caja-cart-item-jewelry-detail caja-cart-item-jewelry-type">
-                              <span className="caja-cart-item-jewelry-value">
-                                {(item.metadata?.jewelry_material_type || productoCompleto?.metadata?.jewelry_material_type) === 'local' ? 'Nacional' : 'Internacional'}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      {item.toppings && Array.isArray(item.toppings) && item.toppings.length > 0 && (
-                        <div className="caja-cart-item-toppings">
-                          <span className="caja-cart-item-toppings-label">Extras: </span>
-                          <span className="caja-cart-item-toppings-list">
-                            {item.toppings.map((topping, idx) => (
-                              <span key={idx} className="caja-cart-item-topping-tag">
-                                {topping.nombre || topping}
-                                {idx < item.toppings.length - 1 && ', '}
-                              </span>
-                            ))}
-                          </span>
-                        </div>
-                      )}
-                      {item.variaciones && Object.keys(item.variaciones).length > 0 && (
-                        <div className="caja-cart-item-variaciones">
-                          <span className="caja-cart-item-variaciones-label">Variaciones: </span>
-                          <span className="caja-cart-item-variaciones-list">
-                            {Object.entries(item.variaciones).map(([key, value], idx) => {
-                              // Formatear la variación para mostrar
-                              const variacionNombre = key;
-                              const opcionLabel = typeof value === 'boolean' 
-                                ? (value ? 'Sí' : 'No') 
-                                : String(value);
-                              return (
-                                <span key={idx} className="caja-cart-item-variacion-tag">
-                                  {variacionNombre}: {opcionLabel}
-                                  {idx < Object.keys(item.variaciones).length - 1 && ', '}
-                                </span>
-                              );
-                            })}
-                          </span>
-                        </div>
-                      )}
-                      {(esModoPedido || vieneDePedidos) && (
-                        <div className="caja-cart-item-notas">
-                          <textarea
-                            placeholder="Notas para este producto..."
-                            value={item.notas || ''}
-                            onChange={(e) => actualizarNotasItem(item.id, e.target.value, index, item.toppings, item.variaciones, item.variant_id)}
-                            className="caja-cart-item-notas-input"
-                            rows={1}
-                          style={{
-                            width: '100%',
-                            padding: '0.1rem 0.35rem',
-                            border: '1px solid rgba(0, 0, 0, 0.1)',
-                            borderRadius: '4px',
-                            fontSize: '0.65rem',
-                            resize: 'vertical',
-                            minHeight: '18px',
-                            marginTop: '0.25rem',
-                            fontFamily: 'inherit',
-                            lineHeight: '1.2'
-                          }}
-                        />
-                        </div>
-                      )}
-                    </div>
-                    <div className="caja-cart-item-right-section">
-                      <div className="caja-cart-item-controls">
-                        <button 
-                          className="caja-qty-btn caja-qty-btn-minus"
-                          onClick={() => dec(index)}
-                          aria-label="Disminuir cantidad"
-                        >
-                          <span className="caja-qty-icon">−</span>
-                        </button>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          className="caja-qty-display"
-                          value={typeof item.qty === 'number' ? item.qty : (item.qty || '')}
-                          style={{
-                            color: '#1a1a1a',
-                            backgroundColor: '#ffffff',
-                            border: '2px solid #4b5563',
-                            fontWeight: '700',
-                            fontSize: '0.9rem'
-                          }}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            
-                            // Permitir campo vacío temporalmente mientras se escribe
-                            if (value === '') {
-                              setCart((prev) => prev.map((i, idx) => 
-                                idx === index ? { ...i, qty: '' } : i
-                              ));
-                              return;
-                            }
-                            
-                            const numValue = parseInt(value, 10);
-                            
-                            if (!isNaN(numValue) && numValue >= 1) {
-                              updateQty(index, numValue);
-                            }
-                          }}
-                          onBlur={(e) => {
-                            const value = e.target.value;
-                            const numValue = parseInt(value, 10);
-                            
-                            if (value === '' || isNaN(numValue) || numValue < 1) {
-                              // Si está vacío o es inválido, restaurar cantidad anterior o eliminar
-                              const itemEnCarrito = cart[index];
-                              if (itemEnCarrito && typeof itemEnCarrito.qty === 'number' && itemEnCarrito.qty >= 1) {
-                                setCart((prev) => prev.map((i, idx) => 
-                                  idx === index ? { ...i, qty: itemEnCarrito.qty } : i
-                                ));
-                              } else {
-                                removeItem(index);
-                              }
-                            } else {
-                              updateQty(index, numValue);
-                            }
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.target.blur();
-                            }
-                          }}
-                          min="1"
-                          aria-label="Cantidad"
-                        />
-                        <button 
-                          className="caja-qty-btn caja-qty-btn-plus"
-                          onClick={() => inc(index)}
-                          aria-label="Aumentar cantidad"
-                        >
-                          <span className="caja-qty-icon">+</span>
-                        </button>
-                      </div>
-                      <div className="caja-cart-item-price-unit">
-                        {(() => {
-                          // Calcular precio unitario incluyendo toppings (con cantidad de cada topping)
-                          const precioBase = item.precio_venta || item.price || 0;
-                          const precioToppings = (item.toppings && Array.isArray(item.toppings))
-                            ? item.toppings.reduce((sum, topping) => {
-                                const precioTopping = topping.precio || topping.precio_venta || 0;
-                                const cantidadTopping = topping.cantidad || 1;
-                                return sum + (precioTopping * cantidadTopping);
-                              }, 0)
-                            : 0;
-                          return formatCOP(precioBase + precioToppings);
-                        })()} c/u
-                      </div>
-                      <div className="caja-cart-item-total">
-                        {(() => {
-                          // Calcular precio total incluyendo toppings (con cantidad de cada topping)
-                          const precioBase = item.precio_venta || item.price || 0;
-                          const precioToppings = (item.toppings && Array.isArray(item.toppings))
-                            ? item.toppings.reduce((sum, topping) => {
-                                const precioTopping = topping.precio || topping.precio_venta || 0;
-                                const cantidadTopping = topping.cantidad || 1;
-                                return sum + (precioTopping * cantidadTopping);
-                              }, 0)
-                            : 0;
-                          const cantidad = typeof item.qty === 'number' ? item.qty : 0;
-                          return formatCOP((precioBase + precioToppings) * cantidad);
-                        })()}
-                      </div>
-                    </div>
-                    <button 
-                      className="caja-remove-btn"
-                      onClick={() => removeItem(index)}
-                      style={{ display: 'none' }}
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
-
-        <div className="caja-cart-footer">
-          <div className="caja-total-breakdown">
-            <div className="caja-total-row">
-              <span className="caja-total-label">Subtotal</span>
-              <span className="caja-total-amount">{formatCOP(subtotal)}</span>
-            </div>
-            {montoDescuento > 0 && (
-              <div className="caja-total-row caja-descuento-row">
-                <span className="caja-total-label">
-                  Descuento 
-                  {descuento.tipo === 'porcentaje' && ` (${descuento.valor}%)`}
-                  {descuento.alcance === 'productos' && ' en productos'}
-                </span>
-                <span className="caja-total-amount caja-descuento-amount">-{formatCOP(montoDescuento)}</span>
+                <div className="caja-total-row caja-total-final">
+                  <span className="caja-total-label">Total</span>
+                  <span className="caja-total-amount">{formatCOP(total)}</span>
+                </div>
               </div>
-            )}
-            <div className="caja-total-row caja-total-final">
-              <span className="caja-total-label">Total</span>
-              <span className="caja-total-amount">{formatCOP(total)}</span>
+
+
+              <motion.button
+                className="caja-confirm-btn"
+                onClick={handleContinuar}
+                disabled={cart.length === 0 || procesandoVenta}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <CheckCircle className="caja-confirm-icon" />
+                {esModoPedido
+                  ? (procesandoVenta ? 'Guardando...' : 'Guardar Pedido')
+                  : (procesandoVenta ? 'Procesando...' : 'Continuar')
+                }
+              </motion.button>
             </div>
           </div>
-          
-          
-            <motion.button 
-              className="caja-confirm-btn"
-              onClick={handleContinuar} 
-              disabled={cart.length === 0 || procesandoVenta}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <CheckCircle className="caja-confirm-icon" /> 
-              {esModoPedido 
-                ? (procesandoVenta ? 'Guardando...' : 'Guardar Pedido')
-                : (procesandoVenta ? 'Procesando...' : 'Continuar')
-              }
-            </motion.button>
-        </div>
-        </div>
         </div>
       </div>
 
       {/* Footer fijo en móvil - Oculto cuando el carrito está abierto */}
       {!showCartMobile && (
         <div className="caja-mobile-footer">
-        <div className="caja-mobile-total">
-          <span className="caja-mobile-total-label">Total</span>
-          <span className="caja-mobile-total-amount">{formatCOP(total)}</span>
-        </div>
-        {cart.length > 0 ? (
-          <>
-            <button 
-              className="caja-mobile-cart-btn"
-              onClick={() => setShowCartMobile(true)}
-            >
-              <ShoppingCart className="caja-mobile-cart-icon" size={18} />
-              {cart.length > 0 && (
-                <span className="caja-mobile-cart-icon-badge">
-                  {cart.reduce((n, i) => n + (typeof i.qty === 'number' ? i.qty : 0), 0)}
-                </span>
-              )}
-              <span className="caja-mobile-cart-text">Carrito</span>
-            </button>
-            <button 
-              className="caja-mobile-pay-btn"
-              onClick={handleContinuar} 
-              disabled={cart.length === 0 || procesandoVenta}
-            >
-              {esModoPedido ? (procesandoVenta ? 'Guardando...' : 'Guardar Pedido') : 'Cobrar'}
-            </button>
-          </>
-        ) : (
-          <div style={{ flex: 1 }}></div>
-        )}
+          <div className="caja-mobile-total">
+            <span className="caja-mobile-total-label">Total</span>
+            <span className="caja-mobile-total-amount">{formatCOP(total)}</span>
+          </div>
+          {cart.length > 0 ? (
+            <>
+              <button
+                className="caja-mobile-cart-btn"
+                onClick={() => setShowCartMobile(true)}
+              >
+                <ShoppingCart className="caja-mobile-cart-icon" size={18} />
+                {cart.length > 0 && (
+                  <span className="caja-mobile-cart-icon-badge">
+                    {cart.reduce((n, i) => n + (typeof i.qty === 'number' ? i.qty : 0), 0)}
+                  </span>
+                )}
+                <span className="caja-mobile-cart-text">Carrito</span>
+              </button>
+              <button
+                className="caja-mobile-pay-btn"
+                onClick={handleContinuar}
+                disabled={cart.length === 0 || procesandoVenta}
+              >
+                {esModoPedido ? (procesandoVenta ? 'Guardando...' : 'Guardar Pedido') : 'Cobrar'}
+              </button>
+            </>
+          ) : (
+            <div style={{ flex: 1 }}></div>
+          )}
         </div>
       )}
 
       {/* Overlay del carrito en móvil */}
       {showCartMobile && (
         <>
-          <div 
+          <div
             className="caja-mobile-overlay-backdrop"
             onClick={() => setShowCartMobile(false)}
           />
           <div className="caja-mobile-overlay">
-          <div className="caja-mobile-cart-header">
-            <h3 className="caja-mobile-cart-title">
-              <div className="caja-mobile-cart-icon-container">
-                <ShoppingCart className="caja-mobile-cart-icon" />
-                {cart.length > 0 && (
-                  <span className="caja-mobile-cart-count-badge">
-                    {cart.reduce((n, i) => n + (typeof i.qty === 'number' ? i.qty : 0), 0)}
-                  </span>
+            <div className="caja-mobile-cart-header">
+              <h3 className="caja-mobile-cart-title">
+                <div className="caja-mobile-cart-icon-container">
+                  <ShoppingCart className="caja-mobile-cart-icon" />
+                  {cart.length > 0 && (
+                    <span className="caja-mobile-cart-count-badge">
+                      {cart.reduce((n, i) => n + (typeof i.qty === 'number' ? i.qty : 0), 0)}
+                    </span>
+                  )}
+                </div>
+                <span className="caja-mobile-cart-title-text">Carrito</span>
+              </h3>
+              {cart.length > 0 && (
+                <div className="caja-mobile-cart-header-actions">
+                  <button
+                    className="caja-mobile-header-icon-btn caja-mobile-icon-cliente"
+                    onClick={() => setMostrandoModalSeleccionCliente(true)}
+                    title={clienteSeleccionado ? `Cliente: ${clienteSeleccionado.nombre} ` : 'Seleccionar cliente'}
+                  >
+                    <UserCircle
+                      size={18}
+                      strokeWidth={2.5}
+                      color={clienteSeleccionado ? "#3b82f6" : "#6b7280"}
+                    />
+                    {clienteSeleccionado && (
+                      <span className="caja-mobile-header-icon-badge"></span>
+                    )}
+                  </button>
+                  <button
+                    className="caja-mobile-header-icon-btn caja-mobile-icon-cotizacion"
+                    onClick={handleGuardarCotizacion}
+                    disabled={guardandoCotizacion}
+                    title="Guardar como cotización"
+                  >
+                    <Save
+                      size={18}
+                      strokeWidth={2.5}
+                      color="#10b981"
+                    />
+                  </button>
+                  <button
+                    className="caja-mobile-header-icon-btn caja-mobile-icon-descuento"
+                    onClick={() => {
+                      if (hasFeature('advancedSale')) {
+                        setMostrarModalDescuento(true);
+                      } else {
+                        toast.error('Los descuentos están disponibles en el plan Estándar');
+                      }
+                    }}
+                    title={montoDescuento > 0 ? `Descuento: ${descuento.tipo === 'porcentaje' ? `${descuento.valor}%` : formatCOP(descuento.valor)} ` : hasFeature('advancedSale') ? 'Aplicar descuento' : '🔒 Plan Estándar'}
+                    style={{ opacity: hasFeature('advancedSale') ? 1 : 0.5 }}
+                  >
+                    <Percent
+                      size={18}
+                      strokeWidth={2.5}
+                      color="#f59e0b"
+                    />
+                    {montoDescuento > 0 && (
+                      <span className="caja-mobile-header-icon-badge"></span>
+                    )}
+                  </button>
+                  <button
+                    className="caja-mobile-header-icon-btn caja-mobile-icon-vaciar"
+                    onClick={() => {
+                      if (window.confirm('¿Estás seguro de que quieres vaciar todo el carrito?')) {
+                        setCart([]);
+                        setPedidoIdActual(null);
+                        setPedidosConsolidados([]);
+                        setClienteNombrePedido(null);
+                        setDescuento({ tipo: 'porcentaje', valor: 0, alcance: 'total', productosIds: [] });
+                      }
+                    }}
+                    title="Vaciar carrito"
+                  >
+                    <Trash2
+                      size={18}
+                      strokeWidth={2.5}
+                      color="#ef4444"
+                    />
+                  </button>
+                </div>
+              )}
+              {cart.length === 0 && (
+                <div style={{ width: '36px' }}></div>
+              )}
+            </div>
+
+            {/* Información de cliente y descuento en móvil */}
+            {cart.length > 0 && (clienteSeleccionado || montoDescuento > 0) && (
+              <div className="caja-mobile-cart-info-bar">
+                {clienteSeleccionado && (
+                  <div className="caja-mobile-cart-info-item">
+                    <UserCircle size={16} color="#3b82f6" />
+                    <span className="caja-mobile-cart-info-text">
+                      {clienteSeleccionado.nombre.length > 30
+                        ? `${clienteSeleccionado.nombre.substring(0, 30)}...`
+                        : clienteSeleccionado.nombre}
+                    </span>
+                    <button
+                      className="caja-mobile-cart-info-remove"
+                      onClick={() => setClienteSeleccionado(null)}
+                      title="Quitar cliente"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+                {montoDescuento > 0 && (
+                  <div className="caja-mobile-cart-info-item">
+                    <Percent size={16} color="#f59e0b" />
+                    <span className="caja-mobile-cart-info-text">
+                      Descuento: {descuento.tipo === 'porcentaje' ? `${descuento.valor}% ` : formatCOP(descuento.valor)}
+                    </span>
+                    <button
+                      className="caja-mobile-cart-info-remove"
+                      onClick={() => setDescuento({ tipo: 'porcentaje', valor: 0, alcance: 'total', productosIds: [] })}
+                      title="Quitar descuento"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
                 )}
               </div>
-              <span className="caja-mobile-cart-title-text">Carrito</span>
-            </h3>
-            {cart.length > 0 && (
-              <div className="caja-mobile-cart-header-actions">
-                <button 
-                  className="caja-mobile-header-icon-btn caja-mobile-icon-cliente"
-                  onClick={() => setMostrandoModalSeleccionCliente(true)}
-                  title={clienteSeleccionado ? `Cliente: ${clienteSeleccionado.nombre}` : 'Seleccionar cliente'}
-                >
-                  <UserCircle 
-                    size={18} 
-                    strokeWidth={2.5} 
-                    color={clienteSeleccionado ? "#3b82f6" : "#6b7280"}
-                  />
-                  {clienteSeleccionado && (
-                    <span className="caja-mobile-header-icon-badge"></span>
-                  )}
-                </button>
-                <button 
-                  className="caja-mobile-header-icon-btn caja-mobile-icon-cotizacion"
-                  onClick={handleGuardarCotizacion}
-                  disabled={guardandoCotizacion}
-                  title="Guardar como cotización"
-                >
-                  <Save 
-                    size={18} 
-                    strokeWidth={2.5} 
-                    color="#10b981"
-                  />
-                </button>
-                <button 
-                  className="caja-mobile-header-icon-btn caja-mobile-icon-descuento"
-                  onClick={() => {
-                    if (hasFeature('advancedSale')) {
-                      setMostrarModalDescuento(true);
-                    } else {
-                      toast.error('Los descuentos están disponibles en el plan Estándar');
-                    }
-                  }}
-                  title={montoDescuento > 0 ? `Descuento: ${descuento.tipo === 'porcentaje' ? `${descuento.valor}%` : formatCOP(descuento.valor)}` : hasFeature('advancedSale') ? 'Aplicar descuento' : '🔒 Plan Estándar'}
-                  style={{ opacity: hasFeature('advancedSale') ? 1 : 0.5 }}
-                >
-                  <Percent 
-                    size={18} 
-                    strokeWidth={2.5} 
-                    color="#f59e0b"
-                  />
-                  {montoDescuento > 0 && (
-                    <span className="caja-mobile-header-icon-badge"></span>
-                  )}
-                </button>
-                <button 
-                  className="caja-mobile-header-icon-btn caja-mobile-icon-vaciar"
-                  onClick={() => {
-                    if (window.confirm('¿Estás seguro de que quieres vaciar todo el carrito?')) {
-                      setCart([]);
-                      setPedidoIdActual(null);
-                      setPedidosConsolidados([]);
-                      setClienteNombrePedido(null);
-                      setDescuento({ tipo: 'porcentaje', valor: 0, alcance: 'total', productosIds: [] });
-                    }
-                  }}
-                  title="Vaciar carrito"
-                >
-                  <Trash2 
-                    size={18} 
-                    strokeWidth={2.5} 
-                    color="#ef4444"
-                  />
-                </button>
-              </div>
             )}
-            {cart.length === 0 && (
-              <div style={{ width: '36px' }}></div>
-            )}
-          </div>
 
-          {/* Información de cliente y descuento en móvil */}
-          {cart.length > 0 && (clienteSeleccionado || montoDescuento > 0) && (
-            <div className="caja-mobile-cart-info-bar">
-              {clienteSeleccionado && (
-                <div className="caja-mobile-cart-info-item">
-                  <UserCircle size={16} color="#3b82f6" />
-                  <span className="caja-mobile-cart-info-text">
-                    {clienteSeleccionado.nombre.length > 30 
-                      ? `${clienteSeleccionado.nombre.substring(0, 30)}...` 
-                      : clienteSeleccionado.nombre}
-                  </span>
-                  <button
-                    className="caja-mobile-cart-info-remove"
-                    onClick={() => setClienteSeleccionado(null)}
-                    title="Quitar cliente"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-              )}
-              {montoDescuento > 0 && (
-                <div className="caja-mobile-cart-info-item">
-                  <Percent size={16} color="#f59e0b" />
-                  <span className="caja-mobile-cart-info-text">
-                    Descuento: {descuento.tipo === 'porcentaje' ? `${descuento.valor}%` : formatCOP(descuento.valor)}
-                  </span>
-                  <button
-                    className="caja-mobile-cart-info-remove"
-                    onClick={() => setDescuento({ tipo: 'porcentaje', valor: 0, alcance: 'total', productosIds: [] })}
-                    title="Quitar descuento"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="caja-mobile-cart-content">
-            {cart.length === 0 ? (
-              <p className="caja-mobile-empty-cart">Aún no has agregado productos.</p>
-            ) : (
-              <ul className="caja-mobile-cart-list">
-                {cart.map((item, index) => {
-                  // Buscar el producto completo para obtener la imagen
-                  const productoCompleto = productos.find(p => p.id === item.id);
-                  // Crear una clave única que incluya ID, toppings, variaciones e índice
-                  const itemKey = `${item.id}-${JSON.stringify(item.toppings || [])}-${JSON.stringify(item.variaciones || {})}-${index}`;
-                  return (
-                    <li key={itemKey} className="caja-mobile-cart-item">
-                      <div className="caja-mobile-cart-item-image">
-                        <OptimizedProductImage
-                          imagePath={productoCompleto?.imagen}
-                          alt={item.nombre}
-                          className="caja-mobile-cart-item-image-img"
-                        />
-                      </div>
-                      <div className="caja-mobile-cart-item-info">
-                        <p className="caja-mobile-cart-item-name">{item.nombre}</p>
-                        {item.variant_nombre && (
-                          <div className="caja-mobile-cart-item-variantes">
-                            <span className="caja-mobile-cart-item-variaciones-label">Variante: </span>
-                            <span className="caja-mobile-cart-item-variaciones-list">{item.variant_nombre}</span>
-                          </div>
-                        )}
-                        {item.toppings && Array.isArray(item.toppings) && item.toppings.length > 0 && (
-                          <div className="caja-mobile-cart-item-toppings">
-                            <span className="caja-mobile-cart-item-toppings-label">Extras: </span>
-                            <span className="caja-mobile-cart-item-toppings-list">
-                              {item.toppings.map((topping, idx) => (
-                                <span key={idx} className="caja-mobile-cart-item-topping-tag">
-                                  {topping.nombre || topping}
-                                  {idx < item.toppings.length - 1 && ', '}
-                                </span>
-                              ))}
-                            </span>
-                          </div>
-                        )}
-                        {item.variaciones && Object.keys(item.variaciones).length > 0 && (
-                          <div className="caja-mobile-cart-item-variaciones">
-                            <span className="caja-mobile-cart-item-variaciones-label">Variaciones: </span>
-                            <span className="caja-mobile-cart-item-variaciones-list">
-                              {Object.entries(item.variaciones).map(([key, value], idx) => {
-                                // Formatear la variación para mostrar
-                                const variacionNombre = key;
-                                const opcionLabel = typeof value === 'boolean' 
-                                  ? (value ? 'Sí' : 'No') 
-                                  : String(value);
-                                return (
-                                  <span key={idx} className="caja-mobile-cart-item-variacion-tag">
-                                    {variacionNombre}: {opcionLabel}
-                                    {idx < Object.keys(item.variaciones).length - 1 && ', '}
+            <div className="caja-mobile-cart-content">
+              {cart.length === 0 ? (
+                <p className="caja-mobile-empty-cart">Aún no has agregado productos.</p>
+              ) : (
+                <ul className="caja-mobile-cart-list">
+                  {cart.map((item, index) => {
+                    // Buscar el producto completo para obtener la imagen
+                    const productoCompleto = productos.find(p => p.id === item.id);
+                    // Crear una clave única que incluya ID, toppings, variaciones e índice
+                    const itemKey = `${item.id} -${JSON.stringify(item.toppings || [])} -${JSON.stringify(item.variaciones || {})} -${index} `;
+                    return (
+                      <li key={itemKey} className="caja-mobile-cart-item">
+                        <div className="caja-mobile-cart-item-image">
+                          <OptimizedProductImage
+                            imagePath={productoCompleto?.imagen}
+                            alt={item.nombre}
+                            className="caja-mobile-cart-item-image-img"
+                          />
+                        </div>
+                        <div className="caja-mobile-cart-item-info">
+                          <p className="caja-mobile-cart-item-name">{item.nombre}</p>
+                          {item.variant_nombre && (
+                            <div className="caja-mobile-cart-item-variantes">
+                              <span className="caja-mobile-cart-item-variaciones-label">Variante: </span>
+                              <span className="caja-mobile-cart-item-variaciones-list">{item.variant_nombre}</span>
+                            </div>
+                          )}
+                          {item.toppings && Array.isArray(item.toppings) && item.toppings.length > 0 && (
+                            <div className="caja-mobile-cart-item-toppings">
+                              <span className="caja-mobile-cart-item-toppings-label">Extras: </span>
+                              <span className="caja-mobile-cart-item-toppings-list">
+                                {item.toppings.map((topping, idx) => (
+                                  <span key={idx} className="caja-mobile-cart-item-topping-tag">
+                                    {topping.nombre || topping}
+                                    {idx < item.toppings.length - 1 && ', '}
                                   </span>
-                                );
-                              })}
-                            </span>
-                          </div>
-                        )}
-                        {(esModoPedido || vieneDePedidos) && (
-                          <div className="caja-mobile-cart-item-notas">
-                            <textarea
-                              placeholder="Notas para este producto..."
-                              value={item.notas || ''}
-                              onChange={(e) => actualizarNotasItem(item.id, e.target.value, index, item.toppings, item.variaciones, item.variant_id)}
-                              className="caja-mobile-cart-item-notas-input"
-                              rows={1}
-                            style={{
-                              width: '100%',
-                              padding: '0.15rem 0.4rem',
-                              border: '1px solid rgba(0, 0, 0, 0.1)',
-                              borderRadius: '4px',
-                              fontSize: '0.7rem',
-                              resize: 'vertical',
-                              minHeight: '24px',
-                              marginTop: '0.25rem',
-                              fontFamily: 'inherit',
-                              lineHeight: '1.3'
-                            }}
-                          />
-                          </div>
-                        )}
-                      </div>
-                      <div className="caja-mobile-cart-item-right-section">
-                        <div className="caja-mobile-cart-item-controls">
-                          <button 
-                            className="caja-mobile-qty-btn caja-mobile-qty-btn-minus"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              dec(index);
-                            }}
-                            aria-label="Disminuir cantidad"
-                          >
-                            <span className="caja-mobile-qty-icon">−</span>
-                          </button>
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            pattern="[0-9]*"
-                            className="caja-mobile-qty-display"
-                            value={typeof item.qty === 'number' ? item.qty : (item.qty || '')}
-                            style={{
-                              color: '#1a1a1a',
-                              backgroundColor: '#ffffff',
-                              border: '1px solid #4b5563',
-                              fontWeight: '700',
-                              fontSize: '0.65rem',
-                              width: '28px',
-                              minWidth: '28px',
-                              maxWidth: '28px',
-                              height: '16px',
-                              minHeight: '16px',
-                              maxHeight: '16px',
-                              padding: '0.1rem 0.15rem',
-                              WebkitTextFillColor: '#1a1a1a',
-                              textFillColor: '#1a1a1a',
-                              display: 'inline-block',
-                              visibility: 'visible',
-                              opacity: 1,
-                              boxSizing: 'border-box'
-                            }}
-                            onChange={(e) => {
-                              const value = e.target.value;
-                              
-                              // Permitir campo vacío temporalmente mientras se escribe
-                              if (value === '') {
-                                setCart((prev) => prev.map((i, idx) => 
-                                  idx === index ? { ...i, qty: '' } : i
-                                ));
-                                return;
-                              }
-                              
-                              const numValue = parseInt(value, 10);
-                              
-                              if (!isNaN(numValue) && numValue >= 1) {
-                                updateQty(index, numValue);
-                              }
-                            }}
-                            onBlur={(e) => {
-                              const value = e.target.value;
-                              const numValue = parseInt(value, 10);
-                              
-                              if (value === '' || isNaN(numValue) || numValue < 1) {
-                                // Si está vacío o es inválido, restaurar cantidad anterior o eliminar
-                                const itemEnCarrito = cart[index];
-                                if (itemEnCarrito && typeof itemEnCarrito.qty === 'number' && itemEnCarrito.qty >= 1) {
-                                  setCart((prev) => prev.map((i, idx) => 
-                                    idx === index ? { ...i, qty: itemEnCarrito.qty } : i
-                                  ));
-                                } else {
-                                  removeItem(index);
-                                }
-                              } else {
-                                updateQty(index, numValue);
-                              }
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.target.blur();
-                              }
-                            }}
-                            min="1"
-                            aria-label="Cantidad"
-                          />
-                          <button 
-                            className="caja-mobile-qty-btn caja-mobile-qty-btn-plus"
-                            onClick={(e) => {
-                              console.log('=== BOTÓN + CLICKEADO ===');
-                              console.log('item.id:', item.id);
-                              e.preventDefault();
-                              e.stopPropagation();
-                              if (e.nativeEvent && e.nativeEvent.stopImmediatePropagation) {
-                                e.nativeEvent.stopImmediatePropagation();
-                              }
-                              console.log('Llamando a inc con index:', index);
-                              inc(index);
-                            }}
-                            onTouchEnd={(e) => {
-                              console.log('=== TouchEnd en botón + ===');
-                              e.preventDefault();
-                              e.stopPropagation();
-                              console.log('Llamando a inc desde TouchEnd con index:', index);
-                              inc(index);
-                            }}
-                            aria-label="Aumentar cantidad"
-                            type="button"
-                            data-item-id={item.id}
-                            data-testid={`inc-btn-${item.id}`}
-                            style={{ 
-                              pointerEvents: 'auto !important', 
-                              zIndex: '1001 !important',
-                              position: 'relative',
-                              touchAction: 'manipulation',
-                              WebkitTapHighlightColor: 'transparent'
-                            }}
-                          >
-                            <span 
-                              className="caja-mobile-qty-icon"
-                              style={{ pointerEvents: 'none' }}
+                                ))}
+                              </span>
+                            </div>
+                          )}
+                          {item.variaciones && Object.keys(item.variaciones).length > 0 && (
+                            <div className="caja-mobile-cart-item-variaciones">
+                              <span className="caja-mobile-cart-item-variaciones-label">Variaciones: </span>
+                              <span className="caja-mobile-cart-item-variaciones-list">
+                                {Object.entries(item.variaciones).map(([key, value], idx) => {
+                                  // Formatear la variación para mostrar
+                                  const variacionNombre = key;
+                                  const opcionLabel = typeof value === 'boolean'
+                                    ? (value ? 'Sí' : 'No')
+                                    : String(value);
+                                  return (
+                                    <span key={idx} className="caja-mobile-cart-item-variacion-tag">
+                                      {variacionNombre}: {opcionLabel}
+                                      {idx < Object.keys(item.variaciones).length - 1 && ', '}
+                                    </span>
+                                  );
+                                })}
+                              </span>
+                            </div>
+                          )}
+                          {(esModoPedido || vieneDePedidos) && (
+                            <div className="caja-mobile-cart-item-notas">
+                              <textarea
+                                placeholder="Notas para este producto..."
+                                value={item.notas || ''}
+                                onChange={(e) => actualizarNotasItem(item.id, e.target.value, index, item.toppings, item.variaciones, item.variant_id)}
+                                className="caja-mobile-cart-item-notas-input"
+                                rows={1}
+                                style={{
+                                  width: '100%',
+                                  padding: '0.15rem 0.4rem',
+                                  border: '1px solid rgba(0, 0, 0, 0.1)',
+                                  borderRadius: '4px',
+                                  fontSize: '0.7rem',
+                                  resize: 'vertical',
+                                  minHeight: '24px',
+                                  marginTop: '0.25rem',
+                                  fontFamily: 'inherit',
+                                  lineHeight: '1.3'
+                                }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                        <div className="caja-mobile-cart-item-right-section">
+                          <div className="caja-mobile-cart-item-controls">
+                            <button
+                              className="caja-mobile-qty-btn caja-mobile-qty-btn-minus"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                dec(index);
+                              }}
+                              aria-label="Disminuir cantidad"
                             >
-                              +
-                            </span>
-                          </button>
-                        </div>
-                        <div className="caja-mobile-cart-item-price-unit">
-                          {(() => {
-                            // Calcular precio unitario incluyendo toppings (con cantidad de cada topping)
-                            const precioBase = item.precio_venta || item.price || 0;
-                            const precioToppings = (item.toppings && Array.isArray(item.toppings))
-                              ? item.toppings.reduce((sum, topping) => {
-                                  const precioTopping = topping.precio || topping.precio_venta || 0;
-                                  const cantidadTopping = topping.cantidad || 1;
-                                  return sum + (precioTopping * cantidadTopping);
-                                }, 0)
-                              : 0;
-                            return formatCOP(precioBase + precioToppings);
-                          })()} c/u
-                        </div>
-                        <div className="caja-mobile-cart-item-total">
-                          {(() => {
-                            // Calcular precio total incluyendo toppings (con cantidad de cada topping)
-                            const precioBase = item.precio_venta || item.price || 0;
-                            const precioToppings = (item.toppings && Array.isArray(item.toppings))
-                              ? item.toppings.reduce((sum, topping) => {
-                                  const precioTopping = topping.precio || topping.precio_venta || 0;
-                                  const cantidadTopping = topping.cantidad || 1;
-                                  return sum + (precioTopping * cantidadTopping);
-                                }, 0)
-                              : 0;
-                            const cantidad = typeof item.qty === 'number' ? item.qty : 0;
-                            return formatCOP((precioBase + precioToppings) * cantidad);
-                          })()}
-                        </div>
-                      </div>
-                      <button
-                        className="caja-mobile-cart-item-remove"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          e.nativeEvent.stopImmediatePropagation();
-                          console.log('Botón eliminar clickeado');
-                          removeItem(index);
-                        }}
-                        aria-label="Eliminar producto"
-                        style={{ pointerEvents: 'auto', zIndex: 5 }}
-                      >
-                        <X size={16} />
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
+                              <span className="caja-mobile-qty-icon">−</span>
+                            </button>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              className="caja-mobile-qty-display"
+                              value={typeof item.qty === 'number' ? item.qty : (item.qty || '')}
+                              style={{
+                                color: '#1a1a1a',
+                                backgroundColor: '#ffffff',
+                                border: '1px solid #4b5563',
+                                fontWeight: '700',
+                                fontSize: '0.65rem',
+                                width: '28px',
+                                minWidth: '28px',
+                                maxWidth: '28px',
+                                height: '16px',
+                                minHeight: '16px',
+                                maxHeight: '16px',
+                                padding: '0.1rem 0.15rem',
+                                WebkitTextFillColor: '#1a1a1a',
+                                textFillColor: '#1a1a1a',
+                                display: 'inline-block',
+                                visibility: 'visible',
+                                opacity: 1,
+                                boxSizing: 'border-box'
+                              }}
+                              onChange={(e) => {
+                                const value = e.target.value;
 
-          <div className="caja-mobile-cart-footer">
-            {montoDescuento > 0 && (
-              <div className="caja-mobile-total-breakdown">
-                <div className="caja-mobile-total-row">
-                  <span>Subtotal:</span>
-                  <span>{formatCOP(subtotal)}</span>
+                                // Permitir campo vacío temporalmente mientras se escribe
+                                if (value === '') {
+                                  setCart((prev) => prev.map((i, idx) =>
+                                    idx === index ? { ...i, qty: '' } : i
+                                  ));
+                                  return;
+                                }
+
+                                const numValue = parseInt(value, 10);
+
+                                if (!isNaN(numValue) && numValue >= 1) {
+                                  updateQty(index, numValue);
+                                }
+                              }}
+                              onBlur={(e) => {
+                                const value = e.target.value;
+                                const numValue = parseInt(value, 10);
+
+                                if (value === '' || isNaN(numValue) || numValue < 1) {
+                                  // Si está vacío o es inválido, restaurar cantidad anterior o eliminar
+                                  const itemEnCarrito = cart[index];
+                                  if (itemEnCarrito && typeof itemEnCarrito.qty === 'number' && itemEnCarrito.qty >= 1) {
+                                    setCart((prev) => prev.map((i, idx) =>
+                                      idx === index ? { ...i, qty: itemEnCarrito.qty } : i
+                                    ));
+                                  } else {
+                                    removeItem(index);
+                                  }
+                                } else {
+                                  updateQty(index, numValue);
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.target.blur();
+                                }
+                              }}
+                              min="1"
+                              aria-label="Cantidad"
+                            />
+                            <button
+                              className="caja-mobile-qty-btn caja-mobile-qty-btn-plus"
+                              onClick={(e) => {
+                                console.log('=== BOTÓN + CLICKEADO ===');
+                                console.log('item.id:', item.id);
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (e.nativeEvent && e.nativeEvent.stopImmediatePropagation) {
+                                  e.nativeEvent.stopImmediatePropagation();
+                                }
+                                console.log('Llamando a inc con index:', index);
+                                inc(index);
+                              }}
+                              onTouchEnd={(e) => {
+                                console.log('=== TouchEnd en botón + ===');
+                                e.preventDefault();
+                                e.stopPropagation();
+                                console.log('Llamando a inc desde TouchEnd con index:', index);
+                                inc(index);
+                              }}
+                              aria-label="Aumentar cantidad"
+                              type="button"
+                              data-item-id={item.id}
+                              data-testid={`inc - btn - ${item.id} `}
+                              style={{
+                                pointerEvents: 'auto !important',
+                                zIndex: '1001 !important',
+                                position: 'relative',
+                                touchAction: 'manipulation',
+                                WebkitTapHighlightColor: 'transparent'
+                              }}
+                            >
+                              <span
+                                className="caja-mobile-qty-icon"
+                                style={{ pointerEvents: 'none' }}
+                              >
+                                +
+                              </span>
+                            </button>
+                          </div>
+                          <div className="caja-mobile-cart-item-price-unit">
+                            {(() => {
+                              // Calcular precio unitario incluyendo toppings (con cantidad de cada topping)
+                              const precioBase = item.precio_venta || item.price || 0;
+                              const precioToppings = (item.toppings && Array.isArray(item.toppings))
+                                ? item.toppings.reduce((sum, topping) => {
+                                  const precioTopping = topping.precio || topping.precio_venta || 0;
+                                  const cantidadTopping = topping.cantidad || 1;
+                                  return sum + (precioTopping * cantidadTopping);
+                                }, 0)
+                                : 0;
+                              return formatCOP(precioBase + precioToppings);
+                            })()} c/u
+                          </div>
+                          <div className="caja-mobile-cart-item-total">
+                            {(() => {
+                              // Calcular precio total incluyendo toppings (con cantidad de cada topping)
+                              const precioBase = item.precio_venta || item.price || 0;
+                              const precioToppings = (item.toppings && Array.isArray(item.toppings))
+                                ? item.toppings.reduce((sum, topping) => {
+                                  const precioTopping = topping.precio || topping.precio_venta || 0;
+                                  const cantidadTopping = topping.cantidad || 1;
+                                  return sum + (precioTopping * cantidadTopping);
+                                }, 0)
+                                : 0;
+                              const cantidad = typeof item.qty === 'number' ? item.qty : 0;
+                              return formatCOP((precioBase + precioToppings) * cantidad);
+                            })()}
+                          </div>
+                        </div>
+                        <button
+                          className="caja-mobile-cart-item-remove"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            e.nativeEvent.stopImmediatePropagation();
+                            console.log('Botón eliminar clickeado');
+                            removeItem(index);
+                          }}
+                          aria-label="Eliminar producto"
+                          style={{ pointerEvents: 'auto', zIndex: 5 }}
+                        >
+                          <X size={16} />
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+
+            <div className="caja-mobile-cart-footer">
+              {montoDescuento > 0 && (
+                <div className="caja-mobile-total-breakdown">
+                  <div className="caja-mobile-total-row">
+                    <span>Subtotal:</span>
+                    <span>{formatCOP(subtotal)}</span>
+                  </div>
+                  <div className="caja-mobile-total-row caja-mobile-descuento-row">
+                    <span>Descuento:</span>
+                    <span className="caja-mobile-descuento-amount">-{formatCOP(montoDescuento)}</span>
+                  </div>
                 </div>
-                <div className="caja-mobile-total-row caja-mobile-descuento-row">
-                  <span>Descuento:</span>
-                  <span className="caja-mobile-descuento-amount">-{formatCOP(montoDescuento)}</span>
-                </div>
+              )}
+              <div className="caja-mobile-total-container">
+                <span className="caja-mobile-total-label">Total</span>
+                <span className="caja-mobile-total-amount">{formatCOP(total)}</span>
               </div>
-            )}
-            <div className="caja-mobile-total-container">
-              <span className="caja-mobile-total-label">Total</span>
-              <span className="caja-mobile-total-amount">{formatCOP(total)}</span>
+
+              <div className="caja-mobile-cart-footer-actions">
+                <button
+                  className="caja-mobile-back-to-products-btn"
+                  onClick={() => setShowCartMobile(false)}
+                  title="Seguir agregando productos"
+                >
+                  <ArrowLeft className="caja-mobile-back-icon" size={20} />
+                  <span className="caja-mobile-btn-text">Seguir</span>
+                </button>
+                <button
+                  className="caja-mobile-pagar-footer-btn"
+                  onClick={handleContinuar}
+                  disabled={cart.length === 0 || procesandoVenta}
+                  title={procesandoVenta ? (esModoPedido ? 'Guardando...' : 'Procesando...') : (esModoPedido ? 'Guardar Pedido' : 'Pagar')}
+                >
+                  {esModoPedido ? <Save className="caja-mobile-pagar-icon" size={20} /> : <CheckCircle className="caja-mobile-pagar-icon" size={20} />}
+                  <span className="caja-mobile-btn-text">
+                    {procesandoVenta
+                      ? (esModoPedido ? 'Guardando...' : '...')
+                      : (esModoPedido ? 'Guardar' : 'Pagar')
+                    }
+                  </span>
+                </button>
+              </div>
             </div>
-            
-            <div className="caja-mobile-cart-footer-actions">
-              <button 
-                className="caja-mobile-back-to-products-btn"
-                onClick={() => setShowCartMobile(false)}
-                title="Seguir agregando productos"
-              >
-                <ArrowLeft className="caja-mobile-back-icon" size={20} />
-                <span className="caja-mobile-btn-text">Seguir</span>
-              </button>
-              <button 
-                className="caja-mobile-pagar-footer-btn"
-                onClick={handleContinuar} 
-                disabled={cart.length === 0 || procesandoVenta}
-                title={procesandoVenta ? (esModoPedido ? 'Guardando...' : 'Procesando...') : (esModoPedido ? 'Guardar Pedido' : 'Pagar')}
-              >
-                {esModoPedido ? <Save className="caja-mobile-pagar-icon" size={20} /> : <CheckCircle className="caja-mobile-pagar-icon" size={20} />}
-                <span className="caja-mobile-btn-text">
-                  {procesandoVenta 
-                    ? (esModoPedido ? 'Guardando...' : '...') 
-                    : (esModoPedido ? 'Guardar' : 'Pagar')
-                  }
-                </span>
-              </button>
-            </div>
-          </div>
           </div>
         </>
       )}
@@ -4934,9 +5177,9 @@ export default function Caja({
               <h3>¿Cómo deseas procesar el pago?</h3>
               <p className="metodos-pago-total">Total: <span>{formatCOP(total)}</span></p>
             </div>
-            
+
             <div className="metodos-pago-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              <button 
+              <button
                 className="metodo-pago-card"
                 onClick={() => {
                   setMostrandoOpcionPagoPedido(false);
@@ -4947,8 +5190,8 @@ export default function Caja({
                 <span className="metodo-pago-label">Pagar Ahora</span>
                 <span className="metodo-pago-desc">Procesar pago inmediatamente</span>
               </button>
-              
-              <button 
+
+              <button
                 className="metodo-pago-card"
                 onClick={async () => {
                   setMostrandoOpcionPagoPedido(false);
@@ -4960,9 +5203,9 @@ export default function Caja({
                 <span className="metodo-pago-desc">Guardar pedido para pagar luego</span>
               </button>
             </div>
-            
+
             <div className="metodos-pago-actions">
-              <button 
+              <button
                 className="metodos-pago-cancelar"
                 onClick={() => setMostrandoOpcionPagoPedido(false)}
               >
@@ -4975,7 +5218,7 @@ export default function Caja({
 
       {/* Métodos de pago */}
       {mostrandoMetodosPago && (
-        <MetodosPago 
+        <MetodosPago
           metodoSeleccionado={metodoSeleccionado}
           setMetodoSeleccionado={setMetodoSeleccionado}
           total={total}
@@ -4988,7 +5231,7 @@ export default function Caja({
 
       {/* Pago en efectivo */}
       {mostrandoPagoEfectivo && (
-        <PagoEfectivo 
+        <PagoEfectivo
           montoEntregado={montoEntregado}
           setMontoEntregado={setMontoEntregado}
           total={total}
@@ -4999,7 +5242,7 @@ export default function Caja({
         />
       )}
       {mostrandoPagoMixto && (
-        <PagoMixto 
+        <PagoMixto
           montoMixto1={montoMixto1}
           setMontoMixto1={setMontoMixto1}
           montoMixto2={montoMixto2}
@@ -5016,10 +5259,24 @@ export default function Caja({
         />
       )}
 
+      {mostrandoPagoCredito && (
+        <PagoCredito
+          total={total}
+          pedidosOcultos={!mostrandoPedidosPendientes}
+          hasFeature={hasFeature}
+          abonoInicial={abonoInicialCredito}
+          setAbonoInicial={setAbonoInicialCredito}
+          metodoPagoAbono={metodoPagoAbonoCredito}
+          setMetodoPagoAbono={setMetodoPagoAbonoCredito}
+          handleCancelarPagoCredito={handleCancelarPagoCredito}
+          handleConfirmarPagoCredito={handleConfirmarPagoCredito}
+        />
+      )}
+
       {/* Recibo de venta */}
       {ventaCompletada && mostrarFacturaPantalla && (
-        <ReciboVenta 
-          venta={ventaCompletada} 
+        <ReciboVenta
+          venta={ventaCompletada}
           onNuevaVenta={handleNuevaVenta}
         />
       )}
@@ -5096,10 +5353,10 @@ export default function Caja({
               setVarianteSeleccionada(null);
             } else {
               // Verificar si el producto permite toppings (por defecto true si no está definido)
-              const permiteToppings = producto?.metadata?.permite_toppings !== undefined 
-                ? producto.metadata.permite_toppings 
+              const permiteToppings = producto?.metadata?.permite_toppings !== undefined
+                ? producto.metadata.permite_toppings
                 : true;
-              
+
               if (permiteToppings) {
                 if (productoParaToppings) {
                   setMostrandoToppingsSelector(true);
@@ -5203,7 +5460,7 @@ export default function Caja({
           <div className="caja-modal-content caja-modal-seleccion-cliente" onClick={(e) => e.stopPropagation()}>
             <div className="caja-modal-header">
               <h3>Seleccionar Cliente</h3>
-              <button 
+              <button
                 className="caja-modal-close"
                 onClick={() => {
                   setMostrandoModalSeleccionCliente(false);
@@ -5225,7 +5482,7 @@ export default function Caja({
                   autoFocus
                 />
               </div>
-              
+
               <div className="caja-cliente-list-modal">
                 <button
                   className="caja-cliente-item-modal caja-cliente-item-nuevo"
@@ -5237,7 +5494,7 @@ export default function Caja({
                   <Plus size={20} />
                   <span>Crear Nuevo Cliente</span>
                 </button>
-                
+
                 {clientes
                   .filter(cliente => {
                     if (!busquedaCliente.trim()) return true;
@@ -5252,7 +5509,7 @@ export default function Caja({
                   .map(cliente => (
                     <button
                       key={cliente.id}
-                      className={`caja-cliente-item-modal ${clienteSeleccionado?.id === cliente.id ? 'selected' : ''}`}
+                      className={`caja - cliente - item - modal ${clienteSeleccionado?.id === cliente.id ? 'selected' : ''} `}
                       onClick={() => {
                         setClienteSeleccionado(cliente);
                         setMostrandoModalSeleccionCliente(false);
@@ -5271,7 +5528,7 @@ export default function Caja({
                       )}
                     </button>
                   ))}
-                
+
                 {clientes.filter(cliente => {
                   if (!busquedaCliente.trim()) return false;
                   const query = busquedaCliente.toLowerCase();
@@ -5282,33 +5539,33 @@ export default function Caja({
                     cliente.email?.toLowerCase().includes(query)
                   );
                 }).length === 0 && busquedaCliente.trim() && (
-                  <div className="caja-cliente-no-results">
-                    <p>No se encontraron clientes</p>
-                    <button
-                      className="caja-cliente-btn-crear-desde-busqueda"
-                      onClick={() => {
-                        setMostrandoModalSeleccionCliente(false);
-                        setMostrandoModalCliente(true);
-                      }}
-                    >
-                      <Plus size={16} />
-                      Crear Nuevo Cliente
-                    </button>
-                  </div>
-                )}
+                    <div className="caja-cliente-no-results">
+                      <p>No se encontraron clientes</p>
+                      <button
+                        className="caja-cliente-btn-crear-desde-busqueda"
+                        onClick={() => {
+                          setMostrandoModalSeleccionCliente(false);
+                          setMostrandoModalCliente(true);
+                        }}
+                      >
+                        <Plus size={16} />
+                        Crear Nuevo Cliente
+                      </button>
+                    </div>
+                  )}
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal para fecha de vencimiento del crédito */}
+      {/* Modal para fecha de vencimiento del crédito + abono inicial */}
       {mostrandoModalCredito && (
         <div className="caja-modal-overlay" onClick={() => setMostrandoModalCredito(false)}>
           <div className="caja-modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
             <div className="caja-modal-header">
-              <h3>Fecha de Vencimiento del Crédito</h3>
-              <button 
+              <h3>Confirmar Crédito</h3>
+              <button
                 className="caja-modal-close"
                 onClick={() => setMostrandoModalCredito(false)}
               >
@@ -5316,55 +5573,145 @@ export default function Caja({
               </button>
             </div>
             <div className="caja-modal-body">
+              {/* Resumen del crédito */}
+              {clienteSeleccionado && (
+                <div style={{
+                  background: 'linear-gradient(135deg, #eff6ff, #dbeafe)',
+                  padding: '1rem',
+                  borderRadius: '10px',
+                  marginBottom: '1.25rem',
+                  border: '1px solid #bae6fd'
+                }}>
+                  <p style={{ margin: 0, fontWeight: 600, color: '#1d4ed8', fontSize: '0.95rem' }}>
+                    👤 Cliente: {clienteSeleccionado.nombre}
+                  </p>
+                  <p style={{ margin: '0.4rem 0 0 0', color: '#1e40af', fontSize: '0.9rem' }}>
+                    💳 Total a crédito: <strong>{formatCOP(total)}</strong>
+                  </p>
+                </div>
+              )}
+
+              {/* Fecha de vencimiento */}
               <div className="caja-cliente-form-group">
-                <label>Fecha de Vencimiento *</label>
+                <label>Fecha de Vencimiento</label>
                 <input
                   type="date"
                   value={fechaVencimientoCredito}
                   onChange={(e) => setFechaVencimientoCredito(e.target.value)}
                   min={new Date().toISOString().split('T')[0]}
-                  required
                 />
-                <small style={{ color: '#666', marginTop: '0.5rem', display: 'block' }}>
-                  Si no seleccionas una fecha, se establecerá automáticamente 30 días desde hoy.
+                <small style={{ color: '#888', marginTop: '0.4rem', display: 'block' }}>
+                  Si no seleccionas fecha, se usarán 30 días desde hoy.
                 </small>
               </div>
-              {clienteSeleccionado && (
-                <div style={{ 
-                  background: '#f0f9ff', 
-                  padding: '1rem', 
-                  borderRadius: '8px', 
-                  marginTop: '1rem',
-                  border: '1px solid #bae6fd'
-                }}>
-                  <p style={{ margin: 0, fontWeight: 500, color: '#0369a1' }}>
-                    Cliente: {clienteSeleccionado.nombre}
-                  </p>
-                  <p style={{ margin: '0.5rem 0 0 0', color: '#0369a1', fontSize: '0.9rem' }}>
-                    Total a crédito: {formatCOP(total)}
-                  </p>
-                </div>
-              )}
+
+              {/* Abono Inicial */}
+              <div style={{ marginTop: '1.25rem' }}>
+                <label style={{ display: 'block', fontWeight: 600, color: '#374151', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+                  Abono Inicial (opcional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="$ 0"
+                  value={abonoInicialModalCredito}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/[^0-9]/g, '');
+                    setAbonoInicialModalCredito(raw ? `$ ${parseInt(raw, 10).toLocaleString('es-CO')}` : '');
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '0.65rem 0.9rem',
+                    border: '1.5px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '1rem',
+                    boxSizing: 'border-box'
+                  }}
+                />
+
+                {/* Método de pago del abono */}
+                {abonoInicialModalCredito && (
+                  <div style={{ marginTop: '0.75rem' }}>
+                    <label style={{ display: 'block', fontWeight: 600, color: '#374151', marginBottom: '0.5rem', fontSize: '0.85rem' }}>
+                      Método de Pago del Abono
+                    </label>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      {['Efectivo', 'Transferencia', 'Tarjeta', 'Nequi'].map(m => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setMetodoAbonoModalCredito(m)}
+                          style={{
+                            padding: '0.4rem 0.9rem',
+                            borderRadius: '20px',
+                            border: metodoAbonoModalCredito === m ? '2px solid #2563eb' : '1.5px solid #d1d5db',
+                            background: metodoAbonoModalCredito === m ? '#eff6ff' : '#f9fafb',
+                            color: metodoAbonoModalCredito === m ? '#1d4ed8' : '#374151',
+                            fontWeight: metodoAbonoModalCredito === m ? 600 : 400,
+                            cursor: 'pointer',
+                            fontSize: '0.85rem'
+                          }}
+                        >
+                          {m}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="caja-modal-footer" style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+
+            <div className="caja-modal-footer" style={{
+              display: 'flex',
+              gap: '0.75rem',
+              justifyContent: 'center',
+              marginTop: '1.75rem',
+              paddingTop: '1rem',
+              borderTop: '1px solid #e5e7eb'
+            }}>
               <button
-                className="caja-btn caja-btn-secondary"
+                style={{
+                  padding: '0.65rem 1.75rem',
+                  borderRadius: '8px',
+                  border: '1.5px solid #d1d5db',
+                  background: '#f3f4f6',
+                  color: '#374151',
+                  fontWeight: 500,
+                  fontSize: '0.95rem',
+                  cursor: 'pointer'
+                }}
                 onClick={() => {
                   setMostrandoModalCredito(false);
                   setFechaVencimientoCredito('');
+                  setAbonoInicialModalCredito('');
+                  setMetodoAbonoModalCredito('Efectivo');
                 }}
               >
                 Cancelar
               </button>
               <button
-                className="caja-btn caja-btn-primary"
-                onClick={() => {
-                  setMostrandoModalCredito(false);
-                  confirmSale('Credito');
+                style={{
+                  padding: '0.65rem 1.75rem',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                  color: '#fff',
+                  fontWeight: 600,
+                  fontSize: '0.95rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(37,99,235,0.35)'
                 }}
-                disabled={!fechaVencimientoCredito && false} // Permitir sin fecha (se usará 30 días por defecto)
+                onClick={() => {
+                  const montoAbono = abonoInicialModalCredito
+                    ? parseFloat(abonoInicialModalCredito.replace(/[^0-9]/g, '')) || 0
+                    : 0;
+                  const detallesAbono = montoAbono > 0
+                    ? { abonoInicial: abonoInicialModalCredito, metodoAbono: metodoAbonoModalCredito }
+                    : null;
+                  setMostrandoModalCredito(false);
+                  confirmSale('Credito', detallesAbono);
+                }}
               >
-                Confirmar Crédito
+                ✓ Confirmar Crédito
               </button>
             </div>
           </div>
@@ -5377,7 +5724,7 @@ export default function Caja({
           <div className="caja-modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="caja-modal-header">
               <h3>Agregar Nuevo Cliente</h3>
-              <button 
+              <button
                 className="caja-modal-close"
                 onClick={() => setMostrandoModalCliente(false)}
               >
@@ -5449,7 +5796,7 @@ export default function Caja({
                     toast.error('El nombre es requerido');
                     return;
                   }
-                  
+
                   try {
                     const clienteData = {
                       organization_id: organization.id,

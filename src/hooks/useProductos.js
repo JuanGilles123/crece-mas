@@ -12,33 +12,70 @@ export const useProductos = (organizationId) => {
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
         return await getCachedProductos(organizationId);
       }
-      
+
       // Select campos necesarios incluyendo created_at y metadata para filtros y métricas
-      const { data, error } = await supabase
-        .from('productos')
-        .select('id, organization_id, nombre, precio_venta, precio_compra, stock, imagen, codigo, tipo, created_at, metadata')
-        .eq('organization_id', organizationId)
-        .order('created_at', { ascending: false })
-        .limit(2000); // Aumentado para mostrar inventarios grandes sin paginación
+      let todosLosProductos = [];
+      let start = 0;
+      const step = 1000;
+      let hasMore = true;
 
-      if (error) {
-        console.error('Error fetching productos:', error);
-        throw new Error('Error al cargar productos');
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('productos')
+          .select('id, organization_id, nombre, precio_venta, precio_compra, stock, imagen, codigo, tipo, created_at, metadata')
+          .eq('organization_id', organizationId)
+          .order('created_at', { ascending: false })
+          .range(start, start + step - 1);
+
+        if (error) {
+          console.error('Error fetching productos:', error);
+          throw new Error('Error al cargar productos');
+        }
+
+        if (data && data.length > 0) {
+          todosLosProductos = [...todosLosProductos, ...data];
+          if (data.length < step) {
+            hasMore = false;
+          } else {
+            start += step;
+          }
+        } else {
+          hasMore = false;
+        }
       }
-      const productos = data || [];
+      const productos = todosLosProductos;
 
-      const { data: variantesData, error: variantesError } = await supabase
-        .from('product_variants')
-        .select('*')
-        .eq('organization_id', organizationId);
+      let todasLasVariantes = [];
+      let startVar = 0;
+      let hasMoreVar = true;
 
-      if (variantesError) {
-        console.error('Error fetching product variants:', variantesError);
-        return productos.map(producto => ({ ...producto, variantes: [] }));
+      while (hasMoreVar) {
+        const { data: variantesData, error: variantesError } = await supabase
+          .from('product_variants')
+          .select('*')
+          .eq('organization_id', organizationId)
+          .range(startVar, startVar + step - 1);
+
+        if (variantesError) {
+          console.error('Error fetching product variants:', variantesError);
+          // Permitir continuar sin variantes en caso de error para no romper toda la app
+          break;
+        }
+
+        if (variantesData && variantesData.length > 0) {
+          todasLasVariantes = [...todasLasVariantes, ...variantesData];
+          if (variantesData.length < step) {
+            hasMoreVar = false;
+          } else {
+            startVar += step;
+          }
+        } else {
+          hasMoreVar = false;
+        }
       }
 
       const variantesMap = new Map();
-      (variantesData || []).forEach(vari => {
+      todasLasVariantes.forEach(vari => {
         if (!variantesMap.has(vari.producto_id)) {
           variantesMap.set(vari.producto_id, []);
         }
@@ -74,7 +111,7 @@ export const useProductosPaginados = (organizationId, pageSize = 50) => {
       if (!organizationId) return { data: [], hasMore: false };
       const start = pageParam * pageSize;
       const end = start + pageSize - 1;
-      
+
       const { data, error, count } = await supabase
         .from('productos')
         .select('*', { count: 'exact' })
@@ -88,7 +125,7 @@ export const useProductosPaginados = (organizationId, pageSize = 50) => {
       }
 
       const hasMore = count ? (start + (data?.length || 0)) < count : false;
-      
+
       return {
         data: data || [],
         nextPage: hasMore ? pageParam + 1 : undefined,

@@ -12,7 +12,7 @@ export const PLAN_FEATURES = {
       historyDays: 7,
       maxProductImages: 0, // Sin imágenes en plan gratis
     },
-    
+
     // Features booleanas (true = permitido, false = bloqueado)
     features: {
       // Inventario
@@ -22,7 +22,7 @@ export const PLAN_FEATURES = {
       importCSV: false,              // Importar productos desde CSV
       exportData: false,             // Exportar a Excel/CSV/PDF
       bulkOperations: false,         // Edición masiva de productos
-      
+
       // Ventas
       quickSale: true,               // Venta rápida básica
       advancedSale: false,           // Venta con descuentos, notas
@@ -30,41 +30,41 @@ export const PLAN_FEATURES = {
       mixedPayments: false,          // Pagos mixtos (efectivo + tarjeta)
       salesHistory: true,            // Ver últimas ventas (limitado a 7 días)
       salesReports: false,           // Reportes avanzados de ventas
-      
+
       // Caja
       cashRegister: true,            // Abrir/cerrar caja
       cashRegisterReports: false,    // Reportes de caja
       closingHistory: false,         // Historial de cierres
-      
+
       // Equipo
       teamManagement: false,         // Gestión de empleados
       rolesAndPermissions: false,    // Roles personalizados
       inviteUsers: false,            // Invitar usuarios
-      
+
       // Reportes
       basicDashboard: true,          // Dashboard básico
       advancedReports: false,        // Reportes avanzados
       charts: false,                 // Gráficos y estadísticas
       metrics: false,                // Métricas de negocio
-      
+
       // Configuración
       taxConfiguration: false,       // Configurar impuestos
       invoiceCustomization: false,   // Personalizar recibos
       notifications: false,          // Notificaciones avanzadas
-      
+
       // Soporte
       emailSupport: false,           // Soporte por email
       prioritySupport: false,        // Soporte prioritario
-      
+
       // Toppings (solo para negocios de comida)
       toppings: false,               // Sistema de toppings
-      
+
       // Mesas y Pedidos (solo para negocios de comida)
       mesas: false,                  // Sistema de mesas
       pedidos: false,                // Sistema de pedidos
     }
   },
-  
+
   professional: {
     limits: {
       maxOrganizations: 1,
@@ -74,7 +74,7 @@ export const PLAN_FEATURES = {
       historyDays: null,        // Ilimitado
       maxProductImages: null,   // Ilimitado
     },
-    
+
     features: {
       // Todo desbloqueado excepto features empresariales
       inventoryBasic: true,
@@ -83,53 +83,53 @@ export const PLAN_FEATURES = {
       importCSV: true,
       exportData: true,
       bulkOperations: true,
-      
+
       quickSale: true,
       advancedSale: true,
       multiplePaymentMethods: true,
       mixedPayments: true,
       salesHistory: true,
       salesReports: true,
-      
+
       cashRegister: true,
       cashRegisterReports: true,
       closingHistory: true,
-      
+
       teamManagement: true,
       rolesAndPermissions: true,
       inviteUsers: true,
-      
+
       basicDashboard: true,
       advancedReports: true,
       charts: true,
       metrics: true,
-      
+
       taxConfiguration: true,
       invoiceCustomization: true,
       notifications: true,
-      
+
       emailSupport: true,
       prioritySupport: false,
-      
+
       // Toppings (solo para negocios de comida)
       toppings: true,                // Sistema de toppings
-      
+
       // Mesas y Pedidos (solo para negocios de comida)
       mesas: true,                   // Sistema de mesas
       pedidos: true,                 // Sistema de pedidos
-      
+
       // Features empresariales desactivadas
       multiOrg: false,
       branchTransfers: false,
       consolidatedReports: false,
       apiAccess: false,
       customBranding: false,
-      clientsModule: false,
+      clientsModule: true,           // Módulo de clientes habilitado en Estándar
       suppliersModule: false,
       electronicInvoicing: false,
     }
   },
-  
+
   enterprise: {
     limits: {
       maxOrganizations: 5,
@@ -139,7 +139,7 @@ export const PLAN_FEATURES = {
       historyDays: null,
       maxProductImages: null,
     },
-    
+
     features: {
       // Todo del profesional + features empresariales
       inventoryBasic: true,
@@ -148,41 +148,41 @@ export const PLAN_FEATURES = {
       importCSV: true,
       exportData: true,
       bulkOperations: true,
-      
+
       quickSale: true,
       advancedSale: true,
       multiplePaymentMethods: true,
       mixedPayments: true,
       salesHistory: true,
       salesReports: true,
-      
+
       cashRegister: true,
       cashRegisterReports: true,
       closingHistory: true,
-      
+
       teamManagement: true,
       rolesAndPermissions: true,
       inviteUsers: true,
-      
+
       basicDashboard: true,
       advancedReports: true,
       charts: true,
       metrics: true,
-      
+
       taxConfiguration: true,
       invoiceCustomization: true,
       notifications: true,
-      
+
       emailSupport: true,
       prioritySupport: true,
-      
+
       // Toppings (solo para negocios de comida)
       toppings: true,                // Sistema de toppings
-      
+
       // Mesas y Pedidos (solo para negocios de comida)
       mesas: true,                   // Sistema de mesas
       pedidos: true,                 // Sistema de pedidos
-      
+
       // Features empresariales
       multiOrg: true,
       branchTransfers: true,
@@ -192,12 +192,12 @@ export const PLAN_FEATURES = {
       clientsModule: true,          // Próximamente
       suppliersModule: true,        // Próximamente
       electronicInvoicing: true,    // Próximamente
-      
+
       whatsappSupport: true,
       onboarding: true,
     }
   },
-  
+
   custom: {
     limits: {
       maxOrganizations: null,   // Ilimitado
@@ -207,7 +207,7 @@ export const PLAN_FEATURES = {
       historyDays: null,
       maxProductImages: null,
     },
-    
+
     features: {
       // Todo desbloqueado
       inventoryBasic: true,
@@ -216,41 +216,41 @@ export const PLAN_FEATURES = {
       importCSV: true,
       exportData: true,
       bulkOperations: true,
-      
+
       quickSale: true,
       advancedSale: true,
       multiplePaymentMethods: true,
       mixedPayments: true,
       salesHistory: true,
       salesReports: true,
-      
+
       cashRegister: true,
       cashRegisterReports: true,
       closingHistory: true,
-      
+
       teamManagement: true,
       rolesAndPermissions: true,
       inviteUsers: true,
-      
+
       basicDashboard: true,
       advancedReports: true,
       charts: true,
       metrics: true,
-      
+
       taxConfiguration: true,
       invoiceCustomization: true,
       notifications: true,
-      
+
       emailSupport: true,
       prioritySupport: true,
-      
+
       // Toppings (solo para negocios de comida)
       toppings: true,                // Sistema de toppings
-      
+
       // Mesas y Pedidos (solo para negocios de comida)
       mesas: true,                   // Sistema de mesas
       pedidos: true,                 // Sistema de pedidos
-      
+
       multiOrg: true,
       branchTransfers: true,
       consolidatedReports: true,
@@ -259,10 +259,10 @@ export const PLAN_FEATURES = {
       clientsModule: true,
       suppliersModule: true,
       electronicInvoicing: true,
-      
+
       whatsappSupport: true,
       onboarding: true,
-      
+
       // Features exclusivas de Custom
       dedicatedServer: true,
       accountManager: true,
@@ -327,41 +327,41 @@ export const FEATURE_TO_PLAN = {
   exportData: 'professional',
   bulkOperations: 'professional',
   inventoryAdvanced: 'professional',
-  
+
   // Ventas
   advancedSale: 'professional',
   multiplePaymentMethods: 'professional',
   mixedPayments: 'professional',
   salesReports: 'professional',
-  
+
   // Caja
   cashRegisterReports: 'professional',
   closingHistory: 'professional',
-  
+
   // Equipo
   teamManagement: 'professional',
   rolesAndPermissions: 'professional',
   inviteUsers: 'professional',
-  
+
   // Reportes
   advancedReports: 'professional',
   charts: 'professional',
   metrics: 'professional',
-  
+
   // Configuración
   taxConfiguration: 'professional',
   invoiceCustomization: 'professional',
   notifications: 'professional',
-  
+
   // Soporte
   emailSupport: 'professional',
   prioritySupport: 'enterprise',
-  
+
   // Restaurantes
   toppings: 'professional',
   mesas: 'professional',
   pedidos: 'professional',
-  
+
   // Empresariales
   multiOrg: 'enterprise',
   branchTransfers: 'enterprise',

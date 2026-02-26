@@ -24,6 +24,7 @@ import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { useOfflineSync } from '../../hooks/useOfflineSync';
 import { getPendingOutboxCount } from '../../utils/offlineQueue';
 
+
 // Función para eliminar imagen del storage
 const deleteImageFromStorage = async (imagePath) => {
   if (!imagePath) return false;
@@ -58,10 +59,11 @@ const Inventario = () => {
   const [ordenProductos, setOrdenProductos] = useState('name_asc');
   const [query, setQuery] = useState('');
   const [productoIdFiltro, setProductoIdFiltro] = useState(null);
+
   const [filters, setFilters] = useState({});
   const [seleccionados, setSeleccionados] = useState([]);
   const [eliminandoSeleccionados, setEliminandoSeleccionados] = useState(false);
-  const [totalProductosDb, setTotalProductosDb] = useState(null);
+
   // Suponiendo que el usuario tiene moneda en user.user_metadata.moneda
   const moneda = user?.user_metadata?.moneda || 'COP';
   const jewelryPrices = useMemo(() => {
@@ -140,12 +142,12 @@ const Inventario = () => {
   const getCurrentVentaPrice = useCallback((producto) => {
     const metadata = typeof producto?.metadata === 'string'
       ? (() => {
-          try {
-            return JSON.parse(producto.metadata);
-          } catch {
-            return {};
-          }
-        })()
+        try {
+          return JSON.parse(producto.metadata);
+        } catch {
+          return {};
+        }
+      })()
       : (producto?.metadata || {});
     const isVariablePrice = metadata?.jewelry_price_mode === 'variable';
     if (!isVariablePrice) return parseNumber(producto.precio_venta);
@@ -176,12 +178,14 @@ const Inventario = () => {
     }
     return umbralStockBajoSeguro;
   }, [umbralStockBajoSeguro]);
-  
+
   const isJewelryBusiness = organization?.business_type === 'jewelry_metals';
 
   // React Query hooks - usar organization?.id en lugar de user?.id
-  const { data: productos = [], isLoading: cargando, error, refetch, isFetching } = useProductos(organization?.id);
+  const { data: productos = [], isLoading: cargandoLocal, error, refetch, isFetching } = useProductos(organization?.id);
   const eliminarProductoMutation = useEliminarProducto();
+
+  const cargando = cargandoLocal;
 
   useEffect(() => {
     let mounted = true;
@@ -202,26 +206,7 @@ const Inventario = () => {
     };
   }, [isOnline, isSyncing]);
 
-  useEffect(() => {
-    const cargarTotalProductos = async () => {
-      if (!organization?.id) return;
-      if (typeof navigator !== 'undefined' && !navigator.onLine) {
-        setTotalProductosDb(productos.length);
-        return;
-      }
-      const { count, error: countError } = await supabase
-        .from('productos')
-        .select('id', { count: 'exact', head: true })
-        .eq('organization_id', organization.id);
-      if (countError) {
-        console.error('Error cargando total de productos:', countError);
-        return;
-      }
-      setTotalProductosDb(count ?? 0);
-    };
 
-    cargarTotalProductos();
-  }, [organization?.id, productos.length]);
 
 
   useEffect(() => {
@@ -253,20 +238,20 @@ const Inventario = () => {
     if (productos.length > 0 && organization?.id && supabase) {
       // Precargar imágenes de productos con imagen válida
       const productosConImagen = productos.filter(
-        p => p.imagen && 
-        p.imagen.trim() !== '' && 
-        p.imagen !== 'null' && 
-        p.imagen !== 'undefined'
+        p => p.imagen &&
+          p.imagen.trim() !== '' &&
+          p.imagen !== 'null' &&
+          p.imagen !== 'undefined'
       );
-      
+
       if (productosConImagen.length > 0) {
         // Precargar las primeras 30 imágenes (las más visibles)
         const imagenesAPrecargar = productosConImagen.slice(0, 30);
-        
+
         imagenesAPrecargar.forEach(async (producto) => {
           try {
             let filePath = producto.imagen;
-            
+
             // Extraer la ruta del archivo
             if (filePath.includes('/storage/v1/object/public/productos/')) {
               filePath = filePath.split('/storage/v1/object/public/productos/')[1];
@@ -278,21 +263,21 @@ const Inventario = () => {
                 filePath = parts[1].split('?')[0];
               }
             }
-            
+
             filePath = filePath.trim();
-            
+
             // Decodificar la ruta si viene codificada
             try {
               filePath = decodeURIComponent(filePath);
             } catch (e) {
               // Si falla la decodificación, usar el original
             }
-            
+
             // Generar signed URL y precargarla
             const { data, error } = await supabase.storage
               .from('productos')
               .createSignedUrl(filePath, 3600);
-            
+
             if (!error && data?.signedUrl) {
               // Guardar en cache global inmediatamente
               const globalImageCache = (window.__imageCache || new Map());
@@ -301,7 +286,7 @@ const Inventario = () => {
                 timestamp: Date.now()
               });
               window.__imageCache = globalImageCache;
-              
+
               // Precargar la imagen en el navegador
               const img = new Image();
               img.src = data.signedUrl;
@@ -359,10 +344,10 @@ const Inventario = () => {
   }, [productos]);
 
   // Hook para lector de códigos de barras en el buscador
-  const { 
-    inputRef: barcodeInputRef, 
-    handleKeyDown: handleBarcodeKeyDown, 
-    handleInputChange: handleBarcodeInputChange 
+  const {
+    inputRef: barcodeInputRef,
+    handleKeyDown: handleBarcodeKeyDown,
+    handleInputChange: handleBarcodeInputChange
   } = useBarcodeScanner(handleBarcodeScanned, {
     minLength: 3,
     maxTimeBetweenChars: 30,
@@ -392,11 +377,11 @@ const Inventario = () => {
   useEffect(() => {
     const handleGlobalKeyDown = (e) => {
       const target = e.target;
-      
+
       // Verificar si hay un modal abierto o si el evento viene de dentro de un modal
       const isInModal = target.closest('.modal-overlay, .modal-content, [class*="modal"], [class*="Modal"], [data-modal], [role="dialog"]');
       const hasOpenModal = document.querySelector('.modal-overlay[style*="display: block"], .modal-overlay:not([style*="display: none"]), [class*="modal"][style*="display: block"]');
-      
+
       // Si hay un modal abierto o el evento viene de dentro de un modal, no procesar
       if (isInModal || hasOpenModal || modalOpen || editarModalOpen || entradaInventarioOpen) {
         // Limpiar buffer para evitar conflictos
@@ -410,36 +395,36 @@ const Inventario = () => {
       }
 
       // Ignorar si el usuario está escribiendo en un input, textarea o contenteditable
-      const isInputElement = target.tagName === 'INPUT' || 
-                            target.tagName === 'TEXTAREA' || 
-                            target.isContentEditable ||
-                            target.closest('input') ||
-                            target.closest('textarea');
-      
+      const isInputElement = target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable ||
+        target.closest('input') ||
+        target.closest('textarea');
+
       // Si está en el input del buscador, dejar que el hook normal lo maneje
       if (target === searchInputRef.current || target === barcodeInputRef?.current) {
         return;
       }
-      
+
       // Si está en otro input, no procesar como código de barras
       if (isInputElement) {
         return;
       }
-      
+
       // Si es Enter o Tab, podría ser el final del código de barras
       if (e.key === 'Enter' || e.key === 'Tab') {
         e.preventDefault();
         e.stopPropagation();
-        
+
         const barcode = globalBarcodeBufferRef.current.trim();
         if (barcode.length >= 3 && !globalBarcodeProcessingRef.current) {
           globalBarcodeProcessingRef.current = true;
           handleBarcodeScanned(barcode);
-          
+
           // Limpiar buffer
           globalBarcodeBufferRef.current = '';
           globalLastCharTimeRef.current = null;
-          
+
           // Resetear flag después de un delay
           setTimeout(() => {
             globalBarcodeProcessingRef.current = false;
@@ -447,36 +432,36 @@ const Inventario = () => {
         }
         return;
       }
-      
+
       // Si es un carácter imprimible
       if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
         const now = Date.now();
-        
+
         // Si pasó mucho tiempo desde el último carácter, resetear buffer
         if (globalLastCharTimeRef.current && (now - globalLastCharTimeRef.current) > 150) {
           globalBarcodeBufferRef.current = '';
         }
-        
+
         // Agregar carácter al buffer
         globalBarcodeBufferRef.current += e.key;
         globalLastCharTimeRef.current = now;
-        
+
         // Limpiar timeout anterior
         if (globalBarcodeTimeoutRef.current) {
           clearTimeout(globalBarcodeTimeoutRef.current);
         }
-        
+
         // Si después de un tiempo no hay más caracteres, procesar como código de barras
         globalBarcodeTimeoutRef.current = setTimeout(() => {
           const barcode = globalBarcodeBufferRef.current.trim();
           if (barcode.length >= 3 && !globalBarcodeProcessingRef.current) {
             globalBarcodeProcessingRef.current = true;
             handleBarcodeScanned(barcode);
-            
+
             // Limpiar buffer
             globalBarcodeBufferRef.current = '';
             globalLastCharTimeRef.current = null;
-            
+
             // Resetear flag después de un delay
             setTimeout(() => {
               globalBarcodeProcessingRef.current = false;
@@ -485,9 +470,9 @@ const Inventario = () => {
         }, 150);
       }
     };
-    
+
     window.addEventListener('keydown', handleGlobalKeyDown);
-    
+
     return () => {
       window.removeEventListener('keydown', handleGlobalKeyDown);
       if (globalBarcodeTimeoutRef.current) {
@@ -501,7 +486,7 @@ const Inventario = () => {
     if (!opcion) return null;
     const ahora = new Date();
     const desde = new Date();
-    
+
     switch (opcion) {
       case 'hoy':
         desde.setHours(0, 0, 0, 0);
@@ -529,7 +514,11 @@ const Inventario = () => {
 
   const productosSearchIndex = useMemo(() => {
     const index = new Map();
-    productos.forEach((producto) => {
+    // Indexar lista de productos local
+    const todosMap = new Map();
+    productos.forEach(p => todosMap.set(p.id, p));
+
+    Array.from(todosMap.values()).forEach((producto) => {
       const camposDirectos = [
         producto.codigo,
         producto.nombre,
@@ -544,12 +533,12 @@ const Inventario = () => {
 
       const metadata = typeof producto.metadata === 'string'
         ? (() => {
-            try {
-              return JSON.parse(producto.metadata);
-            } catch {
-              return {};
-            }
-          })()
+          try {
+            return JSON.parse(producto.metadata);
+          } catch {
+            return {};
+          }
+        })()
         : (producto.metadata || {});
 
       const camposMetadata = [
@@ -580,7 +569,7 @@ const Inventario = () => {
       index.set(String(producto.id), todosLosCampos.join(' '));
     });
     return index;
-  }, [productos]);
+  }, [productos]); // Evaluamos combinados abajo
 
   // Filtrar productos basado en búsqueda y filtros dinámicos
   const filteredProducts = useMemo(() => {
@@ -625,7 +614,7 @@ const Inventario = () => {
         } else {
           // Intentar obtener del producto directo
           productValue = producto[fieldId];
-          
+
           // Si no existe, buscar en metadata
           if (productValue === undefined && producto.metadata) {
             productValue = producto.metadata[fieldId];
@@ -733,7 +722,40 @@ const Inventario = () => {
     return lista;
   }, [filteredProducts, ordenProductos]);
 
-  const shouldAnimateProducts = sortedProducts.length <= 200;
+  // --- LÓGICA DE PAGINACIÓN VIRTUAL (SCROLL INFINITO) ---
+  const [visibleCount, setVisibleCount] = useState(50);
+  const loadingObserverRef = useRef(null);
+
+  // Reiniciar la cantidad visible cuando cambian los filtros, la búsqueda o el orden
+  useEffect(() => {
+    setVisibleCount(50);
+  }, [query, filters, productoIdFiltro, ordenProductos]);
+
+  const handleObserver = useCallback((entries) => {
+    const target = entries[0];
+    if (target.isIntersecting && visibleCount < sortedProducts.length) {
+      setVisibleCount((prev) => Math.min(prev + 50, sortedProducts.length));
+    }
+  }, [visibleCount, sortedProducts.length]);
+
+  useEffect(() => {
+    const option = {
+      root: null,
+      rootMargin: "200px", // Cargar un poco antes de llegar al final
+      threshold: 0
+    };
+    const observer = new IntersectionObserver(handleObserver, option);
+    if (loadingObserverRef.current) observer.observe(loadingObserverRef.current);
+
+    return () => observer.disconnect();
+  }, [handleObserver]);
+
+  // Tomar solo la rebanada (slice) visible de los productos ordenados
+  const visibleProducts = useMemo(() => {
+    return sortedProducts.slice(0, visibleCount);
+  }, [sortedProducts, visibleCount]);
+
+  const shouldAnimateProducts = visibleProducts.length <= 200;
   const ItemWrapper = shouldAnimateProducts ? motion.div : 'div';
   const getItemAnimationProps = (index) => {
     if (!shouldAnimateProducts) return {};
@@ -795,7 +817,7 @@ const Inventario = () => {
     setEliminandoSeleccionados(true);
     try {
       const productosAEliminar = productos.filter(p => seleccionados.includes(p.id));
-      
+
       // Eliminar imágenes primero
       for (const producto of productosAEliminar) {
         if (producto.imagen && !producto.imagen.startsWith('http://') && !producto.imagen.startsWith('https://') && !producto.imagen.startsWith('data:')) {
@@ -806,12 +828,12 @@ const Inventario = () => {
       // Dividir en lotes de 100 para evitar error 400 con grandes cantidades
       const BATCH_SIZE = 100;
       const totalBatches = Math.ceil(seleccionados.length / BATCH_SIZE);
-      
+
       for (let i = 0; i < totalBatches; i++) {
         const start = i * BATCH_SIZE;
         const end = start + BATCH_SIZE;
         const batch = seleccionados.slice(start, end);
-        
+
         const { error: deleteError } = await supabase
           .from('productos')
           .delete()
@@ -820,7 +842,7 @@ const Inventario = () => {
         if (deleteError) {
           throw deleteError;
         }
-        
+
         // Mostrar progreso si hay múltiples lotes
         if (totalBatches > 1) {
           toast.success(`Eliminando... ${Math.min(end, seleccionados.length)}/${seleccionados.length}`, {
@@ -844,7 +866,7 @@ const Inventario = () => {
   // Eliminar producto
   const handleEliminarProducto = async (producto) => {
     if (!user) return;
-    
+
     const confirmar = window.confirm(`¿Estás seguro de que quieres eliminar "${producto.nombre}"?`);
     if (!confirmar) return;
 
@@ -857,9 +879,9 @@ const Inventario = () => {
       }
 
       // Usar React Query mutation para eliminar
-      eliminarProductoMutation.mutate({ 
-        id: producto.id, 
-        organizationId: organization?.id 
+      eliminarProductoMutation.mutate({
+        id: producto.id,
+        organizationId: organization?.id
       });
     } catch (error) {
       console.error('Error:', error);
@@ -908,8 +930,8 @@ const Inventario = () => {
 
         const opcionesLista = Array.isArray(variacion?.opciones)
           ? variacion.opciones
-              .map((op) => (typeof op === 'string' ? op : op?.nombre || op?.valor || op?.label || ''))
-              .filter(Boolean)
+            .map((op) => (typeof op === 'string' ? op : op?.nombre || op?.valor || op?.label || ''))
+            .filter(Boolean)
           : [];
         opciones.push(opcionesLista.join(', '));
       });
@@ -999,15 +1021,11 @@ const Inventario = () => {
         </div>
       ) : (
         <>
-          {/* Métricas del inventario - se actualizan con los productos filtrados */}
+          {/* Métricas del inventario - se actualizan dinámicamente según filtros */}
           {productos.length > 0 && (
             <InventarioStats
               productos={filteredProducts}
-              totalProductosOverride={
-                (!query && Object.keys(filters).length === 0 && !productoIdFiltro)
-                  ? totalProductosDb
-                  : null
-              }
+              totalProductosOverride={null}
             />
           )}
 
@@ -1015,9 +1033,8 @@ const Inventario = () => {
           <div className="inventario-header-wrapper">
             <div className="inventario-actions">
               <span
-                className={`inventario-connection-badge ${
-                  isOnline ? 'inventario-connection-badge--online' : 'inventario-connection-badge--offline'
-                }`}
+                className={`inventario-connection-badge ${isOnline ? 'inventario-connection-badge--online' : 'inventario-connection-badge--offline'
+                  }`}
               >
                 {isSyncing && pendingOutboxCount > 0 ? (
                   <span className="inventario-connection-spinner" aria-hidden="true" />
@@ -1035,8 +1052,8 @@ const Inventario = () => {
               >
                 <RefreshCw size={18} className={isFetching ? 'spin' : ''} />
               </button>
-              <button 
-                className="inventario-btn inventario-btn-secondary" 
+              <button
+                className="inventario-btn inventario-btn-secondary"
                 onClick={() => setEntradaInventarioOpen(true)}
                 title="Registrar entrada de inventario"
               >
@@ -1048,8 +1065,8 @@ const Inventario = () => {
                 recommendedPlan="professional"
                 showInline={false}
                 fallback={
-                  <button 
-                    className="inventario-btn inventario-btn-secondary" 
+                  <button
+                    className="inventario-btn inventario-btn-secondary"
                     onClick={() => toast.error('La importación CSV está disponible en el plan Estándar')}
                     style={{ opacity: 0.5, cursor: 'not-allowed' }}
                     title="🔒 Plan Estándar"
@@ -1065,8 +1082,8 @@ const Inventario = () => {
                 recommendedPlan="professional"
                 showInline={false}
                 fallback={
-                  <button 
-                    className="inventario-btn inventario-btn-secondary" 
+                  <button
+                    className="inventario-btn inventario-btn-secondary"
                     onClick={() => toast.error('La exportación de datos está disponible en el plan Estándar')}
                     style={{ opacity: 0.5, cursor: 'not-allowed' }}
                     title="🔒 Plan Estándar"
@@ -1120,10 +1137,10 @@ const Inventario = () => {
               </div>
               <div className="search-input-wrapper">
                 <Search size={18} className="inventario-search-icon-outside" />
-                <input 
+                <input
                   ref={combinedSearchInputRef}
-                  className="inventario-search" 
-                  placeholder="Buscar por nombre, código, marca, modelo, categoría..." 
+                  className="inventario-search"
+                  placeholder="Buscar por nombre, código, marca, modelo, categoría..."
                   value={query}
                   onChange={(e) => {
                     setQuery(e.target.value);
@@ -1137,7 +1154,7 @@ const Inventario = () => {
           </div>
 
           {/* Filtros - Debajo del buscador y antes de los productos */}
-          <InventarioFilters 
+          <InventarioFilters
             productos={productos}
             filters={filters}
             onFilterChange={setFilters}
@@ -1145,210 +1162,143 @@ const Inventario = () => {
 
           {/* Contenido de productos */}
           <div className="inventario-content">
-        {modoLista ? (
-          <div className="inventario-lista">
             {cargando ? (
               <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}>
                 <LottieLoader size="medium" message="Cargando productos..." />
               </div>
-            ) : filteredProducts.length === 0 ? (
-              <div style={{textAlign:'center',width:'100%',padding:'2rem'}}>
-                {query || Object.keys(filters).length > 0 
-                  ? 'No se encontraron productos con los filtros aplicados.' 
-                  : 'No hay productos aún.'}
+            ) : sortedProducts.length === 0 ? (
+              <div className="sin-resultados-busqueda">
+                <Search size={48} />
+                <h3>No se encontraron productos</h3>
+                <p>Intenta con otros términos de búsqueda o elimina los filtros aplicados</p>
+                <button onClick={() => { setQuery(''); setFilters({}); }}>
+                  Limpiar Filtros y Búsqueda
+                </button>
               </div>
-            ) : sortedProducts.map((prod, index) => (
-              <ItemWrapper 
-                className="inventario-lista-item" 
-                key={prod.id}
-                {...getItemAnimationProps(index)}
-                {...(shouldAnimateProducts ? { layout: true } : {})}
-              >
-                <div className="inventario-select-checkbox">
-                  <input
-                    type="checkbox"
-                    checked={seleccionados.includes(prod.id)}
-                    onChange={() => toggleSeleccion(prod.id)}
-                  />
-                </div>
-                <OptimizedProductImage 
-                  imagePath={prod.imagen} 
-                  alt={prod.nombre} 
-                  className="inventario-img-lista"
-                  onError={(e) => {
-                  }}
-                />
-                <div className="inventario-lista-info">
+            ) : (
+              <>
+                <div className={modoLista ? "inventario-lista" : "inventario-grid"}>
+                  {visibleProducts.map((prod, index) => (
+                    <ItemWrapper
+                      key={prod.id}
+                      {...getItemAnimationProps(index)}
+                      {...(shouldAnimateProducts ? { layout: true } : {})}
+                      className={modoLista ? "inventario-lista-item" : "inventario-card"}
+                    >
+                      <div className="inventario-select-checkbox">
+                        <input
+                          type="checkbox"
+                          checked={seleccionados.includes(prod.id)}
+                          onChange={() => toggleSeleccion(prod.id)}
+                        />
+                      </div>
+                      <OptimizedProductImage
+                        imagePath={prod.imagen}
+                        alt={prod.nombre}
+                        className={modoLista ? "inventario-img-lista" : "inventario-img"}
+                        onError={(e) => {
+                        }}
+                      />
+                      <div className={modoLista ? "inventario-lista-info" : "inventario-info"}>
 
-                  <div className="inventario-nombre" title={prod.nombre}>{prod.nombre}</div>
-                  {isJewelryBusiness && (
-                    <div style={{ display: 'flex', gap: '0.2rem', marginBottom: '0.2rem', flexWrap: 'wrap' }}>
-                      {prod.metadata?.peso && (
-                        <span style={{ 
-                            fontSize: '0.65rem', 
-                            backgroundColor: '#f3f4f6', 
-                            padding: '1px 4px', 
-                            borderRadius: '3px',
-                            color: '#374151',
-                            border: '1px solid #e5e7eb',
-                            fontWeight: 500
-                        }}>
-                          {prod.metadata.peso} {organization?.jewelry_weight_unit || 'g'}
-                        </span>
-                      )}
-                      
-                      {prod.metadata?.jewelry_material_type && prod.metadata.jewelry_material_type !== 'na' && (
-                        <span style={{ 
-                            fontSize: '0.65rem', 
-                            backgroundColor: prod.metadata.jewelry_material_type === 'local' ? '#eff6ff' : '#fff7ed', 
-                            color: prod.metadata.jewelry_material_type === 'local' ? '#2563eb' : '#ea580c',
-                            padding: '1px 4px', 
-                            borderRadius: '3px',
-                            border: `1px solid ${prod.metadata.jewelry_material_type === 'local' ? '#bfdbfe' : '#ffedd5'}`,
-                            fontWeight: 600
-                        }}>
-                          {prod.metadata.jewelry_material_type === 'local' ? 'Nac' : 'Int'}
-                        </span>
-                      )}
+                        <div className="inventario-nombre" title={prod.nombre}>{prod.nombre}</div>
+                        {isJewelryBusiness && (
+                          <div style={{ display: 'flex', gap: '0.2rem', marginBottom: '0.2rem', flexWrap: 'wrap', justifyContent: modoLista ? 'flex-start' : 'center' }}>
+                            {prod.metadata?.peso && (
+                              <span style={{
+                                fontSize: '0.65rem',
+                                backgroundColor: '#f3f4f6',
+                                padding: '1px 4px',
+                                borderRadius: '3px',
+                                color: '#374151',
+                                border: '1px solid #e5e7eb',
+                                fontWeight: 500
+                              }}>
+                                {prod.metadata.peso} {organization?.jewelry_weight_unit || 'g'}
+                              </span>
+                            )}
+
+                            {prod.metadata?.jewelry_material_type && prod.metadata.jewelry_material_type !== 'na' && (
+                              <span style={{
+                                fontSize: '0.65rem',
+                                backgroundColor: prod.metadata.jewelry_material_type === 'local' ? '#eff6ff' : '#fff7ed',
+                                color: prod.metadata.jewelry_material_type === 'local' ? '#2563eb' : '#ea580c',
+                                padding: '1px 4px',
+                                borderRadius: '3px',
+                                border: `1px solid ${prod.metadata.jewelry_material_type === 'local' ? '#bfdbfe' : '#ffedd5'}`,
+                                fontWeight: 600
+                              }}>
+                                {prod.metadata.jewelry_material_type === 'local' ? 'Nac' : 'Int'}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        <div className={modoLista ? "inventario-lista-precios" : ""} style={!modoLista ? { display: 'flex', gap: '0.8rem', justifyContent: 'center', marginBottom: 2 } : {}}>
+                          <span style={{ color: 'var(--accent-primary)', fontWeight: 700, fontSize: modoLista ? 'inherit' : '0.85rem' }}>Compra: {prod.precio_compra?.toLocaleString('es-CO')}</span>
+                          <span style={{ color: 'var(--accent-success)', fontWeight: 700, fontSize: modoLista ? 'inherit' : '0.85rem' }}>Venta: {getCurrentVentaPrice(prod).toLocaleString('es-CO')}</span>
+                        </div>
+                        <div className="inventario-stock">Stock: {prod.stock !== null && prod.stock !== undefined ? parseFloat(prod.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '0'}</div>
+                      </div>
+                      <div className={modoLista ? "inventario-lista-actions" : "inventario-card-actions"}>
+                        <button
+                          className="inventario-btn inventario-btn-outline"
+                          onClick={() => handleEditarProducto(prod)}
+                        >
+                          Editar
+                        </button>
+                        <button
+                          className="inventario-btn inventario-btn-outline eliminar"
+                          onClick={() => handleEliminarProducto(prod)}
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    </ItemWrapper>
+                  ))}
+                  {/* Div centinela para el Infinite Scroll */}
+                  {visibleCount < sortedProducts.length && (
+                    <div ref={loadingObserverRef} style={{ height: '50px', display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '1rem', width: '100%', gridColumn: '1 / -1' }}>
+                      <div className="lottie-loader-container" style={{ width: '40px', height: '40px' }}>
+                        <LottieLoader />
+                      </div>
                     </div>
                   )}
-                  <div className="inventario-lista-precios">
-                    <span style={{color:'var(--accent-primary)',fontWeight:700}}>Compra: {prod.precio_compra?.toLocaleString('es-CO')}</span>
-                    <span style={{color:'var(--accent-success)',fontWeight:700}}>Venta: {getCurrentVentaPrice(prod).toLocaleString('es-CO')}</span>
-                  </div>
-                  <div className="inventario-stock">Stock: {prod.stock !== null && prod.stock !== undefined ? parseFloat(prod.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '0'}</div>
                 </div>
-                <div className="inventario-lista-actions">
-                  <button 
-                    className="inventario-btn inventario-btn-outline"
-                    onClick={() => handleEditarProducto(prod)}
-                  >
-                    Editar
-                  </button>
-                  <button 
-                    className="inventario-btn inventario-btn-outline eliminar"
-                    onClick={() => handleEliminarProducto(prod)}
-                  >
-                    Eliminar
-                  </button>
-                </div>
-              </ItemWrapper>
-            ))}
-          </div>
-        ) : (
-          <div className="inventario-grid">
-            {cargando ? (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem', gridColumn: '1 / -1' }}>
-                <LottieLoader size="medium" message="Cargando productos..." />
-              </div>
-            ) : filteredProducts.length === 0 ? (
-              <div style={{textAlign:'center',width:'100%',padding:'2rem'}}>
-                {query || Object.keys(filters).length > 0 
-                  ? 'No se encontraron productos con los filtros aplicados.' 
-                  : 'No hay productos aún.'}
-              </div>
-            ) : sortedProducts.map((prod, index) => (
-              <ItemWrapper 
-                className="inventario-card" 
-                key={prod.id}
-                {...getItemAnimationProps(index)}
-                {...(shouldAnimateProducts ? { layout: true } : {})}
-              >
-                <div className="inventario-select-checkbox">
-                  <input
-                    type="checkbox"
-                    checked={seleccionados.includes(prod.id)}
-                    onChange={() => toggleSeleccion(prod.id)}
-                  />
-                </div>
-                <OptimizedProductImage 
-                  imagePath={prod.imagen} 
-                  alt={prod.nombre} 
-                  className="inventario-img"
-                  onError={(e) => {
-                  }}
-                />
-                <div className="inventario-info">
-                  <div className="inventario-nombre" title={prod.nombre}>{prod.nombre}</div>
-                  {isJewelryBusiness && (
-                    <div style={{ display: 'flex', gap: '0.2rem', justifyContent: 'center', marginBottom: '0.2rem', flexWrap: 'wrap' }}>
-                      {prod.metadata?.peso && (
-                        <span style={{ 
-                            fontSize: '0.65rem', 
-                            backgroundColor: '#f3f4f6', 
-                            padding: '1px 4px', 
-                            borderRadius: '3px',
-                            color: '#374151',
-                            border: '1px solid #e5e7eb',
-                            fontWeight: 500
-                        }}>
-                          {prod.metadata.peso} {organization?.jewelry_weight_unit || 'g'}
-                        </span>
-                      )}
-                      
-                      {prod.metadata?.jewelry_material_type && prod.metadata.jewelry_material_type !== 'na' && (
-                        <span style={{ 
-                            fontSize: '0.65rem', 
-                            backgroundColor: prod.metadata.jewelry_material_type === 'local' ? '#eff6ff' : '#fff7ed', 
-                            color: prod.metadata.jewelry_material_type === 'local' ? '#2563eb' : '#ea580c',
-                            padding: '1px 4px', 
-                            borderRadius: '3px',
-                            border: `1px solid ${prod.metadata.jewelry_material_type === 'local' ? '#bfdbfe' : '#ffedd5'}`,
-                            fontWeight: 600
-                        }}>
-                          {prod.metadata.jewelry_material_type === 'local' ? 'Nac' : 'Int'}
-                        </span>
-                      )}
+
+                {/* Div centinela para el Infinite Scroll */}
+                {/* {visibleCount < sortedProducts.length && (
+                  <div ref={loadingObserverRef} style={{ height: '50px', display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '1rem', width: '100%' }}>
+                    <div className="lottie-loader-container" style={{ width: '40px', height: '40px' }}>
+                      <LottieLoader />
                     </div>
-                  )}
-                  <div style={{display:'flex',gap:'0.8rem',justifyContent:'center',marginBottom:2}}>
-                    <span style={{color:'var(--accent-primary)',fontWeight:700,fontSize:'0.85rem'}}>Compra: {prod.precio_compra?.toLocaleString('es-CO')}</span>
-                    <span style={{color:'var(--accent-success)',fontWeight:700,fontSize:'0.85rem'}}>Venta: {getCurrentVentaPrice(prod).toLocaleString('es-CO')}</span>
                   </div>
-                  <div className="inventario-stock">Stock: {prod.stock !== null && prod.stock !== undefined ? parseFloat(prod.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '0'}</div>
-                </div>
-                <div className="inventario-card-actions">
-                  <button 
-                    className="inventario-btn inventario-btn-outline"
-                    onClick={() => handleEditarProducto(prod)}
-                  >
-                    Editar
-                  </button>
-                  <button 
-                    className="inventario-btn inventario-btn-outline eliminar"
-                    onClick={() => handleEliminarProducto(prod)}
-                  >
-                    Eliminar
-                  </button>
-                </div>
-              </ItemWrapper>
-            ))}
-          </div>
-          )}
-          {/* Panel lateral eliminado por solicitud */}
+                )} */}
+              </>
+            )}
+            {/* Panel lateral eliminado por solicitud */}
           </div>
         </>
       )}
       <AgregarProductoModalV2 open={modalOpen} onClose={() => setModalOpen(false)} onProductoAgregado={handleAgregarProducto} moneda={moneda} />
-      <EditarProductoModalV2 
-        open={editarModalOpen} 
+      <EditarProductoModalV2
+        open={editarModalOpen}
         onClose={() => {
           setEditarModalOpen(false);
           setProductoSeleccionado(null);
           setVarianteSeleccionadaId(null);
-        }} 
+        }}
         producto={productoSeleccionado}
         varianteActivaId={varianteSeleccionadaId}
         soloEditarVariantes={!!varianteSeleccionadaId}
         onProductoEditado={handleProductoEditado}
       />
-      <ImportarProductosCSV 
-        open={csvModalOpen} 
+      <ImportarProductosCSV
+        open={csvModalOpen}
         onClose={() => setCsvModalOpen(false)}
         onProductosImportados={handleProductosImportados}
       />
-      <EntradaInventarioModal 
-        open={entradaInventarioOpen} 
+      <EntradaInventarioModal
+        open={entradaInventarioOpen}
         onClose={() => {
           setEntradaInventarioOpen(false);
           // Refrescar productos después de actualizar inventario

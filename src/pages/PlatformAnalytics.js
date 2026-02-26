@@ -84,8 +84,8 @@ const PlatformAnalytics = () => {
         .eq('status', 'active');
 
       const mrr = activeSubscriptions?.reduce((sum, sub) => {
-        const price = sub.billing_cycle === 'monthly' 
-          ? sub.plan.price_monthly 
+        const price = sub.billing_cycle === 'monthly'
+          ? sub.plan.price_monthly
           : sub.plan.price_yearly / 12;
         return sum + price;
       }, 0) || 0;
@@ -112,8 +112,8 @@ const PlatformAnalytics = () => {
         .eq('status', 'completed');
 
       const lastMonthRevenue = lastMonthPayments?.reduce((sum, p) => sum + p.amount, 0) || 0;
-      const revenueGrowth = lastMonthRevenue > 0 
-        ? ((monthlyRevenue - lastMonthRevenue) / lastMonthRevenue) * 100 
+      const revenueGrowth = lastMonthRevenue > 0
+        ? ((monthlyRevenue - lastMonthRevenue) / lastMonthRevenue) * 100
         : 0;
 
       return {
@@ -121,8 +121,8 @@ const PlatformAnalytics = () => {
         arr,
         monthlyRevenue,
         revenueGrowth,
-        averageRevenuePerUser: activeSubscriptions?.length > 0 
-          ? mrr / activeSubscriptions.length 
+        averageRevenuePerUser: activeSubscriptions?.length > 0
+          ? mrr / activeSubscriptions.length
           : 0
       };
     } catch (error) {
@@ -161,8 +161,8 @@ const PlatformAnalytics = () => {
         .gte('cancellation_date', startOfMonth.toISOString());
 
       const activeCount = subscriptions?.filter(s => s.status === 'active').length || 0;
-      const churnRate = activeCount > 0 
-        ? (cancelledThisMonth?.length || 0) / activeCount * 100 
+      const churnRate = activeCount > 0
+        ? (cancelledThisMonth?.length || 0) / activeCount * 100
         : 0;
 
       // Tasa de conversión (free → paid)
@@ -171,8 +171,8 @@ const PlatformAnalytics = () => {
         .select('subscription_id');
 
       const paidOrgs = allOrgs?.filter(o => o.subscription_id).length || 0;
-      const conversionRate = allOrgs?.length > 0 
-        ? (paidOrgs / allOrgs.length) * 100 
+      const conversionRate = allOrgs?.length > 0
+        ? (paidOrgs / allOrgs.length) * 100
         : 0;
 
       return {
@@ -221,14 +221,16 @@ const PlatformAnalytics = () => {
       // Total de ventas
       const { count: totalSales } = await supabase
         .from('ventas')
-        .select('*', { count: 'exact', head: true });
+        .select('*', { count: 'exact', head: true })
+        .neq('estado', 'cancelada');
 
       // Ventas de este mes
       const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
       const { count: salesThisMonth } = await supabase
         .from('ventas')
         .select('*', { count: 'exact', head: true })
-        .gte('fecha', startOfMonth.toISOString());
+        .gte('fecha', startOfMonth.toISOString())
+        .neq('estado', 'cancelada');
 
       return {
         totalProducts: totalProducts || 0,
@@ -317,19 +319,19 @@ const PlatformAnalytics = () => {
         </div>
 
         <div className="period-selector">
-          <button 
+          <button
             className={selectedPeriod === 'month' ? 'active' : ''}
             onClick={() => setSelectedPeriod('month')}
           >
             Este Mes
           </button>
-          <button 
+          <button
             className={selectedPeriod === 'quarter' ? 'active' : ''}
             onClick={() => setSelectedPeriod('quarter')}
           >
             Trimestre
           </button>
-          <button 
+          <button
             className={selectedPeriod === 'year' ? 'active' : ''}
             onClick={() => setSelectedPeriod('year')}
           >
@@ -345,9 +347,9 @@ const PlatformAnalytics = () => {
             <DollarSign size={24} />
             Ingresos
           </h2>
-          
+
           <div className="metrics-grid">
-            <motion.div 
+            <motion.div
               className="metric-card highlight"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -366,7 +368,7 @@ const PlatformAnalytics = () => {
               </div>
             </motion.div>
 
-            <motion.div 
+            <motion.div
               className="metric-card"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -382,7 +384,7 @@ const PlatformAnalytics = () => {
               </div>
             </motion.div>
 
-            <motion.div 
+            <motion.div
               className="metric-card"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -398,7 +400,7 @@ const PlatformAnalytics = () => {
               </div>
             </motion.div>
 
-            <motion.div 
+            <motion.div
               className="metric-card"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -424,7 +426,7 @@ const PlatformAnalytics = () => {
           </h2>
 
           <div className="metrics-grid">
-            <motion.div 
+            <motion.div
               className="metric-card"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -440,7 +442,7 @@ const PlatformAnalytics = () => {
               </div>
             </motion.div>
 
-            <motion.div 
+            <motion.div
               className="metric-card"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -456,7 +458,7 @@ const PlatformAnalytics = () => {
               </div>
             </motion.div>
 
-            <motion.div 
+            <motion.div
               className="metric-card warning"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -472,7 +474,7 @@ const PlatformAnalytics = () => {
               </div>
             </motion.div>
 
-            <motion.div 
+            <motion.div
               className="metric-card"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -520,7 +522,7 @@ const PlatformAnalytics = () => {
                       animate={{ width: `${percentage}%` }}
                       transition={{ delay: index * 0.1 + 0.3, duration: 0.5 }}
                       style={{
-                        background: plan === 'Empresarial' 
+                        background: plan === 'Empresarial'
                           ? 'linear-gradient(90deg, #10B981, #059669)'
                           : plan === 'Profesional'
                             ? 'linear-gradient(90deg, #8B5CF6, #7C3AED)'
@@ -542,7 +544,7 @@ const PlatformAnalytics = () => {
           </h2>
 
           <div className="metrics-grid">
-            <motion.div 
+            <motion.div
               className="metric-card"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -557,7 +559,7 @@ const PlatformAnalytics = () => {
               </div>
             </motion.div>
 
-            <motion.div 
+            <motion.div
               className="metric-card"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
