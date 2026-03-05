@@ -1,5 +1,16 @@
 /* Bottom Navigation Bar – siempre visible en móvil */
 
+/* Variable global con la altura real del BottomNav */
+:root {
+  --bottom-nav-height: 62px;
+}
+
+@supports (padding: max(0px)) {
+  :root {
+    --bottom-nav-height: calc(62px + max(0px, env(safe-area-inset-bottom)));
+  }
+}
+
 /* Ocultar el toggle (ya no existe) */
 .bottom-nav-toggle {
   display: none !important;
@@ -24,6 +35,30 @@
   box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.06);
   height: 62px;
   min-height: 62px;
+
+  /* Comportamiento auto-hide */
+  transform: translateY(calc(100% - 15px));
+  opacity: 0;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Pseudo-elemento para capturar el área de interacción cuando está oculta */
+.bottom-nav::before {
+  content: '';
+  position: absolute;
+  top: -30px;
+  left: 0;
+  right: 0;
+  height: 30px;
+  background: transparent;
+}
+
+/* Mostrar la barra al pasar el cursor o hacer touch */
+.bottom-nav:hover,
+.bottom-nav:active,
+.bottom-nav:focus-within {
+  transform: translateY(0);
+  opacity: 1;
 }
 
 /* Ocultar en desktop */

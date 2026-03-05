@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Package, DollarSign, TrendingUp, AlertTriangle, Box, Percent } from 'lucide-react';
+import { Package, DollarSign, TrendingUp, AlertTriangle, Box, Percent, Scale } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import './InventarioStats.css';
@@ -38,19 +38,19 @@ const InventarioStats = ({ productos, totalProductosOverride }) => {
   const totalProductos = Number.isFinite(totalProductosOverride)
     ? totalProductosOverride
     : productos.length;
-  
+
   const productosInventario = productos.filter(p => p.tipo !== 'servicio');
   const totalStock = productosInventario.reduce((sum, p) => sum + parseNumber(p.stock), 0);
-  
+
   const getUmbralProducto = (producto) => {
     const metadata = typeof producto?.metadata === 'string'
       ? (() => {
-          try {
-            return JSON.parse(producto.metadata);
-          } catch {
-            return {};
-          }
-        })()
+        try {
+          return JSON.parse(producto.metadata);
+        } catch {
+          return {};
+        }
+      })()
       : (producto?.metadata || {});
     const umbralProducto = Number(metadata?.umbral_stock_bajo);
     if (Number.isFinite(umbralProducto) && umbralProducto > 0) {
@@ -65,18 +65,18 @@ const InventarioStats = ({ productos, totalProductosOverride }) => {
     return stock > 0 && stock <= getUmbralProducto(p);
   });
   const cantidadStockBajo = stockBajo.length;
-  
+
   // Sin stock
   const sinStock = productosInventario.filter(p => parseNumber(p.stock) === 0);
   const cantidadSinStock = sinStock.length;
-  
+
   // Costo total en stock (precio_compra * stock)
   const costoEnStock = productosInventario.reduce((sum, p) => {
     const stock = parseNumber(p.stock);
     const precioCompra = parseNumber(p.precio_compra);
     return sum + (stock * precioCompra);
   }, 0);
-  
+
   const getPurityFactor = (pureza) => {
     switch ((pureza || '').toLowerCase()) {
       case '24k':
@@ -131,12 +131,12 @@ const InventarioStats = ({ productos, totalProductosOverride }) => {
   const getCurrentVentaPrice = (producto) => {
     const metadata = typeof producto?.metadata === 'string'
       ? (() => {
-          try {
-            return JSON.parse(producto.metadata);
-          } catch {
-            return {};
-          }
-        })()
+        try {
+          return JSON.parse(producto.metadata);
+        } catch {
+          return {};
+        }
+      })()
       : (producto?.metadata || {});
     const isVariablePrice = metadata?.jewelry_price_mode === 'variable';
     if (!isVariablePrice) return parseNumber(producto.precio_venta);
@@ -164,16 +164,60 @@ const InventarioStats = ({ productos, totalProductosOverride }) => {
     const precioVenta = getCurrentVentaPrice(p);
     return sum + (stock * precioVenta);
   }, 0);
-  
+
   // Utilidad potencial en stock (valor venta - costo)
   const utilidadEnStockRaw = valorVentaEnStock - costoEnStock;
   const utilidadEnStock = organization?.business_type === 'jewelry_metals'
     ? Math.max(0, utilidadEnStockRaw)
     : utilidadEnStockRaw;
-  
+
   // Margen de utilidad porcentual
-  const margenUtilidad = valorVentaEnStock > 0 
+  const margenUtilidad = valorVentaEnStock > 0
     ? ((utilidadEnStock / valorVentaEnStock) * 100).toFixed(1)
+    : 0;
+
+  // =====================================================
+  // JOYERÍA: Cálculo de gramos en inventario por tipo
+  // =====================================================
+  const isJewelryBusiness = organization?.business_type === 'jewelry_metals';
+
+  const getMetadata = (producto) => {
+    if (!producto?.metadata) return {};
+    if (typeof producto.metadata === 'string') {
+      try { return JSON.parse(producto.metadata); } catch { return {}; }
+    }
+    return producto.metadata;
+  };
+
+  // Helper: obtiene el stock efectivo de un producto, sumando variantes si las tiene
+  const getStockEfectivo = (producto) => {
+    if (Array.isArray(producto.variantes) && producto.variantes.length > 0) {
+      // Con variantes: el stock real está en cada variante
+      return producto.variantes.reduce((sum, v) => sum + parseNumber(v.stock), 0);
+    }
+    return parseNumber(producto.stock);
+  };
+
+  // Gramos Nacionales: jewelry_material_type === 'local'
+  const gramosNacional = isJewelryBusiness
+    ? productosInventario.reduce((sum, p) => {
+      const meta = getMetadata(p);
+      if (meta?.jewelry_material_type !== 'local') return sum;
+      const pesoPorUnidad = parseNumber(meta?.peso);
+      const stock = getStockEfectivo(p);
+      return sum + pesoPorUnidad * stock;
+    }, 0)
+    : 0;
+
+  // Gramos Internacionales: jewelry_material_type === 'international'
+  const gramosInternacional = isJewelryBusiness
+    ? productosInventario.reduce((sum, p) => {
+      const meta = getMetadata(p);
+      if (meta?.jewelry_material_type !== 'international') return sum;
+      const pesoPorUnidad = parseNumber(meta?.peso);
+      const stock = getStockEfectivo(p);
+      return sum + pesoPorUnidad * stock;
+    }, 0)
     : 0;
 
   const stats = [
@@ -234,7 +278,26 @@ const InventarioStats = ({ productos, totalProductosOverride }) => {
       color: 'danger',
       format: (val) => val.toLocaleString('es-CO'),
       onClick: () => navigate('/dashboard/inventario?stock=sin')
-    }
+    },
+    // Bullets de joyería (solo si es negocio de metales preciosos)
+    ...(isJewelryBusiness ? [
+      {
+        id: 'gramos-nacional',
+        label: 'Gramos Nacional',
+        value: gramosNacional,
+        icon: Scale,
+        color: 'info',
+        format: (val) => `${parseFloat(val).toLocaleString('es-CO', { minimumFractionDigits: 1, maximumFractionDigits: 2 })} g`
+      },
+      {
+        id: 'gramos-internacional',
+        label: 'Gramos Internacional',
+        value: gramosInternacional,
+        icon: Scale,
+        color: 'success',
+        format: (val) => `${parseFloat(val).toLocaleString('es-CO', { minimumFractionDigits: 1, maximumFractionDigits: 2 })} g`
+      }
+    ] : [])
   ];
 
   return (

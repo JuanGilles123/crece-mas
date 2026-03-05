@@ -56,7 +56,7 @@ const Inventario = () => {
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
   const [varianteSeleccionadaId, setVarianteSeleccionadaId] = useState(null);
   const [modoLista, setModoLista] = useState(false);
-  const [ordenProductos, setOrdenProductos] = useState('name_asc');
+  const [ordenProductos, setOrdenProductos] = useState('created_desc');
   const [query, setQuery] = useState('');
   const [productoIdFiltro, setProductoIdFiltro] = useState(null);
 
