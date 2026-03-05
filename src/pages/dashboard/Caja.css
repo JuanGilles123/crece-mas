@@ -2484,8 +2484,9 @@ justify-content .caja-metal-input {
 .caja-mobile-footer {
   display: none;
   position: fixed;
-  bottom: 60px;
-  /* Justo encima de la barra de navegación inferior */
+  bottom: 0;
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  /* Ahora el footer se asienta en el fondo de la pantalla */
   left: 0;
   right: 0;
   border-top: 1px solid var(--border-primary);
@@ -2494,11 +2495,20 @@ justify-content .caja-metal-input {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  z-index: 999;
-  /* Por encima de la barra de navegación (1000) pero debajo de modales */
+  z-index: 1001;
+  /* Por encima de la barra de navegación inferior (1000) */
   box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(10px);
   min-height: 70px;
+
+  /* Sincronización de animación con BottomNav */
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+/* Cuando el usuario abre el menú inferior, este recuadro sube automáticamente */
+body:has(.bottom-nav:hover, .bottom-nav:active, .bottom-nav:focus-within) .caja-mobile-footer {
+  transform: translateY(calc(-1 * var(--bottom-nav-height, 62px)));
 }
 
 .caja-mobile-footer>* {
@@ -2637,7 +2647,8 @@ justify-content .caja-metal-input {
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
-  z-index: 1001;
+  z-index: 1002;
+  /* Nivel 2: Por encima del footer del carrito (1001) */
   animation: fadeIn 0.3s ease-out;
 }
 
@@ -2659,7 +2670,8 @@ justify-content .caja-metal-input {
   right: 0;
   bottom: 0;
   background: var(--bg-card);
-  z-index: 1002;
+  z-index: 1003;
+  /* Nivel 3: El carrito abierto está por encima del backdrop */
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -4164,8 +4176,8 @@ input.caja-mobile-qty-display,
     height: 100vh;
     padding: 0;
     margin: 0;
-    padding-bottom: 140px;
-    /* Espacio para el footer móvil (70px) + barra de navegación (60px) + margen (10px) */
+    padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+    /* Solo el espacio necesario para el footer móvil (70px) */
   }
 
   .caja-products-panel {
@@ -4185,12 +4197,13 @@ input.caja-mobile-qty-display,
   .caja-mobile-footer {
     display: flex !important;
     position: fixed;
-    bottom: 60px;
-    /* Justo encima de la barra de navegación inferior */
+    bottom: 0;
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+    /* Anclado al fondo de la pantalla */
     left: 0;
     right: 0;
-    z-index: 999;
-    /* Por encima de la barra de navegación (1000) pero debajo de modales */
+    z-index: 1001;
+    /* Por encima de la barra de navegación inferior (1000) */
     background: var(--bg-card);
     border-top: 1px solid var(--border-primary);
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
@@ -4311,7 +4324,7 @@ input.caja-mobile-qty-display,
 
 @media (max-width: 768px) {
   body.bottom-nav-open .caja-mobile-footer {
-    bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+    bottom: var(--bottom-nav-height, 62px);
   }
 }
 
@@ -4930,7 +4943,7 @@ input.caja-mobile-qty-display,
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 1100;
   padding: 1rem;
 }
 
@@ -5257,7 +5270,8 @@ input.caja-mobile-qty-display,
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1001;
+  z-index: 1200;
+  /* Nivel 5: Pago efectivo → por encima de métodos de pago (1100) */
   padding: 1rem;
   overflow-y: auto;
 }
@@ -6079,8 +6093,8 @@ input.caja-mobile-qty-display,
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 300;
-  /* Mayor que el overlay del carrito móvil (200) */
+  z-index: 1300;
+  /* Nivel 6: Resumen/Recibo/Modales → por encima de todo */
   padding: 1rem;
   backdrop-filter: blur(4px);
 }
