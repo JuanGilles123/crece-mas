@@ -3400,17 +3400,18 @@ export default function Caja({
 
         // Si hubo abono, montoPagoCliente tiene el valor
         const abonoInicial = tieneAbono ? montoPagoCliente : 0;
-        const deudaPendiente = total - abonoInicial;
 
         const creditoData = {
           organization_id: organization.id,
           venta_id: ventaResult[0].id,
           cliente_id: clienteSeleccionado.id,
           monto_total: total,
-          monto_pagado: abonoInicial,
-          monto_pendiente: deudaPendiente,
+          // Iniciamos en 0 para que el trigger de Supabase actualice monto_pagado
+          // cuando se inserte el abono en pagos_creditos (evita doble conteo)
+          monto_pagado: 0,
+          monto_pendiente: total,
           fecha_vencimiento: fechaVenc.toISOString().split('T')[0],
-          estado: deudaPendiente <= 0 ? 'pagado' : 'pendiente',
+          estado: 'pendiente',
           notas: `Crédito generado automáticamente por venta ${ventaResult[0].numero_venta}${tieneAbono ? ` (Abono Inicial: ${formatCOP(abonoInicial)} en ${detallesPagoMixto.metodoAbono})` : ''}`
         };
 
@@ -3423,7 +3424,7 @@ export default function Caja({
           .update({ credito_id: creditoId })
           .eq('id', ventaResult[0].id);
 
-        // Si hubo abono, registrar el pago del abono
+        // Si hubo abono, registrar el pago del abono en pagos_creditos
         if (tieneAbono && abonoInicial > 0) {
           const pagoAbonoData = {
             organization_id: organization.id,
@@ -3438,6 +3439,18 @@ export default function Caja({
             .insert([pagoAbonoData]);
           if (errorPago) {
             console.error('Error registrando abono inicial en pagos_creditos:', errorPago);
+          } else {
+            // Actualizar manualmente el crédito con los montos correctos
+            // (evita doble conteo si hay un trigger en Supabase que sume pagos_creditos)
+            const deudaReal = total - abonoInicial;
+            await supabase
+              .from('creditos')
+              .update({
+                monto_pagado: abonoInicial,
+                monto_pendiente: Math.max(deudaReal, 0),
+                estado: deudaReal <= 0 ? 'pagado' : 'parcial'
+              })
+              .eq('id', creditoId);
           }
         }
 
