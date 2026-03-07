@@ -10,7 +10,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
   const missingVars = [];
   if (!supabaseUrl) missingVars.push('REACT_APP_SUPABASE_URL');
   if (!supabaseAnonKey) missingVars.push('REACT_APP_SUPABASE_ANON_KEY');
-  
+
   const errorMessage = `
     ❌ ERROR DE CONFIGURACIÓN:
     
@@ -23,7 +23,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
     
     Puedes usar env.example como referencia.
   `;
-  
+
   if (process.env.NODE_ENV === 'development') {
     console.error(errorMessage);
     throw new Error(`Variables de entorno faltantes: ${missingVars.join(', ')}`);
@@ -46,8 +46,8 @@ if (!supabaseUrl.match(/^https?:\/\/.+/)) {
 }
 
 // Verificar si son valores de ejemplo
-if (supabaseUrl.includes('your_supabase') || supabaseAnonKey.includes('your_supabase') || 
-    supabaseUrl === 'your_supabase_project_url' || supabaseAnonKey === 'your_supabase_anon_key') {
+if (supabaseUrl.includes('your_supabase') || supabaseAnonKey.includes('your_supabase') ||
+  supabaseUrl === 'your_supabase_project_url' || supabaseAnonKey === 'your_supabase_anon_key') {
   const errorMessage = `
     ❌ ERROR: Variables de entorno no configuradas
     
@@ -60,7 +60,7 @@ if (supabaseUrl.includes('your_supabase') || supabaseAnonKey.includes('your_supa
     Puedes obtener estas credenciales en:
     https://supabase.com/dashboard → Tu Proyecto → Settings → API
   `;
-  
+
   if (process.env.NODE_ENV === 'development') {
     console.error(errorMessage);
     throw new Error('Variables de entorno no configuradas. Por favor configura .env.local con tus credenciales reales de Supabase.');
@@ -77,3 +77,23 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: true
   }
 });
+
+/**
+ * Crea un cliente Supabase autenticado con el token del empleado.
+ * Úsalo cuando haciendo consultas en el contexto de un empleado
+ * para que el RLS de Supabase pueda validar el token JWT.
+ */
+export const createEmployeeClient = (employeeToken) => {
+  if (!employeeToken) return supabase;
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+    global: {
+      headers: {
+        Authorization: `Bearer ${employeeToken}`
+      }
+    }
+  });
+};
