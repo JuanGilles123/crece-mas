@@ -124,7 +124,7 @@ const EmployeeLayout = () => {
 
   return (
     <div className="dashboard-layout employee-dashboard">
-      <TopNav menuGroups={menuGroups} userProfile={userProfile} onMenuClick={() => {}} />
+      <TopNav menuGroups={menuGroups} userProfile={userProfile} onMenuClick={() => { }} />
 
       <motion.main
         className="dashboard-main"
@@ -171,7 +171,7 @@ const EmployeeLayout = () => {
         {isMobile && (
           <BottomNav
             items={bottomNavItems}
-            onItemClick={() => {}}
+            onItemClick={() => { }}
           />
         )}
       </motion.main>

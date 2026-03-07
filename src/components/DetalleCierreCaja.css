@@ -213,6 +213,35 @@
   background: var(--bg-hover);
 }
 
+.detalle-cierre-btn-export {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.detalle-cierre-btn-export:hover:not(:disabled) {
+  background: var(--bg-hover);
+  border-color: #6366f1;
+  color: #6366f1;
+}
+
+.detalle-cierre-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.rotating {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 @media (max-width: 768px) {
   .detalle-cierre-modal {
     max-width: 100%;
@@ -227,5 +256,15 @@
   .detalle-cierre-footer {
     padding: 1rem;
   }
-}
 
+  .detalle-cierre-footer {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .detalle-cierre-btn {
+    flex: 1;
+    min-width: 80px;
+    justify-content: center;
+  }
+}

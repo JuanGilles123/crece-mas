@@ -1,10 +1,11 @@
 import React, { useState, useRef } from "react";
-import { CheckCircle, Printer, Share2, Download, Banknote, CreditCard, Smartphone, MessageCircle, Loader2 } from "lucide-react";
+import { CheckCircle, Printer, Share2, Download, Banknote, CreditCard, Smartphone, MessageCircle, Loader2, Image } from "lucide-react";
 import { supabase } from '../../services/api/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { printReceipt, isBluetoothSupported } from '../../utils/thermalPrinter';
+import { descargarImagen, compartirWhatsApp } from '../../utils/exportUtils';
 import toast from 'react-hot-toast';
 import './ReciboVenta.css';
 
@@ -26,6 +27,8 @@ function formatCOP(value) {
 export default function ReciboVenta({ venta, onNuevaVenta, onCerrar, mostrarCerrar = false }) {
   const { user, organization } = useAuth();
   const [generandoPDF, setGenerandoPDF] = useState(false);
+  const [descargandoImagen, setDescargandoImagen] = useState(false);
+  const [compartiendoWA, setCompartiendoWA] = useState(false);
   const [imprimiendoBluetooth, setImprimiendoBluetooth] = useState(false);
   const reciboRef = useRef(null);
 
@@ -62,11 +65,11 @@ export default function ReciboVenta({ venta, onNuevaVenta, onCerrar, mostrarCerr
   // Usar subtotal de la venta si existe, sino calcularlo
   const subtotalCalculado = venta.items.reduce((s, i) => s + calcularSubtotalItem(i), 0);
   const subtotal = venta.subtotal || subtotalCalculado;
-  
+
   // Obtener información del descuento
   const descuentoInfo = venta.descuento || null;
   const montoDescuento = descuentoInfo?.monto || 0;
-  
+
   const total = venta.total || (subtotal - montoDescuento); // Usar el total que viene de la venta
   const cambio = venta.pagoCliente - total;
 
@@ -74,7 +77,7 @@ export default function ReciboVenta({ venta, onNuevaVenta, onCerrar, mostrarCerr
   const esCotizacion = venta.esCotizacion || venta.metodo_pago === 'COTIZACION';
   const esPagoMixto = venta.metodo_pago === 'Mixto' || venta.metodo_pago?.startsWith('Mixto (');
   let detallesPagoMixto = venta.detalles_pago_mixto;
-  
+
   // Si no hay detalles pero el método de pago es un string con formato "Mixto (...)"
   if (esPagoMixto && !detallesPagoMixto && typeof venta.metodo_pago === 'string') {
     // Intentar extraer los detalles del string
@@ -92,7 +95,7 @@ export default function ReciboVenta({ venta, onNuevaVenta, onCerrar, mostrarCerr
   // Función para obtener icono según método de pago
   const getIconoMetodoPago = (metodo) => {
     const iconStyle = { width: '14px', height: '14px', display: 'inline-block', verticalAlign: 'middle', marginRight: '4px' };
-    switch(metodo?.toLowerCase()) {
+    switch (metodo?.toLowerCase()) {
       case 'efectivo':
         return <Banknote style={iconStyle} />;
       case 'transferencia':
@@ -105,7 +108,7 @@ export default function ReciboVenta({ venta, onNuevaVenta, onCerrar, mostrarCerr
   };
 
   // Validar que los datos de organización estén configurados
-  const datosCompletos = datosEmpresa && 
+  const datosCompletos = datosEmpresa &&
     datosEmpresa.razon_social; // Solo requerimos razon_social como mínimo
 
   const generarPDF = async () => {
@@ -120,9 +123,9 @@ export default function ReciboVenta({ venta, onNuevaVenta, onCerrar, mostrarCerr
       alert('⚠️ No has configurado los datos de facturación.\n\nVe a tu perfil → Configuración de Facturación para completar los datos de tu empresa.');
       return;
     }
-    
+
     setGenerandoPDF(true);
-    
+
     try {
       // Crear canvas del recibo con configuración optimizada
       const canvas = await html2canvas(reciboRef.current, {
@@ -139,18 +142,18 @@ export default function ReciboVenta({ venta, onNuevaVenta, onCerrar, mostrarCerr
 
       // Crear PDF con tamaño personalizado basado en el contenido
       const imgData = canvas.toDataURL('image/jpeg', 0.85);
-      
+
       // Calcular dimensiones del PDF
       const imgWidth = 210; // A4 width in mm
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      
+
       // Crear PDF
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
         format: [210, Math.max(297, imgHeight + 20)]
       });
-      
+
       // Agregar imagen al PDF
       const x = 0;
       const y = 10;
@@ -160,14 +163,14 @@ export default function ReciboVenta({ venta, onNuevaVenta, onCerrar, mostrarCerr
       const fecha = new Date().toISOString().split('T')[0];
       const hora = new Date().toTimeString().split(' ')[0].replace(/:/g, '-');
       const fileName = `recibo_${venta.id}_${fecha}_${hora}.pdf`;
-      
+
       // Descargar el PDF directamente
       pdf.save(fileName);
-      
+
       // Intentar guardar en Supabase Storage (opcional, no bloqueante)
       try {
         const pdfBlob = pdf.output('blob');
-        
+
         const { error: storageError } = await supabase.storage
           .from('recibos')
           .upload(`${organization?.id || user.id}/${fileName}`, pdfBlob, {
@@ -182,7 +185,7 @@ export default function ReciboVenta({ venta, onNuevaVenta, onCerrar, mostrarCerr
       } catch (storageError) {
         // Error silencioso
       }
-      
+
       alert(`✅ PDF descargado exitosamente: ${fileName}`);
 
     } catch (error) {
@@ -192,61 +195,69 @@ export default function ReciboVenta({ venta, onNuevaVenta, onCerrar, mostrarCerr
     }
   };
 
-  const compartir = (enviarDirecto = false) => {
-    if (!datosCompletos) {
-      alert('⚠️ No has configurado los datos de facturación.\n\nVe a tu perfil → Configuración de Facturación para completar los datos de tu empresa.');
-      return;
-    }
-
-    const textoRecibo = `
+  const buildTextoRecibo = () => `
 🏪 ${datosEmpresa.razon_social}
 📍 ${datosEmpresa.direccion}
 📞 ${datosEmpresa.telefono}
 🆔 NIT: ${datosEmpresa.nit}
 ${datosEmpresa.email ? `📧 ${datosEmpresa.email}` : ''}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
 📋 RECIBO DE VENTA #${venta.id}
 📅 ${venta.date} - ${venta.time}
 👤 Cajero: ${venta.cashier}
-🏪 ${venta.register}
-${venta.cliente ? `\n👤 Cliente: ${venta.cliente.nombre}` : ''}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${venta.cliente ? `👤 Cliente: ${venta.cliente.nombre}` : ''}
 
 📦 PRODUCTOS:
 ${venta.items.map(item => {
-  const variante = item.variant_nombre ? ` (${item.variant_nombre})` : '';
-  return `• ${item.nombre}${variante} (x${item.qty}) - ${formatCOP(item.qty * item.precio_venta)}`;
-}).join('\n')}
+    const variante = item.variant_nombre ? ` (${item.variant_nombre})` : '';
+    return `• ${item.nombre}${variante} (x${item.qty}) - ${formatCOP(item.qty * item.precio_venta)}`;
+  }).join('\n')}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-💰 TOTALES:
-Subtotal: ${formatCOP(subtotal)}
-${montoDescuento > 0 && descuentoInfo ? `Descuento${descuentoInfo.tipo === 'porcentaje' ? ` (${descuentoInfo.valor}%)` : ''}${descuentoInfo.alcance === 'productos' ? ' en productos' : ''}: -${formatCOP(montoDescuento)}` : ''}
+💰 Subtotal: ${formatCOP(subtotal)}
+${montoDescuento > 0 ? `Descuento: -${formatCOP(montoDescuento)}` : ''}
 TOTAL: ${formatCOP(total)}
+${esCotizacion ? '\n📋 COTIZACIÓN — Pendiente de pago' : `\n💳 Método: ${venta.metodo_pago}\nCambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambio)}`}
 
-${esCotizacion ? '📋 COTIZACIÓN\nEstado: Pendiente de pago' : `💳 PAGO:
-Método: ${venta.metodo_pago}
-Pago del cliente: ${formatCOP(venta.pagoCliente)}
-Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambio)}`}
+¡Gracias por su compra! 🎉`.trim();
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  const compartirWA = async (enviarDirecto = false) => {
+    if (!datosCompletos) {
+      alert('⚠️ No has configurado los datos de facturación.');
+      return;
+    }
+    if (!reciboRef.current) return;
+    setCompartiendoWA(true);
+    try {
+      const telefono = enviarDirecto && venta.cliente?.telefono
+        ? venta.cliente.telefono.replace(/\D/g, '')
+        : null;
+      await compartirWhatsApp(
+        reciboRef.current,
+        buildTextoRecibo(),
+        `recibo_${venta.id}`,
+        telefono
+      );
+    } catch (err) {
+      toast.error('Error al compartir por WhatsApp');
+    } finally {
+      setCompartiendoWA(false);
+    }
+  };
 
-¡Gracias por su compra! 🎉
-    `.trim();
-
-    // Si se debe enviar directo y hay cliente con teléfono
-    if (enviarDirecto && venta.cliente?.telefono) {
-      const telefono = venta.cliente.telefono.replace(/\D/g, ''); // Solo números
-      const whatsappUrl = `https://wa.me/${telefono}?text=${encodeURIComponent(textoRecibo)}`;
-      window.open(whatsappUrl, '_blank');
-    } else {
-      // Compartir genérico
-      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(textoRecibo)}`;
-      window.open(whatsappUrl, '_blank');
+  const descargarImagenRecibo = async () => {
+    if (!reciboRef.current) return;
+    if (!datosCompletos) {
+      alert('⚠️ No has configurado los datos de facturación.');
+      return;
+    }
+    setDescargandoImagen(true);
+    try {
+      await descargarImagen(reciboRef.current, `recibo_${venta.id}`);
+      toast.success('Imagen descargada');
+    } catch (err) {
+      toast.error('Error al descargar imagen');
+    } finally {
+      setDescargandoImagen(false);
     }
   };
 
@@ -280,26 +291,26 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
           const deviceEncontrado = devices.find(d => d.id === impresoraGuardada.id);
           if (!deviceEncontrado) {
             // Es la primera vez en esta sesión, mostrar mensaje informativo
-            toast('Selecciona tu impresora configurada en el diálogo', { 
+            toast('Selecciona tu impresora configurada en el diálogo', {
               icon: 'ℹ️',
-              duration: 3000 
+              duration: 3000
             });
           }
         } catch (e) {
           // Si getDevices no está disponible, mostrar mensaje
-          toast('Selecciona tu impresora configurada en el diálogo', { 
+          toast('Selecciona tu impresora configurada en el diálogo', {
             icon: 'ℹ️',
-            duration: 3000 
+            duration: 3000
           });
         }
       }
-      
+
       await printReceipt(venta, datosEmpresa, user);
       toast.success('✅ Recibo impreso correctamente');
     } catch (error) {
       console.error('Error imprimiendo Bluetooth:', error);
       let mensajeError = 'Error al imprimir: ';
-      
+
       if (error.message) {
         mensajeError += error.message;
       } else if (error.name === 'NotFoundError') {
@@ -311,7 +322,7 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
       } else {
         mensajeError += 'Error desconocido. Intenta de nuevo.';
       }
-      
+
       toast.error(mensajeError);
     } finally {
       setImprimiendoBluetooth(false);
@@ -328,7 +339,7 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
     // Verificar si hay impresora térmica configurada y disponible
     const impresoraConfigurada = user?.user_metadata?.impresora_configuracion || user?.user_metadata?.impresora_bluetooth;
     const tieneImpresoraTermica = impresoraConfigurada && impresoraConfigurada.tipo === 'bluetooth';
-    
+
     // Si hay impresora térmica configurada y Bluetooth está disponible, usar impresión térmica
     if (tieneImpresoraTermica && isBluetoothSupported()) {
       // Verificar HTTPS (excepto localhost)
@@ -344,10 +355,10 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
     // Si no hay impresora térmica o no está disponible, usar impresión estándar
     // Crear una ventana nueva para imprimir solo el recibo
     const ventanaImpresion = window.open('', '_blank', 'width=800,height=600');
-    
+
     // Obtener el HTML del recibo
     const reciboHTML = reciboRef.current.outerHTML;
-    
+
     // Crear el documento HTML completo para impresión
     // Optimizado para impresoras térmicas (58mm y 80mm)
     const documentoImpresion = `
@@ -526,11 +537,11 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
         </body>
       </html>
     `;
-    
+
     // Escribir el documento en la ventana
     ventanaImpresion.document.write(documentoImpresion);
     ventanaImpresion.document.close();
-    
+
     // Esperar a que se cargue y luego imprimir
     ventanaImpresion.onload = () => {
       ventanaImpresion.focus();
@@ -811,7 +822,7 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
                     const tieneVariaciones = item.variaciones && Object.keys(item.variaciones).length > 0;
                     const tieneJewelryInfo = item.metadata && (item.metadata.peso || item.metadata.material || (item.metadata.jewelry_material_type && item.metadata.jewelry_material_type !== 'na'));
                     const precioItemBase = item.precio_venta || 0;
-                    const precioToppings = tieneToppings 
+                    const precioToppings = tieneToppings
                       ? item.toppings.reduce((sum, t) => sum + (t.precio || 0) * (t.cantidad || 1), 0)
                       : 0;
                     const precioTotalItem = item.precio_total || (precioItemBase + precioToppings);
@@ -894,7 +905,7 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
                                   fontSize: '0.8rem',
                                   color: '#6b7280'
                                 }}>
-                                  <div style={{ 
+                                  <div style={{
                                     marginBottom: '0.25rem',
                                     fontWeight: '500',
                                     color: '#4b5563'
@@ -903,8 +914,8 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
                                   </div>
                                   {Object.entries(item.variaciones).map(([key, value], vIdx) => {
                                     const variacionNombre = key;
-                                    const opcionLabel = typeof value === 'boolean' 
-                                      ? (value ? 'Sí' : 'No') 
+                                    const opcionLabel = typeof value === 'boolean'
+                                      ? (value ? 'Sí' : 'No')
                                       : String(value);
                                     return (
                                       <div key={vIdx} style={{
@@ -923,7 +934,7 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
                                   fontSize: '0.8rem',
                                   color: '#6b7280'
                                 }}>
-                                  <div style={{ 
+                                  <div style={{
                                     marginBottom: '0.25rem',
                                     fontWeight: '500',
                                     color: '#4b5563'
@@ -1044,7 +1055,7 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
                 {esCotizacion ? 'COTIZACIÓN' : esPagoMixto ? 'Mixto' : venta.metodo_pago}
               </span>
             </div>
-            
+
             {esCotizacion && (
               <div style={{
                 background: 'linear-gradient(135deg, #fce7f3 0%, #f3e8ff 100%)',
@@ -1060,7 +1071,7 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
                 </div>
               </div>
             )}
-            
+
             {/* Detalles de pago mixto */}
             {esPagoMixto && detallesPagoMixto && (
               <div style={{
@@ -1170,25 +1181,28 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
 
         {/* Acciones */}
         <div className="recibo-actions">
-          <button 
-            className="recibo-btn recibo-btn-secondary" 
-            onClick={() => compartir(false)}
+          <button
+            className="recibo-btn recibo-btn-whatsapp"
+            onClick={() => compartirWA(false)}
+            disabled={compartiendoWA}
+            title="Compartir por WhatsApp"
           >
-            <Share2 className="recibo-btn-icon" /> 
-            <span className="recibo-btn-text">Compartir</span>
+            {compartiendoWA ? <Loader2 className="recibo-btn-icon rotating" /> : <Share2 className="recibo-btn-icon" />}
+            <span className="recibo-btn-text">WhatsApp</span>
           </button>
           {venta.cliente?.telefono && (
-            <button 
-              className="recibo-btn recibo-btn-whatsapp" 
-              onClick={() => compartir(true)}
+            <button
+              className="recibo-btn recibo-btn-whatsapp"
+              onClick={() => compartirWA(true)}
+              disabled={compartiendoWA}
               title="Enviar a WhatsApp del Cliente"
             >
               <MessageCircle className="recibo-btn-icon" />
-              <span className="recibo-btn-text recibo-btn-text-mobile-hidden">WhatsApp</span>
+              <span className="recibo-btn-text recibo-btn-text-mobile-hidden">Al cliente</span>
             </button>
           )}
-          <button 
-            className="recibo-btn recibo-btn-secondary" 
+          <button
+            className="recibo-btn recibo-btn-secondary"
             onClick={imprimir}
             disabled={imprimiendoBluetooth}
             title="Imprimir recibo"
@@ -1200,12 +1214,22 @@ Cambio: ${cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambi
             )}
             <span className="recibo-btn-text">{imprimiendoBluetooth ? 'Imprimiendo...' : 'Imprimir'}</span>
           </button>
-          <button 
-            className="recibo-btn recibo-btn-secondary" 
+          <button
+            className="recibo-btn recibo-btn-secondary"
+            onClick={descargarImagenRecibo}
+            disabled={descargandoImagen}
+            title="Descargar como imagen PNG"
+          >
+            {descargandoImagen ? <Loader2 className="recibo-btn-icon rotating" /> : <Image className="recibo-btn-icon" />}
+            <span className="recibo-btn-text">{descargandoImagen ? 'Generando...' : 'Imagen'}</span>
+          </button>
+          <button
+            className="recibo-btn recibo-btn-secondary"
             onClick={generarPDF}
             disabled={generandoPDF}
+            title="Descargar como PDF"
           >
-            <Download className="recibo-btn-icon" /> 
+            <Download className="recibo-btn-icon" />
             <span className="recibo-btn-text">{generandoPDF ? 'Generando...' : 'PDF'}</span>
           </button>
           {mostrarCerrar ? (

@@ -162,6 +162,7 @@ export function AuthProvider({ children }) {
       }
 
       const loadEmployeeOrganization = async () => {
+
         try {
           const { data: org, error: orgError } = await supabase
             .from('organizations')
