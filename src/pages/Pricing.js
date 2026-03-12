@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
-import { 
-  Check, 
-  X, 
-  Zap, 
-  TrendingUp, 
-  Users, 
+import { useNavigate, useLocation } from 'react-router-dom';
+import {
+  Check,
+  X,
+  Zap,
+  TrendingUp,
+  Users,
   Building2,
   ArrowLeft,
   Crown,
@@ -21,6 +21,8 @@ import './Pricing.css';
 
 const Pricing = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isRenewal = location.state?.renew === true; // Viene desde alerta de vencimiento
   const { planSlug, planName, loading, isVIP } = useSubscription();
   const [billingPeriod, setBillingPeriod] = useState('monthly'); // monthly | yearly
   const [processingPlan, setProcessingPlan] = useState(null); // Para mostrar loading en el botón
@@ -133,7 +135,8 @@ const Pricing = () => {
       return;
     }
 
-    if (plan.slug === planSlug) {
+    // Si es renovación del mismo plan, permitir el pago
+    if (plan.slug === planSlug && !isRenewal) {
       toast('Ya estás en este plan', { icon: '✅' });
       return;
     }
@@ -148,7 +151,7 @@ const Pricing = () => {
 
       // Obtener sesión actual
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       if (!session) {
         toast.error('Debes iniciar sesión');
         navigate('/login');
@@ -171,12 +174,12 @@ const Pricing = () => {
       }
 
       // Crear checkout en Wompi vía Edge Function usando fetch directo
-      console.log('Enviando a checkout:', { 
-        plan_id: dbPlan.id, 
+      console.log('Enviando a checkout:', {
+        plan_id: dbPlan.id,
         billing_period: billingPeriod,
-        plan: plan 
+        plan: plan
       });
-      
+
       const response = await fetch(
         `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/create-checkout`,
         {
@@ -233,7 +236,7 @@ const Pricing = () => {
           <ArrowLeft size={20} />
           Volver
         </button>
-        
+
         <motion.div
           className="pricing-title-section"
           initial={{ opacity: 0, y: 20 }}
@@ -270,6 +273,18 @@ const Pricing = () => {
             <span className="savings-badge">Ahorra 17%</span>
           </button>
         </motion.div>
+
+        {/* Banner de renovación cuando viene desde alerta */}
+        {isRenewal && (
+          <motion.div
+            className="renewal-alert-banner"
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            🔄 <strong>Renueva tu plan actual</strong> — Selecciona el mismo plan para continuar con acceso sin interrupciones.
+          </motion.div>
+        )}
 
         {/* Current Plan Badge */}
         {!loading && (
@@ -344,14 +359,19 @@ const Pricing = () => {
               )}
 
               <button
-                className={`plan-cta ${isCurrentPlan ? 'current' : ''} ${processingPlan === plan.slug ? 'processing' : ''}`}
+                className={`plan-cta ${isCurrentPlan && !isRenewal ? 'current' : ''} ${processingPlan === plan.slug ? 'processing' : ''}`}
                 onClick={() => handleSelectPlan(plan)}
-                disabled={isCurrentPlan || processingPlan !== null}
+                disabled={(isCurrentPlan && !isRenewal) || processingPlan !== null}
               >
                 {processingPlan === plan.slug ? (
                   <>
                     <div className="spinner" />
                     Procesando...
+                  </>
+                ) : isCurrentPlan && isRenewal ? (
+                  <>
+                    <Zap size={18} />
+                    Renovar plan
                   </>
                 ) : isCurrentPlan ? (
                   <>
@@ -397,7 +417,7 @@ const Pricing = () => {
         <p className="comparison-section-subtitle">
           Compara todas las funcionalidades disponibles en cada plan
         </p>
-        
+
         <div className="comparison-images-container">
           <motion.div
             className="comparison-image-card"
@@ -409,15 +429,15 @@ const Pricing = () => {
             <h3>Vista General</h3>
             <p>Resumen rápido de las funcionalidades principales</p>
             <div className="comparison-image-wrapper">
-              <img 
-                src="/images/comparativa-planes-general.png" 
+              <img
+                src="/images/comparativa-planes-general.png"
                 alt="Comparativa general de planes"
                 className="comparison-image"
               />
             </div>
-            <a 
-              href="/comparativa-planes-general.html" 
-              target="_blank" 
+            <a
+              href="/comparativa-planes-general.html"
+              target="_blank"
               rel="noopener noreferrer"
               className="comparison-link"
             >
@@ -435,15 +455,15 @@ const Pricing = () => {
             <h3>Vista Detallada</h3>
             <p>Análisis completo con todas las funciones específicas</p>
             <div className="comparison-image-wrapper">
-              <img 
-                src="/images/comparativa-planes-detallada.png" 
+              <img
+                src="/images/comparativa-planes-detallada.png"
                 alt="Comparativa detallada de planes"
                 className="comparison-image"
               />
             </div>
-            <a 
-              href="/comparativa-planes-detallada.html" 
-              target="_blank" 
+            <a
+              href="/comparativa-planes-detallada.html"
+              target="_blank"
               rel="noopener noreferrer"
               className="comparison-link"
             >
@@ -461,7 +481,7 @@ const Pricing = () => {
         transition={{ delay: 0.6 }}
       >
         <h2 className="faq-title">Preguntas Frecuentes</h2>
-        
+
         <div className="faq-grid">
           <div className="faq-item">
             <h3>¿Puedo cambiar de plan en cualquier momento?</h3>

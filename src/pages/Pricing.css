@@ -68,8 +68,15 @@
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
 }
 
 .pricing-subtitle {
@@ -615,7 +622,9 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .plan-cta.processing {
@@ -623,3 +632,35 @@
   cursor: wait;
 }
 
+/* Banner de renovación (cuando viene desde alerta de vencimiento) */
+.renewal-alert-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  margin: 1.5rem auto 0;
+  max-width: 680px;
+  background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+  border: 2px solid #F59E0B;
+  border-radius: 14px;
+  font-size: 0.95rem;
+  color: #78350F;
+  text-align: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.2);
+}
+
+.dark .renewal-alert-banner {
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.15) 0%, rgba(202, 138, 4, 0.1) 100%);
+  border-color: #FACC15;
+  color: #FEF08A;
+}
+
+@media (max-width: 768px) {
+  .renewal-alert-banner {
+    font-size: 0.85rem;
+    padding: 0.875rem 1rem;
+    text-align: left;
+    justify-content: flex-start;
+  }
+}

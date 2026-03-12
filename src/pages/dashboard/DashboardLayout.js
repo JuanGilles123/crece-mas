@@ -2,22 +2,22 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Outlet } from 'react-router-dom';
 import { DashboardSkeleton } from '../../components/ui/SkeletonLoader';
-import { 
-  CreditCard, 
-  Package, 
-  User, 
-  TrendingUp, 
-  Zap, 
-  Calculator, 
-  Activity, 
-  Circle, 
-  ChefHat, 
-  History, 
-  UserCircle, 
-  Table, 
-  Utensils, 
-  ListChecks, 
-  Receipt, 
+import {
+  CreditCard,
+  Package,
+  User,
+  TrendingUp,
+  Zap,
+  Calculator,
+  Activity,
+  Circle,
+  ChefHat,
+  History,
+  UserCircle,
+  Table,
+  Utensils,
+  ListChecks,
+  Receipt,
   TrendingDown,
   ShoppingCart,
   Store,
@@ -27,6 +27,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useSubscription } from '../../hooks/useSubscription';
 import UsageBanner from '../../components/UsageBanner';
+import SubscriptionExpirationBanner from '../../components/SubscriptionExpirationBanner';
 import BottomNav from '../../components/navigation/BottomNav';
 import TopNav from '../../components/navigation/TopNav';
 import './DashboardLayout.css';
@@ -46,7 +47,7 @@ const DashboardLayout = () => {
   const menuGroups = useMemo(() => {
     if (!organization) return [];
     const isSuperAdmin = user?.email === 'juanjosegilarbelaez@gmail.com';
-    
+
     const groups = [
       // Grupo: Ventas y Caja
       {
@@ -92,7 +93,7 @@ const DashboardLayout = () => {
         ].filter(item => item.visible),
         visible: hasPermission('sales') || true
       },
-      
+
       // Grupo: Clientes y Créditos
       {
         type: 'group',
@@ -116,7 +117,7 @@ const DashboardLayout = () => {
         ].filter(item => item.visible),
         visible: hasPermission('sales') || true
       },
-      
+
       // Grupo: Inventario
       {
         type: 'group',
@@ -162,7 +163,7 @@ const DashboardLayout = () => {
         ].filter(item => item.visible),
         visible: hasPermission('inventory') || true
       },
-      
+
       // Grupo: Compras y Egresos
       {
         type: 'group',
@@ -179,7 +180,7 @@ const DashboardLayout = () => {
         ].filter(item => item.visible),
         visible: hasPermission('inventory') || true
       },
-      
+
       // Grupo: Pedidos (solo para food)
       {
         type: 'group',
@@ -210,7 +211,7 @@ const DashboardLayout = () => {
         ].filter(item => item.visible),
         visible: organization?.business_type === 'food' && organization?.pedidos_habilitados && hasFeature('pedidos')
       },
-      
+
       // Grupo: Reportes y Análisis
       {
         type: 'group',
@@ -234,7 +235,7 @@ const DashboardLayout = () => {
         ].filter(item => item.visible),
         visible: ((hasPermission('reports') || true) && hasFeature('advancedReports')) || isSuperAdmin
       },
-      
+
       // Perfil (siempre visible, no agrupado)
       {
         type: 'single',
@@ -245,7 +246,7 @@ const DashboardLayout = () => {
         visible: true
       }
     ];
-    
+
     return groups.filter(group => {
       if (group.type === 'single') {
         return group.visible;
@@ -303,13 +304,13 @@ const DashboardLayout = () => {
   return (
     <div className="dashboard-layout">
       {/* Barra de navegación superior horizontal */}
-      <TopNav 
+      <TopNav
         menuGroups={menuGroups}
         userProfile={userProfile}
         onMenuClick={closeSidebarOnMobile}
       />
 
-      <motion.main 
+      <motion.main
         className="dashboard-main"
         variants={mainVariants}
         initial="hidden"
@@ -317,8 +318,10 @@ const DashboardLayout = () => {
       >
         {/* Banner de uso (solo para plan gratis) */}
         <UsageBanner />
-        
-        <motion.section 
+        {/* Banner de vencimiento de suscripción */}
+        <SubscriptionExpirationBanner />
+
+        <motion.section
           className="dashboard-content"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -326,10 +329,10 @@ const DashboardLayout = () => {
         >
           <Outlet />
         </motion.section>
-        
+
         {/* Bottom Navigation para móvil */}
         {isMobile && (
-          <BottomNav 
+          <BottomNav
             menuGroups={menuGroups}
             onItemClick={closeSidebarOnMobile}
           />
