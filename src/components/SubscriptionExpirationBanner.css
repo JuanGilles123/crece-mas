@@ -1,0 +1,240 @@
+/* 🔔 SUBSCRIPTION EXPIRATION BANNER */
+
+.sub-expiry-banner {
+  position: fixed;
+  top: 68px;
+  /* justo debajo del TopNav */
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 760px;
+  width: calc(100% - 32px);
+  padding: 1rem 1.25rem;
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.14);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  z-index: 9997;
+  border: 2px solid transparent;
+  backdrop-filter: blur(8px);
+}
+
+/* ─── Variantes por estado ─── */
+
+.sub-expiry-warning {
+  background: linear-gradient(135deg, #FEF9C3 0%, #FEF08A 100%);
+  border-color: #FACC15;
+  color: #78350F;
+}
+
+.sub-expiry-due-today {
+  background: linear-gradient(135deg, #FFEDD5 0%, #FED7AA 100%);
+  border-color: #F97316;
+  color: #7C2D12;
+}
+
+.sub-expiry-overdue {
+  background: linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%);
+  border-color: #EF4444;
+  color: #7F1D1D;
+}
+
+/* ─── Icono ─── */
+
+.sub-expiry-icon {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.sub-expiry-warning .sub-expiry-icon {
+  color: #B45309;
+}
+
+.sub-expiry-due-today .sub-expiry-icon {
+  color: #C2410C;
+}
+
+.sub-expiry-overdue .sub-expiry-icon {
+  color: #B91C1C;
+}
+
+/* ─── Cuerpo ─── */
+
+.sub-expiry-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.sub-expiry-title {
+  margin: 0 0 0.2rem 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.sub-expiry-message {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  opacity: 0.85;
+}
+
+/* ─── Botones ─── */
+
+.sub-expiry-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.sub-expiry-pay-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.6rem 1.1rem;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  white-space: nowrap;
+}
+
+.sub-expiry-warning .sub-expiry-pay-btn {
+  background: linear-gradient(135deg, #D97706 0%, #B45309 100%);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(180, 83, 9, 0.35);
+}
+
+.sub-expiry-due-today .sub-expiry-pay-btn {
+  background: linear-gradient(135deg, #EA580C 0%, #C2410C 100%);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(194, 65, 12, 0.4);
+}
+
+.sub-expiry-overdue .sub-expiry-pay-btn {
+  background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(185, 28, 28, 0.4);
+}
+
+.sub-expiry-pay-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.sub-expiry-pay-btn:active {
+  transform: translateY(0);
+}
+
+.sub-expiry-dismiss-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+}
+
+.sub-expiry-dismiss-btn svg {
+  color: #111 !important;
+  width: 18px;
+  height: 18px;
+  stroke-width: 2.5;
+  display: block;
+}
+
+.sub-expiry-dismiss-btn:hover {
+  background: rgba(255, 255, 255, 0.8);
+  transform: scale(1.1);
+}
+
+/* ─── Dark Mode ─── */
+
+.dark .sub-expiry-warning {
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.18) 0%, rgba(202, 138, 4, 0.12) 100%);
+  border-color: #FACC15;
+  color: #FEF08A;
+}
+
+.dark .sub-expiry-due-today {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.2) 0%, rgba(234, 88, 12, 0.15) 100%);
+  border-color: #F97316;
+  color: #FED7AA;
+}
+
+.dark .sub-expiry-overdue {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.22) 0%, rgba(220, 38, 38, 0.15) 100%);
+  border-color: #EF4444;
+  color: #FECACA;
+}
+
+.dark .sub-expiry-icon {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dark .sub-expiry-dismiss-btn {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.dark .sub-expiry-dismiss-btn svg {
+  color: #fff !important;
+}
+
+.dark .sub-expiry-dismiss-btn:hover {
+  background: rgba(255, 255, 255, 0.32);
+}
+
+/* ─── Responsive ─── */
+
+@media (max-width: 768px) {
+  .sub-expiry-banner {
+    top: 60px;
+    width: calc(100% - 24px);
+    padding: 0.875rem 1rem;
+    flex-wrap: wrap;
+  }
+
+  .sub-expiry-body {
+    flex-basis: calc(100% - 56px);
+    /* icono + gap */
+  }
+
+  .sub-expiry-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .sub-expiry-pay-btn {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .sub-expiry-title {
+    font-size: 0.88rem;
+  }
+
+  .sub-expiry-message {
+    font-size: 0.78rem;
+  }
+
+  .sub-expiry-pay-btn {
+    font-size: 0.82rem;
+    padding: 0.55rem 0.9rem;
+  }
+}
