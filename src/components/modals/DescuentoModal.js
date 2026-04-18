@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Percent, DollarSign, Package, ShoppingCart, Check } from 'lucide-react';
+import { X, Percent, DollarSign, Package, ShoppingCart, Check, Trash2 } from 'lucide-react';
 import { useCurrencyInput } from '../../hooks/useCurrencyInput';
 import './DescuentoModal.css';
 
@@ -25,10 +25,19 @@ const DescuentoModal = ({ isOpen, onClose, onAplicar, cart, descuentoActual }) =
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [descuentoActual]);
 
+
+
+  const handleEliminarDescuento = () => {
+    onAplicar({
+      tipo: 'porcentaje', // Default reset
+      valor: 0,
+      alcance: 'total',
+      productosIds: []
+    });
+    onClose();
+  };
+
   const handleAplicar = () => {
-    const valor = tipoDescuento === 'porcentaje' 
-      ? valorPorcentajeInput.numericValue 
-      : valorFijoInput.numericValue;
 
     if (!valor || valor <= 0) {
       return;
@@ -223,20 +232,46 @@ const DescuentoModal = ({ isOpen, onClose, onAplicar, cart, descuentoActual }) =
             )}
           </div>
 
-          <div className="descuento-modal-footer">
-            <button
-              className="descuento-btn-cancelar"
-              onClick={onClose}
-            >
-              Cancelar
-            </button>
-            <button
-              className="descuento-btn-aplicar"
-              onClick={handleAplicar}
-              disabled={!puedeAplicar}
-            >
-              Aplicar Descuento
-            </button>
+          <div className="descuento-modal-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-start' }}>
+              {descuentoActual && descuentoActual.valor > 0 && (
+                <button
+                  className="descuento-btn-eliminar"
+                  onClick={handleEliminarDescuento}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    color: '#ef4444',
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '0.9rem',
+                    fontWeight: '500',
+                    padding: '0.5rem'
+                  }}
+                  title="Eliminar descuento actual"
+                >
+                  <Trash2 size={16} />
+                  <span>Eliminar descuento</span>
+                </button>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button
+                className="descuento-btn-cancelar"
+                onClick={onClose}
+              >
+                Cancelar
+              </button>
+              <button
+                className="descuento-btn-aplicar"
+                onClick={handleAplicar}
+                disabled={!puedeAplicar}
+              >
+                Aplicar Descuento
+              </button>
+            </div>
           </div>
         </motion.div>
       </motion.div>

@@ -119,7 +119,9 @@ export const useGuardarCotizacion = () => {
         total: cotizacionData.total,
         metodo_pago: cotizacionData.metodo_pago || 'COTIZACION', // Valor especial para cotizaciones (metodo_pago tiene NOT NULL)
         items: cotizacionData.items,
-        fecha: cotizacionData.fecha || new Date().toISOString()
+        fecha: cotizacionData.fecha || new Date().toISOString(),
+        cliente_id: cotizacionData.cliente_id || null,
+        numero_venta: cotizacionData.numero_venta || null
       };
 
       // Intentar insertar primero solo con campos básicos

@@ -386,7 +386,7 @@ export default function Clientes() {
                 <button
                   type="submit"
                   className="clientes-btn-guardar"
-                  disabled={!formData.nombre.trim() || crearClienteMutation.isLoading || actualizarClienteMutation.isLoading}
+                  disabled={crearClienteMutation.isLoading || actualizarClienteMutation.isLoading}
                 >
                   {crearClienteMutation.isLoading || actualizarClienteMutation.isLoading
                     ? 'Guardando...'
