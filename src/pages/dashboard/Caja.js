@@ -33,7 +33,7 @@ import ToppingsSelector from '../../components/ToppingsSelector';
 import VariacionesSelector from '../../components/VariacionesSelector';
 import LottieLoader from '../../components/ui/LottieLoader';
 
-import { ShoppingCart, Trash2, CheckCircle, CreditCard, Banknote, Smartphone, Wallet, ArrowLeft, Save, Plus, X, UserCircle, Lock, Percent, List, ArrowRight, Package, Receipt, Search, DollarSign, Info } from 'lucide-react';
+import { ShoppingCart, Trash2, CheckCircle, CreditCard, Banknote, Smartphone, Wallet, ArrowLeft, Save, Plus, X, UserCircle, Lock, Percent, List, ArrowRight, Package, Receipt, Search, DollarSign, Info, History } from 'lucide-react';
 import toast from 'react-hot-toast';
 import './Caja.css';
 
@@ -4104,6 +4104,18 @@ export default function Caja({
                 </button>
               </div>
             )}
+            
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem', width: '100%' }}>
+              <button
+                onClick={() => navigate('/dashboard/historial-ventas')}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: '#e0f2fe', color: '#0284c7', borderRadius: '8px', border: '1px solid #bae6fd', cursor: 'pointer', fontWeight: '500', fontSize: '0.9rem', width: 'auto' }}
+                title="Ir al Historial de Ventas"
+                className="hover:bg-blue-100 transition-colors"
+              >
+                <History size={18} />
+                Ver Historial de Ventas
+              </button>
+            </div>
             <div className="caja-search-wrapper">
               {isJewelryBusiness && (
                 <div className="caja-metal-prices">
@@ -4679,7 +4691,19 @@ export default function Caja({
                       {descuento.tipo === 'porcentaje' && ` (${descuento.valor} %)`}
                       {descuento.alcance === 'productos' && ' en productos'}
                     </span>
-                    <span className="caja-total-amount caja-descuento-amount">-{formatCOP(montoDescuento)}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span className="caja-total-amount caja-descuento-amount">-{formatCOP(montoDescuento)}</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDescuento({ tipo: 'porcentaje', valor: 0, alcance: 'total', productosIds: [] });
+                        }}
+                        title="Eliminar descuento"
+                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#ef4444', display: 'flex', alignItems: 'center', padding: '0.1rem', marginTop: '1px' }}
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
                   </div>
                 )}
                 <div className="caja-total-row caja-total-final">
@@ -5502,6 +5526,9 @@ export default function Caja({
                   onClick={() => {
                     setMostrandoModalSeleccionCliente(false);
                     setMostrandoModalCliente(true);
+                    if (busquedaCliente.trim()) {
+                      setNuevoCliente(prev => ({ ...prev, nombre: busquedaCliente }));
+                    }
                   }}
                 >
                   <Plus size={20} />
@@ -5559,6 +5586,9 @@ export default function Caja({
                         onClick={() => {
                           setMostrandoModalSeleccionCliente(false);
                           setMostrandoModalCliente(true);
+                          if (busquedaCliente.trim()) {
+                            setNuevoCliente(prev => ({ ...prev, nombre: busquedaCliente }));
+                          }
                         }}
                       >
                         <Plus size={16} />

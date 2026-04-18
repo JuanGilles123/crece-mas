@@ -51,12 +51,42 @@ export const useCrearCliente = () => {
 
   return useMutation({
     mutationFn: async (clienteData) => {
+      const nombreTrimmed = (clienteData.nombre || '').trim();
+      const nombreLowerCase = nombreTrimmed.toLowerCase();
+
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        const cached = await getCachedClientes(clienteData.organization_id);
+        const existing = cached.find(c => c.activo !== false && (c.nombre || '').trim().toLowerCase() === nombreLowerCase);
+        if (existing) {
+          throw new Error(`Ya existe un cliente con el nombre "${existing.nombre}"`);
+        }
         return await enqueueClienteCreate(clienteData);
       }
+
+      // Check online
+      const { data: existingClientes, error: checkError } = await supabase
+        .from('clientes')
+        .select('id, nombre')
+        .eq('organization_id', clienteData.organization_id)
+        .ilike('nombre', nombreTrimmed)
+        .eq('activo', true)
+        .limit(1);
+
+      if (!checkError && existingClientes && existingClientes.length > 0) {
+         throw new Error(`Ya existe un cliente con el nombre "${existingClientes[0].nombre}"`);
+      }
+
+      // Clean up empty strings to avoid unique constraint violations
+      const dataToInsert = { ...clienteData };
+      ['documento', 'email', 'telefono'].forEach(field => {
+        if (dataToInsert[field] !== undefined && dataToInsert[field] !== null && dataToInsert[field].trim() === '') {
+          dataToInsert[field] = null;
+        }
+      });
+
       const { data, error } = await supabase
         .from('clientes')
-        .insert([clienteData])
+        .insert([dataToInsert])
         .select()
         .single();
 
@@ -93,12 +123,43 @@ export const useActualizarCliente = () => {
 
   return useMutation({
     mutationFn: async ({ id, updates }) => {
+      const nombreTrimmed = (updates.nombre || '').trim();
+      const nombreLowerCase = nombreTrimmed.toLowerCase();
+
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        const cached = await getCachedClientes(updates.organization_id);
+        const existing = cached.find(c => c.id !== id && c.activo !== false && (c.nombre || '').trim().toLowerCase() === nombreLowerCase);
+        if (existing) {
+          throw new Error(`Ya existe otro cliente con el nombre "${existing.nombre}"`);
+        }
         return await enqueueClienteUpdate({ id, updates, organizationId: updates.organization_id });
       }
+
+      // Check online
+      const { data: existingClientes, error: checkError } = await supabase
+        .from('clientes')
+        .select('id, nombre')
+        .eq('organization_id', updates.organization_id)
+        .ilike('nombre', nombreTrimmed)
+        .eq('activo', true)
+        .neq('id', id)
+        .limit(1);
+
+      if (!checkError && existingClientes && existingClientes.length > 0) {
+        throw new Error(`Ya existe otro cliente con el nombre "${existingClientes[0].nombre}"`);
+      }
+
+      // Clean up empty strings to avoid unique constraint violations
+      const dataToUpdate = { ...updates, updated_at: new Date().toISOString() };
+      ['documento', 'email', 'telefono'].forEach(field => {
+        if (dataToUpdate[field] !== undefined && dataToUpdate[field] !== null && dataToUpdate[field].trim() === '') {
+          dataToUpdate[field] = null;
+        }
+      });
+
       const { data, error } = await supabase
         .from('clientes')
-        .update({ ...updates, updated_at: new Date().toISOString() })
+        .update(dataToUpdate)
         .eq('id', id)
         .select()
         .single();
