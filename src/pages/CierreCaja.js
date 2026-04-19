@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { supabase } from '../services/api/supabaseClient';
 import { useAuth } from '../context/AuthContext';
@@ -11,6 +12,7 @@ import { useOfflineSync } from '../hooks/useOfflineSync';
 import './CierreCaja.css';
 
 const CierreCaja = () => {
+  const navigate = useNavigate();
   const { userProfile, user, hasPermission } = useAuth();
   const { isOnline } = useNetworkStatus();
   const { isSyncing } = useOfflineSync();
@@ -664,23 +666,13 @@ Generado por Crece+ 🚀
         }
       }
 
-      setMensaje({ tipo: 'success', texto: 'Cierre de caja guardado correctamente' });
+      setMensaje({ tipo: 'success', texto: 'Cierre de caja guardado. Redirigiendo...' });
       setCierreGuardado(true); // Activar botones de compartir/descargar
 
-      // Limpiar después de 3 segundos
+      // Redirigir a caja después de 1 segundo para forzar la nueva apertura
       setTimeout(() => {
-        efectivoRealInput.reset();
-        transferenciasRealInput.reset();
-        tarjetaRealInput.reset();
-        setTotalReal(0);
-        setDiferencia(null);
-        setMensaje({ tipo: '', texto: '' });
-        setVentasHoy([]); // Limpiar lista de ventas
-        setTotalSistema(0); // Limpiar total del sistema
-        setDesgloseSistema({ efectivo: 0, transferencias: 0, tarjeta: 0, mixto: 0 }); // Limpiar desglose
-        setCierreGuardado(false); // Ocultar botones después de limpiar
-        cargarVentasHoy(); // Recargar ventas para el siguiente cierre
-      }, 3000);
+        navigate('/dashboard/caja');
+      }, 1000);
     } catch (error) {
       console.error('Error guardando cierre:', error);
       setMensaje({ tipo: 'error', texto: 'Error al guardar el cierre de caja' });
