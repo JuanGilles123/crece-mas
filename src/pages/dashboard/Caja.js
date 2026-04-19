@@ -2289,6 +2289,8 @@ export default function Caja({
     setPedidosConsolidados([]);
     setVentaCompletada(null);
     setClienteNombrePedido(null); // Limpiar nombre del cliente del pedido
+    setDescuento({ tipo: 'porcentaje', valor: 0, alcance: 'total', productosIds: [] });
+    setClienteSeleccionado(null);
     setMostrandoMetodosPago(false);
   };
 
@@ -2897,6 +2899,9 @@ export default function Caja({
       setVieneDePedidos(false); // Resetear flag cuando se vacía el carrito
       setPedidoIdActual(null); // Limpiar referencia al pedido actual
       setPedidosConsolidados([]); // Limpiar pedidos consolidados
+      setClienteNombrePedido(null);
+      setDescuento({ tipo: 'porcentaje', valor: 0, alcance: 'total', productosIds: [] });
+      setClienteSeleccionado(null);
       setProcesandoVenta(false);
       setMostrandoMetodosPago(false);
       setMostrandoPagoEfectivo(false);
@@ -3689,6 +3694,8 @@ export default function Caja({
           setPedidoIdActual(null); // Limpiar pedido actual
           setPedidosConsolidados([]); // Limpiar pedidos consolidados
           setClienteNombrePedido(null); // Limpiar nombre del cliente del pedido
+          setDescuento({ tipo: 'porcentaje', valor: 0, alcance: 'total', productosIds: [] });
+          setClienteSeleccionado(null);
 
           // Si viene de pedidos, mostrar modal de regreso
           if (vieneDePedidos) {
