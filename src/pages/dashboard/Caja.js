@@ -2257,10 +2257,17 @@ export default function Caja({
 
   const updateQty = (itemIndex, newQty) => {
     const itemEnCarrito = cart[itemIndex];
-    const qty = parseInt(newQty, 10);
+    
+    // Mantener la cadena temporal "0" o "0." para que el usuario pueda escribir el decimal
+    if (newQty === '0' || newQty === '0.' || newQty === '') {
+      setCart((prev) => prev.map((i, idx) => idx === itemIndex ? { ...i, qty: newQty } : i));
+      return;
+    }
 
-    if (isNaN(qty) || qty < 1) {
-      // Si no es un número válido o es menor a 1, eliminar del carrito
+    let qty = typeof newQty === 'string' ? parseFloat(newQty.replace(',', '.')) : parseFloat(newQty);
+
+    if (isNaN(qty) || qty < 0) {
+      // Si no es un número válido o es negativo, eliminar del carrito
       setCart((prev) => prev.filter((_, idx) => idx !== itemIndex));
       return;
     }
@@ -4601,20 +4608,22 @@ export default function Caja({
                                   return;
                                 }
 
-                                const numValue = parseInt(value, 10);
+                                const numValue = parseFloat(value.replace(',', '.'));
 
-                                if (!isNaN(numValue) && numValue >= 1) {
+                                if (!isNaN(numValue) && numValue > 0) {
                                   updateQty(index, numValue);
+                                } else if (value === '0' || value === '0.') {
+                                  updateQty(index, value); // Permitir estado temporal
                                 }
                               }}
                               onBlur={(e) => {
-                                const value = e.target.value;
-                                const numValue = parseInt(value, 10);
+                                const value = e.target.value.toString().replace(',', '.');
+                                const numValue = parseFloat(value);
 
-                                if (value === '' || isNaN(numValue) || numValue < 1) {
-                                  // Si está vacío o es inválido, restaurar cantidad anterior o eliminar
+                                if (value === '' || isNaN(numValue) || numValue <= 0) {
+                                  // Si está vacío o es inválido, eliminar
                                   const itemEnCarrito = cart[index];
-                                  if (itemEnCarrito && typeof itemEnCarrito.qty === 'number' && itemEnCarrito.qty >= 1) {
+                                  if (itemEnCarrito && typeof itemEnCarrito.qty === 'number' && itemEnCarrito.qty > 0) {
                                     setCart((prev) => prev.map((i, idx) =>
                                       idx === index ? { ...i, qty: itemEnCarrito.qty } : i
                                     ));
@@ -4630,7 +4639,7 @@ export default function Caja({
                                   e.target.blur();
                                 }
                               }}
-                              min="1"
+                              min="0" step="any"
                               aria-label="Cantidad"
                             />
                             <button
@@ -5043,20 +5052,22 @@ export default function Caja({
                                   return;
                                 }
 
-                                const numValue = parseInt(value, 10);
+                                const numValue = parseFloat(value.replace(',', '.'));
 
-                                if (!isNaN(numValue) && numValue >= 1) {
+                                if (!isNaN(numValue) && numValue > 0) {
                                   updateQty(index, numValue);
+                                } else if (value === '0' || value === '0.') {
+                                  updateQty(index, value); // Permitir estado temporal
                                 }
                               }}
                               onBlur={(e) => {
-                                const value = e.target.value;
-                                const numValue = parseInt(value, 10);
+                                const value = e.target.value.toString().replace(',', '.');
+                                const numValue = parseFloat(value);
 
-                                if (value === '' || isNaN(numValue) || numValue < 1) {
-                                  // Si está vacío o es inválido, restaurar cantidad anterior o eliminar
+                                if (value === '' || isNaN(numValue) || numValue <= 0) {
+                                  // Si está vacío o es inválido, eliminar
                                   const itemEnCarrito = cart[index];
-                                  if (itemEnCarrito && typeof itemEnCarrito.qty === 'number' && itemEnCarrito.qty >= 1) {
+                                  if (itemEnCarrito && typeof itemEnCarrito.qty === 'number' && itemEnCarrito.qty > 0) {
                                     setCart((prev) => prev.map((i, idx) =>
                                       idx === index ? { ...i, qty: itemEnCarrito.qty } : i
                                     ));
@@ -5072,7 +5083,7 @@ export default function Caja({
                                   e.target.blur();
                                 }
                               }}
-                              min="1"
+                              min="0" step="any"
                               aria-label="Cantidad"
                             />
                             <button
