@@ -26,9 +26,9 @@ const EditarProductoModal = ({ open, onClose, producto, onProductoEditado }) => 
   const [nombre, setNombre] = useState(producto?.nombre || '');
 
   // Currency inputs con hook personalizado
-  const precioCompraInput = useCurrencyInput(producto?.precio_compra || '');
-  const precioVentaInput = useCurrencyInput(producto?.precio_venta || '');
-  const stockInput = useCurrencyInput(producto?.stock || '');
+  const precioCompraInput = useCurrencyInput(producto?.precio_compra !== undefined && producto?.precio_compra !== null ? producto.precio_compra : '');
+  const precioVentaInput = useCurrencyInput(producto?.precio_venta !== undefined && producto?.precio_venta !== null ? producto.precio_venta : '');
+  const stockInput = useCurrencyInput(producto?.stock !== undefined && producto?.stock !== null ? producto.stock : '');
 
   const [imagen, setImagen] = useState(null);
   const [subiendo, setSubiendo] = useState(false);
@@ -54,10 +54,10 @@ const EditarProductoModal = ({ open, onClose, producto, onProductoEditado }) => 
     if (producto) {
       setCodigo(producto.codigo || '');
       setNombre(producto.nombre || '');
-      precioCompraInput.setValue(producto.precio_compra || '');
-      precioVentaInput.setValue(producto.precio_venta || '');
+      precioCompraInput.setValue(producto.precio_compra !== undefined && producto.precio_compra !== null ? producto.precio_compra : '');
+      precioVentaInput.setValue(producto.precio_venta !== undefined && producto.precio_venta !== null ? producto.precio_venta : '');
       // Si es servicio, el stock puede ser null, lo manejamos como vacío o 0
-      stockInput.setValue(producto.stock !== null ? producto.stock : '');
+      stockInput.setValue(producto.stock !== null && producto.stock !== undefined ? producto.stock : '');
       setImagen(null); // Limpiar imagen nueva al cambiar producto
     }
   }, [producto, precioCompraInput, precioVentaInput, stockInput]);

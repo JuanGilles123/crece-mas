@@ -80,7 +80,6 @@ serve(async (req) => {
       .from('aperturas_caja')
       .select('*')
       .eq('organization_id', employee.organization_id)
-      .eq('employee_id', employee.id)
       .is('cierre_id', null)
       .order('created_at', { ascending: false })
       .limit(1)

@@ -77,12 +77,11 @@ serve(async (req) => {
       )
     }
 
-    // Verificar si ya hay apertura activa para este empleado
+    // Verificar si ya hay apertura activa para la organización
     const { data: aperturaActiva, error: aperturaError } = await supabaseAdmin
       .from('aperturas_caja')
       .select('id')
       .eq('organization_id', employee.organization_id)
-      .eq('employee_id', employee.id)
       .is('cierre_id', null)
       .maybeSingle()
 

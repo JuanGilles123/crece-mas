@@ -34,7 +34,6 @@ export const useAperturaCajaActiva = (organizationId, userId) => {
         .from('aperturas_caja')
         .select('*')
         .eq('organization_id', organizationId)
-        .eq('user_id', userId)
         .is('cierre_id', null) // Apertura sin cierre = caja abierta
         .order('created_at', { ascending: false })
         .limit(1)
@@ -86,7 +85,6 @@ export const useCrearAperturaCaja = () => {
         .from('aperturas_caja')
         .select('id')
         .eq('organization_id', organizationId)
-        .eq('user_id', userId)
         .is('cierre_id', null)
         .maybeSingle();
 
