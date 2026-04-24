@@ -39,7 +39,6 @@ const AperturaCajaModal = ({ isOpen, onClose, onAperturaExitosa }) => {
         .from('aperturas_caja')
         .select('id')
         .eq('organization_id', organization.id)
-        .eq('user_id', user.id)
         .is('cierre_id', null)
         .maybeSingle();
 

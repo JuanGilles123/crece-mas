@@ -330,11 +330,13 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
       setValue('codigo', producto.codigo || '');
       setValue('nombre', producto.nombre || '');
       const pesoProducto = parseWeightValue(metadata?.peso);
-      const compraPorUnidad = metadata?.jewelry_compra_por_unidad !== undefined && metadata?.jewelry_compra_por_unidad !== null
-        ? Math.round(Number(metadata.jewelry_compra_por_unidad))
-        : (pesoProducto > 0 ? Math.round(Number(producto.precio_compra || 0) / pesoProducto) : Math.round(Number(producto.precio_compra || 0)));
-      setValue('precioCompra', compraPorUnidad ? compraPorUnidad.toString() : '');
-      setValue('stock', producto.stock?.toString() || '');
+      const compraPorUnidad = isJewelryBusiness 
+        ? (metadata?.jewelry_compra_por_unidad !== undefined && metadata?.jewelry_compra_por_unidad !== null
+          ? Math.round(Number(metadata.jewelry_compra_por_unidad))
+          : (pesoProducto > 0 ? Math.round(Number(producto.precio_compra ?? 0) / pesoProducto) : Math.round(Number(producto.precio_compra ?? 0))))
+        : Math.round(Number(producto.precio_compra ?? 0));
+      setValue('precioCompra', compraPorUnidad !== undefined && compraPorUnidad !== null ? compraPorUnidad.toString() : '');
+      setValue('stock', producto.stock !== undefined && producto.stock !== null ? producto.stock.toString() : '');
       setValue('tipo', producto.tipo || 'fisico');
       setValue('fecha_vencimiento', producto.fecha_vencimiento || '');
       if (producto.imagen && (producto.imagen.startsWith('http://') || producto.imagen.startsWith('https://') || producto.imagen.startsWith('data:'))) {
@@ -409,16 +411,16 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
       );
 
       // Actualizar currency inputs
-      precioCompraInput.setValue(compraPorUnidad || '');
-      stockInput.setValue(producto.stock || '');
+      precioCompraInput.setValue(compraPorUnidad !== undefined && compraPorUnidad !== null ? compraPorUnidad : '');
+      stockInput.setValue(producto.stock !== undefined && producto.stock !== null ? producto.stock : '');
       
       // Para productos de joyería con precio variable, el precio de venta se calculará automáticamente
       // en el useEffect que depende de jewelryPriceMode, peso, etc.
       const esJoyeriaVariable = isJewelryBusiness && metadata?.jewelry_price_mode === 'variable';
       if (!esJoyeriaVariable) {
         // Solo para productos NO variables, establecer el precio guardado
-        setValue('precioVenta', producto.precio_venta?.toString() || '');
-        precioVentaInput.setValue(producto.precio_venta || '');
+        setValue('precioVenta', producto.precio_venta !== undefined && producto.precio_venta !== null ? producto.precio_venta.toString() : '');
+        precioVentaInput.setValue(producto.precio_venta !== undefined && producto.precio_venta !== null ? producto.precio_venta : '');
       } else {
         // Para variables, limpiar y dejar que el useEffect lo calcule
         setValue('precioVenta', '');

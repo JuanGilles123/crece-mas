@@ -111,9 +111,8 @@ const CierreCaja = () => {
       // Obtener la apertura activa para obtener el monto inicial
       const { data: aperturaActiva, error: errorApertura } = await supabase
         .from('aperturas_caja')
-        .select('monto_inicial, created_at')
+        .select('id, monto_inicial, created_at')
         .eq('organization_id', userProfile.organization_id)
-        .eq(actorEmployeeId ? 'employee_id' : 'user_id', actorEmployeeId || actorUserId)
         .is('cierre_id', null)
         .eq('estado', 'abierta')
         .order('created_at', { ascending: false })
@@ -132,7 +131,6 @@ const CierreCaja = () => {
         .from('cierres_caja')
         .select('created_at')
         .eq('organization_id', userProfile.organization_id)
-        .eq(actorEmployeeId ? 'employee_id' : 'user_id', actorEmployeeId || actorUserId)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -147,7 +145,6 @@ const CierreCaja = () => {
         .from('ventas')
         .select('*')
         .eq('organization_id', userProfile.organization_id)
-        .eq(actorEmployeeId ? 'employee_id' : 'user_id', actorEmployeeId || actorUserId)
         // Excluir cotizaciones y anuladas
         .neq('metodo_pago', 'COTIZACION')
         .neq('estado', 'cancelada');
@@ -605,7 +602,6 @@ Generado por Crece+ 🚀
         .from('aperturas_caja')
         .select('id, monto_inicial')
         .eq('organization_id', userProfile.organization_id)
-        .eq(actorEmployeeId ? 'employee_id' : 'user_id', actorEmployeeId || actorUserId)
         .is('cierre_id', null)
         .eq('estado', 'abierta')
         .order('created_at', { ascending: false })
