@@ -510,16 +510,18 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
               (varianteStock && String(varianteStock).trim() !== '')
             );
             
-            if ((tipoValido === 'fisico' || tipoValido === 'comida') && !tieneVariante && (stock === '' || stock.toString().trim() === '')) {
-              agregarProblema('stock', `El stock es obligatorio para productos tipo "${tipoValido}" cuando no hay variantes`, stock);
+            let tieneAdvertenciaStock = false;
+            
+            if ((tipoValido === 'fisico' || tipoValido === 'comida') && !tieneVariante && (stock === '' || stock.toString().trim() === '' || parseInt(String(stock || '').trim() || '0', 10) === 0)) {
+              tieneAdvertenciaStock = true;
             }
 
             if (tieneVariante && (!varianteNombre || String(varianteNombre).trim() === '')) {
               agregarProblema('variante_nombre', 'El nombre de la variante es obligatorio cuando se usan variantes', varianteNombre);
             }
 
-            if (tieneVariante && (varianteStock === '' || String(varianteStock).trim() === '')) {
-              agregarProblema('variante_stock', 'El stock de la variante es obligatorio cuando se usan variantes', varianteStock);
+            if (tieneVariante && (varianteStock === '' || String(varianteStock).trim() === '' || parseInt(String(varianteStock || '').trim() || '0', 10) === 0)) {
+              tieneAdvertenciaStock = true;
             }
 
             // Convertir números
@@ -595,8 +597,10 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
               ? String(codigoRaw).trim()
               : '';
 
-            if (codigoFinal && codigosEnArchivo.has(codigoFinal)) {
-              agregarProblema('codigo', `El código "${codigoFinal}" está duplicado en el archivo`, codigoFinal);
+            const esDuplicado = codigoFinal && codigosEnArchivo.has(codigoFinal);
+
+            if (esDuplicado && !tieneVariante) {
+              agregarProblema('codigo', `El código "${codigoFinal}" está duplicado en el archivo. Si son variantes del mismo producto, debes llenar las columnas "Variante Nombre" y "Variante Stock".`, codigoFinal);
             }
 
             // Validar que precio de venta >= precio de compra
@@ -645,7 +649,8 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
               imagen: imagen || null, // Guardamos la imagen original para procesar después
               fecha_vencimiento: fechaVencimiento || null,
               __rowNumber: numeroFila,
-              __productKey: codigoFinal || `fila_${numeroFila}`
+              __productKey: codigoFinal || `fila_${numeroFila}`,
+              __advertenciaStock: tieneAdvertenciaStock
             };
             
             // Agregar precio_compra solo si tiene valor (obligatorio para fisico, comida, accesorio)
@@ -743,9 +748,11 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
             if (Object.keys(metadata).length > 0) {
               productoFinal.metadata = metadata;
             }
-            productos.push(productoFinal);
-            if (codigoFinal) {
-              codigosEnArchivo.add(codigoFinal);
+            if (!esDuplicado) {
+              productos.push(productoFinal);
+              if (codigoFinal) {
+                codigosEnArchivo.add(codigoFinal);
+              }
             }
 
             if (tieneVariante) {
@@ -1177,16 +1184,18 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
         (varianteStock && String(varianteStock).trim() !== '')
       );
       
-      if ((tipoValido === 'fisico' || tipoValido === 'comida') && !tieneVariante && (stock === '' || stock.toString().trim() === '')) {
-        agregarProblema('stock', `El stock es obligatorio para productos tipo "${tipoValido}" cuando no hay variantes`, stock);
+      let tieneAdvertenciaStock = false;
+      
+      if ((tipoValido === 'fisico' || tipoValido === 'comida') && !tieneVariante && (stock === '' || stock.toString().trim() === '' || parseInt(String(stock || '').trim() || '0', 10) === 0)) {
+        tieneAdvertenciaStock = true;
       }
 
       if (tieneVariante && (!varianteNombre || String(varianteNombre).trim() === '')) {
         agregarProblema('variante_nombre', 'El nombre de la variante es obligatorio cuando se usan variantes', varianteNombre);
       }
 
-      if (tieneVariante && (varianteStock === '' || String(varianteStock).trim() === '')) {
-        agregarProblema('variante_stock', 'El stock de la variante es obligatorio cuando se usan variantes', varianteStock);
+      if (tieneVariante && (varianteStock === '' || String(varianteStock).trim() === '' || parseInt(String(varianteStock || '').trim() || '0', 10) === 0)) {
+        tieneAdvertenciaStock = true;
       }
 
       // Convertir números
@@ -1261,9 +1270,11 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
       const codigoFinal = (codigoRaw && String(codigoRaw).trim() !== '')
         ? String(codigoRaw).trim()
         : '';
-      
-      if (codigoFinal && codigosEnArchivo.has(codigoFinal)) {
-        agregarProblema('codigo', `El código "${codigoFinal}" está duplicado en el archivo`, codigoFinal);
+
+      const esDuplicado = codigoFinal && codigosEnArchivo.has(codigoFinal);
+
+      if (esDuplicado && !tieneVariante) {
+        agregarProblema('codigo', `El código "${codigoFinal}" está duplicado en el archivo. Si son variantes del mismo producto, debes llenar las columnas "Variante Nombre" y "Variante Stock".`, codigoFinal);
       }
 
       // Validar que precio de venta >= precio de compra
@@ -1312,7 +1323,8 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
         imagen: imagen || null, // Guardamos la imagen original para procesar después
         fecha_vencimiento: fechaVencimiento || null,
         __rowNumber: numeroFila,
-        __productKey: codigoFinal || `fila_${numeroFila}`
+        __productKey: codigoFinal || `fila_${numeroFila}`,
+        __advertenciaStock: tieneAdvertenciaStock
       };
       
       // Agregar precio_compra solo si tiene valor (obligatorio para fisico, comida, accesorio)
@@ -1410,9 +1422,11 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
       if (Object.keys(metadata).length > 0) {
         productoFinal.metadata = metadata;
       }
-      productos.push(productoFinal);
-      if (codigoFinal) {
-        codigosEnArchivo.add(codigoFinal);
+      if (!esDuplicado) {
+        productos.push(productoFinal);
+        if (codigoFinal) {
+          codigosEnArchivo.add(codigoFinal);
+        }
       }
 
       if (tieneVariante) {
@@ -1523,7 +1537,7 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
         const filasConErrores = new Set((inconsistenciasParseadas || []).map((inc) => inc.fila));
         setProductosRevision(productos);
         setVariantesRevision(variantes);
-        setSeleccionadosRevision(productos.filter(p => !filasConErrores.has(p.__rowNumber)).map(p => p.__rowNumber));
+        setSeleccionadosRevision(productos.filter(p => !filasConErrores.has(p.__rowNumber) && !p.__advertenciaStock).map(p => p.__rowNumber));
         setModoRevision(true);
         setProcesando(false);
         return;
@@ -1993,6 +2007,7 @@ const ImportarProductosCSV = ({ open, onProductosImportados, onClose }) => {
                         <div>
                           <strong>Fila {prod.__rowNumber}:</strong> {prod.nombre || prod.codigo}
                           {tieneError && <span style={{ color: '#ef4444', marginLeft: '0.5rem' }}>Con errores</span>}
+                          {!tieneError && prod.__advertenciaStock && <span style={{ color: '#854d0e', backgroundColor: '#fef08a', padding: '2px 6px', borderRadius: '4px', fontSize: '0.75rem', marginLeft: '0.5rem', fontWeight: '500' }}>⚠️ Sin stock (0)</span>}
                         </div>
                         <input
                           type="checkbox"
