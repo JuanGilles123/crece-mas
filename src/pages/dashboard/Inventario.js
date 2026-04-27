@@ -20,9 +20,6 @@ import EntradaInventarioModal from '../../components/modals/EntradaInventarioMod
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
-import { useNetworkStatus } from '../../hooks/useNetworkStatus';
-import { useOfflineSync } from '../../hooks/useOfflineSync';
-import { getPendingOutboxCount } from '../../utils/offlineQueue';
 
 
 // Función para eliminar imagen del storage
@@ -46,9 +43,6 @@ const deleteImageFromStorage = async (imagePath) => {
 const Inventario = () => {
   const { user, organization } = useAuth();
   const location = useLocation();
-  const { isOnline } = useNetworkStatus();
-  const { isSyncing } = useOfflineSync();
-  const [pendingOutboxCount, setPendingOutboxCount] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
   const [editarModalOpen, setEditarModalOpen] = useState(false);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
@@ -187,24 +181,6 @@ const Inventario = () => {
 
   const cargando = cargandoLocal;
 
-  useEffect(() => {
-    let mounted = true;
-    const loadPending = async () => {
-      try {
-        const count = await getPendingOutboxCount();
-        if (mounted) setPendingOutboxCount(count);
-      } catch (error) {
-        console.warn('No se pudo obtener outbox pendiente:', error);
-      }
-    };
-
-    loadPending();
-    const timer = setInterval(loadPending, 5000);
-    return () => {
-      mounted = false;
-      clearInterval(timer);
-    };
-  }, [isOnline, isSyncing]);
 
 
 
@@ -891,7 +867,6 @@ const Inventario = () => {
 
   const handleProductosImportados = async () => {
     // React Query invalidará automáticamente la cache y recargará los productos
-    setCsvModalOpen(false);
     // Forzar actualización inmediata
     await refetch();
   };
@@ -1032,17 +1007,6 @@ const Inventario = () => {
           {/* Header con búsqueda y acciones - Separados para mejor control responsive */}
           <div className="inventario-header-wrapper">
             <div className="inventario-actions">
-              <span
-                className={`inventario-connection-badge ${isOnline ? 'inventario-connection-badge--online' : 'inventario-connection-badge--offline'
-                  }`}
-              >
-                {isSyncing && pendingOutboxCount > 0 ? (
-                  <span className="inventario-connection-spinner" aria-hidden="true" />
-                ) : (
-                  <span className="inventario-connection-dot" aria-hidden="true" />
-                )}
-                {isOnline ? (isSyncing && pendingOutboxCount > 0 ? 'Sincronizando…' : '') : 'Sin internet'}
-              </span>
               <button className="inventario-btn inventario-btn-primary" onClick={() => setModalOpen(true)}>Nuevo producto</button>
               <button
                 className="inventario-btn inventario-btn-secondary"
@@ -1237,7 +1201,7 @@ const Inventario = () => {
                           <span style={{ color: 'var(--accent-primary)', fontWeight: 700, fontSize: modoLista ? 'inherit' : '0.85rem' }}>Compra: {prod.precio_compra?.toLocaleString('es-CO')}</span>
                           <span style={{ color: 'var(--accent-success)', fontWeight: 700, fontSize: modoLista ? 'inherit' : '0.85rem' }}>Venta: {getCurrentVentaPrice(prod).toLocaleString('es-CO')}</span>
                         </div>
-                        <div className="inventario-stock">Stock: {prod.stock !== null && prod.stock !== undefined ? parseFloat(prod.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '0'}</div>
+                        <div className="inventario-stock">Stock: {prod.stock !== null && prod.stock !== undefined ? parseFloat(prod.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 4 }) : '0'}</div>
                       </div>
                       <div className={modoLista ? "inventario-lista-actions" : "inventario-card-actions"}>
                         <button

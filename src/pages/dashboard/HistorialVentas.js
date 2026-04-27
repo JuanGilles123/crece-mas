@@ -5,9 +5,6 @@ import { useAuth } from '../../context/AuthContext';
 import { useSubscription } from '../../hooks/useSubscription';
 import { useVentas } from '../../hooks/useVentas';
 import { useCotizaciones } from '../../hooks/useCotizaciones';
-import { useNetworkStatus } from '../../hooks/useNetworkStatus';
-import { useOfflineSync } from '../../hooks/useOfflineSync';
-import { getPendingOutboxCount } from '../../utils/offlineQueue';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useProductos } from '../../hooks/useProductos';
@@ -35,35 +32,14 @@ import toast from 'react-hot-toast';
 import './HistorialVentas.css';
 
 const HistorialVentas = () => {
-  const { userProfile, organization } = useAuth();
+  const { userProfile, organization, isEmployeeMode } = useAuth();
   const { getLimit } = useSubscription();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { isOnline } = useNetworkStatus();
-  const { isSyncing } = useOfflineSync();
-  const [pendingOutboxCount, setPendingOutboxCount] = useState(0);
   const historyDays = getLimit('historyDays');
   const { data: ventas = [], isLoading, refetch } = useVentas(userProfile?.organization_id, 500, historyDays);
   const { data: cotizaciones = [] } = useCotizaciones(userProfile?.organization_id);
 
-  useEffect(() => {
-    let mounted = true;
-    const loadPending = async () => {
-      try {
-        const count = await getPendingOutboxCount();
-        if (mounted) setPendingOutboxCount(count);
-      } catch (error) {
-        console.warn('No se pudo obtener outbox pendiente:', error);
-      }
-    };
-
-    loadPending();
-    const timer = setInterval(loadPending, 5000);
-    return () => {
-      mounted = false;
-      clearInterval(timer);
-    };
-  }, [isOnline, isSyncing]);
 
   // Combinar ventas y cotizaciones, ordenar por fecha
   const todasLasVentas = useMemo(() => {
@@ -217,7 +193,7 @@ const HistorialVentas = () => {
     }));
 
     // Navegar a Caja
-    navigate('/dashboard/caja');
+    navigate(isEmployeeMode ? '/empleado/caja' : '/dashboard/caja');
     toast.success('Cotización cargada. Puedes continuar con la venta.');
   };
 
@@ -1141,19 +1117,8 @@ const HistorialVentas = () => {
           <p>Gestiona devoluciones, cambios y reimprime recibos</p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-          <span
-            className={`historial-connection-badge ${isOnline ? 'historial-connection-badge--online' : 'historial-connection-badge--offline'
-              }`}
-          >
-            {isSyncing && pendingOutboxCount > 0 ? (
-              <span className="historial-connection-spinner" aria-hidden="true" />
-            ) : (
-              <span className="historial-connection-dot" aria-hidden="true" />
-            )}
-            {isOnline ? (isSyncing && pendingOutboxCount > 0 ? 'Sincronizando…' : 'Conectado') : 'Sin internet'}
-          </span>
           <button
-            onClick={() => navigate('/dashboard/caja')}
+            onClick={() => navigate(isEmployeeMode ? '/empleado/caja' : '/dashboard/caja')}
             style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: '500', fontSize: '0.9rem' }}
             title="Ir a Caja"
           >

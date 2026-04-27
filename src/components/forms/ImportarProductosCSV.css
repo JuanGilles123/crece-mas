@@ -19,10 +19,11 @@
   background: var(--bg-card);
   border-radius: 12px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-  width: 100%;
-  max-width: 600px;
-  max-height: 90vh;
-  overflow-y: auto;
+  width: 95vw;
+  max-width: 1400px;
+  height: 95vh;
+  display: flex;
+  flex-direction: column;
   position: relative;
 }
 
@@ -61,6 +62,8 @@
 
 .importar-csv-body {
   padding: 1.5rem;
+  flex: 1;
+  overflow-y: auto;
 }
 
 .importar-csv-section {
@@ -341,9 +344,10 @@
   gap: 0.75rem;
   justify-content: center;
   align-items: center;
-  margin-top: 1.5rem;
-  padding-top: 1rem;
+  padding: 1.5rem;
   border-top: 1px solid #e5e7eb;
+  background: var(--bg-card);
+  border-radius: 0 0 12px 12px;
   flex-wrap: wrap;
 }
 
@@ -474,3 +478,97 @@
     max-width: 280px;
   }
 }
+
+
+/* Table Styles for modoRevision */
+.importar-csv-table-container {
+  overflow-y: auto;
+  overflow-x: auto;
+  border: 1px solid var(--border-primary);
+  border-radius: 8px;
+  background: var(--bg-card);
+  margin-top: 1rem;
+  /* Flex to take up remaining space if needed */
+  flex: 1;
+  min-height: 200px;
+}
+
+.importar-csv-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.importar-csv-table th {
+  position: sticky;
+  top: 0;
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-weight: 600;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 2px solid var(--border-primary);
+  z-index: 10;
+  white-space: nowrap;
+}
+
+.importar-csv-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-primary);
+  vertical-align: middle;
+}
+
+.importar-csv-table tbody tr:hover {
+  background-color: var(--bg-tertiary);
+}
+
+.importar-csv-tr-error {
+  background-color: #fef2f2 !important; /* light red background */
+}
+
+.importar-csv-tr-error td {
+  border-bottom: 1px solid #fecaca;
+}
+
+.importar-csv-td-errores {
+  max-width: 300px;
+}
+
+
+/* Initial Layout Grid */
+.importar-csv-initial-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  height: 100%;
+}
+
+.importar-csv-initial-left,
+.importar-csv-initial-right {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Responsiveness for Initial Grid & Resultado Grid */
+@media (max-width: 900px) {
+  .importar-csv-initial-grid {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+  
+  .importar-csv-resultado {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Sort Icon Hover Effects */
+.importar-csv-table th:hover {
+  background-color: var(--bg-tertiary);
+}
+
+.importar-csv-table th span {
+  display: inline-block;
+  transition: transform 0.2s;
+}
+
