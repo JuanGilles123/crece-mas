@@ -73,7 +73,8 @@ export const useCrearAperturaCaja = () => {
         if (data?.error) {
           throw new Error(data.error);
         }
-        return data?.apertura;
+        // already_open: true significa que ya había una caja abierta → la retornamos
+        return { apertura: data?.apertura, already_open: data?.already_open || false };
       }
 
       if (!organizationId || !userId) {
@@ -83,17 +84,20 @@ export const useCrearAperturaCaja = () => {
       // Verificar si ya hay una apertura activa
       const { data: aperturaActiva, error: errorVerificacion } = await supabase
         .from('aperturas_caja')
-        .select('id')
+        .select('*')
         .eq('organization_id', organizationId)
         .is('cierre_id', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
 
       if (errorVerificacion) {
         throw new Error('Error al verificar apertura existente');
       }
 
+      // Si ya hay una caja abierta, retornarla (permite múltiples PCs en la misma caja)
       if (aperturaActiva) {
-        throw new Error('Ya existe una caja abierta. Debes cerrarla antes de abrir una nueva.');
+        return { apertura: aperturaActiva, already_open: true };
       }
 
       // Crear la apertura
@@ -114,9 +118,13 @@ export const useCrearAperturaCaja = () => {
 
       return data;
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries(['apertura_caja_activa', data.organization_id, data.user_id]);
-      toast.success('Caja abierta exitosamente');
+    onSuccess: (result) => {
+      queryClient.invalidateQueries(['apertura_caja_activa']);
+      if (result?.already_open) {
+        toast.success('Caja ya estaba abierta. Conectado a la caja activa.');
+      } else {
+        toast.success('Caja abierta exitosamente');
+      }
     },
     onError: (error) => {
       toast.error(error.message || 'Error al abrir la caja');

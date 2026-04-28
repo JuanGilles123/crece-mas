@@ -762,7 +762,7 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
       const productoData = {
         user_id: user?.id,
         organization_id: organizationId, // Usar la variable validada
-        codigo: data.codigo,
+        codigo: data.codigo?.trim() || null, // null si vacío, evita duplicate key constraint
         nombre: data.nombre,
         precio_venta: precioVentaValue,
         precio_compra: typeFields.required.includes('precio_compra') || data.precioCompra

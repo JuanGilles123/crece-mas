@@ -160,9 +160,14 @@ export const useAgregarProducto = () => {
         });
       }
 
+      const dataNormalizada = {
+        ...productoData,
+        codigo: productoData.codigo?.trim() || null, // null si vacío, evita duplicate key constraint
+      };
+
       const { data, error } = await supabase
         .from('productos')
-        .insert([productoData])
+        .insert([dataNormalizada])
         .select();
 
       if (error) {

@@ -873,9 +873,16 @@ export default function Caja({
 
   const getVentaActorIds = () => {
     const employeeSession = getEmployeeSession();
+    // Si hay sesión de empleado activa, usar employee_id y user_id=null
     if (employeeSession?.employee?.id) {
       return { ventaUserId: null, ventaEmployeeId: employeeSession.employee.id };
     }
+    // Si estamos en modo empleado (detectado por AuthContext) pero no hay sesión local,
+    // también forzar user_id=null para evitar violación de FK con auth.users
+    if (isEmployeeMode) {
+      return { ventaUserId: null, ventaEmployeeId: null };
+    }
+    // Usuario normal (dueño o admin)
     return { ventaUserId: user?.id || null, ventaEmployeeId: null };
   };
 

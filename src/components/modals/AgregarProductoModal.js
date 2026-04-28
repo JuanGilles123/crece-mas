@@ -188,7 +188,7 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
       const productoData = {
         user_id: user.id,
         organization_id: userProfile?.organization_id,
-        codigo: data.codigo,
+        codigo: data.codigo?.trim() || null, // null si está vacío, evita duplicate key
         nombre: data.nombre,
         precio_compra: tipoProducto === 'servicio' ? 0 : (Number(data.precioCompra?.replace(/\D/g, '') || '0') || 0),
         precio_venta: Number(data.precioVenta.replace(/\D/g, '')),
