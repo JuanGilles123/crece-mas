@@ -4,50 +4,41 @@ import { getEmployeeSession } from '../utils/employeeSession';
 import toast from 'react-hot-toast';
 
 // Hook para obtener la apertura de caja activa
-export const useAperturaCajaActiva = (organizationId, userId) => {
+export const useAperturaCajaActiva = (organizationId) => {
   return useQuery({
-    queryKey: ['apertura_caja_activa', organizationId, userId],
+    queryKey: ['apertura_caja_activa', organizationId],
     queryFn: async () => {
-      if (!organizationId || !userId) return null;
+      if (!organizationId) return null;
 
-      const employeeSession = getEmployeeSession();
-      if (employeeSession?.token) {
-        const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
-        const { data, error } = await supabase.functions.invoke('employee-apertura-activa', {
-          body: { token: employeeSession.token },
-          headers: {
-            ...(anonKey ? { apikey: anonKey } : {}),
-            Authorization: anonKey ? `Bearer ${anonKey}` : undefined
-          }
-        });
-        if (error) {
-          throw new Error(error.message || 'Error al verificar apertura de caja');
-        }
-        if (data?.error) {
-          throw new Error(data.error);
-        }
-        return data?.apertura || null;
-      }
-      
-      // Buscar la última apertura que no tenga un cierre asociado
+      // Usar directamente Supabase client ya que las políticas RLS permiten lectura anon/public.
+      // Esto es más rápido y evita problemas con Edge Functions si el token tiene algún problema.
       const { data, error } = await supabase
         .from('aperturas_caja')
         .select('*')
         .eq('organization_id', organizationId)
-        .is('cierre_id', null) // Apertura sin cierre = caja abierta
+        .is('cierre_id', null)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
       if (error) {
-        throw new Error('Error al verificar apertura de caja');
+        console.error('Error fetching apertura activa:', error);
+        // Si falla por RLS (aunque las políticas dicen que no), intentar fallback con Edge Function para empleados
+        const employeeSession = getEmployeeSession();
+        if (employeeSession?.token) {
+          const { data: edgeData, error: edgeError } = await supabase.functions.invoke('employee-apertura-activa', {
+            body: { token: employeeSession.token }
+          });
+          if (!edgeError && edgeData?.apertura) return edgeData.apertura;
+        }
+        return null;
       }
       return data || null;
     },
-    enabled: !!organizationId && !!userId,
-    staleTime: 30 * 1000, // 30 segundos
-    cacheTime: 2 * 60 * 1000, // 2 minutos
-    refetchInterval: 30 * 1000, // Refrescar cada 30 segundos
+    enabled: !!organizationId,
+    staleTime: 5000, // 5 segundos para que sea muy reactivo
+    refetchInterval: 20000, // Refrescar cada 20 segundos
+    refetchOnWindowFocus: true,
   });
 };
 
@@ -58,22 +49,14 @@ export const useCrearAperturaCaja = () => {
   return useMutation({
     mutationFn: async ({ organizationId, userId, montoInicial }) => {
       const employeeSession = getEmployeeSession();
+      
+      // Para CREAR apertura, sí usamos la Edge Function si es empleado (RLS de inserción es más estricto)
       if (employeeSession?.token) {
-        const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
         const { data, error } = await supabase.functions.invoke('employee-open-caja', {
-          body: { token: employeeSession.token, montoInicial },
-          headers: {
-            ...(anonKey ? { apikey: anonKey } : {}),
-            Authorization: anonKey ? `Bearer ${anonKey}` : undefined
-          }
+          body: { token: employeeSession.token, montoInicial }
         });
-        if (error) {
-          throw new Error(error.message || 'Error al crear apertura de caja');
-        }
-        if (data?.error) {
-          throw new Error(data.error);
-        }
-        // already_open: true significa que ya había una caja abierta → la retornamos
+        if (error) throw new Error(error.message || 'Error al crear apertura');
+        if (data?.error) throw new Error(data.error);
         return { apertura: data?.apertura, already_open: data?.already_open || false };
       }
 
@@ -87,18 +70,10 @@ export const useCrearAperturaCaja = () => {
         .select('*')
         .eq('organization_id', organizationId)
         .is('cierre_id', null)
-        .order('created_at', { ascending: false })
-        .limit(1)
         .maybeSingle();
 
-      if (errorVerificacion) {
-        throw new Error('Error al verificar apertura existente');
-      }
-
-      // Si ya hay una caja abierta, retornarla (permite múltiples PCs en la misma caja)
-      if (aperturaActiva) {
-        return { apertura: aperturaActiva, already_open: true };
-      }
+      if (errorVerificacion) throw new Error('Error al verificar apertura existente');
+      if (aperturaActiva) return { apertura: aperturaActiva, already_open: true };
 
       // Crear la apertura
       const { data, error } = await supabase
@@ -112,16 +87,15 @@ export const useCrearAperturaCaja = () => {
         .select()
         .single();
 
-      if (error) {
-        throw new Error(error.message || 'Error al crear apertura de caja');
-      }
-
+      if (error) throw new Error(error.message || 'Error al crear apertura');
       return data;
     },
     onSuccess: (result) => {
+      // Invalidar todas las consultas relacionadas
       queryClient.invalidateQueries(['apertura_caja_activa']);
+      
       if (result?.already_open) {
-        toast.success('Caja ya estaba abierta. Conectado a la caja activa.');
+        toast.success('Conectado a la caja abierta de la organización');
       } else {
         toast.success('Caja abierta exitosamente');
       }
@@ -146,13 +120,10 @@ export const useAperturasCaja = (organizationId, limit = 100) => {
         .order('created_at', { ascending: false })
         .limit(limit);
 
-      if (error) {
-        throw new Error('Error al cargar aperturas de caja');
-      }
+      if (error) throw new Error('Error al cargar aperturas');
       return data || [];
     },
     enabled: !!organizationId,
-    staleTime: 10 * 60 * 1000,
-    cacheTime: 60 * 60 * 1000,
+    staleTime: 60000,
   });
 };

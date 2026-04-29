@@ -14,13 +14,13 @@ const AperturaCajaModal = ({ isOpen, onClose, onAperturaExitosa }) => {
   const [error, setError] = useState('');
 
   const handleAbrirCaja = async () => {
-    if (!user || !organization) {
-      setError('Error: No hay usuario u organización activa');
+    if (!user && !organization) {
+      setError('Error: No hay organización activa');
       return;
     }
 
-    if (!hasPermission('caja.open') && !hasPermission('cierre.create') && !['owner', 'admin'].includes(userProfile?.role)) {
-      setError('No tienes permisos para abrir la caja.');
+    if (!organization) {
+      setError('Error: No hay organización activa');
       return;
     }
 
@@ -34,12 +34,14 @@ const AperturaCajaModal = ({ isOpen, onClose, onAperturaExitosa }) => {
     setError('');
     
     try {
-      // Verificar primero si ya existe una apertura activa antes de intentar crear una nueva
+      // Verificar si ya existe una apertura activa
       const { data: aperturaExistente, error: errorVerificacion } = await supabase
         .from('aperturas_caja')
-        .select('id')
+        .select('*')
         .eq('organization_id', organization.id)
         .is('cierre_id', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
 
       if (errorVerificacion) {
@@ -47,26 +49,31 @@ const AperturaCajaModal = ({ isOpen, onClose, onAperturaExitosa }) => {
         return;
       }
 
+      // Si ya hay una caja abierta → unirse a ella directamente (no bloquear)
       if (aperturaExistente) {
-        setError('Ya existe una caja abierta. Debes cerrarla antes de abrir una nueva.');
+        onClose();
+        if (onAperturaExitosa) {
+          setTimeout(() => onAperturaExitosa(aperturaExistente), 50);
+        }
         return;
       }
 
-      const apertura = await crearApertura.mutateAsync({
+      // No existe caja → crear una nueva (solo si tiene permiso)
+      if (!hasPermission('caja.open') && !hasPermission('cierre.create') && !['owner', 'admin'].includes(userProfile?.role)) {
+        setError('No tienes permisos para abrir la caja.');
+        return;
+      }
+
+      const result = await crearApertura.mutateAsync({
         organizationId: organization.id,
-        userId: user.id,
+        userId: user?.id || null,
         montoInicial: montoInicial
       });
 
-      // Cerrar el modal primero para evitar que se quede pegado
+      const apertura = result?.apertura || result;
       onClose();
-      
-      // Luego notificar el éxito (esto actualizará el estado en Caja.js)
       if (apertura && onAperturaExitosa) {
-        // Usar setTimeout para asegurar que el modal se cierre primero
-        setTimeout(() => {
-          onAperturaExitosa(apertura);
-        }, 50);
+        setTimeout(() => onAperturaExitosa(apertura), 50);
       }
     } catch (error) {
       setError(error.message || 'Error al abrir la caja');

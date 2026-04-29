@@ -974,8 +974,7 @@ export default function Caja({
 
   // Verificar si hay una apertura de caja activa (solo en modo venta)
   const { data: aperturaActiva, isLoading: cargandoApertura, refetch: refetchApertura } = useAperturaCajaActiva(
-    esModoPedido ? null : organization?.id, // No verificar apertura en modo pedido
-    esModoPedido ? null : user?.id
+    esModoPedido ? null : organization?.id
   );
 
   // En modo pedido, forzar aperturaActiva a null para evitar problemas
@@ -2575,7 +2574,9 @@ export default function Caja({
       const { ventaUserId, ventaEmployeeId } = getVentaActorIds();
       const pedidosAActualizar = pedidosConsolidados.length > 0 ? pedidosConsolidados : [pedidoId];
       const fechaVenta = new Date().toISOString();
-
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/67cbae63-1d62-454e-a79c-6473cc85ec06', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'debug-session', runId: 'pre-fix', hypothesisId: 'H11', location: 'Caja.js:2172', message: 'venta:codigo_generado', data: { hasNumero: !!numeroVenta, metodo: metodoPagoFinal }, timestamp: Date.now() }) }).catch(() => { });
+      // #endregion agent log
 
       // Guardar la venta en la base de datos
       const ventaData = {
@@ -2665,7 +2666,9 @@ export default function Caja({
         .single();
 
       if (ventaError) {
-
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/67cbae63-1d62-454e-a79c-6473cc85ec06', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'debug-session', runId: 'pre-fix', hypothesisId: 'H11', location: 'Caja.js:2202', message: 'venta:insert_error', data: { status: ventaError?.status || null, code: ventaError?.code || null, details: ventaError?.details || null, message: ventaError?.message || null }, timestamp: Date.now() }) }).catch(() => { });
+        // #endregion agent log
         toast.error(`Error al guardar la venta: ${ventaError.message} `);
         setProcesandoVenta(false);
         return;
@@ -3701,8 +3704,8 @@ export default function Caja({
         await queryClient.refetchQueries(['pedidos', organization.id]);
       }
 
-      // Marcar productos como obsoletos (se recargará en background, sin bloquear UI)
-      queryClient.invalidateQueries(['productos', organization?.id]);
+      // Recargar productos para actualizar stock
+      await refetchProductos();
 
     } catch (error) {
       toast.error(`Error al procesar la venta: ${error.message} `);
@@ -5902,9 +5905,11 @@ export default function Caja({
           }}
           onAperturaExitosa={async (apertura) => {
             setMostrarModalApertura(false);
-            setModalMostradoInicialmente(true); // Marcar como mostrado para evitar que se vuelva a abrir
-            setModalCerradoManualmente(false); // Resetear el flag de cierre manual
-            // Esperar un momento antes de refetch para asegurar que la BD se actualizó
+            setModalMostradoInicialmente(true);
+            setModalCerradoManualmente(false);
+            // Invalidar queries para forzar refresco total
+            queryClient.invalidateQueries(['apertura_caja_activa']);
+            // También refetch por si acaso
             setTimeout(() => {
               refetchApertura();
             }, 500);
