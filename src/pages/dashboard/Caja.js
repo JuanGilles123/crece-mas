@@ -2575,9 +2575,7 @@ export default function Caja({
       const { ventaUserId, ventaEmployeeId } = getVentaActorIds();
       const pedidosAActualizar = pedidosConsolidados.length > 0 ? pedidosConsolidados : [pedidoId];
       const fechaVenta = new Date().toISOString();
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/67cbae63-1d62-454e-a79c-6473cc85ec06', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'debug-session', runId: 'pre-fix', hypothesisId: 'H11', location: 'Caja.js:2172', message: 'venta:codigo_generado', data: { hasNumero: !!numeroVenta, metodo: metodoPagoFinal }, timestamp: Date.now() }) }).catch(() => { });
-      // #endregion agent log
+
 
       // Guardar la venta en la base de datos
       const ventaData = {
@@ -2667,9 +2665,7 @@ export default function Caja({
         .single();
 
       if (ventaError) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/67cbae63-1d62-454e-a79c-6473cc85ec06', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'debug-session', runId: 'pre-fix', hypothesisId: 'H11', location: 'Caja.js:2202', message: 'venta:insert_error', data: { status: ventaError?.status || null, code: ventaError?.code || null, details: ventaError?.details || null, message: ventaError?.message || null }, timestamp: Date.now() }) }).catch(() => { });
-        // #endregion agent log
+
         toast.error(`Error al guardar la venta: ${ventaError.message} `);
         setProcesandoVenta(false);
         return;
@@ -3705,8 +3701,8 @@ export default function Caja({
         await queryClient.refetchQueries(['pedidos', organization.id]);
       }
 
-      // Recargar productos para actualizar stock
-      await refetchProductos();
+      // Marcar productos como obsoletos (se recargará en background, sin bloquear UI)
+      queryClient.invalidateQueries(['productos', organization?.id]);
 
     } catch (error) {
       toast.error(`Error al procesar la venta: ${error.message} `);

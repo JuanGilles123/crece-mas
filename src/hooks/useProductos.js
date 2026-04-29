@@ -13,66 +13,40 @@ export const useProductos = (organizationId) => {
         return await getCachedProductos(organizationId);
       }
 
-      // Select campos necesarios incluyendo created_at y metadata para filtros y métricas
-      let todosLosProductos = [];
-      let start = 0;
-      const step = 1000;
-      let hasMore = true;
-
-      while (hasMore) {
-        const { data, error } = await supabase
-          .from('productos')
-          .select('id, organization_id, nombre, precio_venta, precio_compra, stock, imagen, codigo, tipo, created_at, metadata')
-          .eq('organization_id', organizationId)
-          .order('created_at', { ascending: false })
-          .range(start, start + step - 1);
-
-        if (error) {
-          console.error('Error fetching productos:', error);
-          throw new Error('Error al cargar productos');
+      // Función auxiliar para paginar cualquier tabla
+      const fetchAllPages = async (queryFn) => {
+        let todos = [];
+        let start = 0;
+        const step = 1000;
+        while (true) {
+          const { data, error } = await queryFn(start, start + step - 1);
+          if (error) throw error;
+          if (!data || data.length === 0) break;
+          todos = [...todos, ...data];
+          if (data.length < step) break;
+          start += step;
         }
+        return todos;
+      };
 
-        if (data && data.length > 0) {
-          todosLosProductos = [...todosLosProductos, ...data];
-          if (data.length < step) {
-            hasMore = false;
-          } else {
-            start += step;
-          }
-        } else {
-          hasMore = false;
-        }
-      }
-      const productos = todosLosProductos;
-
-      let todasLasVariantes = [];
-      let startVar = 0;
-      let hasMoreVar = true;
-
-      while (hasMoreVar) {
-        const { data: variantesData, error: variantesError } = await supabase
-          .from('product_variants')
-          .select('*')
-          .eq('organization_id', organizationId)
-          .range(startVar, startVar + step - 1);
-
-        if (variantesError) {
-          console.error('Error fetching product variants:', variantesError);
-          // Permitir continuar sin variantes en caso de error para no romper toda la app
-          break;
-        }
-
-        if (variantesData && variantesData.length > 0) {
-          todasLasVariantes = [...todasLasVariantes, ...variantesData];
-          if (variantesData.length < step) {
-            hasMoreVar = false;
-          } else {
-            startVar += step;
-          }
-        } else {
-          hasMoreVar = false;
-        }
-      }
+      // Cargar productos y variantes EN PARALELO (antes era secuencial)
+      const [productos, todasLasVariantes] = await Promise.all([
+        fetchAllPages((from, to) =>
+          supabase
+            .from('productos')
+            .select('id, organization_id, nombre, precio_venta, precio_compra, stock, imagen, codigo, tipo, created_at, metadata')
+            .eq('organization_id', organizationId)
+            .order('created_at', { ascending: false })
+            .range(from, to)
+        ).catch(err => { throw new Error('Error al cargar productos: ' + err.message); }),
+        fetchAllPages((from, to) =>
+          supabase
+            .from('product_variants')
+            .select('*')
+            .eq('organization_id', organizationId)
+            .range(from, to)
+        ).catch(() => []) // variantes no son críticas, continuar sin ellas
+      ]);
 
       const variantesMap = new Map();
       todasLasVariantes.forEach(vari => {
@@ -86,6 +60,7 @@ export const useProductos = (organizationId) => {
         ...producto,
         variantes: variantesMap.get(producto.id) || []
       }));
+
       await cacheProductos(organizationId, productosConVariantes);
       const cached = await getCachedProductos(organizationId);
       const mergedMap = new Map(productosConVariantes.map(producto => [producto.id, producto]));
@@ -95,11 +70,11 @@ export const useProductos = (organizationId) => {
       return Array.from(mergedMap.values());
     },
     enabled: !!organizationId,
-    staleTime: 30 * 1000, // 30 segundos (antes 15 min) para mantener stock actualizado
-    cacheTime: 5 * 60 * 1000, // 5 minutos
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
+    staleTime: 5 * 60 * 1000,  // 5 minutos (antes 30s — demasiado agresivo)
+    cacheTime: 30 * 60 * 1000, // 30 minutos
+    refetchOnMount: false,      // Usar cache si está fresco
+    refetchOnWindowFocus: false, // No recargar al cambiar de pestaña
+    refetchOnReconnect: true,   // Sí recargar al reconectar internet
   });
 };
 
