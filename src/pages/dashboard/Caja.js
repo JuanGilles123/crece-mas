@@ -875,7 +875,11 @@ export default function Caja({
     const employeeSession = getEmployeeSession();
     // Si hay sesión de empleado activa, usar employee_id y user_id=null
     if (employeeSession?.employee?.id) {
-      return { ventaUserId: null, ventaEmployeeId: employeeSession.employee.id };
+      const ownerId = organization?.owner_id || userProfile?.organization_owner_id;
+      return { 
+        ventaUserId: ownerId || user?.id || null, 
+        ventaEmployeeId: employeeSession.employee.id 
+      };
     }
     // Si estamos en modo empleado (detectado por AuthContext) pero no hay sesión local,
     // también forzar user_id=null para evitar violación de FK con auth.users
@@ -3648,7 +3652,7 @@ export default function Caja({
         id: ventaResult[0].id,
         date: new Date().toLocaleDateString("es-CO"),
         time: new Date().toLocaleTimeString("es-CO"),
-        cashier: user.user_metadata?.full_name || user.email || "Usuario",
+        cashier: userProfile?.full_name || user.user_metadata?.full_name || user.email || "Usuario",
         subtotal: subtotal,
         descuento: montoDescuento > 0 ? {
           tipo: descuento.tipo,

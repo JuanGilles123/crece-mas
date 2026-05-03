@@ -19,7 +19,9 @@ import {
   Sparkles,
   Shield,
   Zap,
-  RefreshCw
+  RefreshCw,
+  Clock,
+  Trash2
 } from 'lucide-react';
 import { supabase } from '../services/api/supabaseClient';
 import toast from 'react-hot-toast';
@@ -40,7 +42,6 @@ const VIPAdminPanel = () => {
   // Planes disponibles (cargados desde la DB)
   const [availablePlans, setAvailablePlans] = useState([]);
   
-  // Form data para modal
   const [formData, setFormData] = useState({
     plan_id: '',
     status: 'active',
@@ -48,6 +49,9 @@ const VIPAdminPanel = () => {
     current_period_end: '',
     billing_cycle: 'monthly' // Solo para UI, no se guarda
   });
+
+  const [orgToDelete, setOrgToDelete] = useState(null);
+  const [deleteConfirmationText, setDeleteConfirmationText] = useState('');
 
   useEffect(() => {
     loadPlans();
@@ -111,28 +115,65 @@ const VIPAdminPanel = () => {
             .eq('status', 'active')
             .maybeSingle();
 
-          // Miembros del equipo
-          const { data: members } = await supabase
-            .from('team_members')
-            .select('id')
-            .eq('organization_id', org.id)
-            .eq('status', 'active');
+          let finalStats = { members: 1, products: 0, sales: 0, lastActivity: null };
 
-          // Productos (con manejo de error si la tabla no existe)
-          const { data: products, error: productsError } = await supabase
-            .from('productos')
-            .select('id')
-            .eq('organization_id', org.id);
+          // Intentar obtener estadísticas usando la función RPC segura (Bypasses RLS)
+          const { data: adminStats, error: adminStatsError } = await supabase.rpc('get_vip_admin_org_stats', {
+            p_org_id: org.id
+          });
 
-          // Ventas del último mes (con manejo de error si la tabla no existe)
-          const oneMonthAgo = new Date();
-          oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-          
-          const { data: sales, error: salesError } = await supabase
-            .from('ventas')
-            .select('id')
-            .eq('organization_id', org.id)
-            .gte('created_at', oneMonthAgo.toISOString());
+          if (!adminStatsError && adminStats) {
+            finalStats = {
+              members: (adminStats.members_count || 0) + 1,
+              products: adminStats.products_count || 0,
+              sales: adminStats.sales_count || 0,
+              lastActivity: adminStats.last_activity || null
+            };
+          } else {
+            // Fallback: Consultas directas (Pueden fallar por RLS si el admin no está en la org)
+            if (adminStatsError && adminStatsError.code === 'PGRST202') {
+              console.warn('Nota: Debes ejecutar el script get_vip_admin_org_stats.sql en tu base de datos para ver todas las estadísticas de ventas (RLS bypass).');
+            }
+            
+            // Miembros del equipo
+            const { data: members } = await supabase
+              .from('team_members')
+              .select('id')
+              .eq('organization_id', org.id)
+              .eq('status', 'active');
+
+            // Productos
+            const { data: products, error: productsError } = await supabase
+              .from('productos')
+              .select('id')
+              .eq('organization_id', org.id);
+
+            // Ventas del último mes
+            const oneMonthAgo = new Date();
+            oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+            
+            const { data: sales, error: salesError } = await supabase
+              .from('ventas')
+              .select('id')
+              .eq('organization_id', org.id)
+              .gte('created_at', oneMonthAgo.toISOString());
+
+            // Última actividad
+            const { data: lastActivityData, error: lastActivityError } = await supabase
+              .from('ventas')
+              .select('created_at')
+              .eq('organization_id', org.id)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            finalStats = {
+              members: (members?.length || 0) + 1,
+              products: productsError ? 0 : (products?.length || 0),
+              sales: salesError ? 0 : (sales?.length || 0),
+              lastActivity: (!lastActivityError && lastActivityData) ? lastActivityData.created_at : null
+            };
+          }
 
           return {
             ...org,
@@ -140,11 +181,7 @@ const VIPAdminPanel = () => {
               ...subscription,
               plan: subscription.plan // El plan completo viene del JOIN
             } : null,
-            stats: {
-              members: (members?.length || 0) + 1, // +1 por el owner
-              products: productsError ? 0 : (products?.length || 0),
-              sales: salesError ? 0 : (sales?.length || 0)
-            }
+            stats: finalStats
           };
         })
       );
@@ -268,6 +305,35 @@ const VIPAdminPanel = () => {
     }
 
     setShowModal(true);
+  };
+
+  const confirmDeleteOrganization = (org) => {
+    setOrgToDelete(org);
+    setDeleteConfirmationText('');
+  };
+
+  const executeDeleteOrganization = async () => {
+    if (!orgToDelete || deleteConfirmationText !== orgToDelete.name) return;
+
+    try {
+      setLoading(true);
+      
+      const { error } = await supabase
+        .from('organizations')
+        .delete()
+        .eq('id', orgToDelete.id);
+
+      if (error) throw error;
+      
+      toast.success('Organización eliminada exitosamente');
+      setOrgToDelete(null);
+      loadOrganizations();
+    } catch (error) {
+      console.error('Error deleting organization:', error);
+      toast.error('Error al eliminar la organización. Puede tener registros vinculados.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Obtener información del plan por ID
@@ -424,80 +490,111 @@ const VIPAdminPanel = () => {
             const planInfo = org.subscription?.plan;
             const PlanIcon = planInfo ? getPlanIcon(planInfo.slug) : Package;
             
-            return (
-              <motion.div
-                key={org.id}
-                className="org-card"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ delay: index * 0.05 }}
-                whileHover={{ scale: 1.02 }}
-              >
-                <div className="org-card-header">
-                  <div className="org-info">
-                    <Building2 size={24} />
-                    <div>
-                      <h3>{org.name}</h3>
-                      <p className="org-date">
-                        Creada: {new Date(org.created_at).toLocaleDateString('es-ES')}
-                      </p>
-                    </div>
-                  </div>
+              let statusBadge = null;
+              if (org.subscription && org.subscription.current_period_end) {
+                const endDate = new Date(org.subscription.current_period_end);
+                const today = new Date();
+                const diffTime = endDate.getTime() - today.getTime();
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                if (diffDays < 0) {
+                  statusBadge = <span className="status-cancelled">Vencida hace {Math.abs(diffDays)} días</span>;
+                } else if (diffDays <= 7) {
+                  statusBadge = <span className="status-warning">Vence en {diffDays} días</span>;
+                } else {
+                  statusBadge = <span className="status-active">Activa ({diffDays} días restantes)</span>;
+                }
+              }
 
-                  {org.subscription ? (
-                    <div 
-                      className="plan-badge"
-                      style={{ 
-                        background: `${getPlanColor(planInfo.slug)}20`,
-                        color: getPlanColor(planInfo.slug),
-                        border: `1px solid ${getPlanColor(planInfo.slug)}40`
-                      }}
-                    >
-                      <PlanIcon size={16} />
-                      <span>{planInfo.name}</span>
-                    </div>
-                  ) : (
-                    <div className="plan-badge no-sub">
-                      <AlertTriangle size={16} />
-                      <span>Sin suscripción</span>
-                    </div>
-                  )}
-                </div>
+              return (
+                <motion.div
+                  key={org.id}
+                  className="org-card"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ delay: index * 0.05 }}
+                  whileHover={{ scale: 1.02 }}
+                >
+                  <div className="org-card-content">
+                    <div className="org-card-header">
+                      <div className="org-info">
+                        <Building2 size={24} />
+                        <div>
+                          <h3>{org.name}</h3>
+                          <p className="org-date">
+                            Creada: {new Date(org.created_at).toLocaleDateString('es-ES')}
+                          </p>
+                        </div>
+                      </div>
 
-                <div className="org-stats">
-                  <div className="org-stat">
-                    <Users size={16} />
-                    <span>{org.stats.members} miembros</span>
-                  </div>
-                  <div className="org-stat">
-                    <Package size={16} />
-                    <span>{org.stats.products} productos</span>
-                  </div>
-                  <div className="org-stat">
-                    <TrendingUp size={16} />
-                    <span>{org.stats.sales} ventas/mes</span>
-                  </div>
-                </div>
+                      {org.subscription ? (
+                        <div 
+                          className="plan-badge"
+                          style={{ 
+                            background: `${getPlanColor(planInfo.slug)}20`,
+                            color: getPlanColor(planInfo.slug),
+                            border: `1px solid ${getPlanColor(planInfo.slug)}40`
+                          }}
+                        >
+                          <PlanIcon size={16} />
+                          <span>{planInfo.name}</span>
+                        </div>
+                      ) : (
+                        <div className="plan-badge no-sub">
+                          <AlertTriangle size={16} />
+                          <span>Sin suscripción</span>
+                        </div>
+                      )}
+                    </div>
 
-                {org.subscription && (
-                  <div className="subscription-info">
-                    <div className="sub-detail">
-                      <Calendar size={16} />
-                      <span>Desde: {new Date(org.subscription.current_period_start).toLocaleDateString('es-ES')}</span>
+                    <div className="org-stats">
+                      <div className="org-stat" title="Usuarios">
+                        <Users size={16} />
+                        <span>{org.stats.members} miemb.</span>
+                      </div>
+                      <div className="org-stat" title="Productos Creados">
+                        <Package size={16} />
+                        <span>{org.stats.products} prod.</span>
+                      </div>
+                      <div className="org-stat" title="Ventas del último mes">
+                        <TrendingUp size={16} />
+                        <span>{org.stats.sales} vent/mes</span>
+                      </div>
+                      <div className="org-stat" title="Última venta registrada">
+                        <Clock size={16} />
+                        <span>{org.stats.lastActivity ? new Date(org.stats.lastActivity).toLocaleDateString('es-ES') : 'Sin ventas'}</span>
+                      </div>
                     </div>
-                    <div className="sub-detail">
-                      <DollarSign size={16} />
-                      <span>${Number(planInfo.price_monthly).toLocaleString()}/mes</span>
-                    </div>
-                    <div className="sub-detail">
-                      <Shield size={16} />
-                      <span className={`status-${org.subscription.status}`}>
-                        {org.subscription.status === 'active' ? 'Activa' : org.subscription.status}
-                      </span>
-                    </div>
+
+                    {org.subscription && (
+                      <div className="subscription-info">
+                        <div className="sub-detail-row">
+                          <div className="sub-detail">
+                            <DollarSign size={16} />
+                            <strong>Pago:</strong> <span>{new Date(org.subscription.current_period_start).toLocaleDateString('es-ES')}</span>
+                          </div>
+                          <div className="sub-detail">
+                            <strong>${Number(planInfo.price_monthly).toLocaleString()}/mes</strong>
+                          </div>
+                        </div>
+                        <div className="sub-detail-row">
+                          <div className="sub-detail">
+                            <Calendar size={16} />
+                            <strong>Vencimiento:</strong> <span>{org.subscription.current_period_end ? new Date(org.subscription.current_period_end).toLocaleDateString('es-ES') : 'N/A'}</span>
+                          </div>
+                        </div>
+                        <div className="sub-detail-row">
+                          <div className="sub-detail">
+                            <Shield size={16} />
+                            {statusBadge || <span className={`status-${org.subscription.status}`}>
+                              {org.subscription.status === 'active' ? 'Activa' : org.subscription.status}
+                            </span>}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
 
                 <div className="org-actions">
                   <button
@@ -506,6 +603,13 @@ const VIPAdminPanel = () => {
                   >
                     <Edit2 size={16} />
                     {org.subscription ? 'Editar Suscripción' : 'Crear Suscripción'}
+                  </button>
+                  <button
+                    className="btn-delete"
+                    onClick={() => confirmDeleteOrganization(org)}
+                    title="Eliminar Organización"
+                  >
+                    <Trash2 size={16} />
                   </button>
                 </div>
               </motion.div>
@@ -646,6 +750,70 @@ const VIPAdminPanel = () => {
                   disabled={procesando || !formData.plan_id}
                 >
                   {procesando ? 'Guardando...' : 'Guardar Suscripción'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {orgToDelete && (
+          <motion.div 
+            className="modal-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div 
+              className="modal-content"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+            >
+              <div className="modal-header">
+                <h3>Eliminar Organización</h3>
+                <button className="btn-close" onClick={() => setOrgToDelete(null)}>
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="modal-body">
+                <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: '1rem', borderRadius: '10px', marginBottom: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'flex-start', color: '#ef4444' }}>
+                  <AlertTriangle size={24} style={{ flexShrink: 0 }} />
+                  <div>
+                    <h4 style={{ margin: '0 0 0.5rem 0' }}>¡Acción Peligrosa!</h4>
+                    <p style={{ margin: 0, fontSize: '0.9rem' }}>
+                      Estás a punto de eliminar la organización <strong>{orgToDelete.name}</strong>. Esta acción eliminará permanentemente la organización y no se puede deshacer.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>Para confirmar, escribe el nombre exacto de la organización: <strong>{orgToDelete.name}</strong></label>
+                  <input
+                    type="text"
+                    value={deleteConfirmationText}
+                    onChange={(e) => setDeleteConfirmationText(e.target.value)}
+                    placeholder={orgToDelete.name}
+                    className="form-control"
+                    autoFocus
+                  />
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button className="btn-cancel" onClick={() => setOrgToDelete(null)} disabled={loading}>
+                  Cancelar
+                </button>
+                <button
+                  className="btn-delete"
+                  onClick={executeDeleteOrganization}
+                  disabled={loading || deleteConfirmationText !== orgToDelete.name}
+                  style={{ opacity: deleteConfirmationText !== orgToDelete.name ? 0.5 : 1, padding: '0.75rem 1.5rem' }}
+                >
+                  {loading ? 'Eliminando...' : 'Eliminar Definitivamente'}
                 </button>
               </div>
             </motion.div>
