@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 /**
  * Hook personalizado para implementar infinite scroll de forma optimizada
@@ -79,7 +79,7 @@ export const useScrollEnd = (callback, threshold = 100) => {
  * Hook para implementar debounce en búsquedas
  */
 export const useDebounce = (value, delay = 300) => {
-  const [debouncedValue, setDebouncedValue] = React.useState(value);
+  const [debouncedValue, setDebouncedValue] = useState(value);
 
   useEffect(() => {
     const handler = setTimeout(() => {
