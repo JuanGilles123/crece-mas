@@ -1,0 +1,213 @@
+.monitor-cajas {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.monitor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.monitor-header h1 {
+  font-size: 1.8rem;
+  color: #1e293b;
+  margin: 0;
+}
+
+.monitor-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 16px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.stat-card span {
+  font-size: 0.875rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.stat-card strong {
+  font-size: 1.5rem;
+  color: #0f172a;
+}
+
+.sessions-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.session-card {
+  background: white;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+  border: 1px solid #f1f5f9;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: row;
+  min-height: 180px;
+}
+
+.session-card:hover {
+  transform: scale(1.01);
+  box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.1);
+}
+
+.session-card-header {
+  padding: 2rem;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  border-bottom: none;
+  border-right: 1px solid #f1f5f9;
+  min-width: 280px;
+  text-align: center;
+}
+
+.user-avatar {
+  width: 64px;
+  height: 64px;
+  background: #fff;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #3b82f6;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
+
+.user-info h3 {
+  margin: 0;
+  font-size: 1.3rem;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.session-card-body {
+  padding: 2rem;
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  align-content: center;
+  gap: 1.5rem;
+}
+
+.data-row {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0;
+  gap: 0.25rem;
+}
+
+.data-row .label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+}
+
+.data-row .value {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-badge.active {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.status-badge.synced {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.session-card-footer {
+  padding: 2rem;
+  background: #fff;
+  border-top: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 200px;
+}
+
+.btn-force-close {
+  background: #fff1f2;
+  color: #e11d48;
+  border: 1px solid #ffe4e6;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+}
+
+@media (max-width: 1024px) {
+  .session-card {
+    flex-direction: column;
+  }
+  .session-card-header {
+    flex-direction: row;
+    border-right: none;
+    border-bottom: 1px solid #f1f5f9;
+    text-align: left;
+    justify-content: flex-start;
+    padding: 1.5rem;
+  }
+  .session-card-body {
+    grid-template-columns: 1fr 1fr;
+    padding: 1.5rem;
+  }
+}
+
+.btn-force-close:hover {
+  background: #fecaca;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem;
+  gap: 1rem;
+  color: #64748b;
+}
+
+@media (max-width: 640px) {
+  .monitor-cajas {
+    padding: 1rem;
+  }
+  .sessions-grid {
+    grid-template-columns: 1fr;
+  }
+}

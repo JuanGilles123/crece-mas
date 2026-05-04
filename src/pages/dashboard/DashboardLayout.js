@@ -89,6 +89,13 @@ const DashboardLayout = () => {
             label: "Historial de Cierres",
             title: "Historial de Cierres de Caja",
             visible: (hasPermission('sales') || true) && hasFeature('closingHistory')
+          },
+          {
+            to: "/dashboard/monitor-cajas",
+            icon: Activity,
+            label: "Monitor Cajas",
+            title: "Ver Cajas Abiertas en Tiempo Real",
+            visible: ['owner', 'admin'].includes(userProfile?.role)
           }
         ].filter(item => item.visible),
         visible: hasPermission('sales') || true
@@ -253,7 +260,7 @@ const DashboardLayout = () => {
       }
       return group.visible && group.items.length > 0;
     });
-  }, [user?.email, hasPermission, hasFeature, organization]);
+  }, [user?.email, hasPermission, hasFeature, organization, userProfile?.role]);
 
   // Memoizar variantes de animación (solo se crean una vez) - ANTES de cualquier return
   const mainVariants = useMemo(() => ({

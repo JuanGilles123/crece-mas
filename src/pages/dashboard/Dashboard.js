@@ -27,6 +27,7 @@ const Creditos = lazy(() => import('./Creditos'));
 const Egresos = lazy(() => import('./Egresos'));
 const GestionMesas = lazy(() => import('../../components/GestionMesas'));
 const GestionToppings = lazy(() => import('../../components/GestionToppings'));
+const MonitorCajas = lazy(() => import('./MonitorCajas'));
 const GestionVariaciones = lazy(() => import('../../components/GestionVariaciones'));
 
 // Loading fallback optimizado
@@ -175,6 +176,11 @@ const Dashboard = () => (
         <Route path="variaciones" element={
           <Suspense fallback={<DashboardLoader />}>
             <GestionVariaciones />
+          </Suspense>
+        } />
+        <Route path="monitor-cajas" element={
+          <Suspense fallback={<DashboardLoader />}>
+            <MonitorCajas />
           </Suspense>
         } />
         <Route path="*" element={<Navigate to="/dashboard" />} />

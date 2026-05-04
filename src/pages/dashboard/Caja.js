@@ -2713,6 +2713,14 @@ export default function Caja({
         } else {
           toast.success('Pago guardado localmente. Se sincronizará al reconectar.');
         }
+
+        if (cotizacionId) {
+          // Si estamos offline, no podemos eliminar la cotización original de la BD ahora mismo de forma confiable
+          // Pero al menos limpiamos el estado local para no duplicar más.
+          setCotizacionId(null);
+          localStorage.removeItem('cotizacionOriginal');
+        }
+
         return;
       }
 
@@ -2943,6 +2951,26 @@ export default function Caja({
             }
           }
         }
+      }
+
+      // Si esta venta proviene de una cotización retomada, eliminar la cotización original
+      if (cotizacionId) {
+        try {
+          const { error: deleteCotizacionError } = await supabase
+            .from('ventas')
+            .delete()
+            .eq('id', cotizacionId);
+            
+          if (deleteCotizacionError) {
+            console.error('Error eliminando la cotización original:', deleteCotizacionError);
+          } else {
+            console.log(`✅ Cotización original ${cotizacionId} eliminada al finalizar la venta.`);
+          }
+        } catch (e) {
+          console.error('Excepción al eliminar cotización:', e);
+        }
+        setCotizacionId(null);
+        localStorage.removeItem('cotizacionOriginal');
       }
 
       // Limpiar carrito y estados
