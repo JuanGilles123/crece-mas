@@ -41,7 +41,7 @@ const deleteImageFromStorage = async (imagePath) => {
 };
 
 const Inventario = () => {
-  const { user, organization, hasPermission } = useAuth();
+  const { user, organization, userProfile, hasPermission } = useAuth();
   const location = useLocation();
   const [modalOpen, setModalOpen] = useState(false);
   const [editarModalOpen, setEditarModalOpen] = useState(false);
@@ -1007,7 +1007,7 @@ const Inventario = () => {
           {/* Header con búsqueda y acciones - Separados para mejor control responsive */}
           <div className="inventario-header-wrapper">
             <div className="inventario-actions">
-              {hasPermission('inventario.create') && (
+              {(hasPermission('inventario.create') || ['owner', 'admin'].includes(userProfile?.role)) && (
                 <button className="inventario-btn inventario-btn-primary" onClick={() => setModalOpen(true)}>Nuevo producto</button>
               )}
               <button
@@ -1018,7 +1018,7 @@ const Inventario = () => {
               >
                 <RefreshCw size={18} className={isFetching ? 'spin' : ''} />
               </button>
-              {hasPermission('inventario.edit') && (
+              {(hasPermission('inventario.edit') || ['owner', 'admin'].includes(userProfile?.role)) && (
                 <button
                   className="inventario-btn inventario-btn-secondary"
                   onClick={() => setEntradaInventarioOpen(true)}
@@ -1074,7 +1074,7 @@ const Inventario = () => {
                 <CheckSquare size={18} />
                 {todosSeleccionados ? 'Quitar selección' : 'Seleccionar todo'}
               </button>
-              {seleccionados.length > 0 && hasPermission('inventario.delete') && (
+              {seleccionados.length > 0 && (hasPermission('inventario.delete') || ['owner', 'admin'].includes(userProfile?.role)) && (
                 <button
                   className="inventario-btn inventario-btn-outline eliminar"
                   onClick={handleEliminarSeleccionados}
@@ -1221,7 +1221,7 @@ const Inventario = () => {
                         <div className="inventario-stock">Stock: {prod.stock !== null && prod.stock !== undefined ? parseFloat(prod.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 4 }) : '0'}</div>
                       </div>
                       <div className={modoLista ? "inventario-lista-actions" : "inventario-card-actions"}>
-                        {hasPermission('inventario.edit') && (
+                        {(hasPermission('inventario.edit') || ['owner', 'admin'].includes(userProfile?.role)) && (
                           <button
                             className="inventario-btn inventario-btn-outline"
                             onClick={() => handleEditarProducto(prod)}
@@ -1229,7 +1229,7 @@ const Inventario = () => {
                             Editar
                           </button>
                         )}
-                        {hasPermission('inventario.delete') && (
+                        {(hasPermission('inventario.delete') || ['owner', 'admin'].includes(userProfile?.role)) && (
                           <button
                             className="inventario-btn inventario-btn-outline eliminar"
                             onClick={() => handleEliminarProducto(prod)}
