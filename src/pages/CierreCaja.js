@@ -227,21 +227,20 @@ const CierreCaja = () => {
       if (error) throw error;
 
       // FILTRAR: Excluir ventas que pertenecen a otras cajas independientes
+      // Lógica simplificada y robusta: Si una venta ocurrió DESPUÉS de abrir esta caja,
+      // debe incluirse, a menos que sepamos positivamente que pertenece a OTRA caja independiente
+      // que se abrió DESPUÉS de la nuestra.
+      
       const rawVentasData = (rawVentasDataAll || []).filter(venta => {
-        // IMPORTANTE: Si la apertura actual es una sincronización, no debemos filtrar ventas 
-        // del grupo sincronizado, ya que todos comparten el mismo balance.
-        if (aperturaActiva?.is_synced) {
-          // Solo excluir si la venta NO pertenece al dueño de la apertura a la que estamos sincronizados
-          // (Aunque en la práctica, las ventas sincronizadas ya traen el ID correcto)
-          return true;
-        }
+        // Si la venta tiene un employee_id que tiene su propia apertura abierta (e INDEPENDIENTE), 
+        // y esa apertura es POSTERIOR a la nuestra, entonces la venta es de la otra caja.
+        const otraAperturaRelacionada = otrasAperturas.find(a => 
+          (a.employee_id === venta.employee_id || a.user_id === venta.user_id) && 
+          new Date(a.created_at) > new Date(aperturaActiva.created_at)
+        );
 
-        // Si la venta tiene un employee_id que tiene su propia apertura abierta (e INDEPENDIENTE), excluirla
-        if (venta.employee_id && employeeIdsOtrasAperturas.has(venta.employee_id)) return false;
-
-        // Si la venta tiene un user_id que tiene su propia apertura abierta (e INDEPENDIENTE), excluirla
-        if (venta.user_id && userIdsOtrasAperturas.has(venta.user_id)) return false;
-
+        if (otraAperturaRelacionada) return false;
+        
         return true;
       });
 
