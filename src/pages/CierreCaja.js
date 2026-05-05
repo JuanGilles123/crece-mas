@@ -177,13 +177,15 @@ const CierreCaja = () => {
       }
 
       // Obtener OTRAS aperturas activas para filtrar ventas
-      const { data: otrasAperturas = [] } = await supabase
+      const { data: rawOtrasAperturas } = await supabase
         .from('aperturas_caja')
         .select('id, employee_id, user_id, created_at')
         .eq('organization_id', userProfile.organization_id)
         .is('cierre_id', null)
         .eq('estado', 'abierta')
         .neq('id', aperturaActiva?.id || '');
+
+      const otrasAperturas = rawOtrasAperturas || [];
 
       const userIdsOtrasAperturas = new Set((otrasAperturas || []).map(a => a.user_id).filter(Boolean));
       const employeeIdsOtrasAperturas = new Set((otrasAperturas || []).map(a => a.employee_id).filter(Boolean));
