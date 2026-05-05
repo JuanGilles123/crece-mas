@@ -19,7 +19,7 @@ const AperturaCajaModal = ({ isOpen, onClose, onAperturaExitosa }) => {
   const [paso, setPaso] = useState(PASO_FORMULARIO);
   const [modoElegido, setModoElegido] = useState(null); // 'sincronizar' | 'independiente'
 
-  const { data: otrasCajas = [] } = useOtrasCajasAbiertas(organization?.id, user?.id);
+  const { data: otrasCajas = [], isLoading: loadingOtras } = useOtrasCajasAbiertas(organization?.id, user?.id);
 
   // Cuando el modal se abre, decidir si mostrar paso de selección
   useEffect(() => {
@@ -27,6 +27,9 @@ const AperturaCajaModal = ({ isOpen, onClose, onAperturaExitosa }) => {
       setError('');
       montoInicialInput.reset();
       
+      // Si todavía está cargando las otras cajas, no decidir paso aún
+      if (loadingOtras) return;
+
       // IMPORTANTE: Si hay otras cajas, forzar siempre el paso de selección
       // para que el usuario DECIDA.
       if (otrasCajas && otrasCajas.length > 0) {
@@ -37,8 +40,7 @@ const AperturaCajaModal = ({ isOpen, onClose, onAperturaExitosa }) => {
         setModoElegido('independiente');
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, otrasCajas.length]);
+  }, [isOpen, otrasCajas.length, loadingOtras]);
 
   const handleSeleccionarModo = (modo) => {
     setModoElegido(modo);
