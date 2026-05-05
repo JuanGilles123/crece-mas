@@ -81,33 +81,64 @@ export const useOtrasCajasAbiertas = (organizationId, userId) => {
       const employeeSession = getEmployeeSession();
       const currentEmployeeId = employeeSession?.employee?.id;
 
-      let query = supabase
+      // 1. Obtener aperturas básicas
+      const { data: aperturas, error: errorAperturas } = await supabase
         .from('aperturas_caja')
-        .select(`
-          *,
-          vendedor:team_members(id, employee_name),
-          user_profile:user_profiles(id, full_name)
-        `)
+        .select('*')
         .eq('organization_id', organizationId)
-        .is('cierre_id', null); // Que están abiertas
+        .is('cierre_id', null)
+        .order('created_at', { ascending: false });
 
-      // FILTRAR: Solo traer cajas que NO sean la del usuario actual
-      const { data, error } = await query.order('created_at', { ascending: false });
+      if (errorAperturas || !aperturas) return [];
 
-      if (error) return [];
-
-      // Filtrado manual más robusto
-      return (data || []).filter(apertura => {
+      // 2. Filtrar las que NO son mías
+      const filtradas = aperturas.filter(apertura => {
         if (currentEmployeeId) {
-          // Si soy un empleado, la caja NO es mía si tiene un employee_id distinto
           return apertura.employee_id !== currentEmployeeId;
         } else {
-          // Si soy el Owner, la caja NO es mía si tiene un employee_id (es de un empleado)
-          // o si el user_id es distinto (aunque el owner suele tener el mismo user_id, 
-          // el employee_id es la clave aquí)
           return apertura.employee_id !== null || apertura.user_id !== userId;
         }
       });
+
+      if (filtradas.length === 0) return [];
+
+      // 3. Obtener nombres de responsables para mostrar en el modal (opcional pero recomendado)
+      const employeeIds = filtradas.map(a => a.employee_id).filter(Boolean);
+      const userIds = filtradas.map(a => a.user_id).filter(Boolean);
+
+      try {
+        const [ { data: employeesAuth }, { data: profiles } ] = await Promise.all([
+          employeeIds.length > 0 
+            ? supabase.from('employees').select('id, team_member_id, code').in('id', employeeIds)
+            : Promise.resolve({ data: [] }),
+          userIds.length > 0
+            ? supabase.from('user_profiles').select('id, user_id, full_name').in('user_id', userIds)
+            : Promise.resolve({ data: [] })
+        ]);
+
+        let teamMembers = [];
+        if (employeesAuth && employeesAuth.length > 0) {
+          const teamMemberIds = employeesAuth.map(e => e.team_member_id).filter(Boolean);
+          if (teamMemberIds.length > 0) {
+            const { data } = await supabase.from('team_members').select('id, employee_name').in('id', teamMemberIds);
+            teamMembers = data || [];
+          }
+        }
+
+        const teamMemberMap = new Map(teamMembers.map(t => [t.id, t.employee_name]));
+        const employeeMap = new Map(employeesAuth?.map(e => [e.id, teamMemberMap.get(e.team_member_id) || `Empleado ${e.code}`]));
+        const profileMap = new Map(profiles?.map(p => [p.user_id, p.full_name]));
+
+        // 4. Enriquecer las aperturas con los nombres
+        return filtradas.map(a => ({
+          ...a,
+          vendedor: { employee_name: a.employee_id ? employeeMap.get(a.employee_id) : null },
+          user_profile: { full_name: a.user_id ? profileMap.get(a.user_id) : null }
+        }));
+      } catch (err) {
+        console.error('Error enriching otras cajas:', err);
+        return filtradas; // Retornar sin nombres si falla el enriquecimiento
+      }
     },
     enabled: !!organizationId,
     staleTime: 30 * 1000,
