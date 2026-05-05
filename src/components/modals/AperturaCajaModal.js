@@ -40,7 +40,7 @@ const AperturaCajaModal = ({ isOpen, onClose, onAperturaExitosa }) => {
         setModoElegido('independiente');
       }
     }
-  }, [isOpen, otrasCajas.length, loadingOtras]);
+  }, [isOpen, otrasCajas, loadingOtras, montoInicialInput]);
 
   const handleSeleccionarModo = (modo) => {
     setModoElegido(modo);
