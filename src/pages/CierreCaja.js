@@ -236,9 +236,13 @@ const CierreCaja = () => {
       // que se abrió DESPUÉS de la nuestra.
       
       const rawVentasData = (rawVentasDataAll || []).filter(venta => {
+        // Si no hay apertura activa propia, no podemos filtrar por relación de tiempo, 
+        // así que incluimos la venta por defecto.
+        if (!aperturaActiva?.created_at) return true;
+
         // Si la venta tiene un employee_id que tiene su propia apertura abierta (e INDEPENDIENTE), 
         // y esa apertura es POSTERIOR a la nuestra, entonces la venta es de la otra caja.
-        const otraAperturaRelacionada = otrasAperturas.find(a => 
+        const otraAperturaRelacionada = (otrasAperturas || []).find(a => 
           (a.employee_id === venta.employee_id || a.user_id === venta.user_id) && 
           new Date(a.created_at) > new Date(aperturaActiva.created_at)
         );
