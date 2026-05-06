@@ -24,7 +24,9 @@ const CierreCaja = () => {
   const [totalPagosTotales, setTotalPagosTotales] = useState(0);
   const [totalAbonos, setTotalAbonos] = useState(0);
   const [totalDevoluciones, setTotalDevoluciones] = useState(0);
+  const [devolucionesDetalle, setDevolucionesDetalle] = useState([]);
   const [totalEgresos, setTotalEgresos] = useState(0);
+  const [egresosDetalle, setEgresosDetalle] = useState([]);
   const [totalSistema, setTotalSistema] = useState(0);
 
   // Currency inputs optimizados
@@ -216,14 +218,18 @@ const CierreCaja = () => {
         .neq('estado', 'cancelada');
 
       // LÓGICA DE FILTRADO CORREGIDA Y REFORZADA:
-      // El punto de partida SIEMPRE es la fecha de apertura de ESTA caja.
-      // Esto evita que ventas de días anteriores (si no se cerró caja ayer) se mezclen con hoy.
+      // El punto de partida es la fecha de apertura de la caja actual.
+      // Si no hay apertura propia (ej: Dueño monitoreando), usamos el último cierre como punto de partida
+      // para solo ver ventas NUEVAS que aún no han sido cerradas.
       if (aperturaActiva?.created_at) {
         ventasQuery = ventasQuery.gte('created_at', aperturaActiva.created_at);
+      } else if (hayUltioCierre) {
+        ventasQuery = ventasQuery.gt('created_at', ultimoCierre.created_at);
       } else {
-        // Solo como respaldo si algo falla, limitar a las últimas 24 horas
-        const hace24Horas = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-        ventasQuery = ventasQuery.gte('created_at', hace24Horas);
+        // Solo como respaldo total si no hay ni apertura ni cierres previos
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+        ventasQuery = ventasQuery.gte('created_at', hoy.toISOString());
       }
 
       const { data: rawVentasDataAll, error } = await ventasQuery.order('created_at', { ascending: false });
@@ -519,8 +525,10 @@ const CierreCaja = () => {
         }
 
         const { data: dataEgresos } = await egresosQuery;
-        egresosTurno = (dataEgresos || []).reduce((sum, e) => sum + parseFloat(e.monto || 0), 0);
+        const rawEgresos = dataEgresos || [];
+        egresosTurno = rawEgresos.reduce((sum, e) => sum + parseFloat(e.monto || 0), 0);
         setTotalEgresos(egresosTurno);
+        setEgresosDetalle(rawEgresos);
       } catch (eError) {
         console.warn('Error cargando egresos:', eError);
       }
@@ -530,7 +538,7 @@ const CierreCaja = () => {
       try {
         let devolucionesQuery = supabase
           .from('devoluciones')
-          .select('total_devolucion, diferencia, tipo')
+          .select('*, venta:ventas(numero_venta, items)')
           .eq('organization_id', userProfile.organization_id);
 
         if (hayUltioCierre) {
@@ -540,7 +548,9 @@ const CierreCaja = () => {
         }
 
         const { data: dataDevoluciones } = await devolucionesQuery;
-        devolucionesTurno = (dataDevoluciones || []).reduce((sum, d) => {
+        const rawDevoluciones = dataDevoluciones || [];
+        
+        devolucionesTurno = rawDevoluciones.reduce((sum, d) => {
           if (d.tipo === 'devolucion') {
             return sum + parseFloat(d.total_devolucion || 0);
           } else if (d.tipo === 'cambio' && (d.diferencia || 0) < 0) {
@@ -550,6 +560,7 @@ const CierreCaja = () => {
           return sum;
         }, 0);
         setTotalDevoluciones(devolucionesTurno);
+        setDevolucionesDetalle(rawDevoluciones);
       } catch (dError) {
         console.warn('Error cargando devoluciones:', dError);
       }
@@ -1394,6 +1405,93 @@ Generado por Crece+ 🚀
                       </motion.div>
                     );
                   })}
+                </div>
+              </div>
+            )}
+
+            {/* Sección de Devoluciones y Cambios */}
+            {devolucionesDetalle.length > 0 && (
+              <div className="devoluciones-lista" style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #e5e7eb' }}>
+                <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#dc2626', fontSize: '1rem', marginBottom: '0.75rem' }}>
+                  <AlertCircle size={18} />
+                  Devoluciones y Cambios Realizados
+                </h3>
+                <p style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.75rem' }}>
+                  Dinero que salió de caja por devoluciones de productos.
+                </p>
+                <div className="ventas-scroll" style={{ maxHeight: '250px' }}>
+                  {devolucionesDetalle.map((dev, index) => {
+                    const montoSalida = dev.tipo === 'devolucion' ? dev.total_devolucion : (dev.diferencia < 0 ? Math.abs(dev.diferencia) : 0);
+                    if (montoSalida === 0 && dev.tipo !== 'devolucion') return null;
+
+                    return (
+                      <motion.div
+                        key={dev.id}
+                        className="venta-item"
+                        style={{ borderLeft: '3px solid #dc2626', backgroundColor: '#fef2f2' }}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                      >
+                        <div className="venta-hora">{formatHora(dev.fecha || dev.created_at)}</div>
+                        <div className="venta-metodo" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <AlertCircle size={16} />
+                            <span style={{ fontWeight: 600 }}>{dev.tipo === 'devolucion' ? 'Devolución' : 'Cambio de productos'}</span>
+                          </div>
+                          <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                            Venta: #{dev.venta?.numero_venta || 'S/N'}
+                          </span>
+                          {dev.motivo && (
+                            <span style={{ fontSize: '0.75rem', fontStyle: 'italic', color: '#6b7280' }}>
+                              "{dev.motivo}"
+                            </span>
+                          )}
+                        </div>
+                        <div className="venta-total" style={{ color: '#dc2626' }}>
+                          -{formatCOP(montoSalida)}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Sección de Egresos / Gastos */}
+            {egresosDetalle.length > 0 && (
+              <div className="egresos-detalle-lista" style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #e5e7eb' }}>
+                <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#d97706', fontSize: '1rem', marginBottom: '0.75rem' }}>
+                  <TrendingDown size={18} />
+                  Egresos y Gastos del Turno
+                </h3>
+                <div className="ventas-scroll" style={{ maxHeight: '200px' }}>
+                  {egresosDetalle.map((egreso, index) => (
+                    <motion.div
+                      key={egreso.id}
+                      className="venta-item"
+                      style={{ borderLeft: '3px solid #d97706', backgroundColor: '#fffbeb' }}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                    >
+                      <div className="venta-hora">{formatHora(egreso.created_at)}</div>
+                      <div className="venta-metodo" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <TrendingDown size={16} />
+                          <span style={{ fontWeight: 600 }}>{egreso.nombre || 'Gasto'}</span>
+                        </div>
+                        {egreso.categoria && (
+                          <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                            Categoría: {egreso.categoria}
+                          </span>
+                        )}
+                      </div>
+                      <div className="venta-total" style={{ color: '#d97706' }}>
+                        -{formatCOP(egreso.monto)}
+                      </div>
+                    </motion.div>
+                  ))}
                 </div>
               </div>
             )}
