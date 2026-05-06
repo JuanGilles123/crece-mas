@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../services/api/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { useCurrencyInput } from '../hooks/useCurrencyInput';
-import { Calculator, TrendingUp, DollarSign, ShoppingCart, AlertCircle, CheckCircle, XCircle, Save, Banknote, CreditCard, Smartphone, Share2, Download, Receipt, Lock, UserCircle } from 'lucide-react';
+import { Calculator, TrendingUp, TrendingDown, DollarSign, ShoppingCart, AlertCircle, CheckCircle, XCircle, Save, Banknote, CreditCard, Smartphone, Share2, Download, Receipt, Lock, UserCircle } from 'lucide-react';
 import { getEmployeeSession } from '../utils/employeeSession';
 import { enqueueCierre, getPendingVentas } from '../utils/offlineQueue';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
@@ -23,6 +23,8 @@ const CierreCaja = () => {
   const [totalPagosCredito, setTotalPagosCredito] = useState(0);
   const [totalPagosTotales, setTotalPagosTotales] = useState(0);
   const [totalAbonos, setTotalAbonos] = useState(0);
+  const [totalDevoluciones, setTotalDevoluciones] = useState(0);
+  const [totalEgresos, setTotalEgresos] = useState(0);
   const [totalSistema, setTotalSistema] = useState(0);
 
   // Currency inputs optimizados
@@ -498,18 +500,67 @@ const CierreCaja = () => {
         return acc;
       }, { efectivo: 0, transferencias: 0, tarjeta: 0, mixto: 0 });
 
+      // Cargar Egresos (Gastos Variables) del turno
+      let egresosTurno = 0;
+      try {
+        let egresosQuery = supabase
+          .from('gastos_variables')
+          .select('monto')
+          .eq('organization_id', userProfile.organization_id);
+
+        if (hayUltioCierre) {
+          egresosQuery = egresosQuery.gt('created_at', ultimoCierre.created_at);
+        } else if (aperturaActiva?.created_at) {
+          egresosQuery = egresosQuery.gte('created_at', aperturaActiva.created_at);
+        }
+
+        const { data: dataEgresos } = await egresosQuery;
+        egresosTurno = (dataEgresos || []).reduce((sum, e) => sum + parseFloat(e.monto || 0), 0);
+        setTotalEgresos(egresosTurno);
+      } catch (eError) {
+        console.warn('Error cargando egresos:', eError);
+      }
+
+      // Cargar Devoluciones del turno
+      let devolucionesTurno = 0;
+      try {
+        let devolucionesQuery = supabase
+          .from('devoluciones')
+          .select('total_devolucion, diferencia, tipo')
+          .eq('organization_id', userProfile.organization_id);
+
+        if (hayUltioCierre) {
+          devolucionesQuery = devolucionesQuery.gt('fecha', ultimoCierre.created_at);
+        } else if (aperturaActiva?.created_at) {
+          devolucionesQuery = devolucionesQuery.gte('fecha', aperturaActiva.created_at);
+        }
+
+        const { data: dataDevoluciones } = await devolucionesQuery;
+        devolucionesTurno = (dataDevoluciones || []).reduce((sum, d) => {
+          if (d.tipo === 'devolucion') {
+            return sum + parseFloat(d.total_devolucion || 0);
+          } else if (d.tipo === 'cambio' && (d.diferencia || 0) < 0) {
+            // Si la diferencia es negativa, devolvimos dinero al cliente
+            return sum + Math.abs(parseFloat(d.diferencia || 0));
+          }
+          return sum;
+        }, 0);
+        setTotalDevoluciones(devolucionesTurno);
+      } catch (dError) {
+        console.warn('Error cargando devoluciones:', dError);
+      }
+
       // Sumar los pagos de créditos al desglose (estos SÍ cuentan en el cierre porque son dinero recibido)
-      // Nota: desglosePagosCredito, totalPagosCredito ya fueron calculados arriba
       const desgloseFinal = {
-        efectivo: desglose.efectivo + desglosePagosCredito.efectivo,
+        efectivo: (desglose.efectivo + desglosePagosCredito.efectivo) - (egresosTurno + devolucionesTurno),
         transferencias: desglose.transferencias + desglosePagosCredito.transferencias,
         tarjeta: desglose.tarjeta + desglosePagosCredito.tarjeta,
         mixto: desglose.mixto
       };
 
-      // Actualizar el total del sistema para incluir los pagos de créditos
-      const totalConPagosCredito = total + totalPagosCredito;
-      setTotalSistema(totalConPagosCredito);
+      // Actualizar el total del sistema para incluir los pagos de créditos y restar egresos/devoluciones
+      const totalConMovimientos = (total + totalPagosCredito) - (egresosTurno + devolucionesTurno);
+      setTotalSistema(totalConMovimientos);
       setDesgloseSistema(desgloseFinal);
 
       // Cargar cotizaciones por separado (solo informativas, no cuentan en totales)
@@ -602,12 +653,15 @@ const CierreCaja = () => {
     const resumenSistema = puedeVerEsperado ? `
 📊 RESUMEN REGISTRADO EN SISTEMA:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-💵 Efectivo registrado en sistema: ${formatCOP(desgloseSistema.efectivo)}
-📲 Transferencias registradas en sistema: ${formatCOP(desgloseSistema.transferencias)}
-💳 Tarjeta registrada en sistema: ${formatCOP(desgloseSistema.tarjeta)}${desgloseSistema.mixto > 0 ? `
-💰 Mixto registrado en sistema: ${formatCOP(desgloseSistema.mixto)}` : ''}
+💵 Efectivo en ventas: ${formatCOP(desgloseSistema.efectivo + totalEgresos + totalDevoluciones)}
+📲 Transferencias: ${formatCOP(desgloseSistema.transferencias)}
+💳 Tarjeta: ${formatCOP(desgloseSistema.tarjeta)}${desgloseSistema.mixto > 0 ? `
+💰 Mixto: ${formatCOP(desgloseSistema.mixto)}` : ''}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TOTAL REGISTRADO EN SISTEMA: ${formatCOP(totalSistema)}
+💸 EGRESOS/GASTOS: -${formatCOP(totalEgresos)}
+🔄 DEVOLUCIONES: -${formatCOP(totalDevoluciones)}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TOTAL NETO ESPERADO: ${formatCOP(totalSistema)}
 ` : '';
 
     const montoInicialTexto = puedeVerEsperado ? `
@@ -1121,23 +1175,49 @@ Generado por Crece+ 🚀
               <h3>Desglose por Método</h3>
               <div className="metodo-item">
                 <Banknote size={18} />
-                <span>Efectivo registrado en sistema:</span>
+                <span>Ventas en Efectivo:</span>
+                <strong>{formatCOP(desgloseSistema.efectivo + totalEgresos + totalDevoluciones)}</strong>
+              </div>
+              
+              {(totalEgresos > 0 || totalDevoluciones > 0) && (
+                <div style={{ padding: '0.5rem 0', borderBottom: '1px dashed #e2e8f0', marginBottom: '0.5rem' }}>
+                  {totalEgresos > 0 && (
+                    <div className="metodo-item" style={{ color: '#dc2626', fontSize: '0.85rem' }}>
+                      <TrendingDown size={14} />
+                      <span>Egresos/Gastos:</span>
+                      <strong>-{formatCOP(totalEgresos)}</strong>
+                    </div>
+                  )}
+                  {totalDevoluciones > 0 && (
+                    <div className="metodo-item" style={{ color: '#dc2626', fontSize: '0.85rem' }}>
+                      <AlertCircle size={14} />
+                      <span>Devoluciones:</span>
+                      <strong>-{formatCOP(totalDevoluciones)}</strong>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="metodo-item" style={{ background: 'rgba(0,0,0,0.03)', padding: '0.5rem', borderRadius: '8px' }}>
+                <Banknote size={18} />
+                <span>Efectivo Neto Esperado:</span>
                 <strong>{formatCOP(desgloseSistema.efectivo)}</strong>
               </div>
+
               <div className="metodo-item">
                 <Smartphone size={18} />
-                <span>Transferencias registradas en sistema:</span>
+                <span>Transferencias:</span>
                 <strong>{formatCOP(desgloseSistema.transferencias)}</strong>
               </div>
               <div className="metodo-item">
                 <CreditCard size={18} />
-                <span>Tarjeta registrada en sistema:</span>
+                <span>Tarjeta:</span>
                 <strong>{formatCOP(desgloseSistema.tarjeta)}</strong>
               </div>
               {desgloseSistema.mixto > 0 && (
                 <div className="metodo-item">
                   <DollarSign size={18} />
-                  <span>Mixto registrado en sistema:</span>
+                  <span>Mixto:</span>
                   <strong>{formatCOP(desgloseSistema.mixto)}</strong>
                 </div>
               )}
