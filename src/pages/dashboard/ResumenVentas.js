@@ -8,6 +8,7 @@ import { useVentas } from '../../hooks/useVentas';
 import { useProductos } from '../../hooks/useProductos';
 import { useTeamMembers } from '../../hooks/useTeam';
 import { useClientes } from '../../hooks/useClientes';
+import { supabase } from '../../services/api/supabaseClient';
 import { 
   BarChart3, 
   Download, 
@@ -151,71 +152,103 @@ const ResumenVentas = () => {
       .join(' ');
   }, []);
 
-  // Obtener vendedores disponibles
-  const vendedoresDisponibles = useMemo(() => {
-    return miembrosEquipo.filter(m => m.is_employee || m.user_id).map(m => ({
-      id: m.id,
-      userId: m.user_id,
-      nombre: m.nombre || m.user_profiles?.full_name || m.employee_name || 'Sin nombre',
-      tipo: m.is_employee ? 'empleado' : 'usuario'
-    }));
-  }, [miembrosEquipo]);
+  // --- RESOLUCIÓN DE NOMBRES DE VENDEDOR ---
+  // Estrategia: fetch directo a la BD por los IDs exactos encontrados en ventas.
+  // Esto es más fiable que depender de miembrosEquipo.
+  const [nombresEmpleados, setNombresEmpleados] = useState({}); // employee_id -> nombre
+  const [nombresUsuarios, setNombresUsuarios] = useState({});   // user_id -> nombre
 
-  // Lista de vendedores normalizados para el filtro (agrupados)
-  // IMPORTANTE: Esta debe estar definida antes de filtrarVentas
-  const vendedoresDisponiblesNormalizados = useMemo(() => {
-    const vendedoresMap = new Map();
-    
-    vendedoresDisponibles.forEach(vendedor => {
-      const nombreNormalizado = normalizarNombreVendedor(vendedor.nombre);
-      
-      // Si ya existe un vendedor con este nombre normalizado, usar el primero
-      if (!vendedoresMap.has(nombreNormalizado)) {
-        vendedoresMap.set(nombreNormalizado, {
-          id: nombreNormalizado,
-          nombre: nombreNormalizado,
-          // Guardar todos los IDs originales (team_member.id y user_id) que corresponden a este nombre
-          idsOriginales: [vendedor.id, vendedor.userId].filter(Boolean).map(String)
-        });
-      } else {
-        // Agregar los IDs originales a la lista si no están ya incluidos
-        const existente = vendedoresMap.get(nombreNormalizado);
-        [vendedor.id, vendedor.userId].forEach(id => {
-          if (id && !existente.idsOriginales.includes(String(id))) {
-            existente.idsOriginales.push(String(id));
+  useEffect(() => {
+    if (!ventas.length) return;
+
+    // Recolectar IDs únicos de empleados
+    const empIds = [...new Set(ventas.map(v => v.employee_id).filter(Boolean).map(String))];
+    if (empIds.length > 0) {
+      supabase
+        .from('team_members')
+        .select('id, employee_name, user_id')
+        .in('id', empIds)
+        .then(({ data }) => {
+          if (data) {
+            // Para cada miembro, buscar su nombre: primero employee_name,
+            // si no tiene (es un usuario con login), buscar en miembrosEquipo
+            const map = {};
+            data.forEach(m => {
+              const nombreDeBD = m.employee_name;
+              if (nombreDeBD) {
+                map[String(m.id)] = nombreDeBD;
+              } else {
+                // Buscar en miembrosEquipo (ya tienen el full_name del perfil)
+                const miembro = miembrosEquipo.find(eq => String(eq.id) === String(m.id));
+                map[String(m.id)] = miembro?.nombre || miembro?.user_profiles?.full_name || 'Empleado';
+              }
+            });
+            setNombresEmpleados(map);
           }
         });
-      }
-    });
-    
-    return Array.from(vendedoresMap.values()).sort((a, b) => 
-      a.nombre.localeCompare(b.nombre)
-    );
-  }, [vendedoresDisponibles, normalizarNombreVendedor]);
+    }
+
+    // Recolectar IDs únicos de usuarios
+    const userIds = [...new Set(ventas.map(v => v.user_id).filter(Boolean).map(String))];
+    if (userIds.length > 0) {
+      supabase
+        .from('user_profiles')
+        .select('user_id, full_name')
+        .in('user_id', userIds)
+        .then(({ data }) => {
+          if (data) {
+            const map = {};
+            data.forEach(p => { map[String(p.user_id)] = p.full_name || 'Usuario'; });
+            setNombresUsuarios(map);
+          }
+        });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ventas.length]);
 
   const obtenerNombreVendedor = useCallback((venta) => {
     if (!venta) return 'Vendedor desconocido';
-    
-    // Si la venta ya tiene el nombre procesado por el hook useVentas
-    if (venta.vendedor_nombre || venta.usuario_nombre) {
-      return normalizarNombreVendedor(venta.vendedor_nombre || venta.usuario_nombre);
+
+    // 1. Tiene employee_id → fetch directo de team_members
+    if (venta.employee_id) {
+      const nombre = nombresEmpleados[String(venta.employee_id)];
+      if (nombre) return normalizarNombreVendedor(nombre);
+      // fallback: buscar en miembrosEquipo
+      const miembro = miembrosEquipo.find(m => String(m.id) === String(venta.employee_id));
+      if (miembro) return normalizarNombreVendedor(miembro.employee_name || miembro.nombre || 'Empleado');
     }
 
-    // 1.5. "Quemar" el dato: si la descripción contiene el nombre del vendedor, usarlo
-    if (venta.descripcion && venta.descripcion.startsWith('Vendedor: ')) {
-      const nombreQuemado = venta.descripcion.replace('Vendedor: ', '');
-      if (nombreQuemado) return normalizarNombreVendedor(nombreQuemado);
+    // 2. Tiene user_id → fetch directo de user_profiles
+    if (venta.user_id) {
+      const nombre = nombresUsuarios[String(venta.user_id)];
+      if (nombre) return normalizarNombreVendedor(nombre);
+      // fallback: owner actual
+      if (userProfile && String(venta.user_id) === String(userProfile.user_id)) {
+        return normalizarNombreVendedor(userProfile.full_name || 'Administrador');
+      }
     }
 
-    // Si no, intentar encontrarlo en los miembros del equipo
-    const vendedor = vendedoresDisponibles.find(v => 
-      (venta.employee_id && String(v.id) === String(venta.employee_id)) || 
-      (!venta.employee_id && venta.user_id && String(v.userId) === String(venta.user_id))
-    );
-    
-    const nombreOriginal = vendedor?.nombre || vendedor?.employee_name || 'Vendedor desconocido';
-    return normalizarNombreVendedor(nombreOriginal);
-  }, [vendedoresDisponibles, normalizarNombreVendedor]);
+    return 'Vendedor desconocido';
+  }, [nombresEmpleados, nombresUsuarios, normalizarNombreVendedor, miembrosEquipo, userProfile]);
+
+  // Lista de vendedores únicos para los filtros (construida desde ventas reales)
+  const vendedoresDisponibles = useMemo(() => {
+    const nombresVistos = new Set();
+    const lista = [];
+    ventas.forEach(v => {
+      let nombre = null;
+      if (v.employee_id && nombresEmpleados[String(v.employee_id)]) {
+        nombre = normalizarNombreVendedor(nombresEmpleados[String(v.employee_id)]);
+      } else if (v.user_id && nombresUsuarios[String(v.user_id)]) {
+        nombre = normalizarNombreVendedor(nombresUsuarios[String(v.user_id)]);
+      }
+      if (nombre && !nombresVistos.has(nombre)) {
+        nombresVistos.add(nombre);
+        lista.push({ id: v.employee_id || v.user_id, nombre });
+      }
+    });
+    return lista.sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }, [ventas, nombresEmpleados, nombresUsuarios, normalizarNombreVendedor]);
 
   // Extraer datos reales para filtros
   const categoriasDisponibles = useMemo(() => {
@@ -345,11 +378,13 @@ const ResumenVentas = () => {
       resultado = resultado.filter(venta => new Date(venta.created_at) <= fechaFin);
     }
 
-    // Filtro de categoría multiselección
+    // Filtro de categoría multiselección (Filtrado a nivel de ITEM para precisión)
     if (filtros.categoria.length > 0) {
-      resultado = resultado.filter(venta => {
-        if (!Array.isArray(venta.items)) return false;
-        return venta.items.some(item => {
+      resultado = resultado.map(venta => {
+        if (!Array.isArray(venta.items)) return null;
+        
+        // Filtrar solo los items que pertenecen a las categorías seleccionadas
+        const itemsFiltrados = venta.items.filter(item => {
           const prod = productos.find(p => 
             p.id === (item.id || item.producto_id) || 
             (item.codigo && p.codigo === item.codigo) ||
@@ -358,7 +393,19 @@ const ResumenVentas = () => {
           const cat = prod?.metadata?.categoria || 'Sin categoría';
           return filtros.categoria.includes(cat);
         });
-      });
+
+        if (itemsFiltrados.length === 0) return null;
+
+        // Si la venta tiene items de la categoría, creamos una "venta parcial"
+        // para que las métricas y tablas solo sumen lo correspondiente
+        const nuevoTotal = itemsFiltrados.reduce((acc, it) => acc + (Number(it.subtotal) || (Number(it.precio) * Number(it.cantidad))), 0);
+        
+        return {
+          ...venta,
+          items: itemsFiltrados,
+          total: nuevoTotal
+        };
+      }).filter(v => v !== null);
     }
 
     // Filtro de vendedor multiselección
@@ -385,7 +432,7 @@ const ResumenVentas = () => {
     }
 
     return resultado;
-  }, [ventas, filtros, productos, vendedoresDisponiblesNormalizados, normalizarMetodoPago]);
+  }, [ventas, filtros, productos, normalizarMetodoPago, obtenerNombreVendedor]);
 
   const filtrarVentasConRango = useCallback((fechaInicio, fechaFin) => {
     let ventasFiltradas = ventas;
@@ -408,51 +455,40 @@ const ResumenVentas = () => {
       );
     }
 
-    if (filtros.categoria !== 'todas') {
+    // Filtro de categoría multiselección (No es necesario filtrar aquí si ya se hizo arriba, 
+    // pero mantenemos consistencia por si esta función se usa fuera de ventasFiltradas)
+    if (filtros.categoria.length > 0) {
       ventasFiltradas = ventasFiltradas.filter(venta => {
         if (!venta.items || !Array.isArray(venta.items)) return false;
         return venta.items.some(item => {
-          const producto = productos.find(p => p.id === item.id || p.codigo === item.codigo);
-          return producto?.metadata?.categoria === filtros.categoria;
+          const producto = productos.find(p => p.id === (item.id || item.producto_id) || p.codigo === item.codigo);
+          const cat = producto?.metadata?.categoria || 'Sin categoría';
+          return filtros.categoria.includes(cat);
         });
       });
     }
 
-    if (filtros.vendedor !== 'todos') {
-      const vendedorSeleccionado = vendedoresDisponiblesNormalizados.find(
-        v => v.id === filtros.vendedor
-      );
-      if (vendedorSeleccionado) {
-        ventasFiltradas = ventasFiltradas.filter(venta =>
-          (venta.employee_id && vendedorSeleccionado.idsOriginales.includes(String(venta.employee_id))) || 
-          (!venta.employee_id && venta.user_id && vendedorSeleccionado.idsOriginales.includes(String(venta.user_id)))
-        );
-      }
-    }
-
-    if (filtros.metodoPago !== 'todos') {
+    if (filtros.vendedor.length > 0) {
       ventasFiltradas = ventasFiltradas.filter(venta => {
-        if (!venta.metodo_pago) return false;
-
-        let metodoVenta = venta.metodo_pago;
-        if (metodoVenta === 'Mixto' || metodoVenta?.startsWith('Mixto (')) {
-          metodoVenta = 'Mixto';
-        }
-
-        const metodoVentaNormalizado = metodoVenta.toLowerCase().trim();
-        const filtroNormalizado = filtros.metodoPago.toLowerCase().trim();
-        return metodoVentaNormalizado === filtroNormalizado;
+        const vendedorNombre = obtenerNombreVendedor(venta);
+        return filtros.vendedor.includes(vendedorNombre);
       });
     }
 
-    if (filtros.cliente !== 'todos') {
-      ventasFiltradas = ventasFiltradas.filter(venta =>
-        venta.cliente_id === filtros.cliente
-      );
+    if (filtros.metodoPago.length > 0) {
+      ventasFiltradas = ventasFiltradas.filter(venta => {
+        if (!venta.metodo_pago) return false;
+        const metodoNorm = normalizarMetodoPago(venta.metodo_pago);
+        return filtros.metodoPago.includes(metodoNorm);
+      });
+    }
+
+    if (filtros.cliente.length > 0) {
+      ventasFiltradas = ventasFiltradas.filter(venta => filtros.cliente.includes(venta.cliente_id));
     }
 
     return ventasFiltradas;
-  }, [ventas, filtros, productos, vendedoresDisponiblesNormalizados]);
+  }, [ventas, filtros, productos, obtenerNombreVendedor, normalizarMetodoPago]);
 
   const construirArchivoVentas = (ventasOrigen, etiqueta) => {
     if (!ventasOrigen || ventasOrigen.length === 0) {
@@ -565,31 +601,34 @@ const ResumenVentas = () => {
     const productosVendidos = {};
 
     ventasFiltradas.forEach(venta => {
-      if (!Array.isArray(venta.items)) return;
-      venta.items.forEach(item => {
+      let itemsArr = [];
+      try {
+        itemsArr = Array.isArray(venta.items) ? venta.items : JSON.parse(venta.items || '[]');
+      } catch (e) {
+        itemsArr = [];
+      }
+
+      if (!Array.isArray(itemsArr)) return;
+
+      itemsArr.forEach(item => {
         const productoId = item.id || item.producto_id;
         const codigo = item.codigo;
 
-        // Si hay filtro de categoría, ignorar items que no sean de esa categoría
-        if (filtros.categoria !== 'todas') {
-          const prod = productos.find(p => p.id === productoId || p.id === item.producto_id || p.codigo === codigo);
-          if (prod?.metadata?.categoria !== filtros.categoria) return;
-        }
-
-        const cantidad = item.qty || 1;
+        const cantidad = item.qty || item.cantidad || 1;
         const precioVenta = parseFloat(item.precio_venta || item.precio || 0);
         const precioCompra = parseFloat(item.precio_compra || 0);
         const total = precioVenta * cantidad;
         const costo = precioCompra * cantidad;
         const ganancia = total - costo;
 
-        if (productosVendidos[productoId]) {
-          productosVendidos[productoId].cantidad += cantidad;
-          productosVendidos[productoId].total += total;
-          productosVendidos[productoId].costo += costo;
-          productosVendidos[productoId].ganancia += ganancia;
+        const key = productoId || item.nombre || 'unknown';
+        if (productosVendidos[key]) {
+          productosVendidos[key].cantidad += cantidad;
+          productosVendidos[key].total += total;
+          productosVendidos[key].costo += costo;
+          productosVendidos[key].ganancia += ganancia;
         } else {
-          productosVendidos[productoId] = {
+          productosVendidos[key] = {
             id: productoId,
             codigo,
             nombre: item.nombre || 'Producto desconocido',
@@ -605,7 +644,7 @@ const ResumenVentas = () => {
     return Object.values(productosVendidos)
       .sort((a, b) => b.cantidad - a.cantidad)
       .slice(0, 10);
-  }, [ventasFiltradas, filtros.categoria, productos]);
+  }, [ventasFiltradas]);
 
   const obtenerVariantesMasVendidas = useMemo(() => {
     const variantesMap = {};
@@ -842,13 +881,10 @@ const ResumenVentas = () => {
       venta.items.forEach(item => {
         const productoId = item.id || item.producto_id;
         const codigo = item.codigo;
-        if (filtros.categoria !== 'todas') {
-          const prod = productos.find(p => p.id === productoId || p.codigo === codigo);
-          if (prod?.metadata?.categoria !== filtros.categoria) return;
-        }
+        // Eliminado chequeo legacy que bloqueaba la visualización
         const prod = productos.find(p => p.id === productoId || p.codigo === codigo);
         const categoria = prod?.metadata?.categoria || 'Sin categoría';
-        const qty = item.qty || 1;
+        const qty = item.qty || item.cantidad || 1;
         const pv = parseFloat(item.precio_venta || item.precio || 0);
         const pc = parseFloat(item.precio_compra || 0);
         const key = productoId || item.nombre || 'unknown';
@@ -862,7 +898,7 @@ const ResumenVentas = () => {
       });
     });
     return Object.values(map).sort((a, b) => b.cantidad - a.cantidad);
-  }, [ventasFiltradas, filtros.categoria, productos]);
+  }, [ventasFiltradas, productos]);
 
   // Detalle por categoría con sus productos
   const categoriasDetalle = useMemo(() => {
@@ -1209,9 +1245,12 @@ const ResumenVentas = () => {
               >
                 <option value="">+ Agregar vendedor</option>
                 <option value="todos" onClick={() => setFiltros(prev => ({ ...prev, vendedor: [] }))}>[Limpiar todos]</option>
-                {vendedoresDisponiblesNormalizados.map(v => (
-                  <option key={v.id} value={v.nombre}>{v.nombre}</option>
-                ))}
+                {vendedoresDisponibles.map(v => {
+                  const nombreNorm = normalizarNombreVendedor(v.nombre);
+                  return (
+                    <option key={v.id || v.userId || nombreNorm} value={nombreNorm}>{nombreNorm}</option>
+                  );
+                })}
               </select>
             </div>
 
@@ -1277,29 +1316,6 @@ const ResumenVentas = () => {
           </div>
         </div>
 
-        {/* Botón para limpiar filtros */}
-        {(filtros.categoria !== 'todas' || filtros.vendedor !== 'todos' || 
-          filtros.metodoPago !== 'todos' || filtros.cliente !== 'todos' || 
-          filtroFechaRapida !== 'todos') && (
-          <button 
-            className="resumen-ventas-btn resumen-ventas-btn-outline"
-            onClick={() => {
-              setFiltroFechaRapida('todos');
-              setFiltros({
-                fechaInicio: '',
-                fechaFin: '',
-                categoria: 'todas',
-                vendedor: 'todos',
-                metodoPago: 'todos',
-                cliente: 'todos'
-              });
-            }}
-          >
-            <X size={16} />
-            Limpiar
-          </button>
-        )}
-      </div>
 
       {/* Métricas rápidas */}
       <motion.div className="resumen-ventas-metricas" variants={itemVariants}>

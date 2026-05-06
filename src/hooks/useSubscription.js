@@ -71,10 +71,30 @@ export const useSubscription = () => {
             status: 'active'
           });
         } else {
+          // Verificar si el período ya venció y superó los 3 días de gracia
+          const periodEnd = subscriptionData.current_period_end;
+          let isGracePeriodExpired = false;
+          if (periodEnd) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const endDate = new Date(periodEnd);
+            endDate.setHours(0, 0, 0, 0);
+            const diffDays = Math.round((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            // Si venció hace más de 3 días, degradar al plan gratis
+            isGracePeriodExpired = diffDays < -3;
+          }
+
+          const effectivePlan = isGracePeriodExpired
+            ? { slug: 'free', name: 'Gratis' }
+            : planData;
+
           // Combinar los datos
           const mappedData = {
             ...subscriptionData,
-            plan: planData
+            plan: effectivePlan,
+            originalPlan: planData, // siempre guardar el plan original
+            isGracePeriodExpired,
+            degradedFromPlan: isGracePeriodExpired ? planData : null,
           };
           
           setSubscription(mappedData);

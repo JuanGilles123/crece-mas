@@ -14,7 +14,7 @@ import InventarioStats from '../../components/inventario/InventarioStats';
 import InventarioFilters from '../../components/inventario/InventarioFilters';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../services/api/supabaseClient';
-import { List, Grid3X3, PackagePlus, Search, RefreshCw, Download, CheckSquare, X } from 'lucide-react';
+import { List, Grid3X3, PackagePlus, Search, RefreshCw, Download, CheckSquare, X, Edit3 } from 'lucide-react';
 import { useProductos, useEliminarProducto } from '../../hooks/useProductos';
 import EntradaInventarioModal from '../../components/modals/EntradaInventarioModal';
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
@@ -57,6 +57,10 @@ const Inventario = () => {
   const [filters, setFilters] = useState({});
   const [seleccionados, setSeleccionados] = useState([]);
   const [eliminandoSeleccionados, setEliminandoSeleccionados] = useState(false);
+  const [edicionMasivaOpen, setEdicionMasivaOpen] = useState(false);
+  const [campoEdicion, setCampoEdicion] = useState('categoria');
+  const [valoresEdicion, setValoresEdicion] = useState({});
+  const [guardandoMasivo, setGuardandoMasivo] = useState(false);
 
   // Suponiendo que el usuario tiene moneda en user.user_metadata.moneda
   const moneda = user?.user_metadata?.moneda || 'COP';
@@ -601,7 +605,12 @@ const Inventario = () => {
         if (filterType === 'multi') {
           // Selección múltiple - el producto debe estar en la lista
           if (!Array.isArray(filterValue) || filterValue.length === 0) continue;
-          if (!filterValue.includes(productValue)) return false;
+          const incluyeSinCat = filterValue.includes('__sin_categoria__');
+          const estaVacio = productValue === null || productValue === undefined || productValue === '';
+          const valoresCat = filterValue.filter(v => v !== '__sin_categoria__');
+          const coincidenCat = valoresCat.includes(productValue);
+          if (!incluyeSinCat && !coincidenCat) return false;
+          if (incluyeSinCat && !estaVacio && !coincidenCat) return false;
         } else if (filterType === 'value') {
           if (fieldId === 'created_at' || fieldId === 'fecha_vencimiento') {
             // Filtros de fecha con opciones rápidas
@@ -837,6 +846,53 @@ const Inventario = () => {
     } finally {
       setEliminandoSeleccionados(false);
     }
+  };
+
+  // Edición masiva
+  const handleGuardarEdicionMasiva = async () => {
+    const ids = Object.keys(valoresEdicion).filter(id => seleccionados.includes(id));
+    if (ids.length === 0) { toast.error('No hay cambios para guardar'); return; }
+    setGuardandoMasivo(true);
+    try {
+      for (const id of ids) {
+        const nuevoValor = valoresEdicion[id];
+        const producto = productos.find(p => p.id === id);
+        if (!producto) continue;
+        let updatePayload = {};
+        if (['precio_venta', 'precio_compra', 'stock'].includes(campoEdicion)) {
+          updatePayload[campoEdicion] = Number(nuevoValor) || 0;
+        } else {
+          const metadataActual = typeof producto.metadata === 'string'
+            ? JSON.parse(producto.metadata || '{}')
+            : (producto.metadata || {});
+          updatePayload.metadata = { ...metadataActual, [campoEdicion]: nuevoValor };
+        }
+        await supabase.from('productos').update(updatePayload).eq('id', id);
+      }
+      toast.success(`${ids.length} productos actualizados`);
+      setEdicionMasivaOpen(false);
+      setValoresEdicion({});
+      setSeleccionados([]);
+      refetch();
+    } catch (err) {
+      console.error(err);
+      toast.error('Error al guardar cambios masivos');
+    } finally {
+      setGuardandoMasivo(false);
+    }
+  };
+
+  const abrirEdicionMasiva = () => {
+    const init = {};
+    seleccionados.forEach(id => {
+      const p = productos.find(pr => pr.id === id);
+      if (!p) return;
+      const meta = typeof p.metadata === 'string' ? JSON.parse(p.metadata || '{}') : (p.metadata || {});
+      init[id] = ['precio_venta', 'precio_compra', 'stock'].includes(campoEdicion)
+        ? (p[campoEdicion] ?? '') : (meta[campoEdicion] ?? '');
+    });
+    setValoresEdicion(init);
+    setEdicionMasivaOpen(true);
   };
 
   // Eliminar producto
@@ -1083,6 +1139,16 @@ const Inventario = () => {
                   {eliminandoSeleccionados ? 'Eliminando...' : `Eliminar seleccionados (${seleccionados.length})`}
                 </button>
               )}
+              {seleccionados.length > 0 && (hasPermission('inventario.edit') || ['owner', 'admin'].includes(userProfile?.role)) && (
+                <button
+                  className="inventario-btn inventario-btn-secondary"
+                  onClick={abrirEdicionMasiva}
+                  title="Editar en masa los productos seleccionados"
+                >
+                  <Edit3 size={18} />
+                  Editar masivo ({seleccionados.length})
+                </button>
+              )}
               <button className="inventario-btn inventario-btn-secondary inventario-btn-view-toggle" onClick={() => setModoLista(m => !m)}>
                 {modoLista ? <Grid3X3 size={18} /> : <List size={18} />}
               </button>
@@ -1292,6 +1358,93 @@ const Inventario = () => {
           }
         }}
       />
+
+      {/* MODAL DE EDICIÓN MASIVA */}
+      {edicionMasivaOpen && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:'1rem'}}>
+          <div style={{background:'var(--bg-primary,#1a1a2e)',borderRadius:'16px',width:'100%',maxWidth:'720px',maxHeight:'85vh',display:'flex',flexDirection:'column',boxShadow:'0 24px 60px rgba(0,0,0,0.5)',border:'1px solid var(--border-color,#2a2a4a)'}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'1.25rem 1.5rem',borderBottom:'1px solid var(--border-color,#2a2a4a)'}}>
+              <div>
+                <h2 style={{margin:0,fontSize:'1.1rem',fontWeight:700,color:'var(--text-primary,#fff)'}}>Edición Masiva</h2>
+                <p style={{margin:0,fontSize:'0.8rem',color:'var(--text-secondary,#aaa)',marginTop:'2px'}}>{seleccionados.length} productos seleccionados</p>
+              </div>
+              <button onClick={() => setEdicionMasivaOpen(false)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-secondary,#aaa)',padding:'4px'}}><X size={20} /></button>
+            </div>
+            <div style={{padding:'1rem 1.5rem',borderBottom:'1px solid var(--border-color,#2a2a4a)',display:'flex',alignItems:'center',gap:'1rem',flexWrap:'wrap'}}>
+              <label style={{color:'var(--text-secondary,#aaa)',fontSize:'0.85rem',fontWeight:600,whiteSpace:'nowrap'}}>Campo a editar:</label>
+              <select
+                value={campoEdicion}
+                onChange={e => {
+                  const campo = e.target.value;
+                  setCampoEdicion(campo);
+                  const init = {};
+                  seleccionados.forEach(id => {
+                    const p = productos.find(pr => pr.id === id);
+                    if (!p) return;
+                    const meta = typeof p.metadata === 'string' ? JSON.parse(p.metadata || '{}') : (p.metadata || {});
+                    init[id] = ['precio_venta','precio_compra','stock'].includes(campo) ? (p[campo] ?? '') : (meta[campo] ?? '');
+                  });
+                  setValoresEdicion(init);
+                }}
+                style={{background:'var(--bg-secondary,#0f0f23)',color:'var(--text-primary,#fff)',border:'1px solid var(--border-color,#2a2a4a)',borderRadius:'8px',padding:'8px 12px',fontSize:'0.875rem',cursor:'pointer',flex:1,minWidth:'160px'}}
+              >
+                <option value="categoria">Categoría</option>
+                <option value="precio_venta">Precio de Venta</option>
+                <option value="precio_compra">Precio de Compra</option>
+                <option value="stock">Stock</option>
+                <option value="marca">Marca</option>
+                <option value="descripcion">Descripción</option>
+                <option value="color">Color</option>
+                <option value="material">Material</option>
+              </select>
+              <button
+                onClick={() => {
+                  if (seleccionados.length === 0) return;
+                  const primerValor = valoresEdicion[seleccionados[0]] || '';
+                  const masivo = {};
+                  seleccionados.forEach(id => { masivo[id] = primerValor; });
+                  setValoresEdicion(masivo);
+                  toast.success('Valor del primero aplicado a todos');
+                }}
+                style={{background:'var(--bg-secondary,#0f0f23)',color:'var(--accent,#7c3aed)',border:'1px solid var(--accent,#7c3aed)',borderRadius:'8px',padding:'8px 14px',fontSize:'0.8rem',cursor:'pointer',whiteSpace:'nowrap',fontWeight:600}}
+              >
+                Aplicar primero a todos
+              </button>
+            </div>
+            <div style={{overflowY:'auto',flex:1,padding:'0.5rem 0'}}>
+              {seleccionados.map((id, index) => {
+                const producto = productos.find(p => p.id === id);
+                if (!producto) return null;
+                const esNumero = ['precio_venta','precio_compra','stock'].includes(campoEdicion);
+                return (
+                  <div key={id} style={{display:'flex',alignItems:'center',gap:'12px',padding:'10px 1.5rem',borderBottom:'1px solid var(--border-color,#1e1e3a)',background:index%2===0?'transparent':'rgba(255,255,255,0.02)'}}>
+                    <span style={{color:'var(--text-secondary,#aaa)',fontSize:'0.75rem',minWidth:'20px',textAlign:'right'}}>{index+1}</span>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{color:'var(--text-primary,#fff)',fontSize:'0.85rem',fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{producto.nombre}</div>
+                      <div style={{color:'var(--text-secondary,#aaa)',fontSize:'0.72rem'}}>{producto.codigo||'Sin código'}</div>
+                    </div>
+                    <input
+                      type={esNumero?'number':'text'}
+                      value={valoresEdicion[id]??''}
+                      onChange={e=>setValoresEdicion(prev=>({...prev,[id]:e.target.value}))}
+                      placeholder={`Nuevo ${campoEdicion}...`}
+                      style={{background:'var(--bg-secondary,#0f0f23)',color:'var(--text-primary,#fff)',border:'1px solid var(--border-color,#2a2a4a)',borderRadius:'8px',padding:'7px 12px',fontSize:'0.85rem',width:'200px',outline:'none'}}
+                      onFocus={e=>e.target.style.borderColor='var(--accent,#7c3aed)'}
+                      onBlur={e=>e.target.style.borderColor='var(--border-color,#2a2a4a)'}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{padding:'1rem 1.5rem',borderTop:'1px solid var(--border-color,#2a2a4a)',display:'flex',justifyContent:'flex-end',gap:'12px'}}>
+              <button onClick={()=>setEdicionMasivaOpen(false)} style={{background:'none',color:'var(--text-secondary,#aaa)',border:'1px solid var(--border-color,#2a2a4a)',borderRadius:'8px',padding:'9px 20px',cursor:'pointer',fontSize:'0.875rem'}}>Cancelar</button>
+              <button onClick={handleGuardarEdicionMasiva} disabled={guardandoMasivo} style={{background:'var(--accent,#7c3aed)',color:'#fff',border:'none',borderRadius:'8px',padding:'9px 24px',cursor:guardandoMasivo?'not-allowed':'pointer',fontSize:'0.875rem',fontWeight:700,opacity:guardandoMasivo?0.7:1}}>
+                {guardandoMasivo?'Guardando...':`Guardar ${seleccionados.length} productos`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

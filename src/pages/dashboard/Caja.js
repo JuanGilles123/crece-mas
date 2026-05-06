@@ -1501,7 +1501,7 @@ export default function Caja({
   };
 
   // Estado para trackear si estamos editando una cotización existente
-  const [cotizacionId, setCotizacionId] = useState(null);
+  const [cotizacionId, setCotizacionId] = useState(() => localStorage.getItem('cotizacionIdActivo') || null);
 
   // Estado para guardar el nombre del cliente del pedido
   const [clienteNombrePedido, setClienteNombrePedido] = useState(null);
@@ -1587,6 +1587,7 @@ export default function Caja({
           // Guardar el ID de la cotización si existe
           if (cotizacion.id) {
             setCotizacionId(cotizacion.id);
+            localStorage.setItem('cotizacionIdActivo', cotizacion.id); // persistir para sobrevivir remounts
           }
 
           // Mapear los items de la cotización al formato del carrito
@@ -2420,6 +2421,7 @@ export default function Caja({
 
         toast.success('Cotización actualizada exitosamente');
         setCotizacionId(null); // Limpiar ID después de actualizar
+        localStorage.removeItem('cotizacionIdActivo');
       } else {
         // Crear nueva cotización
         await guardarCotizacionMutation.mutateAsync(cotizacionData);
@@ -2719,6 +2721,7 @@ export default function Caja({
           // Pero al menos limpiamos el estado local para no duplicar más.
           setCotizacionId(null);
           localStorage.removeItem('cotizacionOriginal');
+          localStorage.removeItem('cotizacionIdActivo');
         }
 
         return;
@@ -2971,6 +2974,7 @@ export default function Caja({
         }
         setCotizacionId(null);
         localStorage.removeItem('cotizacionOriginal');
+        localStorage.removeItem('cotizacionIdActivo');
       }
 
       // Limpiar carrito y estados

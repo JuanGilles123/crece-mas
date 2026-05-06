@@ -160,7 +160,15 @@ const InventarioFilters = ({ productos, onFilterChange, filters }) => {
         // Si hay valores únicos (hasta 15), convertirlo en multiselect
         if (uniqueValues.length > 0 && uniqueValues.length <= 15) {
           fieldDefinition.type = 'multiselect';
-          fieldDefinition.options = uniqueValues.map(v => ({ value: v, label: v }));
+          const opts = uniqueValues.map(v => ({ value: v, label: v }));
+          // Para 'categoria', agregar opción especial "Sin categoría" si hay productos sin ella
+          if (fieldId === 'categoria') {
+            const hasSinCategoria = productos.some(p => !p.metadata?.[fieldId] || p.metadata[fieldId] === '');
+            if (hasSinCategoria) {
+              opts.unshift({ value: '__sin_categoria__', label: 'Sin categoría' });
+            }
+          }
+          fieldDefinition.options = opts;
         } else if (uniqueValues.length > 15) {
           // Muchos valores, mantener como texto con autocompletado visual
           fieldDefinition.type = 'text';
@@ -480,7 +488,11 @@ const InventarioFilters = ({ productos, onFilterChange, filters }) => {
   const getActiveFilterLabel = (field) => {
     const multiValues = getFilterMultiValues(field.id);
     if (multiValues.length > 0) {
-      return `${field.label}: ${multiValues.length} seleccionado${multiValues.length > 1 ? 's' : ''}`;
+      const labels = multiValues.map(v => {
+        if (v === '__sin_categoria__') return 'Sin categoría';
+        return v;
+      });
+      return `${field.label}: ${labels.join(', ')}`;
     }
     
     const value = getFilterValue(field.id);
