@@ -265,6 +265,138 @@
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
   }
 
+  /* Nueva Grilla de Filtros */
+  .resumen-ventas-filtros-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    margin-bottom: 2.5rem;
+    padding: 1.5rem;
+    background: var(--bg-secondary);
+    border-radius: 1rem;
+    border: 1px solid var(--border-primary);
+  }
+
+  .resumen-ventas-filtros-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+  }
+
+  .resumen-ventas-filtro-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    background: var(--bg-card);
+    padding: 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid var(--border-primary);
+    min-height: 110px;
+    justify-content: space-between;
+  }
+
+  .resumen-ventas-filtro-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* Controles de Fecha */
+  .date-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .custom-date-inputs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  /* Etiquetas Multiselección */
+  .resumen-ventas-multi-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    max-height: 80px;
+    overflow-y: auto;
+    padding: 0.25rem;
+  }
+
+  .multi-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.15rem 0.6rem;
+    background: rgba(139, 92, 246, 0.1);
+    color: #8b5cf6;
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+  }
+
+  .multi-tag svg {
+    cursor: pointer;
+    transition: transform 0.2s;
+    color: #8b5cf6;
+  }
+
+  .multi-tag svg:hover {
+    transform: scale(1.2);
+    color: #ef4444;
+  }
+
+  .multi-tag-empty {
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+    font-style: italic;
+  }
+
+  /* Botón de Limpiar */
+  .clear-card {
+    justify-content: center;
+    align-items: center;
+    background: rgba(239, 68, 68, 0.05);
+    border: 1px dashed rgba(239, 68, 68, 0.3);
+  }
+
+  .resumen-ventas-btn-clear {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.2rem;
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .resumen-ventas-btn-clear:hover {
+    background: #dc2626;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+  }
+
+  @media (max-width: 1024px) {
+    .resumen-ventas-filtros-row {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .resumen-ventas-filtros-row {
+      grid-template-columns: 1fr;
+    }
+  }
+
   /* Filtros Multiselección */
   .resumen-ventas-filtro-multi {
     display: flex;

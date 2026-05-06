@@ -69,10 +69,10 @@ const ResumenVentas = () => {
   const [filtros, setFiltros] = useState({
     fechaInicio: '',
     fechaFin: '',
-    categoria: [], // Vacío significa todas
-    vendedor: 'todos',
-    metodoPago: [], // Vacío significa todos
-    cliente: 'todos'
+    categoria: [],
+    vendedor: [],
+    metodoPago: [],
+    cliente: []
   });
   const [mostrandoExportar, setMostrandoExportar] = useState(false);
   const [exportFechaInicio, setExportFechaInicio] = useState('');
@@ -361,15 +361,13 @@ const ResumenVentas = () => {
       });
     }
 
-    // Filtro de vendedor
-    if (filtros.vendedor !== 'todos') {
-      const sel = vendedoresDisponiblesNormalizados.find(v => v.id === filtros.vendedor);
-      if (sel) {
-        resultado = resultado.filter(venta =>
-          (venta.employee_id && sel.idsOriginales.includes(String(venta.employee_id))) ||
-          (!venta.employee_id && venta.user_id && sel.idsOriginales.includes(String(venta.user_id)))
-        );
-      }
+    // Filtro de vendedor multiselección
+    if (filtros.vendedor.length > 0) {
+      resultado = resultado.filter(venta => {
+        const vendedorNombre = obtenerNombreVendedor(venta);
+        // El filtro de vendedor guarda nombres normalizados en este caso para agrupar variantes
+        return filtros.vendedor.includes(vendedorNombre);
+      });
     }
 
     // Filtro de método de pago multiselección
@@ -381,9 +379,9 @@ const ResumenVentas = () => {
       });
     }
 
-    // Filtro de cliente
-    if (filtros.cliente !== 'todos') {
-      resultado = resultado.filter(venta => venta.cliente_id === filtros.cliente);
+    // Filtro de cliente multiselección
+    if (filtros.cliente.length > 0) {
+      resultado = resultado.filter(venta => filtros.cliente.includes(venta.cliente_id));
     }
 
     return resultado;
@@ -1065,156 +1063,219 @@ const ResumenVentas = () => {
         })}
       </div>
 
-      {/* Filtros */}
-      <div className="resumen-ventas-filtros">
-        {/* Filtro rápido de fechas */}
-        <div className="resumen-ventas-filtro-rapido">
-          <span className="resumen-ventas-filtro-icon">📅</span>
-          <select
-            value={filtroFechaRapida}
-            onChange={(e) => {
-              setFiltroFechaRapida(e.target.value);
-              if (e.target.value === 'personalizado') {
-                setFiltros(prev => ({ ...prev, fechaInicio: '', fechaFin: '' }));
-              }
-            }}
-            className="resumen-ventas-select"
-          >
-            <option value="todos">Todas las fechas</option>
-            <option value="hoy">Hoy</option>
-            <option value="ayer">Ayer</option>
-            <option value="semana">Última semana</option>
-            <option value="mes">Último mes</option>
-            <option value="trimestre">Último trimestre</option>
-            <option value="personalizado">Rango personalizado</option>
-          </select>
-        </div>
-
-        {/* Filtros de rango personalizado */}
-        {filtroFechaRapida === 'personalizado' && (
-          <>
-            <div className="resumen-ventas-filtro">
-              <span className="resumen-ventas-filtro-icon">📅</span>
-              <input
-                type="date"
-                value={filtros.fechaInicio}
-                onChange={(e) => setFiltros({...filtros, fechaInicio: e.target.value})}
-                className="resumen-ventas-input"
-                placeholder="Desde"
-              />
+        <div className="resumen-ventas-filtros-grid">
+          {/* Fila 1: Fechas y Categorías */}
+          <div className="resumen-ventas-filtros-row">
+            {/* Selector de Fecha */}
+            <div className="resumen-ventas-filtro-card date-card">
+              <span className="resumen-ventas-filtro-label">Período de Tiempo:</span>
+              <div className="date-controls">
+                <div className="resumen-ventas-filtro-rapido">
+                  <select
+                    value={filtroFechaRapida}
+                    onChange={(e) => setFiltroFechaRapida(e.target.value)}
+                    className="resumen-ventas-select"
+                  >
+                    <option value="todos">Todas las fechas</option>
+                    <option value="hoy">Hoy</option>
+                    <option value="ayer">Ayer</option>
+                    <option value="semana">Última semana</option>
+                    <option value="mes">Último mes</option>
+                    <option value="trimestre">Último trimestre</option>
+                    <option value="personalizado">Personalizado</option>
+                  </select>
+                </div>
+                {filtroFechaRapida === 'personalizado' && (
+                  <div className="custom-date-inputs">
+                    <input
+                      type="date"
+                      value={filtros.fechaInicio}
+                      onChange={(e) => setFiltros({...filtros, fechaInicio: e.target.value})}
+                      className="resumen-ventas-input"
+                    />
+                    <input
+                      type="date"
+                      value={filtros.fechaFin}
+                      onChange={(e) => setFiltros({...filtros, fechaFin: e.target.value})}
+                      className="resumen-ventas-input"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="resumen-ventas-filtro">
-              <span className="resumen-ventas-filtro-icon">📅</span>
-              <input
-                type="date"
-                value={filtros.fechaFin}
-                onChange={(e) => setFiltros({...filtros, fechaFin: e.target.value})}
-                className="resumen-ventas-input"
-                placeholder="Hasta"
-              />
+
+            {/* Selector de Categorías */}
+            <div className="resumen-ventas-filtro-card">
+              <span className="resumen-ventas-filtro-label">Categorías:</span>
+              <div className="resumen-ventas-multi-tags">
+                {filtros.categoria.length === 0 ? (
+                  <span className="multi-tag-empty">Todas</span>
+                ) : (
+                  filtros.categoria.map(cat => (
+                    <span key={cat} className="multi-tag">
+                      {cat}
+                      <X size={12} onClick={() => setFiltros(prev => ({
+                        ...prev,
+                        categoria: prev.categoria.filter(c => c !== cat)
+                      }))} />
+                    </span>
+                  ))
+                )}
+              </div>
+              <select
+                value=""
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val && !filtros.categoria.includes(val)) {
+                    setFiltros(prev => ({ ...prev, categoria: [...prev.categoria, val] }));
+                  }
+                }}
+                className="resumen-ventas-select"
+              >
+                <option value="">+ Agregar categoría</option>
+                <option value="todas" onClick={() => setFiltros(prev => ({ ...prev, categoria: [] }))}>[Limpiar todas]</option>
+                {categoriasDisponibles.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
             </div>
-          </>
-        )}
 
-        {/* Filtro de categoría (Multiselección) */}
-        <div className="resumen-ventas-filtro-multi">
-          <span className="resumen-ventas-filtro-label">Categorías:</span>
-          <div className="resumen-ventas-multi-tags">
-            {filtros.categoria.length === 0 ? (
-              <span className="multi-tag-empty">Todas</span>
-            ) : (
-              filtros.categoria.map(cat => (
-                <span key={cat} className="multi-tag">
-                  {cat}
-                  <X size={12} onClick={() => setFiltros(prev => ({
-                    ...prev,
-                    categoria: prev.categoria.filter(c => c !== cat)
-                  }))} />
-                </span>
-              ))
-            )}
+            {/* Selector de Métodos de Pago */}
+            <div className="resumen-ventas-filtro-card">
+              <span className="resumen-ventas-filtro-label">Métodos de Pago:</span>
+              <div className="resumen-ventas-multi-tags">
+                {filtros.metodoPago.length === 0 ? (
+                  <span className="multi-tag-empty">Todos</span>
+                ) : (
+                  filtros.metodoPago.map(metodo => (
+                    <span key={metodo} className="multi-tag">
+                      {metodo}
+                      <X size={12} onClick={() => setFiltros(prev => ({
+                        ...prev,
+                        metodoPago: prev.metodoPago.filter(m => m !== metodo)
+                      }))} />
+                    </span>
+                  ))
+                )}
+              </div>
+              <select
+                value=""
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val && !filtros.metodoPago.includes(val)) {
+                    setFiltros(prev => ({ ...prev, metodoPago: [...prev.metodoPago, val] }));
+                  }
+                }}
+                className="resumen-ventas-select"
+              >
+                <option value="">+ Agregar método</option>
+                <option value="todos" onClick={() => setFiltros(prev => ({ ...prev, metodoPago: [] }))}>[Limpiar todos]</option>
+                {metodosPagoDisponibles.map(metodo => (
+                  <option key={metodo} value={metodo}>{metodo}</option>
+                ))}
+              </select>
+            </div>
           </div>
-          <select
-            value=""
-            onChange={(e) => {
-              const val = e.target.value;
-              if (val && !filtros.categoria.includes(val)) {
-                setFiltros(prev => ({ ...prev, categoria: [...prev.categoria, val] }));
-              }
-            }}
-            className="resumen-ventas-select"
-          >
-            <option value="">+ Agregar categoría</option>
-            <option value="todas" onClick={() => setFiltros(prev => ({ ...prev, categoria: [] }))}>[Limpiar todas]</option>
-            {categoriasDisponibles.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
-        </div>
 
-        {/* Filtro de método de pago (Multiselección) */}
-        <div className="resumen-ventas-filtro-multi">
-          <span className="resumen-ventas-filtro-label">Métodos Pago:</span>
-          <div className="resumen-ventas-multi-tags">
-            {filtros.metodoPago.length === 0 ? (
-              <span className="multi-tag-empty">Todos</span>
-            ) : (
-              filtros.metodoPago.map(metodo => (
-                <span key={metodo} className="multi-tag">
-                  {metodo}
-                  <X size={12} onClick={() => setFiltros(prev => ({
-                    ...prev,
-                    metodoPago: prev.metodoPago.filter(m => m !== metodo)
-                  }))} />
-                </span>
-              ))
-            )}
+          {/* Fila 2: Vendedores y Clientes */}
+          <div className="resumen-ventas-filtros-row">
+            {/* Selector de Vendedores */}
+            <div className="resumen-ventas-filtro-card">
+              <span className="resumen-ventas-filtro-label">Vendedores:</span>
+              <div className="resumen-ventas-multi-tags">
+                {filtros.vendedor.length === 0 ? (
+                  <span className="multi-tag-empty">Todos</span>
+                ) : (
+                  filtros.vendedor.map(v => (
+                    <span key={v} className="multi-tag">
+                      {v}
+                      <X size={12} onClick={() => setFiltros(prev => ({
+                        ...prev,
+                        vendedor: prev.vendedor.filter(item => item !== v)
+                      }))} />
+                    </span>
+                  ))
+                )}
+              </div>
+              <select
+                value=""
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val && !filtros.vendedor.includes(val)) {
+                    setFiltros(prev => ({ ...prev, vendedor: [...prev.vendedor, val] }));
+                  }
+                }}
+                className="resumen-ventas-select"
+              >
+                <option value="">+ Agregar vendedor</option>
+                <option value="todos" onClick={() => setFiltros(prev => ({ ...prev, vendedor: [] }))}>[Limpiar todos]</option>
+                {vendedoresDisponiblesNormalizados.map(v => (
+                  <option key={v.id} value={v.nombre}>{v.nombre}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Selector de Clientes */}
+            <div className="resumen-ventas-filtro-card">
+              <span className="resumen-ventas-filtro-label">Clientes:</span>
+              <div className="resumen-ventas-multi-tags">
+                {filtros.cliente.length === 0 ? (
+                  <span className="multi-tag-empty">Todos</span>
+                ) : (
+                  filtros.cliente.map(cid => {
+                    const c = clientes.find(cli => cli.id === cid);
+                    return (
+                      <span key={cid} className="multi-tag">
+                        {c?.nombre || 'Desconocido'}
+                        <X size={12} onClick={() => setFiltros(prev => ({
+                          ...prev,
+                          cliente: prev.cliente.filter(id => id !== cid)
+                        }))} />
+                      </span>
+                    );
+                  })
+                )}
+              </div>
+              <select
+                value=""
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val && !filtros.cliente.includes(val)) {
+                    setFiltros(prev => ({ ...prev, cliente: [...prev.cliente, val] }));
+                  }
+                }}
+                className="resumen-ventas-select"
+              >
+                <option value="">+ Agregar cliente</option>
+                <option value="todos" onClick={() => setFiltros(prev => ({ ...prev, cliente: [] }))}>[Limpiar todos]</option>
+                {clientes.map(c => (
+                  <option key={c.id} value={c.id}>{c.nombre}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Botón de Limpiar Todo */}
+            <div className="resumen-ventas-filtro-card clear-card">
+              <button 
+                className="resumen-ventas-btn-clear"
+                onClick={() => {
+                  setFiltros({
+                    fechaInicio: '',
+                    fechaFin: '',
+                    categoria: [],
+                    vendedor: [],
+                    metodoPago: [],
+                    cliente: []
+                  });
+                  setFiltroFechaRapida('todos');
+                }}
+              >
+                <X size={16} />
+                Limpiar Filtros
+              </button>
+            </div>
           </div>
-          <select
-            value=""
-            onChange={(e) => {
-              const val = e.target.value;
-              if (val && !filtros.metodoPago.includes(val)) {
-                setFiltros(prev => ({ ...prev, metodoPago: [...prev.metodoPago, val] }));
-              }
-            }}
-            className="resumen-ventas-select"
-          >
-            <option value="">+ Agregar método</option>
-            <option value="todos" onClick={() => setFiltros(prev => ({ ...prev, metodoPago: [] }))}>[Limpiar todos]</option>
-            {metodosPagoDisponibles.map(metodo => (
-              <option key={metodo} value={metodo}>{metodo}</option>
-            ))}
-          </select>
         </div>
-
-        {/* Filtro de vendedor (datos reales, normalizados) */}
-        {vendedoresDisponiblesNormalizados.length > 0 && (
-          <select
-            value={filtros.vendedor}
-            onChange={(e) => setFiltros({...filtros, vendedor: e.target.value})}
-            className="resumen-ventas-select"
-          >
-            <option value="todos">Todos los vendedores</option>
-            {vendedoresDisponiblesNormalizados.map(vendedor => (
-              <option key={vendedor.id} value={vendedor.id}>{vendedor.nombre}</option>
-            ))}
-          </select>
-        )}
-
-        {/* Filtro de cliente (datos reales) */}
-        {clientes.length > 0 && (
-          <select
-            value={filtros.cliente}
-            onChange={(e) => setFiltros({...filtros, cliente: e.target.value})}
-            className="resumen-ventas-select"
-          >
-            <option value="todos">Todos los clientes</option>
-            {clientes.map(cliente => (
-              <option key={cliente.id} value={cliente.id}>{cliente.nombre}</option>
-            ))}
-          </select>
-        )}
 
         {/* Botón para limpiar filtros */}
         {(filtros.categoria !== 'todas' || filtros.vendedor !== 'todos' || 
