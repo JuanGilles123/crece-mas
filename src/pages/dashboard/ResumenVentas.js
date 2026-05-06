@@ -69,9 +69,9 @@ const ResumenVentas = () => {
   const [filtros, setFiltros] = useState({
     fechaInicio: '',
     fechaFin: '',
-    categoria: 'todas',
+    categoria: [], // Vacío significa todas
     vendedor: 'todos',
-    metodoPago: 'todos',
+    metodoPago: [], // Vacío significa todos
     cliente: 'todos'
   });
   const [mostrandoExportar, setMostrandoExportar] = useState(false);
@@ -225,7 +225,9 @@ const ResumenVentas = () => {
         categorias.add(producto.metadata.categoria);
       }
     });
-    return Array.from(categorias).sort();
+    // Añadir "Sin categoría" a la lista de opciones si hay productos sin ella
+    const lista = Array.from(categorias).sort();
+    return [...lista, 'Sin categoría'];
   }, [productos]);
 
   // Función para normalizar método de pago (definida antes de su uso)
@@ -343,13 +345,18 @@ const ResumenVentas = () => {
       resultado = resultado.filter(venta => new Date(venta.created_at) <= fechaFin);
     }
 
-    // Filtro de categoría — la venta debe tener al menos un item de esa categoría
-    if (filtros.categoria !== 'todas') {
+    // Filtro de categoría multiselección
+    if (filtros.categoria.length > 0) {
       resultado = resultado.filter(venta => {
         if (!Array.isArray(venta.items)) return false;
         return venta.items.some(item => {
-          const prod = productos.find(p => p.id === item.id || p.id === item.producto_id || p.codigo === item.codigo);
-          return prod?.metadata?.categoria === filtros.categoria;
+          const prod = productos.find(p => 
+            p.id === (item.id || item.producto_id) || 
+            (item.codigo && p.codigo === item.codigo) ||
+            (item.nombre && p.nombre === item.nombre)
+          );
+          const cat = prod?.metadata?.categoria || 'Sin categoría';
+          return filtros.categoria.includes(cat);
         });
       });
     }
@@ -365,12 +372,12 @@ const ResumenVentas = () => {
       }
     }
 
-    // Filtro de método de pago
-    if (filtros.metodoPago !== 'todos') {
+    // Filtro de método de pago multiselección
+    if (filtros.metodoPago.length > 0) {
       resultado = resultado.filter(venta => {
         if (!venta.metodo_pago) return false;
-        const metodoNorm = normalizarMetodoPago(venta.metodo_pago).toLowerCase();
-        return metodoNorm === filtros.metodoPago.toLowerCase();
+        const metodoNorm = normalizarMetodoPago(venta.metodo_pago);
+        return filtros.metodoPago.includes(metodoNorm);
       });
     }
 
@@ -1109,33 +1116,77 @@ const ResumenVentas = () => {
           </>
         )}
 
-        {/* Filtro de categoría (datos reales) */}
-        {categoriasDisponibles.length > 0 && (
+        {/* Filtro de categoría (Multiselección) */}
+        <div className="resumen-ventas-filtro-multi">
+          <span className="resumen-ventas-filtro-label">Categorías:</span>
+          <div className="resumen-ventas-multi-tags">
+            {filtros.categoria.length === 0 ? (
+              <span className="multi-tag-empty">Todas</span>
+            ) : (
+              filtros.categoria.map(cat => (
+                <span key={cat} className="multi-tag">
+                  {cat}
+                  <X size={12} onClick={() => setFiltros(prev => ({
+                    ...prev,
+                    categoria: prev.categoria.filter(c => c !== cat)
+                  }))} />
+                </span>
+              ))
+            )}
+          </div>
           <select
-            value={filtros.categoria}
-            onChange={(e) => setFiltros({...filtros, categoria: e.target.value})}
+            value=""
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val && !filtros.categoria.includes(val)) {
+                setFiltros(prev => ({ ...prev, categoria: [...prev.categoria, val] }));
+              }
+            }}
             className="resumen-ventas-select"
           >
-            <option value="todas">Todas las categorías</option>
+            <option value="">+ Agregar categoría</option>
+            <option value="todas" onClick={() => setFiltros(prev => ({ ...prev, categoria: [] }))}>[Limpiar todas]</option>
             {categoriasDisponibles.map(cat => (
               <option key={cat} value={cat}>{cat}</option>
             ))}
           </select>
-        )}
+        </div>
 
-        {/* Filtro de método de pago (datos reales) */}
-        {metodosPagoDisponibles.length > 0 && (
+        {/* Filtro de método de pago (Multiselección) */}
+        <div className="resumen-ventas-filtro-multi">
+          <span className="resumen-ventas-filtro-label">Métodos Pago:</span>
+          <div className="resumen-ventas-multi-tags">
+            {filtros.metodoPago.length === 0 ? (
+              <span className="multi-tag-empty">Todos</span>
+            ) : (
+              filtros.metodoPago.map(metodo => (
+                <span key={metodo} className="multi-tag">
+                  {metodo}
+                  <X size={12} onClick={() => setFiltros(prev => ({
+                    ...prev,
+                    metodoPago: prev.metodoPago.filter(m => m !== metodo)
+                  }))} />
+                </span>
+              ))
+            )}
+          </div>
           <select
-            value={filtros.metodoPago}
-            onChange={(e) => setFiltros({...filtros, metodoPago: e.target.value})}
+            value=""
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val && !filtros.metodoPago.includes(val)) {
+                setFiltros(prev => ({ ...prev, metodoPago: [...prev.metodoPago, val] }));
+              }
+            }}
             className="resumen-ventas-select"
           >
-            <option value="todos">Todos los métodos</option>
+            <option value="">+ Agregar método</option>
+            <option value="todos" onClick={() => setFiltros(prev => ({ ...prev, metodoPago: [] }))}>[Limpiar todos]</option>
             {metodosPagoDisponibles.map(metodo => (
               <option key={metodo} value={metodo}>{metodo}</option>
             ))}
           </select>
-        )}
+        </div>
 
         {/* Filtro de vendedor (datos reales, normalizados) */}
         {vendedoresDisponiblesNormalizados.length > 0 && (
