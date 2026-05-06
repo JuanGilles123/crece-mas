@@ -1204,7 +1204,7 @@ Generado por Crece+ 🚀
                     </div>
                   )}
                   {totalDevoluciones > 0 && (
-                    <div className="metodo-item" style={{ color: '#dc2626', fontSize: '0.85rem' }}>
+                    <div className="metodo-item" style={{ color: '#ef4444', fontWeight: 'bold' }}>
                       <AlertCircle size={14} />
                       <span>Devoluciones:</span>
                       <strong>-{formatCOP(totalDevoluciones)}</strong>
@@ -1213,10 +1213,10 @@ Generado por Crece+ 🚀
                 </div>
               )}
 
-              <div className="metodo-item" style={{ background: 'rgba(0,0,0,0.03)', padding: '0.5rem', borderRadius: '8px' }}>
-                <Banknote size={18} />
-                <span>Efectivo Neto Esperado:</span>
-                <strong>{formatCOP(desgloseSistema.efectivo)}</strong>
+              <div className="metodo-item" style={{ background: '#f0f9ff', border: '1px solid #bae6fd', padding: '0.75rem', borderRadius: '8px', marginTop: '0.5rem' }}>
+                <Banknote size={18} color="#0369a1" />
+                <span style={{ color: '#0369a1', fontWeight: 'bold' }}>Efectivo Neto Esperado:</span>
+                <strong style={{ fontSize: '1.1rem', color: '#0c4a6e' }}>{formatCOP(desgloseSistema.efectivo)}</strong>
               </div>
 
               <div className="metodo-item">
