@@ -1,11 +1,12 @@
 
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import './Inventario.css';
 import AgregarProductoModalV2 from '../../components/modals/AgregarProductoModalV2';
 import EditarProductoModalV2 from '../../components/modals/EditarProductoModalV2';
+import CreacionMasivaModal from '../../components/modals/CreacionMasivaModal';
 import ImportarProductosCSV from '../../components/forms/ImportarProductosCSV';
 import FeatureGuard from '../../components/FeatureGuard';
 import OptimizedProductImage from '../../components/business/OptimizedProductImage';
@@ -45,6 +46,7 @@ const Inventario = () => {
   const location = useLocation();
   const [modalOpen, setModalOpen] = useState(false);
   const [editarModalOpen, setEditarModalOpen] = useState(false);
+  const [creacionMasivaOpen, setCreacionMasivaOpen] = useState(false);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
   const [entradaInventarioOpen, setEntradaInventarioOpen] = useState(false);
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
@@ -61,6 +63,7 @@ const Inventario = () => {
   const [campoEdicion, setCampoEdicion] = useState('categoria');
   const [valoresEdicion, setValoresEdicion] = useState({});
   const [guardandoMasivo, setGuardandoMasivo] = useState(false);
+  const [lastModifiedId, setLastModifiedId] = useState(null);
 
   // Suponiendo que el usuario tiene moneda en user.user_metadata.moneda
   const moneda = user?.user_metadata?.moneda || 'COP';
@@ -179,9 +182,49 @@ const Inventario = () => {
 
   const isJewelryBusiness = organization?.business_type === 'jewelry_metals';
 
-  // React Query hooks - usar organization?.id en lugar de user?.id
   const { data: productos = [], isLoading: cargandoLocal, error, refetch, isFetching } = useProductos(organization?.id);
   const eliminarProductoMutation = useEliminarProducto();
+  const queryClient = useQueryClient(); // Necesario para invalidar queries
+
+  // Suscripción en tiempo real para productos y variantes (sincronización instantánea)
+  useEffect(() => {
+    if (!organization?.id) return;
+
+    // Suscribirse a cambios en la tabla productos para esta organización
+    const channel = supabase
+      .channel(`inventario-realtime-${organization.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Escuchar INSERT, UPDATE y DELETE
+          schema: 'public',
+          table: 'productos',
+          filter: `organization_id=eq.${organization.id}`
+        },
+        (payload) => {
+          console.log('📦 Cambio en productos detectado en Inventario:', payload.eventType);
+          // Invalidar query para refrescar los datos inmediatamente
+          queryClient.invalidateQueries(['productos', organization.id]);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'product_variants',
+          filter: `organization_id=eq.${organization.id}`
+        },
+        () => {
+          queryClient.invalidateQueries(['productos', organization.id]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [organization?.id, queryClient]);
 
   const cargando = cargandoLocal;
 
@@ -719,14 +762,14 @@ const Inventario = () => {
   const handleObserver = useCallback((entries) => {
     const target = entries[0];
     if (target.isIntersecting && visibleCount < sortedProducts.length) {
-      setVisibleCount((prev) => Math.min(prev + 50, sortedProducts.length));
+      setVisibleCount((prev) => Math.min(prev + 100, sortedProducts.length)); // Bloques de 100
     }
   }, [visibleCount, sortedProducts.length]);
 
   useEffect(() => {
     const option = {
       root: null,
-      rootMargin: "200px", // Cargar un poco antes de llegar al final
+      rootMargin: "800px", // Precarga agresiva
       threshold: 0
     };
     const observer = new IntersectionObserver(handleObserver, option);
@@ -737,25 +780,35 @@ const Inventario = () => {
 
   // Tomar solo la rebanada (slice) visible de los productos ordenados
   const visibleProducts = useMemo(() => {
+    // Si hay un producto recién modificado, asegurarnos de que esté en la lista visible
+    // o al menos que la lista sea coherente
     return sortedProducts.slice(0, visibleCount);
   }, [sortedProducts, visibleCount]);
 
-  const shouldAnimateProducts = visibleProducts.length <= 200;
-  const ItemWrapper = shouldAnimateProducts ? motion.div : 'div';
+  // Efecto para limpiar el resaltado después de unos segundos
+  useEffect(() => {
+    if (lastModifiedId) {
+      const timer = setTimeout(() => {
+        setLastModifiedId(null);
+      }, 5000); // 5 segundos de resaltado
+      return () => clearTimeout(timer);
+    }
+  }, [lastModifiedId]);
+
+  // El Wrapper ahora es un div estándar para máximo rendimiento
+  const ItemWrapper = 'div';
   const getItemAnimationProps = (index) => {
-    if (!shouldAnimateProducts) return {};
-    return {
-      initial: { opacity: 0, y: 20 },
-      animate: { opacity: 1, y: 0 },
-      transition: { duration: 0.3, delay: index * 0.05 },
-      whileHover: { scale: 1.01, transition: { duration: 0.2 } }
-    };
+    return {}; // Quitar animaciones de delay que pesan en tablets
   };
 
   // Guardar producto en Supabase (ahora manejado por React Query en AgregarProductoModal)
-  const handleAgregarProducto = async (nuevo) => {
-    // Forzar refetch para asegurar que la lista se actualice inmediatamente
-    await refetch();
+  const handleAgregarProducto = (nuevo) => {
+    if (nuevo?.id) {
+      setLastModifiedId(nuevo.id);
+      // Opcionalmente mover al inicio si no está ya por el orden created_desc
+      setOrdenProductos('created_desc');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   // Editar producto
@@ -769,7 +822,9 @@ const Inventario = () => {
     // React Query invalidará automáticamente la cache y recargará los productos
     setEditarModalOpen(false);
     setProductoSeleccionado(null);
-    refetch();
+    if (productoEditado?.id) {
+      setLastModifiedId(productoEditado.id);
+    }
   };
 
   const idsFiltrados = useMemo(() => filteredProducts.map(p => p.id), [filteredProducts]);
@@ -1064,10 +1119,19 @@ const Inventario = () => {
           <div className="inventario-header-wrapper">
             <div className="inventario-actions">
               {(hasPermission('inventario.create') || ['owner', 'admin'].includes(userProfile?.role)) && (
-                <button className="inventario-btn inventario-btn-primary" onClick={() => setModalOpen(true)}>Nuevo producto</button>
+                <>
+                  <button className="inventario-btn inventario-btn-primary" onClick={() => setModalOpen(true)}>Nuevo producto</button>
+                  <button 
+                    className="inventario-btn inventario-btn-masivo" 
+                    onClick={() => setCreacionMasivaOpen(true)}
+                    title="Crea múltiples productos a la vez tipo Excel"
+                  >
+                    Creación Masiva
+                  </button>
+                </>
               )}
               <button
-                className="inventario-btn inventario-btn-secondary"
+                className="inventario-btn inventario-btn-action inventario-btn-square"
                 onClick={() => refetch()}
                 disabled={isFetching}
                 title="Actualizar inventario"
@@ -1076,7 +1140,7 @@ const Inventario = () => {
               </button>
               {(hasPermission('inventario.edit') || ['owner', 'admin'].includes(userProfile?.role)) && (
                 <button
-                  className="inventario-btn inventario-btn-secondary"
+                  className="inventario-btn inventario-btn-action"
                   onClick={() => setEntradaInventarioOpen(true)}
                   title="Registrar entrada de inventario"
                 >
@@ -1090,7 +1154,7 @@ const Inventario = () => {
                 showInline={false}
                 fallback={
                   <button
-                    className="inventario-btn inventario-btn-secondary"
+                    className="inventario-btn inventario-btn-action"
                     onClick={() => toast.error('La importación CSV está disponible en el plan Estándar')}
                     style={{ opacity: 0.5, cursor: 'not-allowed' }}
                     title="🔒 Plan Estándar"
@@ -1099,7 +1163,7 @@ const Inventario = () => {
                   </button>
                 }
               >
-                <button className="inventario-btn inventario-btn-secondary" onClick={() => setCsvModalOpen(true)}>Importar CSV</button>
+                <button className="inventario-btn inventario-btn-action" onClick={() => setCsvModalOpen(true)}>Importar CSV</button>
               </FeatureGuard>
               <FeatureGuard
                 feature="exportData"
@@ -1107,7 +1171,7 @@ const Inventario = () => {
                 showInline={false}
                 fallback={
                   <button
-                    className="inventario-btn inventario-btn-secondary"
+                    className="inventario-btn inventario-btn-action"
                     onClick={() => toast.error('La exportación de datos está disponible en el plan Estándar')}
                     style={{ opacity: 0.5, cursor: 'not-allowed' }}
                     title="🔒 Plan Estándar"
@@ -1117,14 +1181,14 @@ const Inventario = () => {
                   </button>
                 }
               >
-                <button className="inventario-btn inventario-btn-secondary" onClick={exportarInventarioExcel}>
+                <button className="inventario-btn inventario-btn-action" onClick={exportarInventarioExcel}>
                   <Download size={18} />
                   Exportar
                 </button>
               </FeatureGuard>
               <button
                 type="button"
-                className="inventario-btn inventario-btn-secondary"
+                className="inventario-btn inventario-btn-action"
                 onClick={toggleSeleccionarTodos}
               >
                 <CheckSquare size={18} />
@@ -1132,16 +1196,16 @@ const Inventario = () => {
               </button>
               {seleccionados.length > 0 && (hasPermission('inventario.delete') || ['owner', 'admin'].includes(userProfile?.role)) && (
                 <button
-                  className="inventario-btn inventario-btn-outline eliminar"
+                  className="inventario-btn inventario-btn-action inventario-btn-danger"
                   onClick={handleEliminarSeleccionados}
                   disabled={eliminandoSeleccionados}
                 >
-                  {eliminandoSeleccionados ? 'Eliminando...' : `Eliminar seleccionados (${seleccionados.length})`}
+                  {eliminandoSeleccionados ? 'Eliminando...' : `Eliminar (${seleccionados.length})`}
                 </button>
               )}
               {seleccionados.length > 0 && (hasPermission('inventario.edit') || ['owner', 'admin'].includes(userProfile?.role)) && (
                 <button
-                  className="inventario-btn inventario-btn-secondary"
+                  className="inventario-btn inventario-btn-action"
                   onClick={abrirEdicionMasiva}
                   title="Editar en masa los productos seleccionados"
                 >
@@ -1149,7 +1213,7 @@ const Inventario = () => {
                   Editar masivo ({seleccionados.length})
                 </button>
               )}
-              <button className="inventario-btn inventario-btn-secondary inventario-btn-view-toggle" onClick={() => setModoLista(m => !m)}>
+              <button className="inventario-btn inventario-btn-action inventario-btn-square" onClick={() => setModoLista(m => !m)}>
                 {modoLista ? <Grid3X3 size={18} /> : <List size={18} />}
               </button>
             </div>
@@ -1229,8 +1293,7 @@ const Inventario = () => {
                     <ItemWrapper
                       key={prod.id}
                       {...getItemAnimationProps(index)}
-                      {...(shouldAnimateProducts ? { layout: true } : {})}
-                      className={modoLista ? "inventario-lista-item" : "inventario-card"}
+                      className={`${modoLista ? "inventario-lista-item" : "inventario-card"} ${lastModifiedId === prod.id ? 'highlight-new' : ''}`}
                     >
                       <div className="inventario-select-checkbox">
                         <input
@@ -1331,6 +1394,14 @@ const Inventario = () => {
         </>
       )}
       <AgregarProductoModalV2 open={modalOpen} onClose={() => setModalOpen(false)} onProductoAgregado={handleAgregarProducto} moneda={moneda} />
+      <CreacionMasivaModal 
+        open={creacionMasivaOpen} 
+        onClose={() => setCreacionMasivaOpen(false)} 
+        onProductosCreados={() => {
+          refetch();
+          setCreacionMasivaOpen(false);
+        }} 
+      />
       <EditarProductoModalV2
         open={editarModalOpen}
         onClose={() => {

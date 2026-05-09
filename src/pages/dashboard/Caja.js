@@ -11,7 +11,7 @@ import { useSubscription } from '../../hooks/useSubscription';
 import { useProductos } from '../../hooks/useProductos';
 import { useVentas } from '../../hooks/useVentas';
 import { useToppings } from '../../hooks/useToppings';
-import { useGuardarCotizacion, useActualizarCotizacion } from '../../hooks/useCotizaciones';
+import { useGuardarCotizacion, useActualizarCotizacion, useCotizaciones, useEliminarCotizacion } from '../../hooks/useCotizaciones';
 import { generarCodigoVenta, generarCodigoVentaLocal } from '../../utils/generarCodigoVenta';
 import { enqueueVenta } from '../../utils/offlineQueue';
 import { getEmployeeSession } from '../../utils/employeeSession';
@@ -50,6 +50,54 @@ function formatCOP(value) {
     return "$" + value.toLocaleString("es-CO");
   }
 }
+
+// Componente de tarjeta de producto (extraído y memoizado para alto rendimiento)
+const ProductCard = React.memo(({
+  producto,
+  isJewelryBusiness,
+  getJewelryUnitPrice,
+  addToCart,
+  formatCOP
+}) => (
+  <div
+    className="caja-product-card"
+    onClick={() => addToCart(producto)}
+  >
+    <div className="caja-product-content">
+      <OptimizedProductImage
+        imagePath={producto.imagen}
+        alt={producto.nombre}
+        className="caja-product-image"
+      />
+      <div className="caja-product-info">
+        <p className="caja-product-name" title={producto.nombre}>{producto.nombre}</p>
+        <p className="caja-product-stock">Stock: {producto.stock !== null && producto.stock !== undefined ? parseFloat(producto.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '0'}</p>
+        {isJewelryBusiness && producto.metadata && (
+          <div className="caja-product-jewelry-info">
+            {producto.metadata.peso && (
+              <span className="caja-product-jewelry-tag">
+                {producto.metadata.peso}g
+              </span>
+            )}
+            {producto.metadata.material && (
+              <span className="caja-product-jewelry-tag">
+                {producto.metadata.material}
+              </span>
+            )}
+            {producto.metadata.jewelry_material_type && producto.metadata.jewelry_material_type !== 'na' && (
+              <span className="caja-product-jewelry-tag caja-product-jewelry-type">
+                {producto.metadata.jewelry_material_type === 'local' ? 'Nac' : 'Int'}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+      <span className="caja-product-price">
+        {formatCOP(isJewelryBusiness ? getJewelryUnitPrice(producto) : producto.precio_venta)}
+      </span>
+    </div>
+  </div>
+));
 
 // Componente para métodos de pago (extraído y memoizado)
 const MetodosPago = React.memo(({
@@ -883,9 +931,9 @@ export default function Caja({
     const employeeSession = getEmployeeSession();
     if (employeeSession?.employee?.id) {
       const ownerId = organization?.owner_id || userProfile?.organization_owner_id;
-      return { 
-        ventaUserId: ownerId || user?.id || null, 
-        ventaEmployeeId: employeeSession.employee.id 
+      return {
+        ventaUserId: ownerId || user?.id || null,
+        ventaEmployeeId: employeeSession.employee.id
       };
     }
     return { ventaUserId: user?.id || null, ventaEmployeeId: null };
@@ -979,7 +1027,7 @@ export default function Caja({
 
   // Verificar si hay una apertura de caja activa (solo en modo venta)
   const { data: aperturaActiva, isLoading: cargandoApertura, refetch: refetchApertura } = useAperturaCajaActiva(
-    esModoPedido ? null : organization?.id, 
+    esModoPedido ? null : organization?.id,
     user?.id // Añadido user.id para filtrar correctamente
   );
 
@@ -1001,7 +1049,7 @@ export default function Caja({
     if (user?.id && organization?.id) {
       const lastUserKey = `last_user_in_caja_${organization.id}`;
       const lastUser = localStorage.getItem(lastUserKey);
-      
+
       if (lastUser && lastUser !== user.id) {
         // El usuario cambió, olvidar la sincronización previa para obligar a elegir
         localStorage.removeItem(`synced_apertura_${organization.id}`);
@@ -1009,7 +1057,7 @@ export default function Caja({
         setModalMostradoInicialmente(false);
         setModalCerradoManualmente(false);
       }
-      
+
       localStorage.setItem(lastUserKey, user.id);
     }
   }, [user?.id, organization?.id]);
@@ -1028,13 +1076,13 @@ export default function Caja({
     };
 
     window.addEventListener('storage', handleStorageChange);
-    
+
     // Intervalo de seguridad para detectar cambios en la misma ventana
     const interval = setInterval(() => {
       const key = `caja_cerrada_at_${organization.id}`;
       const lastCierre = localStorage.getItem(key);
       const lastCheck = localStorage.getItem(`${key}_checked`);
-      
+
       if (lastCierre && lastCierre !== lastCheck) {
         localStorage.setItem(`${key}_checked`, lastCierre);
         refetchApertura();
@@ -1136,6 +1184,10 @@ export default function Caja({
   // Hook para guardar y actualizar cotización
   const guardarCotizacionMutation = useGuardarCotizacion();
   const actualizarCotizacionMutation = useActualizarCotizacion();
+  const eliminarCotizacionMutation = useEliminarCotizacion();
+
+  // Hook para obtener cotizaciones pendientes
+  const { data: cotizaciones = [] } = useCotizaciones(organization?.id);
 
   // Hook para pedidos pendientes de pago
   const { data: todosPedidos = [] } = usePedidos(organization?.id);
@@ -1187,6 +1239,8 @@ export default function Caja({
   // eslint-disable-next-line no-unused-vars
   const [pedidoIdActual, setPedidoIdActual] = useState(null);
   const [pedidosConsolidados, setPedidosConsolidados] = useState([]); // IDs de todos los pedidos consolidados
+  const [mostrandoModalCotizaciones, setMostrandoModalCotizaciones] = useState(false);
+  const [busquedaCotizacion, setBusquedaCotizacion] = useState('');
 
   // Agrupar pedidos por mesa (solo mesas con más de un pedido)
   const pedidosPorMesa = useMemo(() => {
@@ -1354,7 +1408,49 @@ export default function Caja({
 
   // Cargar productos usando React Query (optimizado con cache)
   const { data: productosData = [], isLoading: productosLoading, refetch: refetchProductos } = useProductos(organization?.id);
-  const { data: ventasData = [], isLoading: ventasLoading } = useVentas(organization?.id, 2000, 30);
+
+  // Suscripción en tiempo real para productos y variantes (sincronización instantánea)
+  useEffect(() => {
+    if (!organization?.id) return;
+
+    // Suscribirse a cambios en la tabla productos para esta organización
+    const channel = supabase
+      .channel(`caja-realtime-${organization.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Escuchar INSERT, UPDATE y DELETE
+          schema: 'public',
+          table: 'productos',
+          filter: `organization_id=eq.${organization.id}`
+        },
+        (payload) => {
+          console.log('📦 Cambio detectado en productos (Realtime):', payload.eventType);
+          // Invalidar query para refrescar los datos inmediatamente en el cache
+          queryClient.invalidateQueries(['productos', organization.id]);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'product_variants',
+          filter: `organization_id=eq.${organization.id}`
+        },
+        (payload) => {
+          console.log('📦 Cambio detectado en variantes (Realtime):', payload.eventType);
+          queryClient.invalidateQueries(['productos', organization.id]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [organization?.id, queryClient]);
+
+  const { data: ventasData = [], isLoading: ventasLoading } = useVentas(organization?.id, 500, 30);
 
   // Cargar toppings para mostrarlos como productos individuales
   const { data: toppingsData = [], isLoading: toppingsLoading, isFetched: toppingsFetched } = useToppings(organization?.id);
@@ -1790,14 +1886,14 @@ export default function Caja({
   const handleObserver = useCallback((entries) => {
     const target = entries[0];
     if (target.isIntersecting && visibleCount < sortedProducts.length) {
-      setVisibleCount((prev) => Math.min(prev + 50, sortedProducts.length));
+      setVisibleCount((prev) => Math.min(prev + 100, sortedProducts.length)); // Bloques de 100 para menos interrupciones
     }
   }, [visibleCount, sortedProducts.length]);
 
   useEffect(() => {
     const option = {
       root: null,
-      rootMargin: "200px",
+      rootMargin: "800px", // Precarga agresiva (casi 2 pantallas de anticipación)
       threshold: 0
     };
     const observer = new IntersectionObserver(handleObserver, option);
@@ -2963,7 +3059,7 @@ export default function Caja({
             .from('ventas')
             .delete()
             .eq('id', cotizacionId);
-            
+
           if (deleteCotizacionError) {
             console.error('Error eliminando la cotización original:', deleteCotizacionError);
           } else {
@@ -3779,6 +3875,7 @@ export default function Caja({
           setClienteNombrePedido(null); // Limpiar nombre del cliente del pedido
           setDescuento({ tipo: 'porcentaje', valor: 0, alcance: 'total', productosIds: [] });
           setClienteSeleccionado(null);
+          setCotizacionId(null);
 
           // Si viene de pedidos, mostrar modal de regreso
           if (vieneDePedidos) {
@@ -3795,6 +3892,20 @@ export default function Caja({
 
       // Recargar productos para actualizar stock
       await refetchProductos();
+
+      // Si venía de una cotización, eliminarla después de completar la venta
+      if (cotizacionId) {
+        try {
+          await eliminarCotizacionMutation.mutateAsync({
+            id: cotizacionId,
+            organizationId: organization.id
+          });
+          localStorage.removeItem('cotizacionOriginal');
+          localStorage.removeItem('cotizacionIdActivo');
+        } catch (err) {
+          console.error('Error al eliminar cotización completada:', err);
+        }
+      }
 
     } catch (error) {
       toast.error(`Error al procesar la venta: ${error.message} `);
@@ -3899,6 +4010,43 @@ export default function Caja({
       );
     } else {
       toast.error('No se pudieron cargar los productos del pedido');
+    }
+  };
+
+  const cargarCotizacionEnCarrito = (cotizacion) => {
+    if (!cotizacion.items || cotizacion.items.length === 0) {
+      toast.error('La cotización no tiene items');
+      return;
+    }
+
+    // Guardar el ID de la cotización para poder actualizarla luego si es necesario
+    setCotizacionId(cotizacion.id);
+    localStorage.setItem('cotizacionIdActivo', cotizacion.id);
+    localStorage.setItem('cotizacionOriginal', JSON.stringify(cotizacion));
+
+    // Cargar items en el carrito
+    setCart(cotizacion.items);
+
+    // Cargar cliente si existe
+    if (cotizacion.cliente) {
+      setClienteSeleccionado(cotizacion.cliente);
+    } else if (cotizacion.cliente_id) {
+      const cliente = clientes.find(c => c.id === cotizacion.cliente_id);
+      if (cliente) setClienteSeleccionado(cliente);
+    }
+
+    setMostrandoPedidosPendientes(false);
+    toast.success('Cotización cargada en el carrito');
+  };
+
+  const handleEliminarCotizacion = async (e, cot) => {
+    e.stopPropagation();
+    if (window.confirm('¿Estás seguro de que deseas eliminar esta cotización?')) {
+      try {
+        await eliminarCotizacionMutation.mutateAsync({ id: cot.id, organizationId: organization.id });
+      } catch (err) {
+        console.error('Error al eliminar cotización:', err);
+      }
     }
   };
 
@@ -4157,6 +4305,54 @@ export default function Caja({
                     </>
                   )}
                 </div>
+
+                {/* Sección de Cotizaciones Pendientes */}
+                {cotizaciones.length > 0 && (
+                  <div className="caja-cotizaciones-sidebar-list" style={{ marginTop: '1rem' }}>
+                    <div className="caja-pedidos-title" style={{ marginBottom: '0.75rem', padding: '0 0.5rem' }}>
+                      <Save size={18} color="#10B981" />
+                      <h3 style={{ fontSize: '1rem' }}>Cotizaciones</h3>
+                    </div>
+                    <div className="caja-pedidos-list">
+                      {cotizaciones.map((cot) => (
+                        <div key={cot.id} className="caja-pedido-card caja-cotizacion-card">
+                          <div className="caja-pedido-info">
+                            <div className="caja-pedido-header-info">
+                              <h4>{cot.numero_venta || `COT-${cot.id.substring(0, 5)}`}</h4>
+                              <div className="caja-pedido-meta-info">
+                                {cot.cliente?.nombre ? (
+                                  <span className="caja-pedido-cliente">{cot.cliente.nombre}</span>
+                                ) : (
+                                  <span className="caja-pedido-cliente" style={{ fontStyle: 'italic', opacity: 0.7 }}>Sin cliente</span>
+                                )}
+                              </div>
+                            </div>
+                            <p className="caja-pedido-items">
+                              {cot.items?.length || 0} items - {formatCOP(cot.total)}
+                            </p>
+                          </div>
+                          <div style={{ display: 'flex', gap: '0.4rem' }}>
+                            <button
+                              className="caja-pedido-cargar-btn"
+                              style={{ background: '#fee2e2', color: '#ef4444' }}
+                              onClick={(e) => handleEliminarCotizacion(e, cot)}
+                              title="Eliminar cotización"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                            <button
+                              className="caja-pedido-cargar-btn"
+                              onClick={() => cargarCotizacionEnCarrito(cot)}
+                              title="Retomar cotización"
+                            >
+                              <ArrowRight size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -4185,15 +4381,30 @@ export default function Caja({
               </div>
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem', width: '100%' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem', width: '100%', gap: '0.75rem' }}>
               <button
                 onClick={() => navigate(isEmployeeMode ? '/empleado/historial-ventas' : '/dashboard/historial-ventas')}
-                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: '#e0f2fe', color: '#0284c7', borderRadius: '8px', border: '1px solid #bae6fd', cursor: 'pointer', fontWeight: '500', fontSize: '0.9rem', width: 'auto' }}
-                title="Ir al Historial de Ventas"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: '#e0f2fe', color: '#0284c7', borderRadius: '8px', border: '1px solid #bae6fd', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem', width: 'auto' }}
+                title="Ver Historial de Ventas"
                 className="hover:bg-blue-100 transition-colors"
               >
                 <History size={18} />
-                Ver Historial de Ventas
+                <span>Historial</span>
+              </button>
+
+              <button
+                onClick={() => setMostrandoModalCotizaciones(true)}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: '#ecfdf5', color: '#059669', borderRadius: '8px', border: '1px solid #d1fae5', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem', width: 'auto' }}
+                title="Retomar Cotizaciones pendientes"
+                className="hover:bg-green-100 transition-colors"
+              >
+                <Save size={18} />
+                <span>Cotizaciones</span>
+                {cotizaciones.length > 0 && (
+                  <span style={{ background: '#10b981', color: 'white', borderRadius: '50%', width: '18px', height: '18px', fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                    {cotizaciones.length}
+                  </span>
+                )}
               </button>
             </div>
             <div className="caja-search-wrapper">
@@ -4323,59 +4534,15 @@ export default function Caja({
             )}
 
             <div className="caja-products-list">
-              {visibleProducts.map((producto, index) => (
-                <motion.div
+              {visibleProducts.map((producto) => (
+                <ProductCard
                   key={producto.id}
-                  className="caja-product-card"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{
-                    duration: 0.3,
-                    delay: index * 0.05,
-                    ease: "easeOut"
-                  }}
-                  whileHover={{
-                    scale: 1.02,
-                    transition: { duration: 0.2 }
-                  }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => addToCart(producto)}
-                >
-                  <div className="caja-product-content">
-                    <OptimizedProductImage
-                      imagePath={producto.imagen}
-                      alt={producto.nombre}
-                      className="caja-product-image"
-                    />
-                    <div className="caja-product-info">
-                      <p className="caja-product-name" title={producto.nombre}>{producto.nombre}</p>
-                      <p className="caja-product-stock">Stock: {producto.stock !== null && producto.stock !== undefined ? parseFloat(producto.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '0'}</p>
-                      {/* Mostrar información de joyería en tarjetas de productos */}
-                      {isJewelryBusiness && producto.metadata && (
-                        <div className="caja-product-jewelry-info">
-                          {producto.metadata.peso && (
-                            <span className="caja-product-jewelry-tag">
-                              {producto.metadata.peso}g
-                            </span>
-                          )}
-                          {producto.metadata.material && (
-                            <span className="caja-product-jewelry-tag">
-                              {producto.metadata.material}
-                            </span>
-                          )}
-                          {producto.metadata.jewelry_material_type && producto.metadata.jewelry_material_type !== 'na' && (
-                            <span className="caja-product-jewelry-tag caja-product-jewelry-type">
-                              {producto.metadata.jewelry_material_type === 'local' ? 'Nac' : 'Int'}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <span className="caja-product-price">
-                      {formatCOP(isJewelryBusiness ? getJewelryUnitPrice(producto) : producto.precio_venta)}
-                    </span>
-                  </div>
-                </motion.div>
+                  producto={producto}
+                  isJewelryBusiness={isJewelryBusiness}
+                  getJewelryUnitPrice={getJewelryUnitPrice}
+                  addToCart={addToCart}
+                  formatCOP={formatCOP}
+                />
               ))}
 
               {filteredProducts.length === 0 && (
@@ -5981,6 +6148,145 @@ export default function Caja({
         open={mostrandoConsultarPrecio}
         onClose={() => setMostrandoConsultarPrecio(false)}
       />
+
+      {/* Modal de recuperar cotizaciones */}
+      {mostrandoModalCotizaciones && (
+        <div className="caja-modal-overlay">
+          <div className="caja-modal-content" style={{ maxWidth: '600px' }}>
+            <div className="caja-modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <Save size={24} color="#10B981" />
+                <h3>Retomar Cotización</h3>
+              </div>
+              <button className="caja-modal-close" onClick={() => setMostrandoModalCotizaciones(false)}>
+                <X size={24} />
+              </button>
+            </div>
+            <div className="caja-modal-body">
+              {/* Buscador de cotizaciones */}
+              <div className="caja-pedidos-search-container" style={{ marginBottom: '1.5rem', background: '#f8fafc' }}>
+                <Search size={18} className="caja-pedidos-search-icon" />
+                <input
+                  type="text"
+                  className="caja-pedidos-search-input"
+                  placeholder="Buscar por cliente o número de cotización..."
+                  value={busquedaCotizacion}
+                  onChange={(e) => setBusquedaCotizacion(e.target.value)}
+                />
+                {busquedaCotizacion && (
+                  <button className="caja-pedidos-search-clear" onClick={() => setBusquedaCotizacion('')}>
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
+
+              {cotizaciones.filter(cot => {
+                const query = busquedaCotizacion.toLowerCase();
+                return (
+                  (cot.numero_venta || '').toLowerCase().includes(query) ||
+                  (cot.cliente?.nombre || '').toLowerCase().includes(query) ||
+                  (cot.items || []).some(item => (item.nombre || '').toLowerCase().includes(query))
+                );
+              }).length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#64748b' }}>
+                  <Package size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
+                  <p>{busquedaCotizacion ? 'No se encontraron cotizaciones con ese criterio.' : 'No hay cotizaciones pendientes.'}</p>
+                </div>
+              ) : (
+                <div className="caja-pedidos-list" style={{ maxHeight: '50vh', overflowY: 'auto', paddingRight: '0.5rem' }}>
+                  {cotizaciones
+                    .filter(cot => {
+                      const query = busquedaCotizacion.toLowerCase();
+                      return (
+                        (cot.numero_venta || '').toLowerCase().includes(query) ||
+                        (cot.cliente?.nombre || '').toLowerCase().includes(query) ||
+                        (cot.items || []).some(item => (item.nombre || '').toLowerCase().includes(query))
+                      );
+                    })
+                    .map((cot) => (
+                      <div key={cot.id} className="caja-pedido-card caja-cotizacion-card" style={{ marginBottom: '1.25rem', padding: '1.25rem', display: 'flex', flexDirection: 'column', alignItems: 'stretch', border: '1px solid #e2e8f0', background: 'white', borderRadius: '12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', gap: '1rem' }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <h4 style={{ fontSize: '1.1rem', fontWeight: '800', color: '#0f172a', margin: '0 0 0.5rem 0', letterSpacing: '-0.01em' }}>
+                              {cot.numero_venta || `COT-${cot.id.substring(0, 5)}`}
+                            </h4>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                              {cot.cliente?.nombre ? (
+                                <span style={{ background: '#f0fdf4', color: '#166534', fontSize: '0.75rem', padding: '0.25rem 0.6rem', borderRadius: '6px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.35rem', border: '1px solid #dcfce7' }}>
+                                  <UserCircle size={14} /> {cot.cliente.nombre}
+                                </span>
+                              ) : (
+                                <span style={{ background: '#f8fafc', color: '#64748b', fontSize: '0.75rem', padding: '0.25rem 0.6rem', borderRadius: '6px', fontWeight: '500', border: '1px solid #e2e8f0' }}>
+                                  Sin cliente
+                                </span>
+                              )}
+                              <span style={{ background: '#f1f5f9', color: '#475569', fontSize: '0.75rem', padding: '0.25rem 0.6rem', borderRadius: '6px', fontWeight: '500', border: '1px solid #e2e8f0' }}>
+                                {new Date(cot.created_at).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
+                              </span>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', gap: '0.6rem', flexShrink: 0 }}>
+                            <button
+                              className="caja-pedido-cargar-btn"
+                              style={{ background: '#f93434ff', color: '#f40606ff', border: '1px solid #fee2e2', width: '40px', height: '40px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }}
+                              onClick={(e) => handleEliminarCotizacion(e, cot)}
+                              title="Eliminar Cotización"
+                            >
+                              <Trash2 size={20} />
+                            </button>
+                            <button
+                              className="caja-pedido-cargar-btn"
+                              style={{ background: '#10b981', color: 'white', width: '40px', height: '40px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(16, 185, 129, 0.2)' }}
+                              onClick={() => {
+                                cargarCotizacionEnCarrito(cot);
+                                setMostrandoModalCotizaciones(false);
+                                setBusquedaCotizacion('');
+                              }}
+                              title="Retomar Cotización"
+                            >
+                              <ArrowRight size={22} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Detalle de productos con tono más suave */}
+                        <div style={{ background: '#f0fdf4', padding: '1rem', borderRadius: '10px', border: '1px solid #dcfce7' }}>
+                          <p style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#166534', fontWeight: '800', marginBottom: '0.75rem', letterSpacing: '0.05em', opacity: 0.8 }}>
+                            Productos en esta cotización:
+                          </p>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                            {cot.items?.map((item, idx) => (
+                              <span key={idx} style={{ background: 'white', border: '1px solid #dcfce7', padding: '0.35rem 0.75rem', borderRadius: '8px', fontSize: '0.85rem', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.4rem', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+                                <span style={{ fontWeight: '800', color: '#10b981' }}>{item.qty}x</span> {item.nombre}
+                              </span>
+                            ))}
+                          </div>
+                          <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid rgba(16, 185, 129, 0.1)', paddingTop: '0.75rem' }}>
+                            <div style={{ textAlign: 'right' }}>
+                              <p style={{ margin: 0, fontSize: '0.75rem', color: '#166534', fontWeight: '600', opacity: 0.7 }}>Monto Total</p>
+                              <span style={{ fontSize: '1.4rem', fontWeight: '900', color: '#059669', display: 'block' }}>
+                                {formatCOP(cot.total)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+            <div className="caja-modal-footer" style={{ borderTop: '1px solid #e2e8f0', padding: '1rem 1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                className="caja-modal-btn-secondary"
+                onClick={() => setMostrandoModalCotizaciones(false)}
+                style={{ padding: '0.5rem 1.25rem', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer' }}
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de apertura de caja (solo en modo venta) */}
       {!esModoPedido && (

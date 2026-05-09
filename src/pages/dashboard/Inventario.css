@@ -2888,3 +2888,172 @@
   gap: 1.5rem !important;
   width: 100% !important;
 }
+/* Resaltado de productos recin modificados */
+.highlight-new {
+  animation: pulse-highlight 2s ease-in-out infinite;
+  border: 2px solid var(--accent, #7c3aed) !important;
+  box-shadow: 0 0 15px rgba(124, 58, 237, 0.4) !important;
+  z-index: 10;
+  position: relative;
+}
+
+@keyframes pulse-highlight {
+  0% { transform: scale(1); box-shadow: 0 0 5px rgba(124, 58, 237, 0.2); }
+  50% { transform: scale(1.02); box-shadow: 0 0 20px rgba(124, 58, 237, 0.6); }
+  100% { transform: scale(1); box-shadow: 0 0 5px rgba(124, 58, 237, 0.2); }
+}
+
+.inventario-lista-item.highlight-new {
+  background: rgba(124, 58, 237, 0.1) !important;
+  border-left: 4px solid var(--accent, #7c3aed) !important;
+  animation: pulse-highlight-list 2s ease-in-out infinite;
+}
+
+@keyframes pulse-highlight-list {
+  0% { background: rgba(124, 58, 237, 0.05); }
+  50% { background: rgba(124, 58, 237, 0.15); }
+  100% { background: rgba(124, 58, 237, 0.05); }
+}
+
+/* --- Unificacion de Botones del Inventario --- */
+.inventario-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.inventario-btn {
+  height: 42px !important;
+  padding: 0 16px !important;
+  border-radius: 12px !important;
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  border: 1px solid transparent !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05) !important;
+}
+
+.inventario-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1) !important;
+}
+
+/* Boton Primario (Azul) */
+.inventario-btn-primary {
+  background: #2563eb !important;
+  color: white !important;
+}
+
+/* Boton Creacion Masiva (Degradado) */
+.inventario-btn-masivo {
+  background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%) !important;
+  color: white !important;
+}
+
+/* Botones de Accion (Gris suave como en la imagen) */
+.inventario-btn-action {
+  background: #f3f4f6 !important;
+  color: #374151 !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+.inventario-btn-action:hover {
+  background: #e5e7eb !important;
+  border-color: #d1d5db !important;
+}
+
+/* Botones de solo Icono (Cuadrados perfectos) */
+.inventario-btn-square {
+  width: 42px !important;
+  padding: 0 !important;
+}
+
+.inventario-btn svg {
+  width: 18px !important;
+  height: 18px !important;
+}
+
+/* --- Unificacion de Botones del Inventario --- */
+.inventario-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.inventario-btn {
+  height: 42px !important;
+  padding: 0 16px !important;
+  border-radius: 12px !important;
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  border: 1px solid transparent !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05) !important;
+}
+
+.inventario-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1) !important;
+}
+
+/* Boton Primario (Azul) */
+.inventario-btn-primary {
+  background: #2563eb !important;
+  color: white !important;
+}
+
+/* Boton Creacion Masiva (Degradado) */
+.inventario-btn-masivo {
+  background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%) !important;
+  color: white !important;
+}
+
+/* Botones de Accion (Gris suave como en la imagen) */
+.inventario-btn-action {
+  background: #f3f4f6 !important;
+  color: #374151 !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+.inventario-btn-action:hover {
+  background: #e5e7eb !important;
+  border-color: #d1d5db !important;
+}
+
+/* Boton de Peligro (Eliminar) */
+.inventario-btn-danger {
+  background: #fee2e2 !important;
+  color: #ef4444 !important;
+  border: 1px solid #fecaca !important;
+}
+
+.inventario-btn-danger:hover {
+  background: #ef4444 !important;
+  color: white !important;
+  border-color: #ef4444 !important;
+}
+
+/* Botones de solo Icono (Cuadrados perfectos) */
+.inventario-btn-square {
+  width: 42px !important;
+  padding: 0 !important;
+}
+
+.inventario-btn svg {
+  width: 18px !important;
+  height: 18px !important;
+}
