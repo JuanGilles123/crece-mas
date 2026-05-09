@@ -40,56 +40,35 @@ export const useCotizaciones = (organizationId) => {
           }));
         };
         
-        // Intentar primero con el campo 'estado' si existe
-        try {
-          const { data, error } = await supabase
+        // Intentar obtener cotizaciones por ambos criterios para mayor compatibilidad
+        const [resEstado, resMetodo] = await Promise.all([
+          supabase
             .from('ventas')
             .select('*')
             .eq('organization_id', organizationId)
             .eq('estado', 'cotizacion')
-            .order('created_at', { ascending: false });
-          
-          if (!error) {
-            return await cargarClientes(data || []);
-          }
-          
-          // Si el error es porque no existe la columna, usar método alternativo
-          if (error.code === 'PGRST204' || error.message?.includes('estado')) {
-            console.warn('Campo estado no existe, usando método alternativo para identificar cotizaciones');
-            // Usar metodo_pago = 'COTIZACION' como indicador de cotización
-            const { data: altData, error: altError } = await supabase
-              .from('ventas')
-              .select('*')
-              .eq('organization_id', organizationId)
-              .eq('metodo_pago', 'COTIZACION')
-              .order('created_at', { ascending: false });
-            
-            if (altError) {
-              console.error('Error fetching cotizaciones (alternativo):', altError);
-              return [];
-            }
-            return await cargarClientes(altData || []);
-          }
-          throw error;
-        } catch (err) {
-          // Si el error es porque no existe la columna, usar método alternativo
-          if (err.code === 'PGRST204' || err.message?.includes('estado')) {
-            console.warn('Campo estado no existe, usando método alternativo para identificar cotizaciones');
-            const { data: altData, error: altError } = await supabase
-              .from('ventas')
-              .select('*')
-              .eq('organization_id', organizationId)
-              .eq('metodo_pago', 'COTIZACION')
-              .order('created_at', { ascending: false });
-            
-            if (altError) {
-              console.error('Error fetching cotizaciones (alternativo):', altError);
-              return [];
-            }
-            return await cargarClientes(altData || []);
-          }
-          throw err;
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('ventas')
+            .select('*')
+            .eq('organization_id', organizationId)
+            .eq('metodo_pago', 'COTIZACION')
+            .order('created_at', { ascending: false })
+        ]);
+
+        // Combinar resultados y eliminar duplicados por ID
+        const ventasCombinadas = [...(resEstado.data || []), ...(resMetodo.data || [])];
+        const uniqueVentas = Array.from(new Map(ventasCombinadas.map(v => [v.id, v])).values());
+
+        // Si ambas fallaron por falta de columna, el error se manejará en el catch o aquí
+        if (resEstado.error && resMetodo.error) {
+          console.error('Error fetching cotizaciones:', resEstado.error, resMetodo.error);
+          return [];
         }
+
+        return await cargarClientes(uniqueVentas.sort((a, b) => 
+          new Date(b.created_at) - new Date(a.created_at)
+        ));
       } catch (error) {
         console.error('Error en useCotizaciones:', error);
         return [];

@@ -95,7 +95,7 @@ export const useProductos = (organizationId) => {
       return Array.from(mergedMap.values());
     },
     enabled: !!organizationId,
-    staleTime: 30 * 1000, // 30 segundos (antes 15 min) para mantener stock actualizado
+    staleTime: 5 * 1000, // 5 segundos (antes 30s) para respuesta casi instantánea
     cacheTime: 5 * 60 * 1000, // 5 minutos
     refetchOnMount: true,
     refetchOnWindowFocus: true,
@@ -134,7 +134,7 @@ export const useProductosPaginados = (organizationId, pageSize = 50) => {
     },
     getNextPageParam: (lastPage) => lastPage.nextPage,
     enabled: !!organizationId,
-    staleTime: 60 * 1000, // 1 minuto
+    staleTime: 10 * 1000, // 10 segundos
     cacheTime: 10 * 60 * 1000, // 10 minutos
     refetchOnMount: true,
     refetchOnWindowFocus: true,
@@ -178,17 +178,24 @@ export const useAgregarProducto = () => {
       return data[0];
     },
     onSuccess: (newProducto) => {
-      // Invalidar ambas versiones del cache
-      queryClient.invalidateQueries(['productos', newProducto.organization_id]);
-      queryClient.invalidateQueries(['productos-paginados', newProducto.organization_id]);
-      if (newProducto?.synced === 0) {
+      // Actualización manual del cache para feedback inmediato
+      if (newProducto && newProducto.organization_id) {
         queryClient.setQueryData(['productos', newProducto.organization_id], (old = []) => {
+          // Evitar duplicados si ya se insertó por otra vía
+          if (old.some(p => p.id === newProducto.id)) return old;
           return [newProducto, ...old];
         });
-        toast.success('Producto guardado localmente. Se sincronizará al reconectar.');
-        return;
+        
+        // También invalidar para asegurar consistencia en segundo plano
+        queryClient.invalidateQueries({ queryKey: ['productos', newProducto.organization_id], refetchType: 'none' });
+        queryClient.invalidateQueries({ queryKey: ['productos-paginados', newProducto.organization_id] });
       }
-      toast.success('¡Producto agregado exitosamente!');
+
+      if (newProducto?.synced === 0) {
+        toast.success('Producto guardado localmente. Se sincronizará al reconectar.');
+      } else {
+        toast.success('¡Producto agregado exitosamente!');
+      }
     },
     onError: (error) => {
       console.error('Error adding producto:', error);
@@ -221,17 +228,26 @@ export const useActualizarProducto = () => {
       return data[0];
     },
     onSuccess: (updatedProducto) => {
-      // Invalidar ambas versiones del cache
-      queryClient.invalidateQueries(['productos', updatedProducto.organization_id]);
-      queryClient.invalidateQueries(['productos-paginados', updatedProducto.organization_id]);
-      if (updatedProducto?.synced === 0) {
+      // Actualización manual del cache para feedback inmediato
+      if (updatedProducto && updatedProducto.organization_id) {
         queryClient.setQueryData(['productos', updatedProducto.organization_id], (old = []) => {
-          return old.map(producto => (producto.id === updatedProducto.id ? { ...producto, ...updatedProducto } : producto));
+          return old.map(producto => 
+            producto.id === updatedProducto.id 
+              ? { ...producto, ...updatedProducto, variantes: producto.variantes } 
+              : producto
+          );
         });
-        toast.success('Producto actualizado localmente. Se sincronizará al reconectar.');
-        return;
+        
+        // También invalidar para asegurar consistencia en segundo plano sin forzar recarga visual inmediata
+        queryClient.invalidateQueries({ queryKey: ['productos', updatedProducto.organization_id], refetchType: 'none' });
+        queryClient.invalidateQueries({ queryKey: ['productos-paginados', updatedProducto.organization_id] });
       }
-      toast.success('¡Producto actualizado exitosamente!');
+
+      if (updatedProducto?.synced === 0) {
+        toast.success('Producto actualizado localmente. Se sincronizará al reconectar.');
+      } else {
+        toast.success('¡Producto actualizado exitosamente!');
+      }
     },
     onError: (error) => {
       console.error('Error updating producto:', error);
