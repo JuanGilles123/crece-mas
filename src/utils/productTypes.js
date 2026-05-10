@@ -40,6 +40,16 @@ export const PRODUCT_TYPES = {
       required: ['nombre', 'precio_venta', 'precio_compra'],
       optional: ['imagen', 'peso', 'unidad_peso', 'stock', 'dimensiones', 'color', 'material', 'talla', 'variaciones', 'categoria']
     }
+  },
+  combo: {
+    id: 'combo',
+    label: 'Combo / Ancheta',
+    icon: '🎁',
+    description: 'Pack de productos vinculados con precio calculado',
+    fields: {
+      required: ['nombre', 'precio_venta', 'precio_compra'],
+      optional: ['imagen', 'categoria', 'descripcion', 'variaciones']
+    }
   }
 };
 

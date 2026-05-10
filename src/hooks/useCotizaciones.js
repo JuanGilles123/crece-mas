@@ -132,13 +132,16 @@ export const useGuardarCotizacion = () => {
         throw new Error(`Error al guardar cotización: ${error.message}`);
       }
 
-      return data[0];
+      return data && data.length > 0 ? data[0] : cotizacionData;
     },
-    onSuccess: (newCotizacion) => {
+    onSuccess: (newCotizacion, variables) => {
       // Invalidar y refetch cotizaciones
-      queryClient.invalidateQueries(['cotizaciones', newCotizacion.organization_id]);
-      // También invalidar ventas para que aparezca en el historial
-      queryClient.invalidateQueries(['ventas', newCotizacion.organization_id]);
+      const orgId = newCotizacion?.organization_id || variables?.organization_id;
+      if (orgId) {
+        queryClient.invalidateQueries(['cotizaciones', orgId]);
+        // También invalidar ventas para que aparezca en el historial
+        queryClient.invalidateQueries(['ventas', orgId]);
+      }
       toast.success('Cotización guardada exitosamente');
     },
     onError: (error) => {
@@ -165,12 +168,15 @@ export const useActualizarCotizacion = () => {
         throw new Error('Error al actualizar cotización');
       }
 
-      return data[0];
+      return data ? data[0] : null;
     },
-    onSuccess: (updatedCotizacion) => {
+    onSuccess: (updatedCotizacion, variables) => {
       // Invalidar queries
-      queryClient.invalidateQueries(['cotizaciones', updatedCotizacion.organization_id]);
-      queryClient.invalidateQueries(['ventas', updatedCotizacion.organization_id]);
+      const orgId = updatedCotizacion?.organization_id || variables.updates?.organization_id;
+      if (orgId) {
+        queryClient.invalidateQueries(['cotizaciones', orgId]);
+        queryClient.invalidateQueries(['ventas', orgId]);
+      }
     },
     onError: (error) => {
       console.error('Error updating cotizacion:', error);
@@ -185,29 +191,40 @@ export const useEliminarCotizacion = () => {
 
   return useMutation({
     mutationFn: async ({ id, organizationId }) => {
-      // Intentar eliminar usando estado, si falla usar metodo_pago = null
-      let { error } = await supabase
+      // Intentar eliminar la cotización. 
+      // Usamos el ID directamente ya que es la forma más segura si ya sabemos que es una cotización.
+      // Pero para mayor seguridad, intentamos verificar que sea una cotización.
+      
+      const { error: deleteError } = await supabase
         .from('ventas')
         .delete()
         .eq('id', id)
-        .eq('estado', 'cotizacion');
+        .or('metodo_pago.eq.COTIZACION,estado.eq.cotizacion');
 
-      // Si el error es porque no existe la columna 'estado', usar método alternativo
-      if (error && (error.code === 'PGRST204' || error.message?.includes('estado'))) {
-        const result = await supabase
-          .from('ventas')
-          .delete()
-          .eq('id', id)
-          .eq('metodo_pago', 'COTIZACION');
+      if (deleteError) {
+        console.error('Error deleting cotizacion (attempt 1):', deleteError);
         
-        if (result.error) {
-          console.error('Error deleting cotizacion:', result.error);
-          throw new Error('Error al eliminar cotización');
+        // Si falla por la columna 'estado', intentar solo con 'metodo_pago'
+        if (deleteError.message?.includes('estado')) {
+          const { error: retryError } = await supabase
+            .from('ventas')
+            .delete()
+            .eq('id', id)
+            .eq('metodo_pago', 'COTIZACION');
+          
+          if (retryError) {
+            console.error('Error deleting cotizacion (retry):', retryError);
+            throw new Error('Error al eliminar cotización');
+          }
+        } else {
+          // Si es otro error, intentar borrar por ID sin filtros adicionales (último recurso)
+          const { error: finalError } = await supabase
+            .from('ventas')
+            .delete()
+            .eq('id', id);
+            
+          if (finalError) throw new Error('Error al eliminar cotización');
         }
-        error = result.error;
-      } else if (error) {
-        console.error('Error deleting cotizacion:', error);
-        throw new Error('Error al eliminar cotización');
       }
 
       return { id, organizationId };

@@ -207,6 +207,27 @@
   border-color: #d1d5db;
 }
 
+.venta-card.highlight-modified {
+  animation: highlight-pulse 5s ease-out forwards;
+  border-left: 4px solid #10b981 !important;
+}
+
+@keyframes highlight-pulse {
+  0% {
+    background-color: #ecfdf5;
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
+    transform: scale(1.02);
+  }
+  10% {
+    transform: scale(1);
+  }
+  100% {
+    background-color: white;
+    box-shadow: none;
+    transform: scale(1);
+  }
+}
+
 .venta-header {
   display: flex;
   justify-content: space-between;

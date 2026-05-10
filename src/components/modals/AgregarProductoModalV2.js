@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -8,7 +8,7 @@ import '../../pages/dashboard/Inventario.css';
 import { useAuth } from '../../context/AuthContext';
 import { useSubscription } from '../../hooks/useSubscription';
 import { compressProductImage } from '../../services/storage/imageCompression';
-import { useAgregarProducto } from '../../hooks/useProductos';
+import { useAgregarProducto, useProductos } from '../../hooks/useProductos';
 import { useCurrencyInput, formatCurrency } from '../../hooks/useCurrencyInput';
 import { Package, Scissors, UtensilsCrossed, Scale, ChevronRight, Plus, X } from 'lucide-react';
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
@@ -166,12 +166,25 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
   const [variacionesConfig, setVariacionesConfig] = useState([]);
   const [productosVinculados, setProductosVinculados] = useState([]);
   const [variantesProducto, setVariantesProducto] = useState([]);
-  const [precioVentaModo, setPrecioVentaModo] = useState('manual'); // 'manual' | 'porcentaje'
+  const [precioVentaModo, setPrecioVentaModo] = useState('manual'); // 'manual' | 'porcentaje' | 'combo'
   const [margenPorcentaje, setMargenPorcentaje] = useState('');
+  const [margenCombo, setMargenCombo] = useState('30'); // '30' | '35' | 'otro'
+  const [margenComboPersonalizado, setMargenComboPersonalizado] = useState('');
+  const [creandoCategoria, setCreandoCategoria] = useState(false);
+  const [nuevaCategoriaText, setNuevaCategoriaText] = useState('');
+  const [categoriaManoObra, setCategoriaManoObra] = useState('');
+  const [creandoCategoriaManoObra, setCreandoCategoriaManoObra] = useState(false);
+  const [nuevaCategoriaManoObraText, setNuevaCategoriaManoObraText] = useState('');
   const fileInputRef = useRef();
   const codigoInputRef = useRef(null);
 
   const puedeSubirImagenes = hasFeature('productImages');
+  
+  const { data: productosData = [] } = useProductos(organization?.id);
+  const categoriasExistentes = useMemo(() => {
+    const cats = new Set(productosData.map(p => p.metadata?.categoria || p.categoria).filter(Boolean));
+    return [...cats].sort();
+  }, [productosData]);
   
   // Efecto para establecer el tipo por defecto cuando se abre el modal
   useEffect(() => {
@@ -185,6 +198,13 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
       setImagenUrl('');
       setPrecioVentaModo('manual');
       setMargenPorcentaje('');
+      setMargenCombo('30');
+      setMargenComboPersonalizado('');
+      setCreandoCategoria(false);
+      setNuevaCategoriaText('');
+      setCategoriaManoObra('');
+      setCreandoCategoriaManoObra(false);
+      setNuevaCategoriaManoObraText('');
       
       if (skipTypeSelector && defaultProductType) {
         setSelectedType(defaultProductType);
@@ -398,6 +418,40 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
       clearErrors('stock');
     }
   }, [variantesProducto.length, setValue, stockInput, clearErrors]);
+
+  // Cálculo automático para Combos / Anchetas
+  useEffect(() => {
+    if (selectedType !== 'combo') return;
+
+    // Calcular costo total sumando los costos de los productos vinculados
+    const costoTotal = productosVinculados.reduce((sum, p) => sum + ((p.precio_compra || 0) * (p.cantidad || 1)), 0);
+    
+    // Calcular precio de venta base sumando los precios de venta de los productos vinculados
+    const ventaBaseTotal = productosVinculados.reduce((sum, p) => sum + ((p.precio_venta || 0) * (p.cantidad || 1)), 0);
+
+    // Aplicar el margen de la ancheta (30% o 35% o personalizado)
+    const margenActual = margenCombo === 'otro' 
+      ? parseFloat(margenComboPersonalizado) || 0 
+      : parseFloat(margenCombo) || 30;
+    
+    const ventaFinal = Math.round(ventaBaseTotal * (1 + (margenActual / 100)));
+
+    // Actualizar campos
+    const formattedCosto = formatCurrency(Math.round(costoTotal));
+    const formattedVenta = formatCurrency(ventaFinal);
+
+    setValue('precioCompra', formattedCosto, { shouldValidate: true });
+    precioCompraInput.setValue(Math.round(costoTotal));
+
+    setValue('precioVenta', formattedVenta, { shouldValidate: true });
+    precioVentaInput.setValue(ventaFinal);
+
+    // Forzar modo combo para que los inputs se vean deshabilitados si se desea, 
+    // pero permitimos edición si el usuario cambia a manual
+    if (productosVinculados.length > 0 && precioVentaModo !== 'manual') {
+      setPrecioVentaModo('combo');
+    }
+  }, [selectedType, productosVinculados, margenCombo, margenComboPersonalizado, precioVentaModo, setValue, precioCompraInput, precioVentaInput]);
 
   // Handler para cuando se escanea un código de barras en el campo código
   const handleBarcodeScanned = useCallback((barcode) => {
@@ -798,6 +852,14 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
       if (data.porcion) metadata.porcion = data.porcion;
       if (data.variaciones) metadata.variaciones = data.variaciones;
       if (data.pureza) metadata.pureza = data.pureza;
+      
+      // Categoría puede ser de select o nueva
+      const categoriaFinal = creandoCategoria ? nuevaCategoriaText : data.categoria;
+      if (categoriaFinal && categoriaFinal.trim() !== '') {
+        metadata.categoria = categoriaFinal.trim();
+        productoData.categoria = categoriaFinal.trim(); // guardamos en columna si existe
+      }
+
       if (isJewelryBusiness && compraPorUnidadValue) {
         metadata.jewelry_compra_por_unidad = compraPorUnidadValue;
       }
@@ -858,6 +920,23 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
       // Agregar variaciones_config si hay variaciones configuradas
       if (variacionesConfig && variacionesConfig.length > 0) {
         metadata.variaciones_config = variacionesConfig;
+      }
+      
+      // Añadir info específica de combos
+      if (selectedType === 'combo') {
+        metadata.es_combo = true;
+        // Guardar configuración del margen
+        if (precioVentaModo === 'combo') {
+          metadata.margen_combo_tipo = margenCombo;
+          if (margenCombo === 'otro') {
+            metadata.margen_combo_valor = margenComboPersonalizado;
+          }
+        }
+        
+        const catManoObraFinal = creandoCategoriaManoObra ? nuevaCategoriaManoObraText : categoriaManoObra;
+        if (catManoObraFinal && catManoObraFinal.trim() !== '') {
+          metadata.categoria_mano_obra = catManoObraFinal.trim();
+        }
       }
       
       // Agregar productos_vinculados si hay productos vinculados
@@ -1044,7 +1123,7 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
             {/* Paso 1: Campos básicos + Imagen */}
             {formStep === 1 && (
               <div className="form-step-content">
-                <h3 className="step-title">Información Básica e Imagen</h3>
+                <h3 className="step-title" style={{ fontSize: '1.25rem', fontWeight: 600, color: '#0f172a', marginBottom: '1.5rem' }}>Información Básica e Imagen</h3>
                 <label>Código</label>
             <input
               {...register('codigo', {
@@ -1073,6 +1152,55 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
             />
             {errors.nombre && <span className="error-message">{errors.nombre.message}</span>}
 
+            <div style={{ marginTop: '1rem' }}>
+              <label style={{ fontWeight: 600, fontSize: '0.95rem', color: '#334155', display: 'block', marginBottom: '0.5rem' }}>Categoría</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+              <select
+                className="input-form"
+                value={creandoCategoria ? 'crear_otra' : (categoriasExistentes.includes(watch('categoria')) ? watch('categoria') : (watch('categoria') || ''))}
+                onChange={(e) => {
+                  if (e.target.value === 'crear_otra') {
+                    setCreandoCategoria(true);
+                    setValue('categoria', nuevaCategoriaText);
+                  } else {
+                    setCreandoCategoria(false);
+                    setValue('categoria', e.target.value);
+                  }
+                }}
+              >
+                <option value="">Sin categoría</option>
+                {categoriasExistentes.map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+                <option value="crear_otra">+ Crear nueva categoría</option>
+              </select>
+              {creandoCategoria && (
+                <input
+                  type="text"
+                  className="input-form"
+                  placeholder="Escribe la nueva categoría"
+                  value={nuevaCategoriaText}
+                  onChange={(e) => {
+                    setNuevaCategoriaText(e.target.value);
+                    setValue('categoria', e.target.value);
+                  }}
+                  autoFocus
+                />
+              )}
+            </div>
+            </div>
+
+            {/* Productos vinculados (SI ES COMBO, APARECEN PRIMERO) */}
+            {selectedType === 'combo' && (
+              <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <ProductosVinculados
+                  productosVinculados={productosVinculados}
+                  onChange={setProductosVinculados}
+                  organizationId={organization?.id}
+                />
+              </div>
+            )}
+
             {isJewelryBusiness && (
               <>
                 <label>Peso <span style={{ color: '#ef4444' }}>*</span></label>
@@ -1098,102 +1226,107 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
             )}
 
             {/* Precios */}
-            <label>Precios</label>
-            <div className="input-precio-row" style={{ gap: '2.5rem', justifyContent: 'space-between' }}>
-              {(typeFields.required.includes('precio_compra') || typeFields.optional.includes('precio_compra')) && (
+            <h4 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#1e293b', marginTop: '1.5rem', marginBottom: '1rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem' }}>Precios</h4>
+            {/* Los precios se movieron al final para Combos */}
+            {selectedType !== 'combo' && (
+              <div className="input-precio-row" style={{ gap: '2.5rem', justifyContent: 'space-between' }}>
+                {(typeFields.required.includes('precio_compra') || typeFields.optional.includes('precio_compra')) && (
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontWeight: 600, fontSize: '0.98rem', marginBottom: 4, textAlign: 'center' }}>
+                      Precio de Compra {isJewelryBusiness ? `(por ${organization?.jewelry_weight_unit || 'g'})` : ''} {typeFields.required.includes('precio_compra') && <span style={{ color: '#ef4444' }}>*</span>}
+                    </span>
+                    <input
+                      {...register('precioCompra')}
+                      value={precioCompraInput.displayValue}
+                      onChange={handlePrecioCompraChange}
+                      inputMode="numeric"
+                      placeholder="Ej: 30.000"
+                      className={`input-form ${errors.precioCompra ? 'error' : ''}`}
+                      disabled={selectedType === 'combo' && precioVentaModo === 'combo'}
+                    />
+                    {errors.precioCompra && <span className="error-message">{errors.precioCompra.message}</span>}
+                    {isJewelryBusiness && compraPorUnidad > 0 && pesoNumerico > 0 && (
+                      <span style={{ fontSize: '0.75rem', color: '#6b7280', textAlign: 'center' }}>
+                        Costo real por pieza: {formatCurrency(costoCompraReal)}
+                      </span>
+                    )}
+                    {isJewelryBusiness && (
+                      <div style={{ marginTop: '0.65rem', display: 'grid', gap: '0.5rem' }}>
+                        <label style={{ fontWeight: 600 }}>Tipo de precio</label>
+                        <select {...register('jewelry_price_mode')} className="input-form">
+                          <option value="fixed">Precio fijo (estático)</option>
+                          <option value="variable">Precio variable</option>
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                   <span style={{ fontWeight: 600, fontSize: '0.98rem', marginBottom: 4, textAlign: 'center' }}>
-                    Precio de Compra {isJewelryBusiness ? `(por ${organization?.jewelry_weight_unit || 'g'})` : ''} {typeFields.required.includes('precio_compra') && <span style={{ color: '#ef4444' }}>*</span>}
+                    Precio de Venta {!isJewelryBusiness || jewelryPriceMode !== 'variable' ? <span style={{ color: '#ef4444' }}>*</span> : null}
                   </span>
-                  <input
-                    {...register('precioCompra')}
-                    value={precioCompraInput.displayValue}
-                    onChange={handlePrecioCompraChange}
-                    inputMode="numeric"
-                    placeholder="Ej: 30.000"
-                    className={`input-form ${errors.precioCompra ? 'error' : ''}`}
-                  />
-                  {errors.precioCompra && <span className="error-message">{errors.precioCompra.message}</span>}
-                  {isJewelryBusiness && compraPorUnidad > 0 && pesoNumerico > 0 && (
-                    <span style={{ fontSize: '0.75rem', color: '#6b7280', textAlign: 'center' }}>
-                      Costo real por pieza: {formatCurrency(costoCompraReal)}
-                    </span>
+                  {(typeFields.required.includes('precio_compra') || typeFields.optional.includes('precio_compra')) && (
+                    (!isJewelryBusiness || jewelryPriceMode === 'fixed') && (
+                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', width: '100%' }}>
+                      <button
+                        type="button"
+                        className={`inventario-btn ${precioVentaModo === 'manual' ? 'inventario-btn-primary' : 'inventario-btn-outline'}`}
+                        onClick={() => setPrecioVentaModo('manual')}
+                        style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem' }}
+                      >
+                        Manual
+                      </button>
+                      <button
+                        type="button"
+                        className={`inventario-btn ${precioVentaModo === 'porcentaje' ? 'inventario-btn-primary' : 'inventario-btn-outline'}`}
+                        onClick={() => setPrecioVentaModo('porcentaje')}
+                        style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem' }}
+                      >
+                        % sobre compra
+                      </button>
+                    </div>
+                    )
                   )}
-                  {isJewelryBusiness && (
-                    <div style={{ marginTop: '0.65rem', display: 'grid', gap: '0.5rem' }}>
-                      <label style={{ fontWeight: 600 }}>Tipo de precio</label>
-                      <select {...register('jewelry_price_mode')} className="input-form">
-                        <option value="fixed">Precio fijo (estático)</option>
-                        <option value="variable">Precio variable</option>
-                      </select>
+                  {precioVentaModo === 'porcentaje' && (typeFields.required.includes('precio_compra') || typeFields.optional.includes('precio_compra')) && !esEmpleado && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '0.5rem' }}>
+                      <input
+                        value={margenPorcentaje}
+                        onChange={handleMargenPorcentajeChange}
+                        inputMode="decimal"
+                        placeholder="Ej: 30"
+                        className="input-form"
+                      />
+                      <span style={{ fontSize: '0.75rem', color: '#6b7280', textAlign: 'center' }}>
+                        % de margen sobre el precio de compra
+                      </span>
                     </div>
                   )}
-                </div>
-              )}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontWeight: 600, fontSize: '0.98rem', marginBottom: 4, textAlign: 'center' }}>
-                  Precio de Venta {!isJewelryBusiness || jewelryPriceMode !== 'variable' ? <span style={{ color: '#ef4444' }}>*</span> : null}
-                </span>
-                {(typeFields.required.includes('precio_compra') || typeFields.optional.includes('precio_compra')) && (
-                  (!isJewelryBusiness || jewelryPriceMode === 'fixed') && (
-                  <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', justifyContent: 'center' }}>
-                    <button
-                      type="button"
-                      className={`inventario-btn ${precioVentaModo === 'manual' ? 'inventario-btn-primary' : 'inventario-btn-outline'}`}
-                      onClick={() => setPrecioVentaModo('manual')}
-                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.85rem' }}
-                    >
-                      Manual
-                    </button>
-                    <button
-                      type="button"
-                      className={`inventario-btn ${precioVentaModo === 'porcentaje' ? 'inventario-btn-primary' : 'inventario-btn-outline'}`}
-                      onClick={() => setPrecioVentaModo('porcentaje')}
-                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.85rem' }}
-                    >
-                      % sobre compra
-                    </button>
-                  </div>
-                  )
-                )}
-                {precioVentaModo === 'porcentaje' && (typeFields.required.includes('precio_compra') || typeFields.optional.includes('precio_compra')) && !esEmpleado && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '0.5rem' }}>
-                    <input
-                      value={margenPorcentaje}
-                      onChange={handleMargenPorcentajeChange}
-                      inputMode="decimal"
-                      placeholder="Ej: 30"
-                      className="input-form"
-                    />
+                  <input
+                    {...register('precioVenta')}
+                    value={precioVentaInput.displayValue}
+                    onChange={handlePrecioVentaChange}
+                    inputMode="numeric"
+                    placeholder="Ej: 50.000"
+                    className={`input-form ${errors.precioVenta ? 'error' : ''}`}
+                    disabled={
+                      (precioVentaModo === 'porcentaje' && (typeFields.required.includes('precio_compra') || typeFields.optional.includes('precio_compra')))
+                      || (isJewelryBusiness && jewelryPriceMode === 'variable')
+                      || (selectedType === 'combo' && precioVentaModo === 'combo')
+                    }
+                  />
+                  {errors.precioVenta && <span className="error-message">{errors.precioVenta.message}</span>}
+                  {isJewelryBusiness && jewelryPriceMode === 'variable' && precioBaseGramoActual > 0 && pesoNumerico > 0 && (
                     <span style={{ fontSize: '0.75rem', color: '#6b7280', textAlign: 'center' }}>
-                      % de margen sobre el precio de compra
+                      Base por {organization?.jewelry_weight_unit || 'g'}: {formatCurrency(precioBaseGramoActual)} • Regla: {reglaAplicada}{aplicaPureza ? ` • Pureza aplicada (${purezaWatch || '24k'})` : ''}
                     </span>
-                  </div>
-                )}
-                <input
-                  {...register('precioVenta')}
-                  value={precioVentaInput.displayValue}
-                  onChange={handlePrecioVentaChange}
-                  inputMode="numeric"
-                  placeholder="Ej: 50.000"
-                  className={`input-form ${errors.precioVenta ? 'error' : ''}`}
-                  disabled={
-                    (precioVentaModo === 'porcentaje' && (typeFields.required.includes('precio_compra') || typeFields.optional.includes('precio_compra')))
-                    || (isJewelryBusiness && jewelryPriceMode === 'variable')
-                  }
-                />
-                {errors.precioVenta && <span className="error-message">{errors.precioVenta.message}</span>}
-                {isJewelryBusiness && jewelryPriceMode === 'variable' && precioBaseGramoActual > 0 && pesoNumerico > 0 && (
-                  <span style={{ fontSize: '0.75rem', color: '#6b7280', textAlign: 'center' }}>
-                    Base por {organization?.jewelry_weight_unit || 'g'}: {formatCurrency(precioBaseGramoActual)} • Regla: {reglaAplicada}{aplicaPureza ? ` • Pureza aplicada (${purezaWatch || '24k'})` : ''}
-                  </span>
-                )}
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             {isJewelryBusiness && (
-              <div style={{ marginTop: '0.75rem', display: 'grid', gap: '0.5rem' }}>
-                <label style={{ fontWeight: 600 }}>Configuración de precio por peso</label>
+              <div style={{ marginTop: '1.5rem', display: 'grid', gap: '0.5rem' }}>
+                <h4 style={{ fontSize: '1.05rem', fontWeight: 600, color: '#1e293b', marginBottom: '0.5rem' }}>Configuración de precio por peso</h4>
                 {jewelryPriceMode === 'fixed' && !esEmpleado && (
                   <div style={{ display: 'grid', gap: '0.5rem' }}>
                     <label>Cómo definir el precio estático</label>
@@ -1256,6 +1389,125 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
               </div>
             )}
 
+            {/* SECCIÓN DE PRECIOS AL FINAL PARA COMBOS */}
+            {selectedType === 'combo' && (
+              <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '2px dashed #e2e8f0' }}>
+                <h4 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--accent-primary)', marginBottom: '1.5rem' }}>Resumen Financiero del Combo</h4>
+                <div className="input-precio-row" style={{ gap: '2.5rem', justifyContent: 'space-between' }}>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontWeight: 600, fontSize: '0.98rem', marginBottom: 4, textAlign: 'center' }}>
+                      Costo Total de Compra
+                    </span>
+                    <input
+                      {...register('precioCompra')}
+                      value={precioCompraInput.displayValue}
+                      onChange={handlePrecioCompraChange}
+                      inputMode="numeric"
+                      className="input-form"
+                      disabled={precioVentaModo === 'combo'}
+                      style={precioVentaModo === 'combo' ? { backgroundColor: '#f1f5f9', fontWeight: 'bold' } : {}}
+                    />
+                  </div>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontWeight: 600, fontSize: '0.98rem', marginBottom: 4, textAlign: 'center' }}>
+                      Precio Final de Venta
+                    </span>
+                    <input
+                      {...register('precioVenta')}
+                      value={precioVentaInput.displayValue}
+                      onChange={handlePrecioVentaChange}
+                      inputMode="numeric"
+                      className="input-form"
+                      disabled={precioVentaModo === 'combo'}
+                      style={precioVentaModo === 'combo' ? { backgroundColor: '#f0fdf4', color: '#166534', fontWeight: 'bold', border: '1px solid #bbf7d0' } : {}}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ marginTop: '1.5rem', padding: '1.25rem', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
+                  <h4 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#1e293b', marginBottom: '1rem', borderBottom: '1px solid #bbf7d0', paddingBottom: '0.5rem' }}>Ajustar Margen de la Ancheta</h4>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    {['30', '35', 'otro'].map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        className={`inventario-btn ${margenCombo === m ? 'inventario-btn-primary' : 'inventario-btn-outline'}`}
+                        onClick={() => {
+                          setMargenCombo(m);
+                          setPrecioVentaModo('combo');
+                        }}
+                        style={{ padding: '0.35rem', fontSize: '0.85rem', flex: 1 }}
+                      >
+                        {m === 'otro' ? 'Personalizado' : `${m}%`}
+                      </button>
+                    ))}
+                  </div>
+                  {margenCombo === 'otro' && (
+                    <input
+                      type="number"
+                      placeholder="% personalizado"
+                      className="input-form"
+                      style={{ marginTop: '0.5rem' }}
+                      value={margenComboPersonalizado}
+                      onChange={(e) => setMargenComboPersonalizado(e.target.value)}
+                    />
+                  )}
+                  <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.75rem', color: '#166534' }}>
+                      Calculado sobre la suma de {productosVinculados.length} productos.
+                    </span>
+                    <span 
+                      style={{ fontSize: '0.75rem', color: '#64748b', cursor: 'pointer', textDecoration: 'underline' }}
+                      onClick={() => setPrecioVentaModo('manual')}
+                    >
+                      Editar precios manualmente
+                    </span>
+                  </div>
+
+                  <div style={{ marginTop: '1.5rem', paddingTop: '1.25rem', borderTop: '1px solid #bbf7d0' }}>
+                    <h4 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#1e293b', marginBottom: '1rem', borderBottom: '1px solid #bbf7d0', paddingBottom: '0.5rem' }}>
+                      ¿A qué categoría va el dinero del margen (mano de obra)?
+                    </h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <select
+                        className="input-form"
+                        style={{ backgroundColor: '#fff' }}
+                        value={creandoCategoriaManoObra ? 'crear_otra' : (categoriasExistentes.includes(categoriaManoObra) ? categoriaManoObra : '')}
+                        onChange={(e) => {
+                          if (e.target.value === 'crear_otra') {
+                            setCreandoCategoriaManoObra(true);
+                            setCategoriaManoObra(nuevaCategoriaManoObraText);
+                          } else {
+                            setCreandoCategoriaManoObra(false);
+                            setCategoriaManoObra(e.target.value);
+                          }
+                        }}
+                      >
+                        <option value="">A la categoría del producto (General)</option>
+                        {categoriasExistentes.map(c => (
+                          <option key={`mano-${c}`} value={c}>{c}</option>
+                        ))}
+                        <option value="crear_otra">+ Crear nueva categoría</option>
+                      </select>
+                      {creandoCategoriaManoObra && (
+                        <input
+                          type="text"
+                          className="input-form"
+                          style={{ backgroundColor: '#fff' }}
+                          placeholder="Ej: Mano de Obra, Empaques"
+                          value={nuevaCategoriaManoObraText}
+                          onChange={(e) => {
+                            setNuevaCategoriaManoObraText(e.target.value);
+                            setCategoriaManoObra(e.target.value);
+                          }}
+                        />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Stock si aplica */}
             {(typeFields.required.includes('stock') || typeFields.optional.includes('stock')) && (
               <>
@@ -1307,45 +1559,48 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
             </div>
 
             {/* Imagen del producto (ahora en el paso 1) */}
-            <div style={{ marginTop: '1.5rem', marginBottom: '2.5rem' }}>
-              <h3 className="step-title" style={{ marginBottom: '0.5rem' }}>Imagen del Producto</h3>
-              <p className="step-description" style={{ marginBottom: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>
-                Agrega una imagen para identificar mejor tu producto (Opcional)
-              </p>
-              <label>
-                Imagen <span style={{ color: '#6b7280', fontWeight: 400 }}>(Opcional)</span>
-                {!puedeSubirImagenes && <span style={{ color: '#ef4444', fontWeight: 600 }}> 🔒 Solo plan Estándar</span>}
-              </label>
-              <div className="input-upload-wrapper input-upload-centro" style={{ marginBottom: '1rem' }}>
+            <div style={{ marginTop: '2rem', marginBottom: '1.5rem' }}>
+              <h4 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#1e293b', marginBottom: '1rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem' }}>
+                Imagen del Producto <span style={{ color: '#64748b', fontWeight: 400, fontSize: '0.9rem' }}>(Opcional)</span>
+                {!puedeSubirImagenes && <span style={{ color: '#ef4444', fontWeight: 600, fontSize: '0.85rem', marginLeft: '0.5rem' }}>🔒 Solo plan Estándar</span>}
+              </h4>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <input
+                  className="input-form"
+                  style={{ flex: 1 }}
+                  placeholder="Pega la URL aquí o sube un archivo 👉"
+                  value={imagen ? imagen.name : imagenUrl}
+                  onChange={(e) => {
+                    if (!imagen) setImagenUrl(e.target.value);
+                  }}
+                  disabled={Boolean(imagen)}
+                />
                 <button
                   type="button"
-                  className="input-upload-btn"
                   onClick={puedeSubirImagenes ? handleClickUpload : () => toast.error('Actualiza al plan Profesional para subir imágenes')}
-                  disabled={!puedeSubirImagenes}
-                  style={!puedeSubirImagenes ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                  disabled={!puedeSubirImagenes || Boolean(imagenUrl && imagenUrl.trim() !== '')}
+                  style={{ 
+                    padding: '0.5rem 0.75rem', 
+                    height: '100%', 
+                    flexShrink: 0, 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    backgroundColor: '#cbd5e1',
+                    border: '1px solid #94a3b8',
+                    borderRadius: '8px',
+                    color: '#334155',
+                    cursor: 'pointer'
+                  }}
+                  title="Cargar imagen desde el dispositivo"
                 >
                   <svg width="22" height="22" fill="none" viewBox="0 0 24 24">
-                    <path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    <rect x="4" y="16" width="16" height="4" rx="2" fill="#2563eb" fillOpacity=".08" />
+                    <path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <rect x="4" y="16" width="16" height="4" rx="2" fill="currentColor" fillOpacity=".2" />
                   </svg>
-                  {imagen ? imagen.name : puedeSubirImagenes ? 'Seleccionar imagen' : '🔒 Bloqueado'}
                 </button>
                 <input type="file" accept="image/*" onChange={handleImagenChange} ref={fileInputRef} style={{ display: 'none' }} disabled={!puedeSubirImagenes} />
               </div>
-
-              <label style={{ marginTop: '0.5rem' }}>
-                URL de imagen <span style={{ color: '#6b7280', fontWeight: 400 }}>(Opcional)</span>
-              </label>
-              <input
-                className="input-form"
-                placeholder="https://..."
-                value={imagenUrl}
-                onChange={(e) => setImagenUrl(e.target.value)}
-                disabled={Boolean(imagen)}
-              />
-              <p className="step-description" style={{ marginTop: '0.4rem', fontSize: '0.8rem', color: '#6b7280' }}>
-                Si pegas una URL, se usará esa imagen sin subir archivo.
-              </p>
 
               {imagen && (
                 <div className="image-preview">
@@ -1380,41 +1635,8 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
             {/* Paso 2: Opciones, variaciones y variantes */}
             {formStep === 2 && (
               <div className="form-step-content">
-                <h3 className="step-title">Opciones y Variantes</h3>
+                <h3 className="step-title" style={{ fontSize: '1.25rem', fontWeight: 600, color: '#0f172a', marginBottom: '1.5rem' }}>Opciones y Variantes</h3>
                 <p className="step-description">Configura variaciones del cliente y variantes con stock.</p>
-                {typeFields.optional.map(fieldId => {
-              const fieldConfig = ADDITIONAL_FIELDS[fieldId];
-              if (!fieldConfig) return null;
-
-              return (
-                <div key={fieldId}>
-                  <label>
-                    {fieldConfig.label} <span style={{ color: '#6b7280', fontWeight: 400 }}>(Opcional)</span>
-                  </label>
-                  {fieldConfig.type === 'textarea' ? (
-                    <textarea
-                      {...register(fieldId)}
-                      className="input-form"
-                      placeholder={fieldConfig.placeholder}
-                      rows={3}
-                    />
-                  ) : fieldConfig.type === 'select' ? (
-                    <select {...register(fieldId)} className="input-form">
-                      {fieldConfig.options.map(opt => (
-                        <option key={opt} value={opt}>{opt}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      {...register(fieldId)}
-                      type={fieldConfig.type}
-                      className="input-form"
-                      placeholder={fieldConfig.placeholder}
-                    />
-                  )}
-                </div>
-              );
-            })}
               
               {/* Configuración de variaciones */}
               <VariacionesConfig
@@ -1424,11 +1646,11 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
 
               {/* Variantes con stock y código */}
               <div style={{ marginTop: '1rem' }}>
-                <h3 className="step-title" style={{ fontSize: '1.1rem' }}>Variantes con stock (color, talla, presentación...)</h3>
+                <h4 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#1e293b', marginTop: '1.5rem', marginBottom: '1rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem' }}>Variantes con stock (color, talla, presentación...)</h4>
                 <p className="step-description">Cada variante puede tener su propio stock y código de barras.</p>
 
                 {variantesProducto.length === 0 && (
-                  <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
+                  <p style={{ color: '#6b7280', fontSize: '0.9rem', textAlign: 'center', margin: '0.5rem 0 1rem 0' }}>
                     No hay variantes registradas.
                   </p>
                 )}
@@ -1475,32 +1697,69 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
                 <button
                   type="button"
                   className="inventario-btn inventario-btn-secondary"
-                  style={{ marginTop: '0.75rem' }}
+                  style={{ marginTop: '0.75rem', width: '100%', display: 'flex', justifyContent: 'center' }}
                   onClick={agregarVariante}
                 >
                   + Agregar variante
                 </button>
               </div>
               
-              {/* Productos vinculados */}
-              <ProductosVinculados
-                productosVinculados={productosVinculados}
-                onChange={setProductosVinculados}
-                organizationId={organization?.id}
-              />
+              {/* Productos vinculados (MOVIBLES SEGÚN TIPO) */}
+              {selectedType !== 'combo' && (
+                <ProductosVinculados
+                  productosVinculados={productosVinculados}
+                  onChange={setProductosVinculados}
+                  organizationId={organization?.id}
+                />
+              )}
               </div>
             )}
 
             {/* Paso 3: Campos adicionales personalizables */}
             {formStep === 3 && (
               <div className="form-step-content">
-                <h3 className="step-title">Campos Adicionales</h3>
+                <h3 className="step-title" style={{ fontSize: '1.25rem', fontWeight: 600, color: '#0f172a', marginBottom: '1.5rem' }}>Campos Adicionales</h3>
                 <p className="step-description">Agrega información extra si lo necesitas</p>
                 
+                {/* Campos opcionales según el tipo de producto */}
+                {typeFields.optional.map(fieldId => {
+                  const fieldConfig = ADDITIONAL_FIELDS[fieldId];
+                  if (!fieldConfig || fieldId === 'categoria') return null;
+
+                  return (
+                    <div key={fieldId} className="additional-field-wrapper">
+                      <div className="additional-field-header">
+                        <label>{fieldConfig.label} <span style={{ color: '#6b7280', fontWeight: 400, fontSize: '0.85rem' }}>(Opcional)</span></label>
+                      </div>
+                      {fieldConfig.type === 'textarea' ? (
+                        <textarea
+                          {...register(fieldId)}
+                          className="input-form"
+                          placeholder={fieldConfig.placeholder}
+                          rows={3}
+                        />
+                      ) : fieldConfig.type === 'select' ? (
+                        <select {...register(fieldId)} className="input-form">
+                          {fieldConfig.options.map(opt => (
+                            <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          {...register(fieldId)}
+                          type={fieldConfig.type}
+                          className="input-form"
+                          placeholder={fieldConfig.placeholder}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+
                 {/* Campos adicionales agregados por el usuario */}
                 {additionalFields.map(fieldId => {
               const fieldConfig = ADDITIONAL_FIELDS[fieldId];
-              if (!fieldConfig) return null;
+              if (!fieldConfig || fieldId === 'categoria') return null;
 
               return (
                 <div key={fieldId} className="additional-field-wrapper">
@@ -1544,7 +1803,7 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
                   <label>Agregar campos adicionales</label>
                   <div className="add-fields-grid">
                     {Object.keys(ADDITIONAL_FIELDS)
-                      .filter(fieldId => !typeFields.optional.includes(fieldId) && !additionalFields.includes(fieldId))
+                      .filter(fieldId => fieldId !== 'categoria' && !typeFields.optional.includes(fieldId) && !additionalFields.includes(fieldId))
                       .map(fieldId => {
                         const fieldConfig = ADDITIONAL_FIELDS[fieldId];
                         return (
@@ -1566,8 +1825,8 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
 
 
             {/* Botones de navegación */}
-            <div className="form-actions form-actions-centro">
-              <button type="button" className="inventario-btn inventario-btn-secondary" onClick={onClose} disabled={subiendo}>
+            <div className="form-actions form-actions-centro" style={{ display: 'flex', width: '100%', gap: '1rem' }}>
+              <button type="button" className="inventario-btn inventario-btn-secondary" onClick={onClose} disabled={subiendo} style={{ flex: 1, padding: '0.75rem' }}>
                 Cancelar
               </button>
               {(() => {
@@ -1579,14 +1838,14 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
                 
                 if (isLastStep) {
                   return (
-                    <button type="submit" className="inventario-btn inventario-btn-primary" disabled={subiendo || isSubmitting}>
+                    <button type="submit" className="inventario-btn inventario-btn-primary" disabled={subiendo || isSubmitting} style={{ flex: 1, padding: '0.75rem' }}>
                       {subiendo ? (comprimiendo ? '🗜️ Comprimiendo...' : 'Subiendo...') : 'Agregar Producto'}
                     </button>
                   );
                 } else {
                   return (
-                    <button type="button" className="inventario-btn inventario-btn-primary" onClick={handleNext}>
-                      Siguiente →
+                    <button type="button" className="inventario-btn inventario-btn-primary" onClick={handleNext} style={{ flex: 1, padding: '0.75rem' }}>
+                      Siguiente
                     </button>
                   );
                 }

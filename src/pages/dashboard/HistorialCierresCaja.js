@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import FeatureGuard from '../../components/FeatureGuard';
@@ -61,6 +61,31 @@ const HistorialCierresCaja = ({ employeeId: propEmployeeId = null }) => {
              responsable.includes(termino);
     });
   }, [cierres, busqueda, getResponsableLabel]);
+
+  // --- OPTIMIZACIÓN: SCROLL INFINITO (PAGINACIÓN VIRTUAL) ---
+  const [visibleCount, setVisibleCount] = useState(20);
+  const loadingObserverRef = useRef(null);
+
+  useEffect(() => {
+    setVisibleCount(20);
+  }, [busqueda]);
+
+  const handleObserver = useCallback((entries) => {
+    const target = entries[0];
+    if (target.isIntersecting && visibleCount < cierresFiltrados.length) {
+      setVisibleCount((prev) => Math.min(prev + 20, cierresFiltrados.length));
+    }
+  }, [visibleCount, cierresFiltrados.length]);
+
+  useEffect(() => {
+    const option = { root: null, rootMargin: "400px", threshold: 0 };
+    const observer = new IntersectionObserver(handleObserver, option);
+    if (loadingObserverRef.current) observer.observe(loadingObserverRef.current);
+    return () => observer.disconnect();
+  }, [handleObserver]);
+
+  const visibleCierres = useMemo(() => cierresFiltrados.slice(0, visibleCount), [cierresFiltrados, visibleCount]);
+
 
   const formatCOP = (value) => {
     return new Intl.NumberFormat('es-CO', {
@@ -194,23 +219,20 @@ Generado por Crece+ 🚀
 
       {/* Lista de cierres */}
       <div className="cierres-lista">
-        {cierresFiltrados.length === 0 ? (
+        {visibleCierres.length === 0 ? (
           <div className="empty-state">
             <FileText size={48} />
             <p>No se encontraron cierres de caja</p>
           </div>
         ) : (
-          cierresFiltrados.map((cierre, index) => {
+          visibleCierres.map((cierre, index) => {
             const diferencia = cierre.diferencia || 0;
             const cuadra = diferencia === 0;
             
             return (
-              <motion.div
+              <div
                 key={cierre.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="cierre-card"
+                className="cierre-card fade-in-fast"
               >
                 <div className="cierre-header">
                   <div className="cierre-info">
@@ -302,9 +324,14 @@ Generado por Crece+ 🚀
                     Descargar
                   </button>
                 </div>
-              </motion.div>
+              </div>
             );
           })
+        )}
+        {visibleCount < cierresFiltrados.length && (
+          <div ref={loadingObserverRef} style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+            <RefreshCw className="spinning" size={24} style={{ margin: '0 auto' }} />
+          </div>
         )}
       </div>
 

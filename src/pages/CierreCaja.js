@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../services/api/supabaseClient';
 import { useAuth } from '../context/AuthContext';
@@ -63,6 +63,26 @@ const CierreCaja = () => {
     tarjeta: 0,
     mixto: 0
   });
+
+  // --- OPTIMIZACIÓN: SCROLL INFINITO PARA VENTAS ---
+  const [visibleCountVentas, setVisibleCountVentas] = useState(50);
+  const loadingObserverRef = useRef(null);
+
+  const handleObserver = useCallback((entries) => {
+    const target = entries[0];
+    if (target.isIntersecting && visibleCountVentas < ventasHoy.length) {
+      setVisibleCountVentas((prev) => Math.min(prev + 50, ventasHoy.length));
+    }
+  }, [visibleCountVentas, ventasHoy.length]);
+
+  useEffect(() => {
+    const option = { root: null, rootMargin: "400px", threshold: 0 };
+    const observer = new IntersectionObserver(handleObserver, option);
+    if (loadingObserverRef.current) observer.observe(loadingObserverRef.current);
+    return () => observer.disconnect();
+  }, [handleObserver]);
+
+  const visibleVentas = useMemo(() => ventasHoy.slice(0, visibleCountVentas), [ventasHoy, visibleCountVentas]);
 
   const getActorIds = useCallback(() => {
     const employeeSession = getEmployeeSession();
@@ -1247,13 +1267,10 @@ Generado por Crece+ 🚀
                   <small>Todas las ventas de hoy ya fueron cerradas</small>
                 </div>
               ) : (
-                <div className="ventas-scroll">{ventasHoy.map((venta, index) => (
-                  <motion.div
+                <div className="ventas-scroll">{visibleVentas.map((venta, index) => (
+                  <div
                     key={venta.id}
-                    className="venta-item"
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.05 }}
+                    className="venta-item fade-in-fast"
                   >
                     <div className="venta-hora">{formatHora(venta.created_at)}</div>
                     <div className="venta-metodo">
@@ -1268,8 +1285,13 @@ Generado por Crece+ 🚀
                       </div>
                     </div>
                     <div className="venta-total">{formatCOP(venta.total)}</div>
-                  </motion.div>
+                  </div>
                 ))}
+                {visibleCountVentas < ventasHoy.length && (
+                  <div ref={loadingObserverRef} style={{ padding: '10px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                    Cargando más ventas...
+                  </div>
+                )}
                 </div>
               )}
             </div>
@@ -1286,13 +1308,10 @@ Generado por Crece+ 🚀
                 </p>
                 <div className="ventas-scroll" style={{ maxHeight: '200px' }}>
                   {ventasCreditoHoy.map((venta, index) => (
-                    <motion.div
+                    <div
                       key={venta.id}
-                      className="venta-item"
+                      className="venta-item fade-in-fast"
                       style={{ opacity: 0.7, backgroundColor: '#fef3c7' }}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 0.7, x: 0 }}
-                      transition={{ delay: index * 0.05 }}
                     >
                       <div className="venta-hora">{formatHora(venta.created_at)}</div>
                       <div className="venta-metodo">
@@ -1300,7 +1319,7 @@ Generado por Crece+ 🚀
                         <span>Crédito</span>
                       </div>
                       <div className="venta-total" style={{ color: '#d97706' }}>{formatCOP(venta.total)}</div>
-                    </motion.div>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -1358,16 +1377,13 @@ Generado por Crece+ 🚀
                     })();
 
                     return (
-                      <motion.div
+                      <div
                         key={pago.id}
-                        className="venta-item"
+                        className="venta-item fade-in-fast"
                         style={{
                           backgroundColor: esPagoTotal ? '#dcfce7' : '#fef3c7',
                           borderLeft: `3px solid ${esPagoTotal ? '#10b981' : '#d97706'}`
                         }}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.05 }}
                       >
                         <div className="venta-hora">{formatHora(pago.created_at)}</div>
                         <div className="venta-metodo" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.25rem' }}>
@@ -1402,7 +1418,7 @@ Generado por Crece+ 🚀
                         <div className="venta-total" style={{ color: esPagoTotal ? '#10b981' : '#d97706' }}>
                           {formatCOP(parseFloat(pago.monto || 0))}
                         </div>
-                      </motion.div>
+                      </div>
                     );
                   })}
                 </div>
@@ -1425,13 +1441,10 @@ Generado por Crece+ 🚀
                     if (montoSalida === 0 && dev.tipo !== 'devolucion') return null;
 
                     return (
-                      <motion.div
+                      <div
                         key={dev.id}
-                        className="venta-item"
+                        className="venta-item fade-in-fast"
                         style={{ borderLeft: '3px solid #dc2626', backgroundColor: '#fef2f2' }}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.05 }}
                       >
                         <div className="venta-hora">{formatHora(dev.fecha || dev.created_at)}</div>
                         <div className="venta-metodo" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
@@ -1451,7 +1464,7 @@ Generado por Crece+ 🚀
                         <div className="venta-total" style={{ color: '#dc2626' }}>
                           -{formatCOP(montoSalida)}
                         </div>
-                      </motion.div>
+                      </div>
                     );
                   })}
                 </div>
@@ -1467,13 +1480,10 @@ Generado por Crece+ 🚀
                 </h3>
                 <div className="ventas-scroll" style={{ maxHeight: '200px' }}>
                   {egresosDetalle.map((egreso, index) => (
-                    <motion.div
+                    <div
                       key={egreso.id}
-                      className="venta-item"
+                      className="venta-item fade-in-fast"
                       style={{ borderLeft: '3px solid #d97706', backgroundColor: '#fffbeb' }}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.05 }}
                     >
                       <div className="venta-hora">{formatHora(egreso.created_at)}</div>
                       <div className="venta-metodo" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
@@ -1490,7 +1500,7 @@ Generado por Crece+ 🚀
                       <div className="venta-total" style={{ color: '#d97706' }}>
                         -{formatCOP(egreso.monto)}
                       </div>
-                    </motion.div>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -1508,13 +1518,10 @@ Generado por Crece+ 🚀
                 </p>
                 <div className="ventas-scroll" style={{ maxHeight: '200px' }}>
                   {cotizacionesHoy.map((cotizacion, index) => (
-                    <motion.div
+                    <div
                       key={cotizacion.id}
-                      className="venta-item"
+                      className="venta-item fade-in-fast"
                       style={{ opacity: 0.7, backgroundColor: '#f9fafb' }}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 0.7, x: 0 }}
-                      transition={{ delay: index * 0.05 }}
                     >
                       <div className="venta-hora">{formatHora(cotizacion.created_at)}</div>
                       <div className="venta-metodo">
@@ -1529,7 +1536,7 @@ Generado por Crece+ 🚀
                         </div>
                       </div>
                       <div className="venta-total" style={{ color: '#6b7280' }}>{formatCOP(cotizacion.total)}</div>
-                    </motion.div>
+                    </div>
                   ))}
                 </div>
               </div>

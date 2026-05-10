@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import './ResumenVentas.css';
 import { useAuth } from '../../context/AuthContext';
@@ -438,20 +438,22 @@ const ResumenVentas = () => {
     let ventasFiltradas = ventas;
 
     if (fechaInicio) {
-      const fechaInicioDate = new Date(fechaInicio);
-      fechaInicioDate.setHours(0, 0, 0, 0);
+      const [year, month, day] = fechaInicio.split('-');
+      const fechaInicioDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+      
       ventasFiltradas = ventasFiltradas.filter(venta => {
         const fechaVenta = new Date(venta.created_at);
-        fechaVenta.setHours(0, 0, 0, 0);
-        return fechaVenta >= fechaInicioDate;
+        // Comparar directamente los milisegundos en vez de modificar el objeto Date
+        return fechaVenta.getTime() >= fechaInicioDate.getTime();
       });
     }
 
     if (fechaFin) {
-      const fechaFinDate = new Date(fechaFin);
-      fechaFinDate.setHours(23, 59, 59, 999);
+      const [year, month, day] = fechaFin.split('-');
+      const fechaFinDate = new Date(year, month - 1, day, 23, 59, 59, 999);
+      
       ventasFiltradas = ventasFiltradas.filter(venta =>
-        new Date(venta.created_at) <= fechaFinDate
+        new Date(venta.created_at).getTime() <= fechaFinDate.getTime()
       );
     }
 
@@ -883,7 +885,7 @@ const ResumenVentas = () => {
         const codigo = item.codigo;
         // Eliminado chequeo legacy que bloqueaba la visualización
         const prod = productos.find(p => p.id === productoId || p.codigo === codigo);
-        const categoria = prod?.metadata?.categoria || 'Sin categoría';
+        const categoria = prod?.metadata?.categoria || item.categoria || item.metadata?.categoria || 'Sin categoría';
         const qty = item.qty || item.cantidad || 1;
         const pv = parseFloat(item.precio_venta || item.precio || 0);
         const pc = parseFloat(item.precio_compra || 0);
@@ -908,10 +910,57 @@ const ResumenVentas = () => {
       venta.items.forEach(item => {
         const productoId = item.id || item.producto_id;
         const prod = productos.find(p => p.id === productoId || p.codigo === item.codigo);
-        const cat = prod?.metadata?.categoria || 'Sin categoría';
+        const vinculados = prod?.metadata?.productos_vinculados || item.metadata?.productos_vinculados;
         const qty = item.qty || 1;
         const pv = parseFloat(item.precio_venta || item.precio || 0);
         const pc = parseFloat(item.precio_compra || 0);
+
+        if (vinculados && Array.isArray(vinculados) && vinculados.length > 0) {
+          // Es un combo/ancheta, calcular la distribución proporcional
+          let totalValorTeorico = 0;
+          const componentes = vinculados.map(v => {
+            const vProd = productos.find(p => p.id === v.producto_id);
+            const vPrecio = parseFloat(vProd?.precio_venta || 0);
+            const vCat = vProd?.metadata?.categoria || 'Sin categoría';
+            const vQty = parseFloat(v.cantidad || 1);
+            const vTotal = vPrecio * vQty;
+            totalValorTeorico += vTotal;
+            return {
+              categoria: vCat,
+              nombre: v.producto_nombre || vProd?.nombre || 'Desconocido',
+              valorTeorico: vTotal,
+              cantidad: vQty
+            };
+          });
+
+          // Si pudimos calcular el valor teórico de los componentes
+          if (totalValorTeorico > 0) {
+            componentes.forEach(comp => {
+              const proporcion = comp.valorTeorico / totalValorTeorico;
+              const cat = comp.categoria;
+              const qtyAtribuido = comp.cantidad * qty;
+              const totalAtribuido = (pv * qty) * proporcion;
+              const gananciaAtribuida = ((pv - pc) * qty) * proporcion;
+
+              if (!map[cat]) map[cat] = { nombre: cat, cantidad: 0, total: 0, ganancia: 0, ventasSet: new Set(), productos: {} };
+              
+              // Sumamos una fracción de la unidad del combo a la categoría
+              map[cat].cantidad += proporcion * qty; 
+              map[cat].total += totalAtribuido;
+              map[cat].ganancia += gananciaAtribuida;
+              map[cat].ventasSet.add(venta.id);
+
+              const pNombre = `${comp.nombre} (de ${item.nombre || 'Combo'})`;
+              if (!map[cat].productos[pNombre]) map[cat].productos[pNombre] = { nombre: pNombre, cantidad: 0, total: 0 };
+              map[cat].productos[pNombre].cantidad += qtyAtribuido;
+              map[cat].productos[pNombre].total += totalAtribuido;
+            });
+            return; // Pasar al siguiente item de la venta
+          }
+        }
+
+        // Flujo normal para productos individuales o combos sin valor teórico
+        const cat = prod?.metadata?.categoria || item.categoria || item.metadata?.categoria || 'Sin categoría';
         if (!map[cat]) map[cat] = { nombre: cat, cantidad: 0, total: 0, ganancia: 0, ventasSet: new Set(), productos: {} };
         map[cat].cantidad += qty;
         map[cat].total += pv * qty;
@@ -945,6 +994,54 @@ const ResumenVentas = () => {
     { id: 'cliente', nombre: 'Por Cliente', icono: ShoppingCart },
     { id: 'ventas', nombre: 'Detalle Ventas', icono: BarChart3 },
   ];
+
+
+  // --- OPTIMIZACIÓN: SCROLL INFINITO (PAGINACIÓN VIRTUAL) ---
+  const [visibleCountProductos, setVisibleCountProductos] = useState(50);
+  const loadingObserverRefProductos = useRef(null);
+
+  const [visibleCountVentas, setVisibleCountVentas] = useState(50);
+  const loadingObserverRefVentas = useRef(null);
+
+  // Reiniciar cantidad visible cuando cambian los filtros o la vista
+  useEffect(() => {
+    setVisibleCountProductos(50);
+    setVisibleCountVentas(50);
+  }, [vistaActual, filtros, filtroFechaRapida]);
+
+  const handleObserverProductos = useCallback((entries) => {
+    const target = entries[0];
+    if (target.isIntersecting && visibleCountProductos < productosDetalle.length) {
+      setVisibleCountProductos((prev) => Math.min(prev + 100, productosDetalle.length));
+    }
+  }, [visibleCountProductos, productosDetalle.length]);
+
+  useEffect(() => {
+    if (vistaActual !== 'productos') return;
+    const option = { root: null, rootMargin: "800px", threshold: 0 };
+    const observer = new IntersectionObserver(handleObserverProductos, option);
+    if (loadingObserverRefProductos.current) observer.observe(loadingObserverRefProductos.current);
+    return () => observer.disconnect();
+  }, [handleObserverProductos, vistaActual]);
+
+  const handleObserverVentas = useCallback((entries) => {
+    const target = entries[0];
+    if (target.isIntersecting && visibleCountVentas < ventasIndividuales.length) {
+      setVisibleCountVentas((prev) => Math.min(prev + 100, ventasIndividuales.length));
+    }
+  }, [visibleCountVentas, ventasIndividuales.length]);
+
+  useEffect(() => {
+    if (vistaActual !== 'ventas') return;
+    const option = { root: null, rootMargin: "800px", threshold: 0 };
+    const observer = new IntersectionObserver(handleObserverVentas, option);
+    if (loadingObserverRefVentas.current) observer.observe(loadingObserverRefVentas.current);
+    return () => observer.disconnect();
+  }, [handleObserverVentas, vistaActual]);
+
+  const visibleProductos = useMemo(() => productosDetalle.slice(0, visibleCountProductos), [productosDetalle, visibleCountProductos]);
+  const visibleVentas = useMemo(() => ventasIndividuales.slice(0, visibleCountVentas), [ventasIndividuales, visibleCountVentas]);
+
 
   if (cargando) {
     return (
@@ -1442,8 +1539,8 @@ const ResumenVentas = () => {
                 <th style={{...rvTH, textAlign:'right'}}>Costo</th><th style={{...rvTH, textAlign:'right'}}>Ganancia</th><th style={{...rvTH, textAlign:'right'}}>Margen</th>
               </tr></thead>
               <tbody>
-                {productosDetalle.length === 0 ? <tr><td colSpan={8} style={{padding:'2rem',textAlign:'center',color:'var(--text-secondary)'}}>No hay productos en el período</td></tr>
-                  : productosDetalle.map((p, i) => (
+                {visibleProductos.length === 0 ? <tr><td colSpan={8} style={{padding:'2rem',textAlign:'center',color:'var(--text-secondary)'}}>No hay productos en el período</td></tr>
+                  : visibleProductos.map((p, i) => (
                   <tr key={p.id||i} style={{background: i%2===0 ? 'var(--bg-card)' : 'transparent'}}>
                     <td style={{...rvTD,color:'var(--text-secondary)',fontWeight:600}}>{i+1}</td>
                     <td style={{...rvTD,fontWeight:600}}>{p.nombre}</td>
@@ -1465,6 +1562,11 @@ const ResumenVentas = () => {
                 <td style={{...rvTD,textAlign:'right'}}>—</td>
               </tr></tfoot>)}
             </table>
+            {visibleCountProductos < productosDetalle.length && (
+              <div ref={loadingObserverRefProductos} style={{ padding: '10px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                Cargando más productos...
+              </div>
+            )}
           </div>
         </motion.div>
       )}
@@ -1565,8 +1667,8 @@ const ResumenVentas = () => {
                 <th style={{...rvTH,textAlign:'right'}}>Items</th><th style={{...rvTH,textAlign:'right'}}>Total</th>
               </tr></thead>
               <tbody>
-                {ventasIndividuales.length === 0 ? <tr><td colSpan={7} style={{padding:'2rem',textAlign:'center',color:'var(--text-secondary)'}}>No hay ventas en el período</td></tr>
-                  : ventasIndividuales.map((venta, i) => {
+                {visibleVentas.length === 0 ? <tr><td colSpan={7} style={{padding:'2rem',textAlign:'center',color:'var(--text-secondary)'}}>No hay ventas en el período</td></tr>
+                  : visibleVentas.map((venta, i) => {
                   const fecha = venta.created_at ? new Date(venta.created_at) : null;
                   const fechaStr = fecha ? `${fecha.toLocaleDateString('es-CO')} ${fecha.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'})}` : '—';
                   const numItems = Array.isArray(venta.items) ? venta.items.reduce((s,it)=>s+(it.qty||1),0) : 0;
@@ -1588,6 +1690,11 @@ const ResumenVentas = () => {
                 <td style={{...rvTD,textAlign:'right',fontWeight:700}}>{formatCOP(ventasIndividuales.reduce((s,v)=>s+parseFloat(v.total||0),0))}</td>
               </tr></tfoot>)}
             </table>
+            {visibleCountVentas < ventasIndividuales.length && (
+              <div ref={loadingObserverRefVentas} style={{ padding: '10px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                Cargando más ventas...
+              </div>
+            )}
           </div>
         </motion.div>
       )}

@@ -4,9 +4,9 @@ import toast from 'react-hot-toast';
 import { enqueueVenta, cacheVentas, getCachedVentas, getPendingVentas } from '../utils/offlineQueue';
 
 // Hook para obtener ventas
-export const useVentas = (organizationId, limit = 100, historyDays = null, employeeId = null) => {
+export const useVentas = (organizationId, limit = 100, historyDays = null, employeeId = null, includeCotizaciones = false) => {
   return useQuery({
-    queryKey: ['ventas', organizationId, limit, historyDays, employeeId],
+    queryKey: ['ventas', organizationId, limit, historyDays, employeeId, includeCotizaciones],
     queryFn: async () => {
       if (!organizationId) return [];
       const applyFilters = (ventas = []) => {
@@ -28,36 +28,71 @@ export const useVentas = (organizationId, limit = 100, historyDays = null, emplo
         const cached = await getCachedVentas(organizationId);
         const pending = await getPendingVentas({ organizationId });
         const merged = [...cached, ...pending.map(v => ({ ...v, id: v.id || v.temp_id }))];
-        return applyFilters(merged);
+        
+        let result = merged;
+        if (!includeCotizaciones) {
+          result = merged.filter(v => 
+            (v.metodo_pago || '').toUpperCase() !== 'COTIZACION' && 
+            (v.estado || '').toLowerCase() !== 'cotizacion'
+          );
+        }
+        
+        return applyFilters(result);
       }
 
       try {
-        // Construir query base
-        let query = supabase
-          .from('ventas')
-          .select('*')
-          .eq('organization_id', organizationId);
+        let ventasData = [];
+        let hasMore = true;
+        let from = 0;
+        const pageSize = 1000; // Límite máximo de la API de Supabase
 
-        if (employeeId) {
-          query = query.eq('employee_id', employeeId);
+        while (hasMore && ventasData.length < limit) {
+          const to = from + pageSize - 1;
+          
+          // Construir query base para la página actual
+          let query = supabase
+            .from('ventas')
+            .select('*')
+            .eq('organization_id', organizationId);
+
+          if (!includeCotizaciones) {
+            query = query.neq('metodo_pago', 'COTIZACION');
+          }
+
+          if (employeeId) {
+            query = query.eq('employee_id', employeeId);
+          }
+
+          if (historyDays !== null && historyDays !== undefined) {
+            const fechaLimite = new Date();
+            fechaLimite.setDate(fechaLimite.getDate() - historyDays);
+            query = query.gte('created_at', fechaLimite.toISOString());
+          }
+
+          // Aplicar orden y rango para paginación
+          const { data, error: ventasError } = await query
+            .order('created_at', { ascending: false })
+            .range(from, to);
+
+          if (ventasError) {
+            console.error('Error fetching ventas:', ventasError);
+            throw new Error('Error al cargar ventas');
+          }
+
+          if (data && data.length > 0) {
+            ventasData = [...ventasData, ...data];
+            from += pageSize;
+            // Si trajimos menos del tamaño de página, ya no hay más registros
+            if (data.length < pageSize) {
+              hasMore = false;
+            }
+          } else {
+            hasMore = false;
+          }
         }
 
-        // Aplicar límite de días si existe (plan gratuito = 7 días)
-        if (historyDays !== null && historyDays !== undefined) {
-          const fechaLimite = new Date();
-          fechaLimite.setDate(fechaLimite.getDate() - historyDays);
-          query = query.gte('created_at', fechaLimite.toISOString());
-        }
-
-        // Aplicar orden y límite
-        const { data: ventasData, error: ventasError } = await query
-          .order('created_at', { ascending: false })
-          .limit(limit);
-
-        if (ventasError) {
-          console.error('Error fetching ventas:', ventasError);
-          throw new Error('Error al cargar ventas');
-        }
+        // Asegurar que no excedemos el límite solicitado
+        ventasData = ventasData.slice(0, limit);
 
         if (!ventasData || ventasData.length === 0) {
           return [];

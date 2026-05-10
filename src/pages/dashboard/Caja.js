@@ -2777,7 +2777,8 @@ export default function Caja({
         pago_cliente: montoPagoCliente,
         detalles_pago_mixto: metodoActual === "Mixto" && detallesPago ? detallesPago : null,
         numero_venta: numeroVenta,
-        cliente_id: clienteSeleccionado?.id || null
+        cliente_id: clienteSeleccionado?.id || null,
+        notas: (cotizacionId ? `[Venta desde Cotización #${cotizacionId}] ` : '') + (notas || '')
       };
 
       if (!isOnline) {
@@ -3513,7 +3514,8 @@ export default function Caja({
           detalles_pago_mixto: metodoActual === "Mixto" && detallesPagoMixto ? detallesPagoMixto : null,
           numero_venta: numeroVenta,
           cliente_id: clienteSeleccionado?.id || null,
-          es_credito: metodoActual === 'Credito'
+          es_credito: metodoActual === 'Credito',
+          notas: (cotizacionId ? `[Venta desde Cotización #${cotizacionId}] ` : '') + (notas || '')
         };
 
         const { data: result, error: ventaError } = await supabase

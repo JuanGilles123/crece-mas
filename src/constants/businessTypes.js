@@ -11,7 +11,7 @@ export const BUSINESS_TYPES = {
     description: 'Restaurantes, cafeterías, comida rápida',
     category: 'food_service',
     defaultProductType: 'comida',
-    availableProductTypes: ['comida', 'fisico', 'servicio'],
+    availableProductTypes: ['comida', 'fisico', 'servicio', 'combo'],
     features: ['Toppings', 'Mesas', 'Pedidos', 'Ingredientes', 'Alérgenos'],
     group: 'Alimentación'
   },
@@ -39,7 +39,7 @@ export const BUSINESS_TYPES = {
     description: 'Supermercados, tiendas generales, bodegas',
     category: 'retail',
     defaultProductType: 'fisico',
-    availableProductTypes: ['fisico', 'accesorio'],
+    availableProductTypes: ['fisico', 'accesorio', 'combo'],
     features: ['Inventario estándar', 'Categorías'],
     group: 'Comercio'
   },
@@ -53,7 +53,7 @@ export const BUSINESS_TYPES = {
     description: 'Tiendas de ropa, calzado, accesorios',
     category: 'fashion',
     defaultProductType: 'accesorio',
-    availableProductTypes: ['accesorio', 'fisico'],
+    availableProductTypes: ['accesorio', 'fisico', 'combo'],
     features: ['Variaciones', 'Tallas', 'Colores', 'Materiales'],
     group: 'Comercio'
   },
@@ -81,7 +81,7 @@ export const BUSINESS_TYPES = {
     description: 'Otros tipos de negocio',
     category: 'other',
     defaultProductType: 'fisico',
-    availableProductTypes: ['fisico', 'servicio', 'accesorio', 'comida'],
+    availableProductTypes: ['fisico', 'servicio', 'accesorio', 'comida', 'combo'],
     features: [],
     group: 'General'
   }
@@ -126,5 +126,6 @@ export const getAvailableProductTypes = (businessTypeId) => {
 
 // Función helper para verificar si debe saltarse el selector de tipo
 export const shouldSkipProductTypeSelector = (businessTypeId) => {
-  return businessTypeId && businessTypeId !== 'other';
+  const available = getAvailableProductTypes(businessTypeId);
+  return available && available.length <= 1;
 };

@@ -1,6 +1,6 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
-import { motion } from 'framer-motion';
+
 import { useAuth } from '../../context/AuthContext';
 import { useSubscription } from '../../hooks/useSubscription';
 import { useVentas } from '../../hooks/useVentas';
@@ -24,7 +24,6 @@ import {
   CreditCard,
   Smartphone,
   Receipt,
-  ArrowRight,
   Trash2,
   ShoppingCart
 } from 'lucide-react';
@@ -61,8 +60,73 @@ const HistorialVentas = () => {
       return fechaB - fechaA;
     });
   }, [ventas, cotizaciones]);
+
+  // --- OPTIMIZACIÓN: ÍNDICE DE BÚSQUEDA ---
+  const ventasSearchIndex = useMemo(() => {
+    const index = new Map();
+    todasLasVentas.forEach((venta) => {
+      const camposVenta = [
+        venta.id,
+        venta.numero_venta,
+        venta.metodo_pago,
+        venta.estado,
+        venta.cliente_nombre,
+        venta.cliente_telefono,
+        venta.total?.toString()
+      ];
+
+      const camposItems = (venta.items || []).flatMap(item => [
+        item.nombre,
+        item.codigo,
+        item.variant_nombre,
+        item.variant_codigo
+      ]);
+
+      const cliente = venta.cliente || {};
+      const camposCliente = [
+        cliente.nombre,
+        cliente.documento,
+        cliente.telefono,
+        cliente.email
+      ];
+
+      const todosLosCampos = [...camposVenta, ...camposItems, ...camposCliente]
+        .filter(campo => campo !== null && campo !== undefined && campo !== '')
+        .map(campo => String(campo).toLowerCase());
+
+      index.set(String(venta.id || venta.temp_id), todosLosCampos.join(' '));
+    });
+    return index;
+  }, [todasLasVentas]);
+
+  // --- OPTIMIZACIÓN: REAL-TIME SYNC ---
+  useEffect(() => {
+    if (!organization?.id) return;
+
+    const channel = supabase
+      .channel(`ventas-realtime-${organization.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'ventas',
+          filter: `organization_id=eq.${organization.id}`
+        },
+        (payload) => {
+          console.log('💰 Cambio en ventas detectado:', payload.eventType);
+          queryClient.invalidateQueries(['ventas', organization.id]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [organization?.id, queryClient]);
   const [busqueda, setBusqueda] = useState('');
   const [filtroFecha, setFiltroFecha] = useState('todos');
+  const [filtroMetodoPago, setFiltroMetodoPago] = useState('todos');
   const [fechaEspecifica, setFechaEspecifica] = useState('');
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
@@ -89,6 +153,7 @@ const HistorialVentas = () => {
   const [historialCambios, setHistorialCambios] = useState([]);
   const [cargandoHistorial, setCargandoHistorial] = useState(false);
   const [procesandoAnulacion, setProcesandoAnulacion] = useState(false);
+  const [lastModifiedId, setLastModifiedId] = useState(null);
 
   const obtenerCreditoRelacionado = useCallback(async (ventaActual) => {
     if (!organization?.id || !ventaActual?.id) return null;
@@ -139,6 +204,16 @@ const HistorialVentas = () => {
 
   // Cargar cambios para todas las ventas
   const [ventasConCambios, setVentasConCambios] = useState(new Map());
+
+  // Efecto para limpiar el resaltado después de unos segundos
+  useEffect(() => {
+    if (lastModifiedId) {
+      const timer = setTimeout(() => {
+        setLastModifiedId(null);
+      }, 5000); // 5 segundos de resaltado
+      return () => clearTimeout(timer);
+    }
+  }, [lastModifiedId]);
 
   useEffect(() => {
     const cargarCambios = async () => {
@@ -235,38 +310,27 @@ const HistorialVentas = () => {
   const ventasFiltradas = useMemo(() => {
     let filtradas = todasLasVentas;
 
-    // Filtro de búsqueda
+    // Filtro de búsqueda optimizado con índice
     if (busqueda.trim()) {
       const termino = busqueda.toLowerCase().trim();
-      const terminoNumerico = termino.replace(/[^\d]/g, '');
       filtradas = filtradas.filter(venta => {
-        const idMatch = venta.id?.toString().toLowerCase().includes(termino);
-        const numeroVentaMatch = venta.numero_venta?.toLowerCase().includes(termino);
-        const itemsMatch = venta.items?.some(item => {
-          // Buscar por nombre de producto
-          if (item.nombre?.toLowerCase().includes(termino)) return true;
-          // Buscar por código de barras del producto
-          if (item.codigo?.toLowerCase().includes(termino)) return true;
-          return false;
-        });
-        const metodoMatch = venta.metodo_pago?.toLowerCase().includes(termino);
-        const estadoMatch = venta.estado?.toLowerCase().includes(termino);
-        const totalMatch = terminoNumerico
-          ? String(venta.total ?? '').replace(/[^\d]/g, '').includes(terminoNumerico)
-          : false;
-        const cliente = venta.cliente || {};
-        const clienteMatch = [
-          cliente.nombre,
-          cliente.documento,
-          cliente.telefono,
-          cliente.email,
-          cliente.direccion,
-          venta.cliente_nombre,
-          venta.cliente_telefono
-        ]
-          .filter(Boolean)
-          .some(value => value.toString().toLowerCase().includes(termino));
-        return idMatch || numeroVentaMatch || itemsMatch || metodoMatch || estadoMatch || totalMatch || clienteMatch;
+        const textoCompleto = ventasSearchIndex.get(String(venta.id || venta.temp_id)) || '';
+        return textoCompleto.includes(termino);
+      });
+    }
+
+    // Filtro de método de pago / estado
+    if (filtroMetodoPago !== 'todos') {
+      filtradas = filtradas.filter(venta => {
+        if (filtroMetodoPago === 'cotizacion') {
+          return venta.estado === 'cotizacion' || venta.metodo_pago === 'COTIZACION';
+        }
+        if (filtroMetodoPago === 'credito') {
+          return venta.es_credito === true || venta.metodo_pago === 'Credito';
+        }
+        return (venta.metodo_pago || '').toLowerCase() === filtroMetodoPago.toLowerCase() && 
+               venta.estado !== 'cotizacion' && 
+               venta.metodo_pago !== 'COTIZACION';
       });
     }
 
@@ -296,26 +360,26 @@ const HistorialVentas = () => {
             return fechaVenta >= mesAtras;
           case 'especifica':
             if (fechaEspecifica) {
-              const fechaSeleccionada = new Date(fechaEspecifica);
-              fechaSeleccionada.setHours(0, 0, 0, 0);
+              const [year, month, day] = fechaEspecifica.split('-');
+              const fechaSeleccionada = new Date(year, month - 1, day, 0, 0, 0, 0);
               return fechaVenta.getTime() === fechaSeleccionada.getTime();
             }
             return true;
           case 'rango':
             if (fechaInicio && fechaFin) {
-              const inicio = new Date(fechaInicio);
-              inicio.setHours(0, 0, 0, 0);
-              const fin = new Date(fechaFin);
-              fin.setHours(23, 59, 59, 999);
-              return fechaVenta >= inicio && fechaVenta <= fin;
+              const [iYear, iMonth, iDay] = fechaInicio.split('-');
+              const inicio = new Date(iYear, iMonth - 1, iDay, 0, 0, 0, 0);
+              const [fYear, fMonth, fDay] = fechaFin.split('-');
+              const fin = new Date(fYear, fMonth - 1, fDay, 23, 59, 59, 999);
+              return fechaVenta.getTime() >= inicio.getTime() && fechaVenta.getTime() <= fin.getTime();
             } else if (fechaInicio) {
-              const inicio = new Date(fechaInicio);
-              inicio.setHours(0, 0, 0, 0);
-              return fechaVenta >= inicio;
+              const [iYear, iMonth, iDay] = fechaInicio.split('-');
+              const inicio = new Date(iYear, iMonth - 1, iDay, 0, 0, 0, 0);
+              return fechaVenta.getTime() >= inicio.getTime();
             } else if (fechaFin) {
-              const fin = new Date(fechaFin);
-              fin.setHours(23, 59, 59, 999);
-              return fechaVenta <= fin;
+              const [fYear, fMonth, fDay] = fechaFin.split('-');
+              const fin = new Date(fYear, fMonth - 1, fDay, 23, 59, 59, 999);
+              return fechaVenta.getTime() <= fin.getTime();
             }
             return true;
           default:
@@ -325,7 +389,40 @@ const HistorialVentas = () => {
     }
 
     return filtradas;
-  }, [todasLasVentas, busqueda, filtroFecha, fechaEspecifica, fechaInicio, fechaFin]);
+  }, [todasLasVentas, busqueda, filtroFecha, filtroMetodoPago, fechaEspecifica, fechaInicio, fechaFin, ventasSearchIndex]);
+
+  // --- OPTIMIZACIÓN: SCROLL INFINITO (PAGINACIÓN VIRTUAL) ---
+  const [visibleCount, setVisibleCount] = useState(50);
+  const loadingObserverRef = useRef(null);
+
+  // Reiniciar cantidad visible cuando cambian los filtros o la búsqueda
+  useEffect(() => {
+    setVisibleCount(50);
+  }, [busqueda, filtroFecha, filtroMetodoPago, fechaEspecifica, fechaInicio, fechaFin]);
+
+  const handleObserver = useCallback((entries) => {
+    const target = entries[0];
+    if (target.isIntersecting && visibleCount < ventasFiltradas.length) {
+      setVisibleCount((prev) => Math.min(prev + 100, ventasFiltradas.length));
+    }
+  }, [visibleCount, ventasFiltradas.length]);
+
+  useEffect(() => {
+    const option = {
+      root: null,
+      rootMargin: "800px", // Precarga agresiva
+      threshold: 0
+    };
+    const observer = new IntersectionObserver(handleObserver, option);
+    if (loadingObserverRef.current) observer.observe(loadingObserverRef.current);
+
+    return () => observer.disconnect();
+  }, [handleObserver]);
+
+  // Rebanada visible de las ventas filtradas
+  const visibleVentas = useMemo(() => {
+    return ventasFiltradas.slice(0, visibleCount);
+  }, [ventasFiltradas, visibleCount]);
 
   const formatCOP = (value) => {
     return new Intl.NumberFormat('es-CO', {
@@ -437,6 +534,13 @@ const HistorialVentas = () => {
       if (error) throw error;
 
       toast.success('Cotización eliminada correctamente');
+      
+      // Invalidar ambos queries para forzar actualización inmediata de la UI
+      if (organization?.id) {
+        queryClient.invalidateQueries(['cotizaciones', organization.id]);
+        queryClient.invalidateQueries(['ventas', organization.id]);
+      }
+      
       if (typeof refetch === 'function') refetch();
     } catch (error) {
       console.error('Error eliminando cotización:', error);
@@ -535,6 +639,7 @@ const HistorialVentas = () => {
       toast.success('Venta cancelada correctamente. Stock restaurado.');
       setMostrandoAnulacion(false);
       setVentaParaAccion(null);
+      setLastModifiedId(ventaDB.id);
       if (typeof refetch === 'function') refetch();
 
     } catch (error) {
@@ -697,6 +802,8 @@ const HistorialVentas = () => {
         console.error('Error actualizando venta:', errorUpdateVenta);
         throw new Error('Error al actualizar la venta');
       }
+
+      setLastModifiedId(venta.id);
 
       let creditoActualizado = true;
       let pagoCambioRegistrado = true;
@@ -1118,11 +1225,7 @@ const HistorialVentas = () => {
 
   return (
     <div className="historial-ventas-container">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="historial-ventas-header"
-      >
+      <div className="historial-ventas-header">
         <div>
           <h1>Historial de Ventas</h1>
           <p>Gestiona devoluciones, cambios y reimprime recibos</p>
@@ -1144,7 +1247,7 @@ const HistorialVentas = () => {
             <RefreshCw size={20} />
           </button>
         </div>
-      </motion.div>
+      </div>
 
       {/* Filtros y búsqueda */}
       <div className="historial-filtros">
@@ -1176,9 +1279,25 @@ const HistorialVentas = () => {
           )}
         </div>
 
-        <div className="filtro-fecha">
-          <Calendar size={18} className="filtro-fecha-icon-outside" />
+        <div className="filtro-fecha" style={{ gap: '10px' }}>
           <select
+            value={filtroMetodoPago}
+            onChange={(e) => setFiltroMetodoPago(e.target.value)}
+            className="filtro-fecha-select"
+          >
+            <option value="todos">Todos los tipos</option>
+            <option value="cotizacion">Cotizaciones</option>
+            <option value="efectivo">Efectivo</option>
+            <option value="transferencia">Transferencia</option>
+            <option value="tarjeta">Tarjeta</option>
+            <option value="nequi">Nequi</option>
+            <option value="credito">Crédito</option>
+            <option value="mixto">Mixto</option>
+          </select>
+
+          <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+            <Calendar size={18} className="filtro-fecha-icon-outside" style={{ left: '10px', zIndex: 1 }} />
+            <select
             value={filtroFecha}
             onChange={(e) => {
               setFiltroFecha(e.target.value);
@@ -1198,6 +1317,7 @@ const HistorialVentas = () => {
             <option value="especifica">Fecha específica</option>
             <option value="rango">Rango de fechas</option>
           </select>
+          </div>
           {filtroFecha === 'especifica' && (
             <input
               type="date"
@@ -1243,19 +1363,16 @@ const HistorialVentas = () => {
 
       {/* Lista de ventas */}
       <div className="ventas-lista">
-        {ventasFiltradas.length === 0 ? (
+        {visibleVentas.length === 0 ? (
           <div className="empty-state">
             <FileText size={48} />
             <p>No se encontraron ventas</p>
           </div>
         ) : (
-          ventasFiltradas.map((venta, index) => (
-            <motion.div
-              key={venta.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-              className="venta-card"
+          visibleVentas.map((venta) => (
+            <div 
+              key={venta.id || venta.temp_id} 
+              className={`venta-card ${lastModifiedId === venta.id ? 'highlight-modified' : ''}`}
             >
               <div className="venta-header">
                 <div className="venta-info">
@@ -1366,11 +1483,12 @@ const HistorialVentas = () => {
                       Ver
                     </button>
                     <button
-                      className="btn-action btn-retomar"
+                      className="btn-action"
+                      style={{ color: '#10b981', borderColor: '#10b981', backgroundColor: '#f0fdf4' }}
                       onClick={() => handleRetomarCotizacion(venta)}
                       title="Retomar cotización"
                     >
-                      <ArrowRight size={16} />
+                      <ShoppingCart size={16} />
                       Retomar
                     </button>
                     <button
@@ -1422,7 +1540,7 @@ const HistorialVentas = () => {
                     </button>
                     <button
                       className="btn-action"
-                      style={{ color: '#ef4444', backgroundColor: '#fef2f2', border: '1px solid #fca5a5' }}
+                      style={{ color: '#ef4444', borderColor: '#ef4444' }}
                       onClick={() => iniciarAnulacion(venta)}
                       title="Anular Venta Completa"
                     >
@@ -1444,8 +1562,15 @@ const HistorialVentas = () => {
                   </button>
                 )}
               </div>
-            </motion.div>
+            </div>
           ))
+        )}
+      </div>
+
+      {/* Elemento observador para scroll infinito */}
+      <div ref={loadingObserverRef} style={{ height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {visibleCount < ventasFiltradas.length && (
+          <RefreshCw className="spinning" style={{ color: '#9ca3af' }} />
         )}
       </div>
 
@@ -1592,6 +1717,24 @@ const HistorialVentas = () => {
                 })}
               </div>
             </div>
+
+            {/* Notas de la venta */}
+            {ventaSeleccionada.notas && (
+              <div style={{ marginBottom: '2rem' }}>
+                <h3 style={{ marginBottom: '1rem' }}>Notas</h3>
+                <div style={{ 
+                  padding: '1rem', 
+                  background: '#fffbeb', 
+                  border: '1px solid #fcd34d', 
+                  borderRadius: '8px', 
+                  color: '#92400e',
+                  fontSize: '0.9rem',
+                  whiteSpace: 'pre-wrap'
+                }}>
+                  {ventaSeleccionada.notas}
+                </div>
+              </div>
+            )}
 
             {/* Historial de cambios */}
             {cargandoHistorial ? (
