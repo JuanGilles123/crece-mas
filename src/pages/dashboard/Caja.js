@@ -940,10 +940,15 @@ export default function Caja({
     // Si estamos en modo empleado (detectado por AuthContext) pero no hay sesión local,
     // también forzar user_id=null para evitar violación de FK con auth.users
     if (isEmployeeMode) {
-      return { ventaUserId: null, ventaEmployeeId: null };
+      // Si no hay sesión de empleado pero estamos en modo empleado,
+      // DEBEMOS enviar el user.id actual para no violar restricciones de DB
+      return { 
+        ventaUserId: user?.id || organization?.owner_id || null, 
+        ventaEmployeeId: null 
+      };
     }
     // Usuario normal (dueño o admin)
-    return { ventaUserId: user?.id || null, ventaEmployeeId: null };
+    return { ventaUserId: user?.id || organization?.owner_id || null, ventaEmployeeId: null };
   };
 
 

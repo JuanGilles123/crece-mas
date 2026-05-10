@@ -87,14 +87,16 @@ export const useGuardarCotizacion = () => {
   return useMutation({
     mutationFn: async (cotizacionData) => {
       // Determinar IDs de actor (usuario o empleado)
+      // Priorizar los que vienen en cotizacionData, si no, buscar sesión
       const employeeSession = getEmployeeSession();
-      const isEmployee = employeeSession?.employee?.id;
+      const finalEmployeeId = cotizacionData.employee_id || (cotizacionData.user_id ? null : (employeeSession?.employee?.id || null));
+      const finalUserId = cotizacionData.user_id || (finalEmployeeId ? null : null); // Si hay empleado, user_id suele ser null en ventas
       
       // Construir objeto con solo campos básicos que sabemos que existen
       const dataToInsert = {
         organization_id: cotizacionData.organization_id,
-        user_id: isEmployee ? null : (cotizacionData.user_id || null),
-        employee_id: isEmployee ? employeeSession.employee.id : null,
+        user_id: finalUserId,
+        employee_id: finalEmployeeId,
         total: cotizacionData.total,
         metodo_pago: cotizacionData.metodo_pago || 'COTIZACION', // Valor especial para cotizaciones (metodo_pago tiene NOT NULL)
         items: cotizacionData.items,

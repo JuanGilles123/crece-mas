@@ -857,7 +857,8 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
       const categoriaFinal = creandoCategoria ? nuevaCategoriaText : data.categoria;
       if (categoriaFinal && categoriaFinal.trim() !== '') {
         metadata.categoria = categoriaFinal.trim();
-        productoData.categoria = categoriaFinal.trim(); // guardamos en columna si existe
+        // Solo guardamos en columna si estuviéramos seguros de que existe, 
+        // pero el error indica que no existe. Así que solo en metadata.
       }
 
       if (isJewelryBusiness && compraPorUnidadValue) {
