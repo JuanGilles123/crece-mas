@@ -27,7 +27,7 @@ const createProductSchema = (productType, defaultPermiteToppings = true, isJewel
     codigo: z.string().max(50, 'El código es muy largo').optional(),
     nombre: z.string().min(1, 'El nombre es requerido').max(100, 'El nombre es muy largo'),
     precioVenta: z.string().optional(),
-    tipo: z.enum(['fisico', 'servicio', 'comida', 'accesorio']),
+    tipo: z.enum(['fisico', 'servicio', 'comida', 'accesorio', 'combo']),
     imagen: z.any().optional(),
   };
 
@@ -440,16 +440,18 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
     const formattedCosto = formatCurrency(Math.round(costoTotal));
     const formattedVenta = formatCurrency(ventaFinal);
 
+    // El costo siempre se calcula automáticamente
     setValue('precioCompra', formattedCosto, { shouldValidate: true });
     precioCompraInput.setValue(Math.round(costoTotal));
 
-    setValue('precioVenta', formattedVenta, { shouldValidate: true });
-    precioVentaInput.setValue(ventaFinal);
-
-    // Forzar modo combo para que los inputs se vean deshabilitados si se desea, 
-    // pero permitimos edición si el usuario cambia a manual
-    if (productosVinculados.length > 0 && precioVentaModo !== 'manual') {
-      setPrecioVentaModo('combo');
+    // El precio de venta solo se calcula automáticamente si no estamos en modo manual
+    if (precioVentaModo !== 'manual') {
+      setValue('precioVenta', formattedVenta, { shouldValidate: true });
+      precioVentaInput.setValue(ventaFinal);
+      
+      if (productosVinculados.length > 0) {
+        setPrecioVentaModo('combo');
+      }
     }
   }, [selectedType, productosVinculados, margenCombo, margenComboPersonalizado, precioVentaModo, setValue, precioCompraInput, precioVentaInput]);
 
@@ -830,7 +832,7 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
             : null),
         fecha_vencimiento: data.fecha_vencimiento || null,
         imagen: imagenPath,
-        tipo: selectedType
+        tipo: selectedType === 'combo' ? 'fisico' : selectedType // Mapear combo a fisico para evitar restricción de DB mientras se actualiza el esquema
       };
 
       // Campos adicionales que se guardarán en metadata (JSON)
@@ -1120,7 +1122,14 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
             )}
           </div>
         ) : (
-          <form className="form-producto form-producto-centro" onSubmit={handleSubmit(onSubmit)}>
+          <form className="form-producto form-producto-centro" onSubmit={handleSubmit(onSubmit, (errors) => {
+            console.log('Validation Errors:', errors);
+            const errorFields = Object.keys(errors).map(key => {
+              const field = ADDITIONAL_FIELDS[key] || { label: key };
+              return field.label || key;
+            }).join(', ');
+            toast.error(`Faltan campos obligatorios: ${errorFields}`);
+          })}>
             {/* Paso 1: Campos básicos + Imagen */}
             {formStep === 1 && (
               <div className="form-step-content">
@@ -1405,8 +1414,8 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
                       onChange={handlePrecioCompraChange}
                       inputMode="numeric"
                       className="input-form"
-                      disabled={precioVentaModo === 'combo'}
-                      style={precioVentaModo === 'combo' ? { backgroundColor: '#f1f5f9', fontWeight: 'bold' } : {}}
+                      readOnly={precioVentaModo === 'combo'}
+                      style={precioVentaModo === 'combo' ? { backgroundColor: '#f1f5f9', fontWeight: 'bold', cursor: 'default' } : {}}
                     />
                   </div>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -1419,8 +1428,8 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
                       onChange={handlePrecioVentaChange}
                       inputMode="numeric"
                       className="input-form"
-                      disabled={precioVentaModo === 'combo'}
-                      style={precioVentaModo === 'combo' ? { backgroundColor: '#f0fdf4', color: '#166534', fontWeight: 'bold', border: '1px solid #bbf7d0' } : {}}
+                      readOnly={precioVentaModo === 'combo'}
+                      style={precioVentaModo === 'combo' ? { backgroundColor: '#f0fdf4', color: '#166534', fontWeight: 'bold', border: '1px solid #bbf7d0', cursor: 'default' } : {}}
                     />
                   </div>
                 </div>
@@ -1428,18 +1437,23 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
                 <div style={{ marginTop: '1.5rem', padding: '1.25rem', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
                   <h4 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#1e293b', marginBottom: '1rem', borderBottom: '1px solid #bbf7d0', paddingBottom: '0.5rem' }}>Ajustar Margen de la Ancheta</h4>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    {['30', '35', 'otro'].map((m) => (
+                    {['30', '35', 'otro', 'manual'].map((m) => (
                       <button
                         key={m}
                         type="button"
-                        className={`inventario-btn ${margenCombo === m ? 'inventario-btn-primary' : 'inventario-btn-outline'}`}
+                        className={`inventario-btn ${margenCombo === m || (m === 'manual' && precioVentaModo === 'manual') ? 'inventario-btn-primary' : 'inventario-btn-outline'}`}
                         onClick={() => {
-                          setMargenCombo(m);
-                          setPrecioVentaModo('combo');
+                          if (m === 'manual') {
+                            setPrecioVentaModo('manual');
+                            setMargenCombo('manual');
+                          } else {
+                            setMargenCombo(m);
+                            setPrecioVentaModo('combo');
+                          }
                         }}
                         style={{ padding: '0.35rem', fontSize: '0.85rem', flex: 1 }}
                       >
-                        {m === 'otro' ? 'Personalizado' : `${m}%`}
+                        {m === 'otro' ? 'Personalizado' : m === 'manual' ? 'Manual' : `${m}%`}
                       </button>
                     ))}
                   </div>
