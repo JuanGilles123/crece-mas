@@ -929,6 +929,7 @@ export default function Caja({
     }
 
     const employeeSession = getEmployeeSession();
+    // Si hay sesión de empleado activa, usar employee_id y user_id=null
     if (employeeSession?.employee?.id) {
       const ownerId = organization?.owner_id || userProfile?.organization_owner_id;
       return {
@@ -936,6 +937,12 @@ export default function Caja({
         ventaEmployeeId: employeeSession.employee.id
       };
     }
+    // Si estamos en modo empleado (detectado por AuthContext) pero no hay sesión local,
+    // también forzar user_id=null para evitar violación de FK con auth.users
+    if (isEmployeeMode) {
+      return { ventaUserId: null, ventaEmployeeId: null };
+    }
+    // Usuario normal (dueño o admin)
     return { ventaUserId: user?.id || null, ventaEmployeeId: null };
   };
 
@@ -6302,9 +6309,11 @@ export default function Caja({
           }}
           onAperturaExitosa={async (apertura) => {
             setMostrarModalApertura(false);
-            setModalMostradoInicialmente(true); // Marcar como mostrado para evitar que se vuelva a abrir
-            setModalCerradoManualmente(false); // Resetear el flag de cierre manual
-            // Esperar un momento antes de refetch para asegurar que la BD se actualizó
+            setModalMostradoInicialmente(true);
+            setModalCerradoManualmente(false);
+            // Invalidar queries para forzar refresco total
+            queryClient.invalidateQueries(['apertura_caja_activa']);
+            // También refetch por si acaso
             setTimeout(() => {
               refetchApertura();
             }, 500);

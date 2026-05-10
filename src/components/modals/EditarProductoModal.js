@@ -123,7 +123,7 @@ const EditarProductoModal = ({ open, onClose, producto, onProductoEditado }) => 
       const { error: updateError } = await supabase
         .from('productos')
         .update({
-          codigo,
+          codigo: codigo?.trim() || null, // null si está vacío, evita duplicate key
           nombre,
           precio_compra: precioCompraInput.numericValue,
           precio_venta: precioVentaInput.numericValue,

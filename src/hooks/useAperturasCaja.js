@@ -6,9 +6,9 @@ import toast from 'react-hot-toast';
 // Hook para obtener la apertura de caja activa del usuario actual
 export const useAperturaCajaActiva = (organizationId, userId) => {
   return useQuery({
-    queryKey: ['apertura_caja_activa', organizationId, userId],
+    queryKey: ['apertura_caja_activa', organizationId],
     queryFn: async () => {
-      if (!organizationId || !userId) return null;
+      if (!organizationId) return null;
 
       const employeeSession = getEmployeeSession();
       let apertura = null;
@@ -153,22 +153,15 @@ export const useCrearAperturaCaja = () => {
   return useMutation({
     mutationFn: async ({ organizationId, userId, montoInicial }) => {
       const employeeSession = getEmployeeSession();
+      
+      // Para CREAR apertura, sí usamos la Edge Function si es empleado (RLS de inserción es más estricto)
       if (employeeSession?.token) {
-        const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
         const { data, error } = await supabase.functions.invoke('employee-open-caja', {
-          body: { token: employeeSession.token, montoInicial },
-          headers: {
-            ...(anonKey ? { apikey: anonKey } : {}),
-            Authorization: anonKey ? `Bearer ${anonKey}` : undefined
-          }
+          body: { token: employeeSession.token, montoInicial }
         });
-        if (error) {
-          throw new Error(error.message || 'Error al crear apertura de caja');
-        }
-        if (data?.error) {
-          throw new Error(data.error);
-        }
-        return data?.apertura;
+        if (error) throw new Error(error.message || 'Error al crear apertura');
+        if (data?.error) throw new Error(data.error);
+        return { apertura: data?.apertura, already_open: data?.already_open || false };
       }
 
       if (!organizationId || !userId) {
@@ -178,7 +171,7 @@ export const useCrearAperturaCaja = () => {
       // Verificar solo si ESTE usuario ya tiene una apertura activa
       const { data: miAperturaActiva, error: errorVerificacion } = await supabase
         .from('aperturas_caja')
-        .select('id')
+        .select('*')
         .eq('organization_id', organizationId)
         .eq('user_id', userId)
         .is('cierre_id', null)
@@ -204,10 +197,7 @@ export const useCrearAperturaCaja = () => {
         .select()
         .single();
 
-      if (error) {
-        throw new Error(error.message || 'Error al crear apertura de caja');
-      }
-
+      if (error) throw new Error(error.message || 'Error al crear apertura');
       return data;
     },
     onSuccess: (data) => {
@@ -235,13 +225,10 @@ export const useAperturasCaja = (organizationId, limit = 100) => {
         .order('created_at', { ascending: false })
         .limit(limit);
 
-      if (error) {
-        throw new Error('Error al cargar aperturas de caja');
-      }
+      if (error) throw new Error('Error al cargar aperturas');
       return data || [];
     },
     enabled: !!organizationId,
-    staleTime: 10 * 60 * 1000,
-    cacheTime: 60 * 60 * 1000,
+    staleTime: 60000,
   });
 };
