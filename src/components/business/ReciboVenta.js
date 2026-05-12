@@ -606,214 +606,70 @@ ${esCotizacion ? '\n📋 COTIZACIÓN — Pendiente de pago' : `\n💳 Método: $
       <div className="recibo-container">
 
         {/* Contenido del recibo */}
-        <div className="recibo-content" ref={reciboRef} style={{
-          backgroundColor: '#ffffff',
-          padding: '1.5rem',
-          fontFamily: 'Arial, sans-serif',
-          color: '#111827',
-          maxWidth: '600px',
-          margin: '0 auto'
-        }}>
+        <div className="recibo-paper" ref={reciboRef}>
           {/* Logo y datos del establecimiento */}
-          <div className="recibo-header" style={{
-            textAlign: 'center',
-            borderBottom: '2px solid #e5e7eb',
-            paddingBottom: '1rem',
-            marginBottom: '1rem'
-          }}>
+          <div className="recibo-paper-header">
             {datosEmpresa.logo_url && (
               <img
                 src={datosEmpresa.logo_url}
                 alt="Logo establecimiento"
-                className="recibo-logo"
-                style={{
-                  width: '4rem',
-                  height: '4rem',
-                  objectFit: 'contain',
-                  margin: '0 auto 0.5rem',
-                  borderRadius: '0.5rem'
-                }}
+                className="recibo-paper-logo"
                 onError={(e) => (e.currentTarget.style.display = "none")}
               />
             )}
-            <h1 className="recibo-empresa-nombre" style={{
-              fontSize: '1.5rem',
-              fontWeight: '700',
-              color: '#111827',
-              margin: '0 0 0.5rem 0'
-            }}>{datosEmpresa.razon_social}</h1>
-            <p className="recibo-empresa-direccion" style={{
-              fontSize: '0.875rem',
-              color: '#6b7280',
-              margin: '0 0 0.25rem 0'
-            }}>{datosEmpresa.direccion}</p>
+            <h1 className="recibo-paper-empresa">{datosEmpresa.razon_social}</h1>
+            <p className="recibo-paper-dato">{datosEmpresa.direccion}</p>
             {datosEmpresa.ciudad && (
-              <p className="recibo-empresa-ciudad" style={{
-                fontSize: '0.875rem',
-                color: '#6b7280',
-                margin: '0 0 0.25rem 0'
-              }}>{datosEmpresa.ciudad}</p>
+              <p className="recibo-paper-dato">{datosEmpresa.ciudad}</p>
             )}
-            <p className="recibo-empresa-telefono" style={{
-              fontSize: '0.875rem',
-              color: '#6b7280',
-              margin: '0 0 0.25rem 0'
-            }}>Tel: {datosEmpresa.telefono}</p>
+            <p className="recibo-paper-dato">Tel: {datosEmpresa.telefono}</p>
             {datosEmpresa.email && (
-              <p className="recibo-empresa-email" style={{
-                fontSize: '0.875rem',
-                color: '#6b7280',
-                margin: '0 0 0.25rem 0'
-              }}>Email: {datosEmpresa.email}</p>
+              <p className="recibo-paper-dato">Email: {datosEmpresa.email}</p>
             )}
-            <p className="recibo-empresa-nit" style={{
-              fontSize: '0.875rem',
-              color: '#6b7280',
-              margin: '0',
-              fontWeight: '500'
-            }}>NIT: {datosEmpresa.nit}</p>
+            <p className="recibo-paper-nit-val">NIT: {datosEmpresa.nit}</p>
           </div>
 
           {/* Info del recibo */}
-          <div className="recibo-info-section" style={{
-            textAlign: 'center',
-            borderBottom: '1px solid #e5e7eb',
-            paddingBottom: '1rem',
-            marginBottom: '1rem'
-          }}>
-            <CheckCircle className="recibo-success-icon" style={{
-              width: '3rem',
-              height: '3rem',
-              color: '#10b981',
-              margin: '0 auto 0.5rem',
-              display: 'block'
-            }} />
-            <h2 className="recibo-title" style={{
-              fontSize: '1.25rem',
-              fontWeight: '700',
-              color: '#111827',
-              margin: '0 0 0.5rem 0'
-            }}>Venta registrada</h2>
-            <p className="recibo-id" style={{
-              fontSize: '0.875rem',
-              color: '#6b7280',
-              margin: '0 0 0.25rem 0',
-              fontWeight: '600'
-            }}>Recibo #{venta.id}</p>
-            <p className="recibo-datetime" style={{
-              fontSize: '0.75rem',
-              color: '#9ca3af',
-              margin: '0 0 0.25rem 0'
-            }}>
+          <div className="recibo-paper-info">
+            <CheckCircle className="recibo-paper-success-icon" />
+            <h2 className="recibo-paper-title">Venta registrada</h2>
+            <p className="recibo-paper-id-val">Recibo #{venta.id}</p>
+            <p className="recibo-paper-date-val">
               {venta.date} — {venta.time}
             </p>
-            <p className="recibo-info" style={{
-              fontSize: '0.75rem',
-              color: '#6b7280',
-              margin: '0'
-            }}>{venta.register} · Cajero: {venta.cashier}</p>
+            <p className="recibo-paper-extra-info">{venta.register} · Cajero: {venta.cashier}</p>
             {venta.numero_venta && (
-              <p className="recibo-numero-venta" style={{
-                fontSize: '0.75rem',
-                color: '#6b7280',
-                margin: '0.25rem 0 0 0',
-                fontWeight: '600'
-              }}>Orden: {venta.numero_venta}</p>
+              <p className="recibo-paper-order">Orden: {venta.numero_venta}</p>
             )}
             {venta.cliente && (
-              <div className="recibo-cliente" style={{
-                marginTop: '0.75rem',
-                paddingTop: '0.75rem',
-                borderTop: '1px solid #e5e7eb'
-              }}>
-                <p style={{
-                  fontSize: '0.75rem',
-                  color: '#6b7280',
-                  margin: '0 0 0.25rem 0',
-                  fontWeight: '600'
-                }}>Cliente:</p>
-                <p style={{
-                  fontSize: '0.875rem',
-                  color: '#111827',
-                  margin: '0 0 0.125rem 0',
-                  fontWeight: '500'
-                }}>{venta.cliente.nombre}</p>
+              <div className="recibo-paper-cliente">
+                <p className="cliente-label">Cliente:</p>
+                <p className="cliente-nombre">{venta.cliente.nombre}</p>
                 {venta.cliente.documento && (
-                  <p style={{
-                    fontSize: '0.75rem',
-                    color: '#6b7280',
-                    margin: '0 0 0.125rem 0'
-                  }}>Documento: {venta.cliente.documento}</p>
+                  <p className="cliente-dato">Documento: {venta.cliente.documento}</p>
                 )}
                 {venta.cliente.telefono && (
-                  <p style={{
-                    fontSize: '0.75rem',
-                    color: '#6b7280',
-                    margin: '0 0 0.125rem 0'
-                  }}>Tel: {venta.cliente.telefono}</p>
+                  <p className="cliente-dato">Tel: {venta.cliente.telefono}</p>
                 )}
                 {venta.cliente.direccion && (
-                  <p style={{
-                    fontSize: '0.75rem',
-                    color: '#6b7280',
-                    margin: '0'
-                  }}>{venta.cliente.direccion}</p>
+                  <p className="cliente-dato">{venta.cliente.direccion}</p>
                 )}
               </div>
             )}
           </div>
 
           {/* Tabla de productos */}
-          <div className="recibo-products" style={{
-            borderBottom: '1px solid #e5e7eb',
-            paddingBottom: '1rem',
-            marginBottom: '1rem'
-          }}>
-            <h3 className="recibo-section-title" style={{
-              fontWeight: '600',
-              color: '#111827',
-              margin: '0 0 0.75rem 0',
-              fontSize: '1rem'
-            }}>Detalle de la venta</h3>
+          <div className="recibo-paper-products">
+            <h3 className="recibo-paper-section-title">Detalle de la venta</h3>
             {venta.items.length === 0 ? (
-              <p className="recibo-no-products" style={{
-                fontSize: '0.875rem',
-                color: '#6b7280',
-                textAlign: 'center',
-                padding: '1rem'
-              }}>No hay productos en esta venta.</p>
+              <p className="recibo-paper-no-products">No hay productos en esta venta.</p>
             ) : (
-              <table className="recibo-table" style={{
-                width: '100%',
-                borderCollapse: 'collapse',
-                fontSize: '0.875rem'
-              }}>
+              <table className="recibo-paper-table">
                 <thead>
-                  <tr className="recibo-table-header" style={{
-                    background: '#f9fafb',
-                    borderBottom: '1px solid #e5e7eb'
-                  }}>
-                    <th className="recibo-th-cant" style={{
-                      textAlign: 'left',
-                      padding: '0.5rem 0.25rem',
-                      fontWeight: '600',
-                      color: '#111827',
-                      width: '15%'
-                    }}>Cant.</th>
-                    <th className="recibo-th-producto" style={{
-                      textAlign: 'left',
-                      padding: '0.5rem 0.25rem',
-                      fontWeight: '600',
-                      color: '#111827',
-                      width: '60%'
-                    }}>Producto</th>
-                    <th className="recibo-th-total" style={{
-                      textAlign: 'right',
-                      padding: '0.5rem 0.25rem',
-                      fontWeight: '600',
-                      color: '#111827',
-                      width: '25%'
-                    }}>Total</th>
+                  <tr className="recibo-paper-table-header">
+                    <th className="th-cant">Cant.</th>
+                    <th className="th-producto">Producto</th>
+                    <th className="th-total">Total</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -899,28 +755,15 @@ ${esCotizacion ? '\n📋 COTIZACIÓN — Pendiente de pago' : `\n💳 Método: $
                                 </div>
                               )}
                               {tieneVariaciones && (
-                                <div style={{
-                                  marginTop: '0.25rem',
-                                  paddingLeft: '0.75rem',
-                                  fontSize: '0.8rem',
-                                  color: '#6b7280'
-                                }}>
-                                  <div style={{
-                                    marginBottom: '0.25rem',
-                                    fontWeight: '500',
-                                    color: '#4b5563'
-                                  }}>
-                                    Variaciones:
-                                  </div>
+                                <div className="recibo-paper-variaciones">
+                                  <div className="variaciones-title">Variaciones:</div>
                                   {Object.entries(item.variaciones).map(([key, value], vIdx) => {
                                     const variacionNombre = key;
                                     const opcionLabel = typeof value === 'boolean'
                                       ? (value ? 'Sí' : 'No')
                                       : String(value);
                                     return (
-                                      <div key={vIdx} style={{
-                                        marginBottom: '0.125rem'
-                                      }}>
+                                      <div key={vIdx} className="variacion-item">
                                         <span>• {variacionNombre}: {opcionLabel}</span>
                                       </div>
                                     );
@@ -928,30 +771,15 @@ ${esCotizacion ? '\n📋 COTIZACIÓN — Pendiente de pago' : `\n💳 Método: $
                                 </div>
                               )}
                               {tieneToppings && (
-                                <div style={{
-                                  marginTop: '0.25rem',
-                                  paddingLeft: '0.75rem',
-                                  fontSize: '0.8rem',
-                                  color: '#6b7280'
-                                }}>
-                                  <div style={{
-                                    marginBottom: '0.25rem',
-                                    fontWeight: '500',
-                                    color: '#4b5563'
-                                  }}>
-                                    Toppings:
-                                  </div>
+                                <div className="recibo-paper-toppings">
+                                  <div className="toppings-title">Toppings:</div>
                                   {item.toppings.map((topping, tIdx) => (
-                                    <div key={tIdx} style={{
-                                      display: 'flex',
-                                      justifyContent: 'space-between',
-                                      marginBottom: '0.125rem'
-                                    }}>
+                                    <div key={tIdx} className="recibo-paper-topping-fila">
                                       <span>
                                         • {topping.nombre}
                                         {topping.cantidad > 1 && ` (x${topping.cantidad})`}
                                       </span>
-                                      <span style={{ marginLeft: '0.5rem', fontWeight: '500' }}>
+                                      <span className="topping-precio">
                                         {formatCOP((topping.precio || 0) * (topping.cantidad || 1))}
                                       </span>
                                     </div>
@@ -960,25 +788,14 @@ ${esCotizacion ? '\n📋 COTIZACIÓN — Pendiente de pago' : `\n💳 Método: $
                               )}
                             </div>
                           </td>
-                          <td className="recibo-td-total" style={{
-                            padding: '0.5rem 0.25rem',
-                            color: '#111827',
-                            fontWeight: '600',
-                            textAlign: 'right',
-                            verticalAlign: 'top',
-                            paddingTop: '0.75rem'
-                          }}>{formatCOP(totalItem)}</td>
+                          <td className="recibo-td-total">{formatCOP(totalItem)}</td>
                         </tr>
                         {tieneDetalles && (
-                          <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
-                            <td colSpan="3" style={{
-                              padding: '0.25rem 0.5rem',
-                              fontSize: '0.75rem',
-                              color: '#6b7280'
-                            }}>
+                          <tr className="recibo-paper-table-detail-row">
+                            <td colSpan="3">
                               {/* Mostrar precio unitario y total solo cuando cantidad > 1 */}
                               {item.qty > 1 && (
-                                <div style={{ fontStyle: 'italic', textAlign: 'center' }}>
+                                <div className="unit-price-info">
                                   Precio unitario: {formatCOP(precioTotalItem)} | Total: {formatCOP(totalItem)}
                                 </div>
                               )}
@@ -994,79 +811,38 @@ ${esCotizacion ? '\n📋 COTIZACIÓN — Pendiente de pago' : `\n💳 Método: $
           </div>
 
           {/* Totales */}
-          <div className="recibo-totals" style={{
-            borderBottom: '1px solid #e5e7eb',
-            paddingBottom: '1rem',
-            marginBottom: '1rem'
-          }}>
-            <div className="recibo-total-row" style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontSize: '0.875rem',
-              padding: '0.25rem 0',
-              color: '#374151'
-            }}>
+          <div className="recibo-paper-totals">
+            <div className="recibo-paper-total-row">
               <span>Subtotal</span>
-              <span style={{ fontWeight: '500' }}>{formatCOP(subtotal)}</span>
+              <span className="val">{formatCOP(subtotal)}</span>
             </div>
             {montoDescuento > 0 && descuentoInfo && (
-              <div className="recibo-total-row recibo-descuento-row" style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                fontSize: '0.875rem',
-                padding: '0.25rem 0',
-                color: '#10b981',
-                fontWeight: '500'
-              }}>
+              <div className="recibo-paper-total-row discount">
                 <span>
                   Descuento
                   {descuentoInfo.tipo === 'porcentaje' && ` (${descuentoInfo.valor}%)`}
                   {descuentoInfo.alcance === 'productos' && ' en productos'}
                 </span>
-                <span style={{ fontWeight: '600', color: '#10b981' }}>
+                <span className="val">
                   -{formatCOP(montoDescuento)}
                 </span>
               </div>
             )}
-            <div className="recibo-total-row recibo-total-final" style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontWeight: '700',
-              fontSize: '1.25rem',
-              color: '#111827',
-              marginTop: '0.5rem',
-              paddingTop: '0.5rem',
-              borderTop: '2px solid #e5e7eb'
-            }}>
+            <div className="recibo-paper-total-row final">
               <span>TOTAL</span>
               <span>{formatCOP(total)}</span>
             </div>
-            <div className="recibo-payment-method" style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontSize: '0.75rem',
-              color: '#6b7280',
-              marginTop: '0.5rem',
-              paddingTop: '0.5rem',
-              borderTop: '1px solid #f3f4f6'
-            }}>
+            <div className="recibo-paper-payment-info">
               <span>Método de pago</span>
-              <span style={{ fontWeight: '600', textTransform: 'capitalize' }}>
+              <span className="method">
                 {esCotizacion ? 'COTIZACIÓN' : esPagoMixto ? 'Mixto' : venta.metodo_pago}
               </span>
             </div>
 
             {esCotizacion && (
-              <div style={{
-                background: 'linear-gradient(135deg, #fce7f3 0%, #f3e8ff 100%)',
-                border: '1px solid #d8b4fe',
-                borderRadius: '0.5rem',
-                padding: '0.75rem',
-                marginTop: '0.5rem',
-                textAlign: 'center'
-              }}>
-                <span style={{ fontWeight: '600', color: '#9333ea' }}>📋 COTIZACIÓN</span>
-                <div style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.25rem' }}>
+              <div className="cotizacion-badge-container">
+                <span className="cotizacion-label">📋 COTIZACIÓN</span>
+                <div className="cotizacion-sublabel">
                   Pendiente de pago
                 </div>
               </div>
@@ -1074,48 +850,23 @@ ${esCotizacion ? '\n📋 COTIZACIÓN — Pendiente de pago' : `\n💳 Método: $
 
             {/* Detalles de pago mixto */}
             {esPagoMixto && detallesPagoMixto && (
-              <div style={{
-                background: '#f0f9ff',
-                border: '1px solid #0ea5e9',
-                borderRadius: '0.5rem',
-                padding: '0.75rem',
-                marginTop: '0.75rem'
-              }}>
-                <div style={{
-                  fontSize: '0.75rem',
-                  fontWeight: '600',
-                  color: '#0c4a6e',
-                  marginBottom: '0.5rem',
-                  textAlign: 'center'
-                }}>Desglose de Pago Mixto</div>
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  fontSize: '0.75rem',
-                  color: '#374151',
-                  marginBottom: '0.25rem'
-                }}>
-                  <span style={{ display: 'flex', alignItems: 'center' }}>
+              <div className="pago-mixto-container">
+                <div className="pago-mixto-title">Desglose de Pago Mixto</div>
+                <div className="pago-mixto-fila">
+                  <span className="metodo">
                     {getIconoMetodoPago(detallesPagoMixto.metodo1)}
                     {detallesPagoMixto.metodo1}
                   </span>
-                  <span style={{ fontWeight: '600', color: '#0284c7' }}>
+                  <span className="monto">
                     {formatCOP(detallesPagoMixto.monto1)}
                   </span>
                 </div>
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  fontSize: '0.75rem',
-                  color: '#374151'
-                }}>
-                  <span style={{ display: 'flex', alignItems: 'center' }}>
+                <div className="pago-mixto-fila">
+                  <span className="metodo">
                     {getIconoMetodoPago(detallesPagoMixto.metodo2)}
                     {detallesPagoMixto.metodo2}
                   </span>
-                  <span style={{ fontWeight: '600', color: '#0284c7' }}>
+                  <span className="monto">
                     {formatCOP(detallesPagoMixto.monto2)}
                   </span>
                 </div>
@@ -1124,58 +875,23 @@ ${esCotizacion ? '\n📋 COTIZACIÓN — Pendiente de pago' : `\n💳 Método: $
           </div>
 
           {/* Pago y cambio */}
-          <div className="recibo-payment" style={{
-            borderBottom: '1px solid #e5e7eb',
-            paddingBottom: '1rem',
-            marginBottom: '1rem'
-          }}>
-            <div className="recibo-payment-row" style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontSize: '0.875rem',
-              padding: '0.25rem 0',
-              color: '#374151'
-            }}>
+          <div className="recibo-paper-payment">
+            <div className="payment-row">
               <span>Pago del cliente</span>
-              <span style={{ fontWeight: '600', color: '#111827' }}>{formatCOP(venta.pagoCliente)}</span>
+              <span className="val">{formatCOP(venta.pagoCliente)}</span>
             </div>
-            <div className="recibo-payment-row recibo-change" style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontSize: '0.875rem',
-              fontWeight: '600',
-              paddingTop: '0.5rem',
-              borderTop: '1px solid #f3f4f6',
-              marginTop: '0.25rem'
-            }}>
-              <span style={{ color: '#374151' }}>Cambio</span>
-              <span style={{
-                color: cambio < 0 ? '#ef4444' : '#10b981',
-                fontWeight: '700',
-                fontSize: '1rem'
-              }}>
+            <div className="payment-row change">
+              <span className="label">Cambio</span>
+              <span className={`val ${cambio < 0 ? 'negativo' : 'positivo'}`}>
                 {cambio < 0 ? `Faltan ${formatCOP(Math.abs(cambio))}` : formatCOP(cambio)}
               </span>
             </div>
           </div>
 
           {/* Pie del recibo */}
-          <div className="recibo-footer" style={{
-            textAlign: 'center',
-            borderTop: '2px solid #e5e7eb',
-            paddingTop: '1rem'
-          }}>
-            <p className="recibo-thanks" style={{
-              fontSize: '1.125rem',
-              fontWeight: '600',
-              color: '#10b981',
-              margin: '0 0 0.5rem 0'
-            }}>¡Gracias por su compra!</p>
-            <p className="recibo-footer-text" style={{
-              fontSize: '0.75rem',
-              color: '#6b7280',
-              margin: '0'
-            }}>Conserve este recibo como comprobante de pago</p>
+          <div className="recibo-paper-footer">
+            <p className="thanks-msg">¡Gracias por su compra!</p>
+            <p className="footer-note">Conserve este recibo como comprobante de pago</p>
           </div>
         </div>
 

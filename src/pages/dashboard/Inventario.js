@@ -52,6 +52,7 @@ const Inventario = () => {
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
   const [varianteSeleccionadaId, setVarianteSeleccionadaId] = useState(null);
   const [modoLista, setModoLista] = useState(false);
+  const [manualSpin, setManualSpin] = useState(false);
   const [ordenProductos, setOrdenProductos] = useState('created_desc');
   const [query, setQuery] = useState('');
   const [productoIdFiltro, setProductoIdFiltro] = useState(null);
@@ -1132,11 +1133,16 @@ const Inventario = () => {
               )}
               <button
                 className="inventario-btn inventario-btn-action inventario-btn-square"
-                onClick={() => refetch()}
+                onClick={async () => {
+                  setManualSpin(true);
+                  await refetch();
+                  toast.success('Inventario actualizado');
+                  setTimeout(() => setManualSpin(false), 500); // Pequeño delay para que se vea el giro
+                }}
                 disabled={isFetching}
                 title="Actualizar inventario"
               >
-                <RefreshCw size={18} className={isFetching ? 'spin' : ''} />
+                <RefreshCw size={18} className={manualSpin ? 'spin' : ''} />
               </button>
               {(hasPermission('inventario.edit') || ['owner', 'admin'].includes(userProfile?.role)) && (
                 <button
@@ -1294,8 +1300,9 @@ const Inventario = () => {
                       key={prod.id}
                       {...getItemAnimationProps(index)}
                       className={`${modoLista ? "inventario-lista-item" : "inventario-card"} ${lastModifiedId === prod.id ? 'highlight-new' : ''}`}
+                      onClick={() => handleEditarProducto(prod)}
                     >
-                      <div className="inventario-select-checkbox">
+                      <div className="inventario-select-checkbox" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           checked={seleccionados.includes(prod.id)}
@@ -1349,7 +1356,7 @@ const Inventario = () => {
                         </div>
                         <div className="inventario-stock">Stock: {prod.stock !== null && prod.stock !== undefined ? parseFloat(prod.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 4 }) : '0'}</div>
                       </div>
-                      <div className={modoLista ? "inventario-lista-actions" : "inventario-card-actions"}>
+                      <div className={modoLista ? "inventario-lista-actions" : "inventario-card-actions"} onClick={(e) => e.stopPropagation()}>
                         {(hasPermission('inventario.edit') || ['owner', 'admin'].includes(userProfile?.role)) && (
                           <button
                             className="inventario-btn inventario-btn-outline"

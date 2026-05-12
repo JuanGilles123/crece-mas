@@ -1483,8 +1483,7 @@ const HistorialVentas = () => {
                       Ver
                     </button>
                     <button
-                      className="btn-action"
-                      style={{ color: '#10b981', borderColor: '#10b981', backgroundColor: '#f0fdf4' }}
+                      className="btn-action btn-retake"
                       onClick={() => handleRetomarCotizacion(venta)}
                       title="Retomar cotización"
                     >
@@ -1539,8 +1538,7 @@ const HistorialVentas = () => {
                       Cambiar
                     </button>
                     <button
-                      className="btn-action"
-                      style={{ color: '#ef4444', borderColor: '#ef4444' }}
+                      className="btn-action btn-cancel"
                       onClick={() => iniciarAnulacion(venta)}
                       title="Anular Venta Completa"
                     >
@@ -1593,44 +1591,46 @@ const HistorialVentas = () => {
               <X size={24} />
             </button>
 
-            <h2 style={{ marginBottom: '1.5rem' }}>Detalles de Venta #{ventaSeleccionada.id?.slice(0, 8)}</h2>
-
+            <h2 className="modal-title">Detalles de Venta #{ventaSeleccionada.id?.slice(0, 8)}</h2>
+            
             {/* Información básica */}
-            <div style={{ marginBottom: '2rem', padding: '1rem', background: '#f9fafb', borderRadius: '8px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
-                <div>
-                  <strong>Fecha:</strong> {formatFecha(ventaSeleccionada.created_at || ventaSeleccionada.fecha)}
-                </div>
-                <div>
-                  <strong>Método de Pago:</strong> {ventaSeleccionada.metodo_pago || 'N/A'}
-                </div>
-                <div>
-                  <strong>Total:</strong> {formatCOP(ventaSeleccionada.total || 0)}
-                </div>
-                <div>
-                  <strong>Vendedor:</strong> {ventaSeleccionada.vendedor?.employee_name || ventaSeleccionada.usuario_nombre || 'N/A'}
-                </div>
+            <div className="detalles-info-grid">
+              <div className="info-item">
+                <span className="info-label">Fecha:</span>
+                <span className="info-value">{formatFecha(ventaSeleccionada.created_at || ventaSeleccionada.fecha)}</span>
+              </div>
+              <div className="info-item">
+                <span className="info-label">Método de Pago:</span>
+                <span className="info-value">{ventaSeleccionada.metodo_pago || 'N/A'}</span>
+              </div>
+              <div className="info-item">
+                <span className="info-label">Total:</span>
+                <span className="info-value highlight">{formatCOP(ventaSeleccionada.total || 0)}</span>
+              </div>
+              <div className="info-item">
+                <span className="info-label">Vendedor:</span>
+                <span className="info-value">{ventaSeleccionada.vendedor?.employee_name || ventaSeleccionada.usuario_nombre || 'N/A'}</span>
               </div>
             </div>
 
             {/* Items de la venta */}
-            <div style={{ marginBottom: '2rem' }}>
-              <h3 style={{ marginBottom: '1rem' }}>Productos</h3>
-              <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
+            <div className="detalles-productos">
+              <h3 className="section-title">Productos</h3>
+              <div className="productos-tabla">
                 {ventaSeleccionada.items?.map((item, idx) => {
                   const tieneVariaciones = item.variaciones && Object.keys(item.variaciones).length > 0;
                   const tieneToppings = item.toppings && Array.isArray(item.toppings) && item.toppings.length > 0;
                   const tieneJewelryInfo = item.metadata && (item.metadata.peso || item.metadata.material || (item.metadata.jewelry_material_type && item.metadata.jewelry_material_type !== 'na'));
                   return (
-                    <div key={idx} style={{ padding: '0.75rem', borderBottom: idx < ventaSeleccionada.items.length - 1 ? '1px solid #e5e7eb' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: '500' }}>{item.nombre}</div>
+                    <div key={idx} className="producto-fila">
+                      <div className="producto-info-main">
+                        <div className="producto-nombre">{item.nombre}</div>
                         {item.variant_nombre && (
-                          <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.15rem' }}>
+                          <div className="producto-variante">
                             Variante: {item.variant_nombre}
                           </div>
                         )}
-                        <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.15rem' }}>
+                        <div className="producto-meta">
                           Cantidad: {item.qty} | Precio unitario: {formatCOP(item.precio_venta || item.precio || 0)}
                         </div>
                         {/* Información de joyería */}
@@ -1720,17 +1720,9 @@ const HistorialVentas = () => {
 
             {/* Notas de la venta */}
             {ventaSeleccionada.notas && (
-              <div style={{ marginBottom: '2rem' }}>
-                <h3 style={{ marginBottom: '1rem' }}>Notas</h3>
-                <div style={{ 
-                  padding: '1rem', 
-                  background: '#fffbeb', 
-                  border: '1px solid #fcd34d', 
-                  borderRadius: '8px', 
-                  color: '#92400e',
-                  fontSize: '0.9rem',
-                  whiteSpace: 'pre-wrap'
-                }}>
+              <div className="detalles-notas">
+                <h3 className="section-title">Notas</h3>
+                <div className="notas-content">
                   {ventaSeleccionada.notas}
                 </div>
               </div>
@@ -1745,22 +1737,15 @@ const HistorialVentas = () => {
             ) : historialCambios.length > 0 ? (
               <div style={{ marginBottom: '2rem' }}>
                 <h3 style={{ marginBottom: '1rem' }}>Historial de Modificaciones</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div className="historial-cambios-lista">
                   {historialCambios.map((cambio, idx) => (
-                    <div key={idx} style={{ padding: '1rem', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.75rem' }}>
+                    <div key={idx} className="cambio-item">
+                      <div className="cambio-header">
                         <div>
-                          <span style={{
-                            padding: '0.25rem 0.75rem',
-                            borderRadius: '4px',
-                            fontSize: '0.875rem',
-                            fontWeight: '600',
-                            background: cambio.tipo === 'cambio' ? '#dbeafe' : '#fee2e2',
-                            color: cambio.tipo === 'cambio' ? '#1e40af' : '#991b1b'
-                          }}>
+                          <span className={`badge-cambio ${cambio.tipo}`}>
                             {cambio.tipo === 'cambio' ? 'Cambio de Productos' : 'Devolución'}
                           </span>
-                          <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                          <div className="cambio-fecha">
                             {formatFecha(cambio.fecha)}
                           </div>
                         </div>
@@ -1769,9 +1754,9 @@ const HistorialVentas = () => {
                       {cambio.tipo === 'cambio' ? (
                         <>
                           {cambio.items_devueltos && cambio.items_devueltos.length > 0 && (
-                            <div style={{ marginBottom: '0.75rem' }}>
-                              <strong style={{ fontSize: '0.875rem', color: '#6b7280' }}>Productos devueltos:</strong>
-                              <ul style={{ margin: '0.25rem 0 0 1.5rem', fontSize: '0.875rem' }}>
+                            <div className="cambio-seccion">
+                              <strong className="cambio-label">Productos devueltos:</strong>
+                              <ul className="cambio-productos-lista">
                                 {cambio.items_devueltos.map((item, i) => (
                                   <li key={i}>{item.nombre} x{item.cantidad} ({formatCOP(item.precio_venta * item.cantidad)})</li>
                                 ))}
@@ -1779,9 +1764,9 @@ const HistorialVentas = () => {
                             </div>
                           )}
                           {cambio.items_nuevos && cambio.items_nuevos.length > 0 && (
-                            <div style={{ marginBottom: '0.75rem' }}>
-                              <strong style={{ fontSize: '0.875rem', color: '#6b7280' }}>Productos nuevos:</strong>
-                              <ul style={{ margin: '0.25rem 0 0 1.5rem', fontSize: '0.875rem' }}>
+                            <div className="cambio-seccion">
+                              <strong className="cambio-label">Productos nuevos:</strong>
+                              <ul className="cambio-productos-lista">
                                 {cambio.items_nuevos.map((item, i) => (
                                   <li key={i}>{item.nombre} x{item.cantidad} ({formatCOP(item.precio_venta * item.cantidad)})</li>
                                 ))}
@@ -1789,7 +1774,7 @@ const HistorialVentas = () => {
                             </div>
                           )}
                           {cambio.diferencia !== undefined && cambio.diferencia !== 0 && (
-                            <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: cambio.diferencia > 0 ? '#fef3c7' : '#d1fae5', borderRadius: '4px' }}>
+                            <div className={`cambio-diferencia ${cambio.diferencia > 0 ? 'pago' : 'devolucion'}`}>
                               <strong>Diferencia:</strong> {cambio.diferencia > 0
                                 ? `Cliente pagó ${formatCOP(cambio.diferencia)} adicionales`
                                 : `Cliente recibió ${formatCOP(Math.abs(cambio.diferencia))} de diferencia`

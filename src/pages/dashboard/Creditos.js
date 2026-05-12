@@ -180,8 +180,7 @@ export default function Creditos() {
         monto: monto,
         metodo_pago: metodoPago,
         notas: notasPago.trim() || null,
-        user_id: aperturaActiva?.user_id || user.id,
-        employee_id: aperturaActiva?.employee_id || null
+        user_id: aperturaActiva?.user_id || user.id
       });
 
       setMontoPago('');

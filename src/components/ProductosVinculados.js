@@ -59,11 +59,11 @@ const ProductosVinculados = ({ productosVinculados = [], onChange, organizationI
 
   const handleAgregarDirecto = (producto) => {
     const existe = productosVinculados.find(v => v.producto_id === producto.id);
-    
+
     if (existe) {
       // Incrementar cantidad si ya existe
-      const nuevos = productosVinculados.map(v => 
-        v.producto_id === producto.id 
+      const nuevos = productosVinculados.map(v =>
+        v.producto_id === producto.id
           ? { ...v, cantidad: (v.cantidad || 1) + 1 }
           : v
       );
@@ -122,27 +122,37 @@ const ProductosVinculados = ({ productosVinculados = [], onChange, organizationI
           </div>
         ) : (
           <div className="pv-items-container">
+            <div className="pv-table-header">
+              <span className="pv-th-name">Producto</span>
+              <span className="pv-th-category">Categoría</span>
+              <span className="pv-th-prices">Precios (C/V)</span>
+              <span className="pv-th-qty">Cant.</span>
+              <span className="pv-th-actions"></span>
+            </div>
             {productosVinculados.map((vinculo, index) => (
               <div key={index} className="pv-selected-item">
-                <div className="pv-item-info">
-                  <div className="pv-item-main">
-                    <span className="pv-item-name">{vinculo.producto_nombre}</span>
-                    <span className="pv-item-category">{vinculo.categoria || 'Producto'}</span>
-                  </div>
-                  <div className="pv-item-prices">
-                    <span className="pv-price-tag cost">Costo: {formatCurrency(vinculo.precio_compra)}</span>
-                    <span className="pv-price-tag sale">Venta: {formatCurrency(vinculo.precio_venta)}</span>
-                  </div>
+                <div className="pv-col-name" title={vinculo.producto_nombre}>
+                  <span className="pv-item-name">{vinculo.producto_nombre}</span>
                 </div>
                 
-                <div className="pv-item-actions">
+                <div className="pv-col-category">
+                  <span className="pv-item-category">{vinculo.categoria || 'Producto'}</span>
+                </div>
+
+                <div className="pv-col-prices">
+                  <span className="pv-price-tag cost">{formatCurrency(vinculo.precio_compra)}</span>
+                  <span className="pv-price-tag sale">{formatCurrency(vinculo.precio_venta)}</span>
+                </div>
+
+                <div className="pv-col-qty">
                   <div className="pv-qty-controls">
                     <button type="button" onClick={() => handleActualizarCantidad(index, -1)} disabled={vinculo.cantidad <= 0.1}>
-                      <Minus size={14} />
+                      <Minus size={10} />
                     </button>
-                    <input 
-                      type="number" 
-                      value={vinculo.cantidad} 
+                    <input
+                      type="number"
+                      value={vinculo.cantidad}
+                      step="0.1"
                       onChange={(e) => {
                         const val = parseFloat(e.target.value) || 0;
                         const nuevos = [...productosVinculados];
@@ -151,16 +161,19 @@ const ProductosVinculados = ({ productosVinculados = [], onChange, organizationI
                       }}
                     />
                     <button type="button" onClick={() => handleActualizarCantidad(index, 1)}>
-                      <Plus size={14} />
+                      <Plus size={10} />
                     </button>
                   </div>
+                </div>
+
+                <div className="pv-col-actions">
                   <button
                     type="button"
                     className="pv-remove-btn"
                     onClick={() => handleEliminar(index)}
                     title="Eliminar"
                   >
-                    <Trash2 size={16} />
+                    <Trash2 size={10} />
                   </button>
                 </div>
               </div>
@@ -194,44 +207,42 @@ const ProductosVinculados = ({ productosVinculados = [], onChange, organizationI
               />
             </div>
 
-            <div className="pv-results-grid">
-              {cargando ? (
-                <div className="pv-loading">Buscando productos...</div>
-              ) : productosDisponibles.length === 0 ? (
+            <div className={`pv-results-grid ${cargando ? 'is-loading' : ''}`}>
+              {productosDisponibles.length === 0 && !cargando ? (
                 <div className="pv-no-results">No se encontraron productos con "{busqueda}"</div>
               ) : (
                 productosDisponibles.map(producto => {
                   const vinculado = productosVinculados.find(v => v.producto_id === producto.id);
                   const isSelected = !!vinculado;
-                  
+
                   return (
-                    <div 
-                      key={producto.id} 
-                      className={`pv-product-card ${isSelected ? 'is-selected' : ''}`} 
+                    <div
+                      key={producto.id}
+                      className={`pv-product-card ${isSelected ? 'is-selected' : ''}`}
                       onClick={() => handleAgregarDirecto(producto)}
                     >
-                    <div className="pv-card-image">
-                      <OptimizedProductImage imagePath={producto.imagen} alt={producto.nombre} />
-                    </div>
-                    <div className="pv-card-info">
-                      <h4 title={producto.nombre}>{producto.nombre}</h4>
-                      <span className="pv-card-category">{producto.metadata?.categoria || 'Sin categoría'}</span>
-                      <div className="pv-card-meta">
-                        <span className="pv-card-stock">Stock: {producto.stock}</span>
-                        <span className="pv-card-price">{formatCurrency(producto.precio_venta)}</span>
+                      <div className="pv-card-image">
+                        <OptimizedProductImage imagePath={producto.imagen} alt={producto.nombre} />
+                      </div>
+                      <div className="pv-card-info">
+                        <h4 title={producto.nombre}>{producto.nombre}</h4>
+                        <span className="pv-card-category">{producto.metadata?.categoria || 'Sin categoría'}</span>
+                        <div className="pv-card-meta">
+                          <span className="pv-card-stock">Stock: {producto.stock}</span>
+                          <span className="pv-card-price">{formatCurrency(producto.precio_venta)}</span>
+                        </div>
+                      </div>
+                      {isSelected && (
+                        <div className="pv-card-badge">
+                          {vinculado.cantidad}
+                        </div>
+                      )}
+                      <div className="pv-card-add">
+                        <Plus size={20} />
                       </div>
                     </div>
-                    {isSelected && (
-                      <div className="pv-card-badge">
-                        {vinculado.cantidad}
-                      </div>
-                    )}
-                    <div className="pv-card-add">
-                      <Plus size={20} />
-                    </div>
-                  </div>
-                );
-              })
+                  );
+                })
               )}
             </div>
 

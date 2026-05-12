@@ -18,8 +18,9 @@ const CierreCaja = () => {
   const [ventasHoy, setVentasHoy] = useState([]);
   const [cotizacionesHoy, setCotizacionesHoy] = useState([]); // Cotizaciones informativas (no cuentan en totales)
   const [ventasCreditoHoy, setVentasCreditoHoy] = useState([]); // Ventas a crédito informativas (no cuentan en totales)
-  const [pagosCreditoHoy, setPagosCreditoHoy] = useState([]); // Pagos de créditos recibidos hoy
-  const [, setDesglosePagosCredito] = useState({ efectivo: 0, transferencias: 0, tarjeta: 0 });
+  const [pagosCreditoHoy, setPagosCreditoHoy] = useState([]);
+  const [desglosePagosCredito, setDesglosePagosCredito] = useState({ efectivo: 0, transferencias: 0, tarjeta: 0 });
+  const [desgloseVentas, setDesgloseVentas] = useState({ efectivo: 0, transferencias: 0, tarjeta: 0, mixto: 0 });
   const [totalPagosCredito, setTotalPagosCredito] = useState(0);
   const [totalPagosTotales, setTotalPagosTotales] = useState(0);
   const [totalAbonos, setTotalAbonos] = useState(0);
@@ -211,7 +212,6 @@ const CierreCaja = () => {
 
       const otrasAperturas = rawOtrasAperturas || [];
 
-      const userIdsOtrasAperturas = new Set((otrasAperturas || []).map(a => a.user_id).filter(Boolean));
       const employeeIdsOtrasAperturas = new Set((otrasAperturas || []).map(a => a.employee_id).filter(Boolean));
 
       // 1. Obtener el último cierre de caja (sin limitar por día)
@@ -347,10 +347,20 @@ const CierreCaja = () => {
         console.error('Error cargando pagos de créditos:', errorPagosCredito);
       }
 
-      // FILTRAR PAGOS: Excluir pagos que pertenecen a otras cajas independientes
+      // FILTRAR PAGOS: Solo excluir si pertenecen positivamente a OTRA caja activa
       const rawPagosData = (rawPagosDataAll || []).filter(pago => {
-        if (pago.employee_id && employeeIdsOtrasAperturas.has(pago.employee_id)) return false;
-        if (pago.user_id && userIdsOtrasAperturas.has(pago.user_id)) return false;
+        // Si el pago tiene employee_id, verificar si ese empleado tiene otra apertura abierta
+        if (pago.employee_id && employeeIdsOtrasAperturas.has(pago.employee_id)) {
+          return false;
+        }
+        
+        // Si el pago no tiene employee_id, solo excluir si el user_id pertenece a otra apertura
+        // que NO es la actual y SI es una apertura de usuario (no de empleado)
+        if (!pago.employee_id && pago.user_id) {
+          const esDeOtraAperturaUsuario = otrasAperturas.some(a => !a.employee_id && a.user_id === pago.user_id);
+          if (esDeOtraAperturaUsuario) return false;
+        }
+        
         return true;
       });
 
@@ -593,10 +603,14 @@ const CierreCaja = () => {
         mixto: desglose.mixto
       };
 
+      // Guardar desgloses por separado para discriminación en la UI
+      setDesgloseVentas(desglose);
+      setDesglosePagosCredito(desglosePagosCredito);
+      setDesgloseSistema(desgloseFinal);
+
       // Actualizar el total del sistema para incluir los pagos de créditos y restar egresos/devoluciones
       const totalConMovimientos = (total + totalPagosCredito) - (egresosTurno + devolucionesTurno);
       setTotalSistema(totalConMovimientos);
-      setDesgloseSistema(desgloseFinal);
 
       // Cargar cotizaciones por separado (solo informativas, no cuentan en totales)
       try {
@@ -695,6 +709,7 @@ const CierreCaja = () => {
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 💸 EGRESOS/GASTOS: -${formatCOP(totalEgresos)}
 🔄 DEVOLUCIONES: -${formatCOP(totalDevoluciones)}
+📥 ABONOS A CRÉDITOS: +${formatCOP(totalPagosCredito)}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 TOTAL NETO ESPERADO: ${formatCOP(totalSistema)}
 ` : '';
@@ -1199,7 +1214,7 @@ Generado por Crece+ 🚀
               <div className="resumen-card total">
                 <TrendingUp size={24} />
                 <div>
-                  <p className="resumen-label">Total Registrado en Sistema</p>
+                  <p className="resumen-label">Total en Sistema</p>
                   <h3>{formatCOP(totalSistema)}</h3>
                 </div>
               </div>
@@ -1208,52 +1223,95 @@ Generado por Crece+ 🚀
             {/* Desglose por método de pago */}
             <div className="desglose-metodos">
               <h3>Desglose por Método</h3>
-              <div className="metodo-item">
-                <Banknote size={18} />
-                <span>Ventas en Efectivo:</span>
-                <strong>{formatCOP(desgloseSistema.efectivo + totalEgresos + totalDevoluciones)}</strong>
-              </div>
-              
-              {(totalEgresos > 0 || totalDevoluciones > 0) && (
-                <div style={{ padding: '0.5rem 0', borderBottom: '1px dashed #e2e8f0', marginBottom: '0.5rem' }}>
-                  {totalEgresos > 0 && (
-                    <div className="metodo-item" style={{ color: '#dc2626', fontSize: '0.85rem' }}>
-                      <TrendingDown size={14} />
-                      <span>Egresos/Gastos:</span>
-                      <strong>-{formatCOP(totalEgresos)}</strong>
-                    </div>
-                  )}
-                  {totalDevoluciones > 0 && (
-                    <div className="metodo-item" style={{ color: '#ef4444', fontWeight: 'bold' }}>
-                      <AlertCircle size={14} />
-                      <span>Devoluciones:</span>
-                      <strong>-{formatCOP(totalDevoluciones)}</strong>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="metodo-item" style={{ background: '#f0f9ff', border: '1px solid #bae6fd', padding: '0.75rem', borderRadius: '8px', marginTop: '0.5rem' }}>
-                <Banknote size={18} color="#0369a1" />
-                <span style={{ color: '#0369a1', fontWeight: 'bold' }}>Efectivo Neto Esperado:</span>
-                <strong style={{ fontSize: '1.1rem', color: '#0c4a6e' }}>{formatCOP(desgloseSistema.efectivo)}</strong>
-              </div>
-
-              <div className="metodo-item">
-                <Smartphone size={18} />
-                <span>Transferencias:</span>
-                <strong>{formatCOP(desgloseSistema.transferencias)}</strong>
-              </div>
-              <div className="metodo-item">
-                <CreditCard size={18} />
-                <span>Tarjeta:</span>
-                <strong>{formatCOP(desgloseSistema.tarjeta)}</strong>
-              </div>
-              {desgloseSistema.mixto > 0 && (
+              <div className="metodo-grupo" style={{ marginBottom: '1.5rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '1rem' }}>
                 <div className="metodo-item">
-                  <DollarSign size={18} />
-                  <span>Mixto:</span>
-                  <strong>{formatCOP(desgloseSistema.mixto)}</strong>
+                  <Banknote size={18} />
+                  <span>Ventas Directas (Efectivo):</span>
+                  <strong>{formatCOP(desgloseVentas.efectivo + totalEgresos + totalDevoluciones)}</strong>
+                </div>
+
+                {desglosePagosCredito.efectivo > 0 && (
+                  <div className="metodo-item" style={{ color: '#10b981' }}>
+                    <Receipt size={18} />
+                    <span>Abonos Crédito (Efectivo):</span>
+                    <strong>+{formatCOP(desglosePagosCredito.efectivo)}</strong>
+                  </div>
+                )}
+
+                {(totalEgresos > 0 || totalDevoluciones > 0) && (
+                  <div style={{ padding: '0.25rem 0' }}>
+                    {totalEgresos > 0 && (
+                      <div className="metodo-item" style={{ color: '#dc2626', fontSize: '0.85rem' }}>
+                        <TrendingDown size={14} />
+                        <span>Egresos/Gastos:</span>
+                        <strong>-{formatCOP(totalEgresos)}</strong>
+                      </div>
+                    )}
+                    {totalDevoluciones > 0 && (
+                      <div className="metodo-item" style={{ color: '#ef4444', fontWeight: 'bold' }}>
+                        <AlertCircle size={14} />
+                        <span>Devoluciones:</span>
+                        <strong>-{formatCOP(totalDevoluciones)}</strong>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="metodo-item" style={{ background: '#f0f9ff', border: '1px solid #bae6fd', padding: '0.75rem', borderRadius: '8px', marginTop: '0.5rem' }}>
+                  <Banknote size={18} color="#0369a1" />
+                  <span style={{ color: '#0369a1', fontWeight: 'bold' }}>Efectivo Neto Esperado:</span>
+                  <strong style={{ fontSize: '1.1rem', color: '#0c4a6e' }}>{formatCOP(desgloseSistema.efectivo)}</strong>
+                </div>
+              </div>
+
+              {/* GRUPO: TRANSFERENCIAS */}
+              <div className="metodo-grupo" style={{ marginBottom: '1.5rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '1rem' }}>
+                <div className="metodo-item">
+                  <Smartphone size={18} />
+                  <span>Ventas Directas (Transf.):</span>
+                  <strong>{formatCOP(desgloseVentas.transferencias)}</strong>
+                </div>
+                {desglosePagosCredito.transferencias > 0 && (
+                  <div className="metodo-item" style={{ color: '#10b981' }}>
+                    <Receipt size={18} />
+                    <span>Abonos Crédito (Transf.):</span>
+                    <strong>+{formatCOP(desglosePagosCredito.transferencias)}</strong>
+                  </div>
+                )}
+                <div className="metodo-item" style={{ background: '#f8fafc', padding: '0.5rem 0.75rem', borderRadius: '8px' }}>
+                  <span style={{ color: '#64748b', fontWeight: 600 }}>Total Transferencias:</span>
+                  <strong style={{ color: '#334155' }}>{formatCOP(desgloseVentas.transferencias + desglosePagosCredito.transferencias)}</strong>
+                </div>
+              </div>
+
+              {/* GRUPO: TARJETAS */}
+              <div className="metodo-grupo" style={{ marginBottom: '1.5rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '1rem' }}>
+                <div className="metodo-item">
+                  <CreditCard size={18} />
+                  <span>Ventas Directas (Tarjeta):</span>
+                  <strong>{formatCOP(desgloseVentas.tarjeta)}</strong>
+                </div>
+                {desglosePagosCredito.tarjeta > 0 && (
+                  <div className="metodo-item" style={{ color: '#10b981' }}>
+                    <Receipt size={18} />
+                    <span>Abonos Crédito (Tarjeta):</span>
+                    <strong>+{formatCOP(desglosePagosCredito.tarjeta)}</strong>
+                  </div>
+                )}
+                <div className="metodo-item" style={{ background: '#f8fafc', padding: '0.5rem 0.75rem', borderRadius: '8px' }}>
+                  <span style={{ color: '#64748b', fontWeight: 600 }}>Total Tarjetas:</span>
+                  <strong style={{ color: '#334155' }}>{formatCOP(desgloseVentas.tarjeta + desglosePagosCredito.tarjeta)}</strong>
+                </div>
+              </div>
+
+              {/* OTROS (MIXTO) */}
+              {desgloseVentas.mixto > 0 && (
+                <div className="metodo-grupo" style={{ marginBottom: '1rem' }}>
+                  <div className="metodo-item">
+                    <DollarSign size={18} />
+                    <span>Ventas Mixtas:</span>
+                    <strong>{formatCOP(desgloseVentas.mixto)}</strong>
+                  </div>
                 </div>
               )}
             </div>

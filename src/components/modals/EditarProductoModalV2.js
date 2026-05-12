@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -8,7 +8,7 @@ import '../../pages/dashboard/Inventario.css';
 import { useAuth } from '../../context/AuthContext';
 import { useSubscription } from '../../hooks/useSubscription';
 import { compressProductImage } from '../../services/storage/imageCompression';
-import { useActualizarProducto } from '../../hooks/useProductos';
+import { useActualizarProducto, useProductos } from '../../hooks/useProductos';
 import { useCurrencyInput, formatCurrency } from '../../hooks/useCurrencyInput';
 import { Plus, X } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -26,7 +26,7 @@ const createProductSchema = (productType, isJewelryBusiness = false) => {
     codigo: z.string().max(50, 'El código es muy largo').optional(),
     nombre: z.string().min(1, 'El nombre es requerido').max(100, 'El nombre es muy largo'),
     precioVenta: z.string().optional(),
-    tipo: z.enum(['fisico', 'servicio', 'comida', 'accesorio']),
+    tipo: z.enum(['fisico', 'servicio', 'comida', 'accesorio', 'combo']),
     imagen: z.any().optional(),
   };
 
@@ -148,6 +148,7 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
     return Number.isFinite(parsed) ? parsed : 0;
   }, []);
   const [formStep, setFormStep] = useState(1); // 1: básico + imagen, 2: opcionales del tipo, 3: adicionales
+  const [selectedType, setSelectedType] = useState('fisico');
   const [imagen, setImagen] = useState(null);
   const [imagenUrl, setImagenUrl] = useState('');
   const [subiendo, setSubiendo] = useState(false);
@@ -156,8 +157,15 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
   const [variacionesConfig, setVariacionesConfig] = useState([]);
   const [productosVinculados, setProductosVinculados] = useState([]);
   const [variantesProducto, setVariantesProducto] = useState([]);
-  const [guardandoVariantes, setGuardandoVariantes] = useState(false);
-  const [precioVentaModo, setPrecioVentaModo] = useState('manual'); // 'manual' | 'porcentaje'
+  const [precioVentaModo, setPrecioVentaModo] = useState('manual'); // 'manual' | 'porcentaje' | 'combo'
+  const [margenCombo, setMargenCombo] = useState('30'); // '30' | '35' | 'otro'
+  const [margenComboPersonalizado, setMargenComboPersonalizado] = useState('');
+  const [categoriaManoObra, setCategoriaManoObra] = useState('');
+  const [creandoCategoriaManoObra, setCreandoCategoriaManoObra] = useState(false);
+  const [nuevaCategoriaManoObraText, setNuevaCategoriaManoObraText] = useState('');
+  const [creandoCategoria, setCreandoCategoria] = useState(false);
+  const [nuevaCategoriaText, setNuevaCategoriaText] = useState('');
+  const esEmpleado = (userProfile?.role !== 'owner' && userProfile?.role !== 'admin');
   const modoSoloVariantes = soloEditarVariantes && varianteActivaId;
   const fileInputRef = useRef();
   const codigoInputRef = useRef(null);
@@ -169,12 +177,17 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
   const precioVentaInput = useCurrencyInput();
   const stockInput = useCurrencyInput();
 
+  const [margenPorcentaje, setMargenPorcentaje] = useState('');
+
   // React Query mutation
   const actualizarProductoMutation = useActualizarProducto();
+  const { data: productosData = [] } = useProductos(organization?.id);
+  const categoriasExistentes = useMemo(() => {
+    const cats = new Set(productosData.map(p => p.metadata?.categoria || p.categoria).filter(Boolean));
+    return [...cats].sort();
+  }, [productosData]);
 
-  // Obtener tipo del producto o default
-  const selectedType = producto?.tipo || 'fisico';
-  const productSchema = createProductSchema(selectedType, isJewelryBusiness);
+  const productSchema = selectedType ? createProductSchema(selectedType, isJewelryBusiness) : z.object({});
 
   const getGoldPriceValue = useCallback((materialType) => {
     if (materialType === 'local') {
@@ -228,7 +241,7 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isDirty },
     reset,
     setValue,
     watch
@@ -293,20 +306,61 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
     : 0;
   const reglaAplicada = diffActual >= minMarginActual ? 'Precio actual' : 'Costo + margen';
 
+  // Función para detectar cambios sin guardar
+  const hasUnsavedChanges = useCallback(() => {
+    if (isDirty) return true;
+    if (imagen !== null) return true;
+    
+    // Comparar configuraciones complejas (usando stringify para simplicidad en este caso)
+    const metadata = producto?.metadata || {};
+    const initialVariaciones = metadata.variaciones_config || [];
+    if (JSON.stringify(variacionesConfig) !== JSON.stringify(initialVariaciones)) return true;
+    
+    const initialVariantes = producto?.variantes || [];
+    if (JSON.stringify(variantesProducto) !== JSON.stringify(initialVariantes)) return true;
+    
+    const initialVinculados = metadata.productos_vinculados || [];
+    if (JSON.stringify(productosVinculados) !== JSON.stringify(initialVinculados)) return true;
+    
+    return false;
+  }, [isDirty, imagen, variacionesConfig, variantesProducto, productosVinculados, producto]);
+
   // Ref para rastrear el último producto cargado y evitar re-cargas durante la edición
   const ultimoProductoIdRef = useRef(null);
 
-  // Resetear al paso 1 cuando se abre el modal
+  // Resetear al paso 1 cuando se abre el modal y manejar tecla Escape
   useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        if (hasUnsavedChanges()) {
+          if (window.confirm('Tienes cambios sin guardar. ¿Estás seguro de que quieres salir?')) {
+            onClose();
+          }
+        } else {
+          onClose();
+        }
+      }
+    };
+
     if (open) {
       setFormStep(1);
+      window.addEventListener('keydown', handleEscape);
     } else {
       // Permitir recargar valores aunque sea el mismo producto al reabrir
       ultimoProductoIdRef.current = null;
       setImagen(null);
       setImagenUrl('');
+      setMargenCombo('30');
+      setMargenComboPersonalizado('');
+      setCategoriaManoObra('');
+      setCreandoCategoriaManoObra(false);
+      setNuevaCategoriaManoObraText('');
     }
-  }, [open]);
+
+    return () => {
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, [open, onClose, hasUnsavedChanges]);
 
   useEffect(() => {
     if (!isJewelryBusiness || jewelryPriceMode !== 'variable') return;
@@ -410,6 +464,24 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
           : ''
       );
 
+      // Determinar tipo: mantener el tipo original (especialmente para retail)
+      const currentType = producto.tipo || 'fisico';
+      setSelectedType(currentType);
+      setValue('tipo', currentType);
+      
+      // Variable para control interno de UI si es combo
+      const esCombo = producto.tipo === 'combo' || (metadata.productos_vinculados && metadata.productos_vinculados.length > 0);
+
+      // Cargar margen de combo si aplica
+      if (esCombo && metadata.margen_combo) {
+        if (['30', '35'].includes(String(metadata.margen_combo))) {
+          setMargenCombo(String(metadata.margen_combo));
+        } else {
+          setMargenCombo('otro');
+          setMargenComboPersonalizado(String(metadata.margen_combo));
+        }
+      }
+
       // Actualizar currency inputs
       precioCompraInput.setValue(compraPorUnidad !== undefined && compraPorUnidad !== null ? compraPorUnidad : '');
       stockInput.setValue(producto.stock !== undefined && producto.stock !== null ? producto.stock : '');
@@ -417,10 +489,13 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
       // Para productos de joyería con precio variable, el precio de venta se calculará automáticamente
       // en el useEffect que depende de jewelryPriceMode, peso, etc.
       const esJoyeriaVariable = isJewelryBusiness && metadata?.jewelry_price_mode === 'variable';
-      if (!esJoyeriaVariable) {
-        // Solo para productos NO variables, establecer el precio guardado
+      if (!esJoyeriaVariable && !esCombo) {
+        // Solo para productos NO variables y NO combos, establecer el precio guardado
         setValue('precioVenta', producto.precio_venta !== undefined && producto.precio_venta !== null ? producto.precio_venta.toString() : '');
         precioVentaInput.setValue(producto.precio_venta !== undefined && producto.precio_venta !== null ? producto.precio_venta : '');
+      } else if (esCombo) {
+        // Para combos, dejar que el useEffect de cálculo lo maneje
+        setPrecioVentaModo('combo');
       } else {
         // Para variables, limpiar y dejar que el useEffect lo calcule
         setValue('precioVenta', '');
@@ -547,8 +622,42 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
     };
   }, [open, setValue, modoSoloVariantes]);
 
+  // Cálculo automático para Combos / Anchetas (IGUAL QUE EN AGREGAR)
+  useEffect(() => {
+    if (selectedType !== 'combo') return;
+
+    // Calcular costo total sumando los costos de los productos vinculados
+    const costoTotal = productosVinculados.reduce((sum, p) => sum + ((p.precio_compra || 0) * (p.cantidad || 1)), 0);
+    
+    // Calcular precio de venta base sumando los precios de venta de los productos vinculados
+    const ventaBaseTotal = productosVinculados.reduce((sum, p) => sum + ((p.precio_venta || 0) * (p.cantidad || 1)), 0);
+
+    // Aplicar el margen de la ancheta (30% o 35% o personalizado)
+    const margenActual = margenCombo === 'otro' 
+      ? parseFloat(margenComboPersonalizado) || 0 
+      : parseFloat(margenCombo) || 30;
+    
+    const ventaFinal = Math.round(ventaBaseTotal * (1 + (margenActual / 100)));
+
+    // Actualizar campos
+    const formattedCosto = formatCurrency(Math.round(costoTotal));
+    const formattedVenta = formatCurrency(ventaFinal);
+
+    // El costo siempre se calcula automáticamente
+    setValue('precioCompra', formattedCosto, { shouldValidate: true });
+    precioCompraInput.setValue(Math.round(costoTotal));
+
+    // El precio de venta solo se calcula automáticamente si estamos en modo combo
+    if (precioVentaModo === 'combo') {
+      setValue('precioVenta', formattedVenta, { shouldValidate: true });
+      precioVentaInput.setValue(ventaFinal);
+    }
+  }, [selectedType, productosVinculados, margenCombo, margenComboPersonalizado, precioVentaModo, setValue, precioCompraInput, precioVentaInput]);
+
   const handleBack = () => {
-    if (formStep > 1) {
+    if (formStep === 1) {
+      onClose();
+    } else {
       setFormStep(formStep - 1);
     }
   };
@@ -560,25 +669,38 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
       e.stopPropagation();
     }
     
-    const typeFields = getProductTypeFields(selectedType);
-    
+    // Validar paso actual antes de avanzar
     if (formStep === 1) {
-      const codigo = watch('codigo');
+      // Validar campos básicos
       const nombre = watch('nombre');
       const precioVenta = watch('precioVenta');
+      const precioCompra = watch('precioCompra');
+      const stock = watch('stock');
+      const typeFieldsStep = getProductTypeFields(selectedType);
       
-      if (!codigo || !nombre || !precioVenta) {
+      const needsPrecioVenta = !isJewelryBusiness || jewelryPriceMode !== 'variable';
+      const needsPrecioCompra = typeFieldsStep.required.includes('precio_compra');
+      const needsStock = typeFieldsStep.required.includes('stock');
+      
+      if (!nombre || (needsPrecioVenta && !precioVenta) || (needsPrecioCompra && !precioCompra) || (needsStock && !stock)) {
         toast.error('Por favor completa todos los campos requeridos');
         return;
       }
+
+      if (isJewelryBusiness) {
+        const peso = watch('peso');
+        if (!peso) {
+          toast.error('El peso es requerido');
+          return;
+        }
+      }
       
       // Si tiene campos opcionales del tipo, ir a paso 2, sino saltar a paso 3
-      if (typeFields.optional.length > 0) {
+      if (typeFieldsStep.optional.length > 0) {
         setFormStep(2);
       } else if (Object.keys(ADDITIONAL_FIELDS).length > 0) {
         setFormStep(3);
       } else {
-        // Si no hay más pasos, no hacer nada (el botón cambiará a "Actualizar Producto")
         return;
       }
     } else if (formStep === 2) {
@@ -586,11 +708,9 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
       if (Object.keys(ADDITIONAL_FIELDS).length > 0) {
         setFormStep(3);
       } else {
-        // Si no hay más pasos, no hacer nada (el botón cambiará a "Actualizar Producto")
         return;
       }
     } else if (formStep === 3) {
-      // Ya estamos en el último paso, no hacer nada (el botón cambiará a "Actualizar Producto")
       return;
     }
   };
@@ -651,7 +771,6 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
       toast.error('Sin internet: las variantes requieren conexión para guardar.');
       return;
     }
-    setGuardandoVariantes(true);
 
     try {
       const variantesLimpias = variantesProducto.map(vari => ({
@@ -666,7 +785,6 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
       for (const variante of variantesLimpias) {
         if (!variante.nombre) {
           toast.error('Todas las variantes deben tener nombre');
-          setGuardandoVariantes(false);
           return;
         }
       }
@@ -707,7 +825,7 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
       console.error('Error guardando variantes:', error);
       toast.error('No se pudieron guardar las variantes');
     } finally {
-      setGuardandoVariantes(false);
+
     }
   };
 
@@ -808,11 +926,29 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
 
       // Agregar campos adicionales a metadata
       const newMetadata = {};
-      Object.keys(ADDITIONAL_FIELDS).forEach(fieldId => {
-        if (data[fieldId] && data[fieldId].trim() !== '') {
-          newMetadata[fieldId] = data[fieldId];
-        }
-      });
+      
+      // Mapeo manual de campos para coincidir con AgregarProductoModalV2
+      if (data.peso) newMetadata.peso = data.peso;
+      if (data.unidad_peso) newMetadata.unidad_peso = data.unidad_peso;
+      if (data.dimensiones) newMetadata.dimensiones = data.dimensiones;
+      if (data.marca) newMetadata.marca = data.marca;
+      if (data.modelo) newMetadata.modelo = data.modelo;
+      if (data.color) newMetadata.color = data.color;
+      if (data.talla) newMetadata.talla = data.talla;
+      if (data.material) newMetadata.material = data.material;
+      if (data.duracion) newMetadata.duracion = data.duracion;
+      if (data.descripcion) newMetadata.descripcion = data.descripcion;
+      if (data.ingredientes) newMetadata.ingredientes = data.ingredientes;
+      if (data.alergenos) newMetadata.alergenos = data.alergenos;
+      if (data.calorias) newMetadata.calorias = data.calorias;
+      if (data.porcion) newMetadata.porcion = data.porcion;
+      if (data.variaciones) newMetadata.variaciones = data.variaciones;
+
+      // Categoría puede ser de select o nueva
+      const categoriaFinal = creandoCategoria ? nuevaCategoriaText : data.categoria;
+      if (categoriaFinal && categoriaFinal.trim() !== '') {
+        newMetadata.categoria = categoriaFinal.trim();
+      }
       
       // Agregar variaciones_config si hay variaciones configuradas
       if (variacionesConfig && variacionesConfig.length > 0) {
@@ -849,8 +985,8 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
         newMetadata.jewelry_static_mode = data.jewelry_static_mode;
       }
 
-      if (data.jewelry_static_mode === 'percent' && data.jewelry_static_percent !== '') {
-        const percentValue = Number(data.jewelry_static_percent);
+      if (data.jewelry_static_mode === 'percent' && margenPorcentaje !== '') {
+        const percentValue = Number(margenPorcentaje);
         if (Number.isFinite(percentValue) && percentValue >= 0) {
           newMetadata.jewelry_static_percent = percentValue;
         }
@@ -870,6 +1006,23 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
         }
       }
 
+      // Añadir info específica de combos
+      if (selectedType === 'combo') {
+        newMetadata.es_combo = true;
+        // Guardar configuración del margen
+        if (precioVentaModo === 'combo') {
+          newMetadata.margen_combo_tipo = margenCombo;
+          if (margenCombo === 'otro') {
+            newMetadata.margen_combo_valor = margenComboPersonalizado;
+          }
+        }
+        
+        const catManoObraFinal = creandoCategoriaManoObra ? nuevaCategoriaManoObraText : categoriaManoObra;
+        if (catManoObraFinal && catManoObraFinal.trim() !== '') {
+          newMetadata.categoria_mano_obra = catManoObraFinal.trim();
+        }
+      }
+
       // Agregar metadata solo si tiene datos
       if (Object.keys(newMetadata).length > 0) {
         productoData.metadata = newMetadata;
@@ -880,13 +1033,19 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
       actualizarProductoMutation.mutate(
         { id: producto.id, updates: productoData, organizationId: producto.organization_id },
         {
-          onSuccess: () => {
+          onSuccess: async () => {
+            // Guardar variantes si hay (requiere conexión)
+            if (variantesProducto.length > 0 || metadata.variantes?.length > 0) {
+              await guardarVariantes();
+            }
+
             reset();
             setImagen(null);
             setImagenUrl('');
             setAdditionalFields([]);
             setVariacionesConfig([]);
             setProductosVinculados([]);
+            setVariantesProducto([]);
             precioCompraInput.reset();
             precioVentaInput.reset();
             stockInput.reset();
@@ -915,7 +1074,7 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
   
   // Calcular labels de pasos (ahora solo 3 pasos: básico+imagen, opcionales, adicionales)
   const stepLabels = ['Básico + Imagen'];
-  if (typeFields.optional.length > 0) stepLabels.push('Opcionales');
+  stepLabels.push('Opciones y variantes');
   if (Object.keys(ADDITIONAL_FIELDS).length > 0) stepLabels.push('Adicionales');
 
   const codigoRegister = register('codigo', {
@@ -928,8 +1087,8 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
     <div className="modal-bg">
       <div className="modal-card">
         <div className="modal-header-with-back">
-          <button type="button" className="back-button" onClick={onClose}>
-            ← Cancelar
+          <button type="button" className="back-button" onClick={handleBack}>
+            ← {formStep === 1 ? 'Cancelar' : 'Atrás'}
           </button>
           <h2>Editar {productType?.label.toLowerCase()}</h2>
         </div>
@@ -986,7 +1145,7 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
             {/* Paso 1: Campos básicos + Imagen */}
             {formStep === 1 && (
               <div className="form-step-content">
-                <h3 className="step-title">Información Básica e Imagen</h3>
+                <h3 className="step-title" style={{ fontSize: '1.25rem', fontWeight: 600, color: '#0f172a', marginBottom: '1.5rem' }}>Información Básica e Imagen</h3>
                 <label>Código</label>
                 <input
                   {...codigoRegister}
@@ -999,13 +1158,62 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
                 />
                 {errors.codigo && <span className="error-message">{errors.codigo.message}</span>}
 
-                <label>Nombre <span style={{ color: '#ef4444' }}>*</span></label>
+                <label>Nombre</label>
                 <input
                   {...register('nombre')}
                   className={`input-form ${errors.nombre ? 'error' : ''}`}
                   placeholder="Nombre del producto"
                 />
                 {errors.nombre && <span className="error-message">{errors.nombre.message}</span>}
+
+                <div style={{ marginTop: '1rem' }}>
+                  <label style={{ fontWeight: 600, fontSize: '0.95rem', color: '#334155', display: 'block', marginBottom: '0.5rem' }}>Categoría</label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+                    <select
+                      className="input-form"
+                      value={creandoCategoria ? 'crear_otra' : (categoriasExistentes.includes(watch('categoria')) ? watch('categoria') : (watch('categoria') || ''))}
+                      onChange={(e) => {
+                        if (e.target.value === 'crear_otra') {
+                          setCreandoCategoria(true);
+                          setValue('categoria', nuevaCategoriaText);
+                        } else {
+                          setCreandoCategoria(false);
+                          setValue('categoria', e.target.value);
+                        }
+                      }}
+                    >
+                      <option value="">Sin categoría</option>
+                      {categoriasExistentes.map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                      <option value="crear_otra">+ Crear nueva categoría</option>
+                    </select>
+                    {creandoCategoria && (
+                      <input
+                        type="text"
+                        className="input-form"
+                        placeholder="Escribe la nueva categoría"
+                        value={nuevaCategoriaText}
+                        onChange={(e) => {
+                          setNuevaCategoriaText(e.target.value);
+                          setValue('categoria', e.target.value);
+                        }}
+                        autoFocus
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* Productos vinculados (APARECEN SI TIENE O ES COMBO) */}
+                {(selectedType === 'combo' || (productosVinculados && productosVinculados.length > 0)) && (
+                  <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                    <ProductosVinculados
+                      productosVinculados={productosVinculados}
+                      onChange={setProductosVinculados}
+                      organizationId={organization?.id || producto?.organization_id}
+                    />
+                  </div>
+                )}
 
                 {isJewelryBusiness && (
                   <>
@@ -1032,96 +1240,221 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
                 )}
 
                 {/* Precios */}
-                <label>Precios</label>
-                <div className="input-precio-row" style={{ gap: '2.5rem', justifyContent: 'space-between' }}>
-                  {(typeFields.required.includes('precio_compra') || typeFields.optional.includes('precio_compra')) && (
+                <h4 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#1e293b', marginTop: '1.5rem', marginBottom: '1rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem' }}>Precios</h4>
+                {/* Los precios se movieron al final para Combos */}
+                {selectedType !== 'combo' && (
+                  <div className="input-precio-row" style={{ gap: '2.5rem', justifyContent: 'space-between' }}>
+                    {(typeFields.required.includes('precio_compra') || typeFields.optional.includes('precio_compra')) && (
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontWeight: 600, fontSize: '0.98rem', marginBottom: 4, textAlign: 'center' }}>
+                        Precio de Compra {isJewelryBusiness ? `(por ${organization?.jewelry_weight_unit || 'g'})` : ''} {typeFields.required.includes('precio_compra') && <span style={{ color: '#ef4444' }}>*</span>}
+                      </span>
+                        <input
+                          {...register('precioCompra')}
+                          value={precioCompraInput.displayValue}
+                          onChange={handlePrecioCompraChange}
+                          inputMode="numeric"
+                          placeholder="Ej: 30.000"
+                          className={`input-form ${errors.precioCompra ? 'error' : ''}`}
+                        />
+                        {errors.precioCompra && <span className="error-message">{errors.precioCompra.message}</span>}
+                        {isJewelryBusiness && compraPorUnidad > 0 && parseWeightValue(pesoWatch) > 0 && (
+                          <span style={{ fontSize: '0.75rem', color: '#6b7280', textAlign: 'center' }}>
+                            Costo real por pieza: {formatCurrency(costoCompraReal)}
+                          </span>
+                        )}
+                      </div>
+                    )}
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontWeight: 600, fontSize: '0.98rem', marginBottom: 4, textAlign: 'center' }}>
-                      Precio de Compra {isJewelryBusiness ? `(por ${organization?.jewelry_weight_unit || 'g'})` : ''} {typeFields.required.includes('precio_compra') && <span style={{ color: '#ef4444' }}>*</span>}
-                    </span>
+                      <span style={{ fontWeight: 600, fontSize: '0.98rem', marginBottom: 4, textAlign: 'center' }}>
+                        Precio de Venta {!isJewelryBusiness || jewelryPriceMode !== 'variable' ? <span style={{ color: '#ef4444' }}>*</span> : null}
+                      </span>
                       <input
-                        {...register('precioCompra')}
-                        value={precioCompraInput.displayValue}
-                        onChange={handlePrecioCompraChange}
+                        {...register('precioVenta')}
+                        value={precioVentaInput.displayValue}
+                        onChange={handlePrecioVentaChange}
                         inputMode="numeric"
-                        placeholder="Ej: 30.000"
-                        className={`input-form ${errors.precioCompra ? 'error' : ''}`}
+                        placeholder="Ej: 50.000"
+                        className={`input-form ${errors.precioVenta ? 'error' : ''}`}
+                        disabled={isJewelryBusiness && jewelryPriceMode === 'variable'}
                       />
-                      {errors.precioCompra && <span className="error-message">{errors.precioCompra.message}</span>}
-                      {isJewelryBusiness && compraPorUnidad > 0 && parseWeightValue(pesoWatch) > 0 && (
+                      {errors.precioVenta && <span className="error-message">{errors.precioVenta.message}</span>}
+                      {isJewelryBusiness && jewelryPriceMode === 'variable' && precioBaseGramoActual > 0 && pesoNumerico > 0 && (
                         <span style={{ fontSize: '0.75rem', color: '#6b7280', textAlign: 'center' }}>
-                          Costo real por pieza: {formatCurrency(costoCompraReal)}
+                          Base por {organization?.jewelry_weight_unit || 'g'}: {formatCurrency(precioBaseGramoActual)} • Regla: {reglaAplicada}{aplicaPureza ? ` • Pureza aplicada (${purezaWatch || '24k'})` : ''}
                         </span>
                       )}
                     </div>
-                  )}
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontWeight: 600, fontSize: '0.98rem', marginBottom: 4, textAlign: 'center' }}>
-                      Precio de Venta {!isJewelryBusiness || jewelryPriceMode !== 'variable' ? <span style={{ color: '#ef4444' }}>*</span> : null}
-                    </span>
-                    <input
-                      {...register('precioVenta')}
-                      value={precioVentaInput.displayValue}
-                      onChange={handlePrecioVentaChange}
-                      inputMode="numeric"
-                      placeholder="Ej: 50.000"
-                      className={`input-form ${errors.precioVenta ? 'error' : ''}`}
-                      disabled={isJewelryBusiness && jewelryPriceMode === 'variable'}
-                    />
-                    {errors.precioVenta && <span className="error-message">{errors.precioVenta.message}</span>}
-                    {isJewelryBusiness && jewelryPriceMode === 'variable' && precioBaseGramoActual > 0 && pesoNumerico > 0 && (
-                      <span style={{ fontSize: '0.75rem', color: '#6b7280', textAlign: 'center' }}>
-                        Base por {organization?.jewelry_weight_unit || 'g'}: {formatCurrency(precioBaseGramoActual)} • Regla: {reglaAplicada}{aplicaPureza ? ` • Pureza aplicada (${purezaWatch || '24k'})` : ''}
-                      </span>
-                    )}
                   </div>
-                </div>
+                )}
+
+                {/* SECCIÓN DE PRECIOS AL FINAL PARA COMBOS */}
+                {selectedType === 'combo' && (
+                  <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '2px dashed #e2e8f0' }}>
+                    <h4 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--accent-primary)', marginBottom: '1.5rem' }}>Resumen Financiero del Combo</h4>
+                    <div className="input-precio-row" style={{ gap: '2.5rem', justifyContent: 'space-between' }}>
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontWeight: 600, fontSize: '0.98rem', marginBottom: 4, textAlign: 'center' }}>
+                          Costo Total de Compra
+                        </span>
+                        <input
+                          {...register('precioCompra')}
+                          value={precioCompraInput.displayValue}
+                          onChange={handlePrecioCompraChange}
+                          inputMode="numeric"
+                          className="input-form"
+                          readOnly={precioVentaModo === 'combo'}
+                          style={precioVentaModo === 'combo' ? { backgroundColor: '#f1f5f9', fontWeight: 'bold', cursor: 'default', color: '#000' } : {}}
+                        />
+                      </div>
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontWeight: 600, fontSize: '0.98rem', marginBottom: 4, textAlign: 'center' }}>
+                          Precio Final de Venta
+                        </span>
+                        <input
+                          {...register('precioVenta')}
+                          value={precioVentaInput.displayValue}
+                          onChange={handlePrecioVentaChange}
+                          inputMode="numeric"
+                          className="input-form"
+                          readOnly={precioVentaModo === 'combo'}
+                          style={precioVentaModo === 'combo' ? { backgroundColor: '#f0fdf4', color: '#166534', fontWeight: 'bold', border: '1px solid #bbf7d0', cursor: 'default' } : {}}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop: '1.5rem', padding: '1.25rem', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
+                      <h4 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#1e293b', marginBottom: '1rem', borderBottom: '1px solid #bbf7d0', paddingBottom: '0.5rem' }}>Ajustar Margen de la Ancheta</h4>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        {['30', '35', 'otro', 'manual'].map((m) => (
+                          <button
+                            key={m}
+                            type="button"
+                            className={`inventario-btn ${margenCombo === m || (m === 'manual' && precioVentaModo === 'manual') ? 'inventario-btn-primary' : 'inventario-btn-outline'}`}
+                            onClick={() => {
+                              if (m === 'manual') {
+                                setPrecioVentaModo('manual');
+                                setMargenCombo('manual');
+                              } else {
+                                setMargenCombo(m);
+                                setPrecioVentaModo('combo');
+                              }
+                            }}
+                            style={{ padding: '0.35rem', fontSize: '0.85rem', flex: 1 }}
+                          >
+                            {m === 'otro' ? 'Personalizado' : m === 'manual' ? 'Manual' : `${m}%`}
+                          </button>
+                        ))}
+                      </div>
+                      {margenCombo === 'otro' && (
+                        <input
+                          type="number"
+                          placeholder="% personalizado"
+                          className="input-form"
+                          style={{ marginTop: '0.5rem' }}
+                          value={margenComboPersonalizado}
+                          onChange={(e) => setMargenComboPersonalizado(e.target.value)}
+                        />
+                      )}
+                      <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.75rem', color: '#166534' }}>
+                          Calculado sobre la suma de {productosVinculados.length} productos.
+                        </span>
+                        <span 
+                          style={{ fontSize: '0.75rem', color: '#64748b', cursor: 'pointer', textDecoration: 'underline' }}
+                          onClick={() => setPrecioVentaModo('manual')}
+                        >
+                          Editar precios manualmente
+                        </span>
+                      </div>
+
+                      <div style={{ marginTop: '1.5rem', paddingTop: '1.25rem', borderTop: '1px solid #bbf7d0' }}>
+                        <h4 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#1e293b', marginBottom: '1rem', borderBottom: '1px solid #bbf7d0', paddingBottom: '0.5rem' }}>
+                          ¿A qué categoría va el dinero del margen (mano de obra)?
+                        </h4>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          <select
+                            className="input-form"
+                            style={{ backgroundColor: '#fff' }}
+                            value={creandoCategoriaManoObra ? 'crear_otra' : (categoriasExistentes.includes(categoriaManoObra) ? categoriaManoObra : '')}
+                            onChange={(e) => {
+                              if (e.target.value === 'crear_otra') {
+                                setCreandoCategoriaManoObra(true);
+                                setCategoriaManoObra(nuevaCategoriaManoObraText);
+                              } else {
+                                setCreandoCategoriaManoObra(false);
+                                setCategoriaManoObra(e.target.value);
+                              }
+                            }}
+                          >
+                            <option value="">A la categoría del producto (General)</option>
+                            {categoriasExistentes.map(c => (
+                              <option key={`mano-${c}`} value={c}>{c}</option>
+                            ))}
+                            <option value="crear_otra">+ Crear nueva categoría</option>
+                          </select>
+                          {creandoCategoriaManoObra && (
+                            <input
+                              type="text"
+                              className="input-form"
+                              style={{ backgroundColor: '#fff' }}
+                              placeholder="Ej: Mano de Obra, Empaques"
+                              value={nuevaCategoriaManoObraText}
+                              onChange={(e) => {
+                                setNuevaCategoriaManoObraText(e.target.value);
+                                setCategoriaManoObra(e.target.value);
+                              }}
+                            />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {isJewelryBusiness && (
-                  <div style={{ marginTop: '0.75rem', display: 'grid', gap: '0.5rem' }}>
-                    <label style={{ fontWeight: 600 }}>Configuración de precio por peso</label>
-                    <div style={{ display: 'grid', gap: '0.5rem' }}>
-                      <label>Tipo de precio</label>
-                      <select {...register('jewelry_price_mode')} className="input-form">
-                        <option value="fixed">Precio fijo (estático)</option>
-                        <option value="variable">Precio variable</option>
-                      </select>
-                    </div>
-                        {jewelryPriceMode === 'fixed' && (
-                          <>
-                            <div style={{ display: 'grid', gap: '0.5rem' }}>
-                            <label>Cómo definir el precio estático</label>
-                            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                              <button
-                                type="button"
-                                className={`inventario-btn ${precioVentaModo === 'manual' ? 'inventario-btn-primary' : 'inventario-btn-outline'}`}
-                                onClick={() => setPrecioVentaModo('manual')}
-                              >
-                                Valor específico
-                              </button>
-                              <button
-                                type="button"
-                                className={`inventario-btn ${precioVentaModo === 'porcentaje' ? 'inventario-btn-primary' : 'inventario-btn-outline'}`}
-                                onClick={() => setPrecioVentaModo('porcentaje')}
-                              >
-                                % sobre compra
-                              </button>
-                            </div>
-                          </div>
-                          {precioVentaModo === 'porcentaje' && (
-                            <div style={{ display: 'grid', gap: '0.5rem' }}>
-                              <label>Porcentaje sobre compra (%)</label>
-                              <input
-                                {...register('jewelry_static_percent')}
-                                type="number"
-                                inputMode="decimal"
-                                placeholder="Ej: 20"
-                                className="input-form"
-                              />
-                            </div>
-                          )}
-                        </>
-                      )}
+                  <div style={{ marginTop: '1.5rem', display: 'grid', gap: '0.5rem' }}>
+                    <h4 style={{ fontSize: '1.05rem', fontWeight: 600, color: '#1e293b', marginBottom: '0.5rem' }}>Configuración de precio por peso</h4>
+                    {jewelryPriceMode === 'fixed' && !esEmpleado && (
+                      <div style={{ display: 'grid', gap: '0.5rem' }}>
+                        <label>Cómo definir el precio estático</label>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button
+                            type="button"
+                            className={`inventario-btn ${precioVentaModo === 'manual' ? 'inventario-btn-primary' : 'inventario-btn-outline'}`}
+                            onClick={() => setPrecioVentaModo('manual')}
+                          >
+                            Valor específico
+                          </button>
+                          <button
+                            type="button"
+                            className={`inventario-btn ${precioVentaModo === 'porcentaje' ? 'inventario-btn-primary' : 'inventario-btn-outline'}`}
+                            onClick={() => setPrecioVentaModo('porcentaje')}
+                          >
+                            % sobre compra
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {jewelryPriceMode === 'fixed' && precioVentaModo === 'porcentaje' && (
+                      <div style={{ display: 'grid', gap: '0.5rem' }}>
+                        <label>Porcentaje sobre compra (%)</label>
+                        <input
+                          value={margenPorcentaje}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                              setMargenPorcentaje(val);
+                            }
+                          }}
+                          inputMode="decimal"
+                          placeholder="Ej: 30"
+                          className="input-form"
+                        />
+                      </div>
+                    )}
+
                     {jewelryPriceMode === 'variable' && (
                       <div style={{ display: 'grid', gap: '0.5rem' }}>
                         <label>Margen mínimo (%)</label>
@@ -1133,10 +1466,11 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
                           className="input-form"
                         />
                         <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                          Si no lo defines y el precio es variable, se usará el valor de preferencias.
+                          Si no lo defines, se usará el valor de preferencias según el tipo de material.
                         </span>
                       </div>
                     )}
+
                     <div style={{ display: 'grid', gap: '0.5rem' }}>
                       <label>Tipo de material</label>
                       <select {...register('jewelry_material_type')} className="input-form">
@@ -1198,48 +1532,52 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
                 </div>
 
                 {/* Imagen del producto (ahora en el paso 1) */}
-                <div style={{ marginTop: '2rem', marginBottom: '2.5rem' }}>
-                  <h3 className="step-title" style={{ marginBottom: '0.5rem' }}>Imagen del Producto</h3>
-                  <p className="step-description" style={{ marginBottom: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>
-                    Cambia la imagen del producto si lo deseas (Opcional)
-                  </p>
-                  <label>
-                    Imagen <span style={{ color: '#6b7280', fontWeight: 400 }}>(Opcional)</span>
-                    {!puedeSubirImagenes && <span style={{ color: '#ef4444', fontWeight: 600 }}> 🔒 Solo plan Estándar</span>}
-                  </label>
-                  <div className="input-upload-wrapper input-upload-centro" style={{ marginBottom: '1rem' }}>
+                <div style={{ marginTop: '2rem', marginBottom: '1.5rem' }}>
+                  <h4 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#1e293b', marginBottom: '1rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem' }}>
+                    Imagen del Producto <span style={{ color: '#64748b', fontWeight: 400, fontSize: '0.9rem' }}>(Opcional)</span>
+                    {!puedeSubirImagenes && <span style={{ color: '#ef4444', fontWeight: 600, fontSize: '0.85rem', marginLeft: '0.5rem' }}>🔒 Solo plan Estándar</span>}
+                  </h4>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <input
+                      className="input-form"
+                      style={{ flex: 1 }}
+                      placeholder="Pega la URL aquí o sube un archivo 👉"
+                      value={imagen ? imagen.name : imagenUrl}
+                      onChange={(e) => {
+                        if (!imagen) setImagenUrl(e.target.value);
+                      }}
+                      disabled={Boolean(imagen)}
+                    />
                     <button
                       type="button"
-                      className="input-upload-btn"
                       onClick={puedeSubirImagenes ? handleClickUpload : () => toast.error('Actualiza al plan Estándar para subir imágenes')}
-                      disabled={!puedeSubirImagenes}
-                      style={!puedeSubirImagenes ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                      disabled={!puedeSubirImagenes || Boolean(imagenUrl && imagenUrl.trim() !== '')}
+                      style={{ 
+                        padding: '0.5rem 0.75rem', 
+                        height: '100%', 
+                        flexShrink: 0, 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        backgroundColor: '#cbd5e1',
+                        border: '1px solid #94a3b8',
+                        borderRadius: '8px',
+                        color: '#334155',
+                        cursor: 'pointer',
+                        minHeight: '42px'
+                      }}
+                      title="Cargar imagen desde el dispositivo"
                     >
                       <svg width="22" height="22" fill="none" viewBox="0 0 24 24">
-                        <path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                        <rect x="4" y="16" width="16" height="4" rx="2" fill="#2563eb" fillOpacity=".08" />
+                        <path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        <rect x="4" y="16" width="16" height="4" rx="2" fill="currentColor" fillOpacity=".2" />
                       </svg>
-                      {imagen ? imagen.name : producto?.imagen ? 'Cambiar imagen' : puedeSubirImagenes ? 'Seleccionar imagen' : '🔒 Bloqueado'}
                     </button>
                     <input type="file" accept="image/*" onChange={handleImagenChange} ref={fileInputRef} style={{ display: 'none' }} disabled={!puedeSubirImagenes} />
                   </div>
 
-                  <label style={{ marginTop: '0.5rem' }}>
-                    URL de imagen <span style={{ color: '#6b7280', fontWeight: 400 }}>(Opcional)</span>
-                  </label>
-                  <input
-                    className="input-form"
-                    placeholder="https://..."
-                    value={imagenUrl}
-                    onChange={(e) => setImagenUrl(e.target.value)}
-                    disabled={Boolean(imagen)}
-                  />
-                  <p className="step-description" style={{ marginTop: '0.4rem', fontSize: '0.8rem', color: '#6b7280' }}>
-                    Si pegas una URL, se usará esa imagen sin subir archivo.
-                  </p>
-
                   {imagen && (
-                    <div className="image-preview" style={{ marginBottom: '1rem' }}>
+                    <div className="image-preview" style={{ marginTop: '1rem' }}>
                       <img src={URL.createObjectURL(imagen)} alt="Preview" />
                       <button
                         type="button"
@@ -1252,7 +1590,7 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
                   )}
 
                   {!imagen && imagenUrl && (
-                    <div className="image-preview" style={{ marginBottom: '1rem' }}>
+                    <div className="image-preview" style={{ marginTop: '1rem' }}>
                       <img src={imagenUrl} alt="Preview" />
                       <button
                         type="button"
@@ -1265,33 +1603,136 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
                   )}
 
                   {producto?.imagen && !imagen && !imagenUrl && (
-                    <div className="image-preview" style={{ marginBottom: '1rem' }}>
+                    <div className="image-preview" style={{ marginTop: '1rem' }}>
                       <OptimizedProductImage
                         imagePath={producto.imagen}
                         alt="Imagen actual"
                         className=""
                       />
-                      <span style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.5rem', display: 'block', textAlign: 'center' }}>Imagen actual</span>
+                      <div style={{ position: 'absolute', top: 5, right: 5, background: 'var(--cp-primary)', color: 'white', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 600 }}>
+                        Imagen Actual
+                      </div>
                     </div>
                   )}
                 </div>
               </div>
             )}
 
-            {/* Paso 2: Campos opcionales del tipo */}
-            {formStep === 2 && typeFields.optional.length > 0 && (
+            {/* Paso 2: Opciones, variaciones y variantes */}
+            {formStep === 2 && (
               <div className="form-step-content">
-                <h3 className="step-title">Información Adicional del {productType?.label}</h3>
-                <p className="step-description">Estos campos son opcionales pero pueden ser útiles</p>
+                <h3 className="step-title" style={{ fontSize: '1.25rem', fontWeight: 600, color: '#0f172a', marginBottom: '1.5rem' }}>Opciones y Variantes</h3>
+                <p className="step-description">Configura variaciones del cliente y variantes con stock.</p>
+              
+                {/* Configuración de variaciones */}
+                <VariacionesConfig
+                  variaciones={variacionesConfig}
+                  onChange={setVariacionesConfig}
+                />
+
+                {/* Variantes con stock y código */}
+                <div style={{ marginTop: '1rem' }}>
+                  <h4 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#1e293b', marginTop: '1.5rem', marginBottom: '1rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem' }}>Variantes con stock (color, talla, presentación...)</h4>
+                  <p className="step-description">Cada variante puede tener su propio stock y código de barras.</p>
+
+                  {variantesProducto.length === 0 && (
+                    <p style={{ color: '#6b7280', fontSize: '0.9rem', textAlign: 'center', margin: '0.5rem 0 1rem 0' }}>
+                      No hay variantes registradas.
+                    </p>
+                  )}
+
+                  <div style={{ display: 'grid', gap: '0.75rem' }}>
+                    {variantesProducto.map((vari, index) => {
+                      const bloqueada = varianteActivaId && vari.id && vari.id !== varianteActivaId;
+                      return (
+                        <div key={`variante-${index}`} style={{ display: 'grid', gap: '0.5rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem', padding: '0.75rem', opacity: bloqueada ? 0.7 : 1 }}>
+                          <div style={{ display: 'grid', gap: '0.5rem' }}>
+                            <label>Nombre (color/tono)</label>
+                            <input
+                              className="input-form"
+                              value={vari.nombre || ''}
+                              onChange={(e) => actualizarVariante(index, 'nombre', e.target.value)}
+                              disabled={bloqueada}
+                            />
+                          </div>
+                          <div style={{ display: 'grid', gap: '0.5rem' }}>
+                            <label>Código de barras (opcional)</label>
+                            <input
+                              className="input-form"
+                              value={vari.codigo || ''}
+                              onChange={(e) => actualizarVariante(index, 'codigo', e.target.value)}
+                              disabled={bloqueada}
+                            />
+                          </div>
+                          <div style={{ display: 'grid', gap: '0.5rem' }}>
+                            <label>Stock</label>
+                            <input
+                              className="input-form"
+                              inputMode="numeric"
+                              value={vari.stock ?? 0}
+                              onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (val === '' || /^\d+$/.test(val)) {
+                                      actualizarVariante(index, 'stock', val);
+                                  }
+                              }}
+                              disabled={bloqueada}
+                            />
+                          </div>
+                          {!bloqueada && (
+                            <button
+                              type="button"
+                              className="inventario-btn inventario-btn-outline eliminar"
+                              onClick={() => eliminarVariante(index)}
+                            >
+                              Eliminar variante
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    type="button"
+                    className="inventario-btn inventario-btn-secondary"
+                    style={{ marginTop: '0.75rem', width: '100%', display: 'flex', justifyContent: 'center' }}
+                    onClick={agregarVariante}
+                    disabled={modoSoloVariantes}
+                  >
+                    + Agregar variante
+                  </button>
+                </div>
+                
+                {/* Productos vinculados (PARA OTROS CASOS) */}
+                {selectedType !== 'combo' && productosVinculados.length === 0 && (
+                  <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                    <ProductosVinculados
+                      productosVinculados={productosVinculados}
+                      onChange={setProductosVinculados}
+                      organizationId={organization?.id || producto?.organization_id}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Paso 3: Campos adicionales personalizables */}
+            {formStep === 3 && (
+              <div className="form-step-content">
+                <h3 className="step-title" style={{ fontSize: '1.25rem', fontWeight: 600, color: '#0f172a', marginBottom: '1.5rem' }}>Campos Adicionales</h3>
+                <p className="step-description">Agrega información extra si lo necesitas</p>
+                
+                {/* Campos opcionales según el tipo de producto */}
                 {typeFields.optional.map(fieldId => {
                   const fieldConfig = ADDITIONAL_FIELDS[fieldId];
-                  if (!fieldConfig) return null;
+                  if (!fieldConfig || fieldId === 'categoria') return null;
 
                   return (
-                    <div key={fieldId}>
-                      <label>
-                        {fieldConfig.label} <span style={{ color: '#6b7280', fontWeight: 400 }}>(Opcional)</span>
-                      </label>
+                    <div key={fieldId} className="additional-field-wrapper">
+                      <div className="additional-field-header">
+                        <label>{fieldConfig.label} <span style={{ color: '#6b7280', fontWeight: 400, fontSize: '0.85rem' }}>(Opcional)</span></label>
+                      </div>
                       {fieldConfig.type === 'textarea' ? (
                         <textarea
                           {...register(fieldId)}
@@ -1304,46 +1745,23 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
                           {fieldConfig.options.map(opt => (
                             <option key={opt} value={opt}>{opt}</option>
                           ))}
-                    </select>
-                  ) : (
-                    <input
-                      {...register(fieldId)}
-                      type={fieldConfig.type}
-                      className="input-form"
-                      placeholder={fieldConfig.placeholder}
-                    />
-                  )}
-                </div>
-              );
-            })}
-              
-              {/* Configuración de variaciones (solo para productos de comida) */}
-              {selectedType === 'comida' && (
-                <VariacionesConfig
-                  variaciones={variacionesConfig}
-                  onChange={setVariacionesConfig}
-                />
-              )}
-              
-              {/* Productos vinculados */}
-              <ProductosVinculados
-                productosVinculados={productosVinculados}
-                onChange={setProductosVinculados}
-                organizationId={producto?.organization_id}
-              />
-              </div>
-            )}
-
-            {/* Paso 3: Campos adicionales personalizables */}
-            {formStep === 3 && (
-              <div className="form-step-content">
-                <h3 className="step-title">Campos Adicionales</h3>
-                <p className="step-description">Agrega información extra si lo necesitas</p>
+                        </select>
+                      ) : (
+                        <input
+                          {...register(fieldId)}
+                          type={fieldConfig.type}
+                          className="input-form"
+                          placeholder={fieldConfig.placeholder}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
                 
                 {/* Campos adicionales agregados por el usuario */}
                 {additionalFields.map(fieldId => {
                   const fieldConfig = ADDITIONAL_FIELDS[fieldId];
-                  if (!fieldConfig) return null;
+                  if (!fieldConfig || fieldId === 'categoria') return null;
 
                   return (
                     <div key={fieldId} className="additional-field-wrapper">
@@ -1387,7 +1805,7 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
                   <label>Agregar campos adicionales</label>
                   <div className="add-fields-grid">
                     {Object.keys(ADDITIONAL_FIELDS)
-                      .filter(fieldId => !typeFields.optional.includes(fieldId) && !additionalFields.includes(fieldId))
+                      .filter(fieldId => fieldId !== 'categoria' && !typeFields.optional.includes(fieldId) && !additionalFields.includes(fieldId))
                       .map(fieldId => {
                         const fieldConfig = ADDITIONAL_FIELDS[fieldId];
                         return (
@@ -1409,18 +1827,26 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
 
 
             {/* Botones de navegación */}
-            <div className="form-actions form-actions-centro">
-              <button type="button" className="inventario-btn inventario-btn-secondary" onClick={onClose} disabled={subiendo}>
+            <div className="form-actions form-actions-centro" style={{ display: 'flex', width: '100%', gap: '1rem' }}>
+              <button 
+                type="button" 
+                className="inventario-btn inventario-btn-secondary" 
+                onClick={() => {
+                  if (hasUnsavedChanges()) {
+                    if (window.confirm('Tienes cambios sin guardar. ¿Estás seguro de que quieres salir?')) {
+                      onClose();
+                    }
+                  } else {
+                    onClose();
+                  }
+                }} 
+                disabled={subiendo} 
+                style={{ flex: 1, padding: '0.75rem' }}
+              >
                 Cancelar
               </button>
-              {formStep > 1 && (
-                <button type="button" className="inventario-btn inventario-btn-outline" onClick={handleBack} disabled={subiendo}>
-                  ← Atrás
-                </button>
-              )}
               {(() => {
-                const typeFields = selectedType ? getProductTypeFields(selectedType) : { required: [], optional: [] };
-                const hasStep2 = typeFields.optional.length > 0;
+                const hasStep2 = true;
                 const hasStep3 = Object.keys(ADDITIONAL_FIELDS).length > 0;
                 const isLastStep = (formStep === 1 && !hasStep2 && !hasStep3) ||
                                   (formStep === 2 && !hasStep3) ||
@@ -1428,122 +1854,21 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
                 
                 if (isLastStep) {
                   return (
-                    <button type="submit" className="inventario-btn inventario-btn-primary" disabled={subiendo || isSubmitting}>
+                    <button type="submit" className="inventario-btn inventario-btn-primary" disabled={subiendo || isSubmitting} style={{ flex: 1, padding: '0.75rem' }}>
                       {subiendo ? (comprimiendo ? '🗜️ Comprimiendo...' : 'Actualizando...') : 'Actualizar Producto'}
                     </button>
                   );
                 } else {
                   return (
-                    <>
-                      <button type="submit" className="inventario-btn inventario-btn-outline" disabled={subiendo || isSubmitting}>
-                        {subiendo ? (comprimiendo ? '🗜️ Comprimiendo...' : 'Actualizando...') : 'Guardar cambios'}
-                      </button>
-                      <button type="button" className="inventario-btn inventario-btn-primary" onClick={handleNext}>
-                        Siguiente →
-                      </button>
-                    </>
+                    <button type="button" className="inventario-btn inventario-btn-primary" onClick={handleNext} style={{ flex: 1, padding: '0.75rem' }}>
+                      Siguiente
+                    </button>
                   );
                 }
               })()}
             </div>
             </form>
           )}
-
-          <div className="form-step-content" style={{ marginTop: '1.5rem' }}>
-            <h3 className="step-title">Variantes (color/tono)</h3>
-            {modoSoloVariantes && (
-              <p className="step-description" style={{ color: '#f59e0b' }}>
-                Edición limitada a variantes porque se ingresó por código de variante.
-              </p>
-            )}
-            {!modoSoloVariantes && (
-              <p className="step-description">Define stock y código de barras por variante.</p>
-            )}
-
-            {modoSoloVariantes && producto && (
-              <div style={{ border: '1px solid #e5e7eb', borderRadius: '0.5rem', padding: '0.75rem', background: '#f9fafb', marginBottom: '1rem' }}>
-                <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Producto</div>
-                <div style={{ display: 'grid', gap: '0.25rem', fontSize: '0.95rem' }}>
-                  <div><strong>Código:</strong> {producto.codigo || '-'}</div>
-                  <div><strong>Nombre:</strong> {producto.nombre || '-'}</div>
-                  <div><strong>Precio venta:</strong> {producto.precio_venta ?? '-'}</div>
-                  <div><strong>Stock total:</strong> {producto.stock ?? '-'}</div>
-                </div>
-              </div>
-            )}
-
-            {variantesProducto.length === 0 && (
-              <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
-                No hay variantes registradas.
-              </p>
-            )}
-
-            <div style={{ display: 'grid', gap: '0.75rem' }}>
-              {variantesProducto.map((vari, index) => {
-                const bloqueada = varianteActivaId && vari.id && vari.id !== varianteActivaId;
-                return (
-                  <div key={vari.id || `nueva-${index}`} style={{ display: 'grid', gap: '0.5rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem', padding: '0.75rem', opacity: bloqueada ? 0.5 : 1 }}>
-                    <div style={{ display: 'grid', gap: '0.5rem' }}>
-                      <label>Nombre (color/tono)</label>
-                      <input
-                        className="input-form"
-                        value={vari.nombre || ''}
-                        onChange={(e) => actualizarVariante(index, 'nombre', e.target.value)}
-                        disabled={bloqueada}
-                      />
-                    </div>
-                    <div style={{ display: 'grid', gap: '0.5rem' }}>
-                      <label>Código de barras (opcional)</label>
-                      <input
-                        className="input-form"
-                        value={vari.codigo || ''}
-                        onChange={(e) => actualizarVariante(index, 'codigo', e.target.value)}
-                        disabled={bloqueada}
-                      />
-                    </div>
-                    <div style={{ display: 'grid', gap: '0.5rem' }}>
-                      <label>Stock</label>
-                      <input
-                        className="input-form"
-                        inputMode="numeric"
-                        value={vari.stock ?? 0}
-                        onChange={(e) => actualizarVariante(index, 'stock', e.target.value)}
-                        disabled={bloqueada}
-                      />
-                    </div>
-                    {!bloqueada && (
-                      <button
-                        type="button"
-                        className="inventario-btn inventario-btn-outline eliminar"
-                        onClick={() => eliminarVariante(index)}
-                      >
-                        Eliminar variante
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            {!modoSoloVariantes && (
-              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem', justifyContent: 'center' }}>
-                <button type="button" className="inventario-btn inventario-btn-secondary" onClick={agregarVariante}>
-                  + Agregar variante
-                </button>
-                <button type="button" className="inventario-btn inventario-btn-primary" onClick={guardarVariantes} disabled={guardandoVariantes}>
-                  {guardandoVariantes ? 'Guardando...' : 'Guardar variantes'}
-                </button>
-              </div>
-            )}
-
-            {modoSoloVariantes && (
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
-                <button type="button" className="inventario-btn inventario-btn-primary" onClick={guardarVariantes} disabled={guardandoVariantes}>
-                  {guardandoVariantes ? 'Guardando...' : 'Guardar variantes'}
-                </button>
-              </div>
-            )}
-          </div>
           </>
         )}
       </div>

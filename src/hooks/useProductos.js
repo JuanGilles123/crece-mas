@@ -98,8 +98,8 @@ export const useProductos = (organizationId) => {
     staleTime: 5 * 1000, // 5 segundos (antes 30s) para respuesta casi instantánea
     cacheTime: 5 * 60 * 1000, // 5 minutos
     refetchOnMount: true,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 };
 
@@ -137,7 +137,8 @@ export const useProductosPaginados = (organizationId, pageSize = 50) => {
     staleTime: 10 * 1000, // 10 segundos
     cacheTime: 10 * 60 * 1000, // 10 minutos
     refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 };
 

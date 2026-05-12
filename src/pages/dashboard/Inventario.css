@@ -1980,6 +1980,12 @@
   background: var(--bg-tertiary);
   display: block;
   margin: 0 auto;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.inventario-img:hover {
+  opacity: 0.85;
 }
 
 .inventario-card-actions {
@@ -2088,6 +2094,7 @@
   position: relative;
   box-sizing: border-box;
   overflow: visible;
+  cursor: pointer;
 }
 
 .inventario-select-checkbox {
@@ -2194,14 +2201,17 @@
 }
 
 .inventario-img-lista {
-  width: 80px;
-  height: 80px;
-  min-width: 80px;
-  max-width: 80px;
-  object-fit: cover;
+  width: 60px;
+  height: 60px;
   border-radius: 8px;
   background: var(--bg-tertiary);
   flex-shrink: 0;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.inventario-img-lista:hover {
+  opacity: 0.85;
 }
 
 /* Vista de lista - InventarioOptimizado */
