@@ -31,6 +31,7 @@ import {
   Check,
   Tag,
   Store,
+  Scale,
   ChevronDown
 } from 'lucide-react';
 import { BUSINESS_TYPES } from '../../constants/businessTypes';
@@ -57,6 +58,7 @@ const DashboardHome = () => {
     totalProductos: 0,
     bajoStock: 0,
     proximosVencer: 0,
+    totalPeso: 0,
     cargando: true
   });
   const [mostrarTipoNegocio, setMostrarTipoNegocio] = useState(false);
@@ -273,6 +275,14 @@ const DashboardHome = () => {
           return stock > 0 && stock <= getUmbralProducto(producto);
         }).length;
 
+        // Calcular peso total para joyería
+        const totalPeso = (productosStock || []).reduce((sum, p) => {
+          const meta = typeof p.metadata === 'string' ? JSON.parse(p.metadata || '{}') : (p.metadata || {});
+          const stock = parseNumber(p.stock);
+          const peso = parseNumber(meta.peso);
+          return sum + (stock * peso);
+        }, 0);
+
         // Productos próximos a vencer (dentro de 7 días)
         const hoy = new Date().toISOString().split('T')[0];
         const en7dias = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
@@ -289,6 +299,7 @@ const DashboardHome = () => {
           totalProductos: productos || 0,
           bajoStock: bajoStock || 0,
           proximosVencer: proximosVencer || 0,
+          totalPeso: totalPeso || 0,
           cargando: false
         });
       } catch (error) {
@@ -680,6 +691,19 @@ const DashboardHome = () => {
               <h3>{metricas.cargando ? '...' : metricas.totalProductos}</h3>
               <p>Total Productos</p>
             </motion.div>
+
+            {organization?.business_type === 'jewelry_metals' && (
+              <motion.div
+                className="metrica-card productos"
+                whileHover={{ scale: 1.05, y: -5 }}
+                whileTap={{ scale: 0.95 }}
+                style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', color: 'white' }}
+              >
+                <Scale size={32} />
+                <h3>{metricas.cargando ? '...' : `${metricas.totalPeso.toLocaleString('es-CO', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} g`}</h3>
+                <p>Peso Total Inventario</p>
+              </motion.div>
+            )}
 
             <motion.div
               className="metrica-card clientes"

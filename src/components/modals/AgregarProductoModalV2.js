@@ -1236,8 +1236,6 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
             )}
 
             {/* Precios */}
-            <h4 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#1e293b', marginTop: '1.5rem', marginBottom: '1rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem' }}>Precios</h4>
-            {/* Los precios se movieron al final para Combos */}
             {selectedType !== 'combo' && (
               <div className="input-precio-row" style={{ gap: '2.5rem', justifyContent: 'space-between' }}>
                 {(typeFields.required.includes('precio_compra') || typeFields.optional.includes('precio_compra')) && (
@@ -1260,141 +1258,178 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
                         Costo real por pieza: {formatCurrency(costoCompraReal)}
                       </span>
                     )}
-                    {isJewelryBusiness && (
-                      <div style={{ marginTop: '0.65rem', display: 'grid', gap: '0.5rem' }}>
-                        <label style={{ fontWeight: 600 }}>Tipo de precio</label>
-                        <select {...register('jewelry_price_mode')} className="input-form">
-                          <option value="fixed">Precio fijo (estático)</option>
-                          <option value="variable">Precio variable</option>
-                        </select>
-                      </div>
-                    )}
                   </div>
                 )}
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ fontWeight: 600, fontSize: '0.98rem', marginBottom: 4, textAlign: 'center' }}>
-                    Precio de Venta {!isJewelryBusiness || jewelryPriceMode !== 'variable' ? <span style={{ color: '#ef4444' }}>*</span> : null}
-                  </span>
-                  {(typeFields.required.includes('precio_compra') || typeFields.optional.includes('precio_compra')) && (
-                    (!isJewelryBusiness || jewelryPriceMode === 'fixed') && (
-                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', width: '100%' }}>
-                      <button
-                        type="button"
-                        className={`inventario-btn ${precioVentaModo === 'manual' ? 'inventario-btn-primary' : 'inventario-btn-outline'}`}
-                        onClick={() => setPrecioVentaModo('manual')}
-                        style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem' }}
-                      >
-                        Manual
-                      </button>
-                      <button
-                        type="button"
-                        className={`inventario-btn ${precioVentaModo === 'porcentaje' ? 'inventario-btn-primary' : 'inventario-btn-outline'}`}
-                        onClick={() => setPrecioVentaModo('porcentaje')}
-                        style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem' }}
-                      >
-                        % sobre compra
-                      </button>
-                    </div>
-                    )
-                  )}
-                  {precioVentaModo === 'porcentaje' && (typeFields.required.includes('precio_compra') || typeFields.optional.includes('precio_compra')) && !esEmpleado && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '0.5rem' }}>
-                      <input
-                        value={margenPorcentaje}
-                        onChange={handleMargenPorcentajeChange}
-                        inputMode="decimal"
-                        placeholder="Ej: 30"
-                        className="input-form"
-                      />
-                      <span style={{ fontSize: '0.75rem', color: '#6b7280', textAlign: 'center' }}>
-                        % de margen sobre el precio de compra
-                      </span>
-                    </div>
-                  )}
-                  <input
-                    {...register('precioVenta')}
-                    value={precioVentaInput.displayValue}
-                    onChange={handlePrecioVentaChange}
-                    inputMode="numeric"
-                    placeholder="Ej: 50.000"
-                    className={`input-form ${errors.precioVenta ? 'error' : ''}`}
-                    disabled={
-                      (precioVentaModo === 'porcentaje' && (typeFields.required.includes('precio_compra') || typeFields.optional.includes('precio_compra')))
-                      || (isJewelryBusiness && jewelryPriceMode === 'variable')
-                      || (selectedType === 'combo' && precioVentaModo === 'combo')
-                    }
-                  />
-                  {errors.precioVenta && <span className="error-message">{errors.precioVenta.message}</span>}
-                  {isJewelryBusiness && jewelryPriceMode === 'variable' && precioBaseGramoActual > 0 && pesoNumerico > 0 && (
-                    <span style={{ fontSize: '0.75rem', color: '#6b7280', textAlign: 'center' }}>
-                      Base por {organization?.jewelry_weight_unit || 'g'}: {formatCurrency(precioBaseGramoActual)} • Regla: {reglaAplicada}{aplicaPureza ? ` • Pureza aplicada (${purezaWatch || '24k'})` : ''}
+                
+                {/* Si es joyería, el precio de venta se muestra dentro del cuadro consolidado abajo. 
+                    Si no es joyería, se muestra aquí de forma tradicional. */}
+                {!isJewelryBusiness && (
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontWeight: 600, fontSize: '0.98rem', marginBottom: 4, textAlign: 'center' }}>
+                      Precio de Venta <span style={{ color: '#ef4444' }}>*</span>
                     </span>
-                  )}
-                </div>
+                    {(typeFields.required.includes('precio_compra') || typeFields.optional.includes('precio_compra')) && (
+                      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', width: '100%' }}>
+                        <button
+                          type="button"
+                          className={`inventario-btn ${precioVentaModo === 'manual' ? 'inventario-btn-primary' : 'inventario-btn-outline'}`}
+                          onClick={() => setPrecioVentaModo('manual')}
+                          style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem' }}
+                        >
+                          Manual
+                        </button>
+                        <button
+                          type="button"
+                          className={`inventario-btn ${precioVentaModo === 'porcentaje' ? 'inventario-btn-primary' : 'inventario-btn-outline'}`}
+                          onClick={() => setPrecioVentaModo('porcentaje')}
+                          style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem' }}
+                        >
+                          % Margen
+                        </button>
+                      </div>
+                    )}
+                    {precioVentaModo === 'porcentaje' && (typeFields.required.includes('precio_compra') || typeFields.optional.includes('precio_compra')) && !esEmpleado && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '0.5rem' }}>
+                        <input
+                          value={margenPorcentaje}
+                          onChange={handleMargenPorcentajeChange}
+                          inputMode="decimal"
+                          placeholder="Ej: 30"
+                          className="input-form"
+                        />
+                      </div>
+                    )}
+                    <input
+                      {...register('precioVenta')}
+                      value={precioVentaInput.displayValue}
+                      onChange={handlePrecioVentaChange}
+                      inputMode="numeric"
+                      placeholder="Ej: 50.000"
+                      className={`input-form ${errors.precioVenta ? 'error' : ''}`}
+                      disabled={precioVentaModo === 'porcentaje'}
+                    />
+                    {errors.precioVenta && <span className="error-message">{errors.precioVenta.message}</span>}
+                  </div>
+                )}
               </div>
             )}
 
             {isJewelryBusiness && (
-              <div style={{ marginTop: '1.5rem', display: 'grid', gap: '0.5rem' }}>
-                <h4 style={{ fontSize: '1.05rem', fontWeight: 600, color: '#1e293b', marginBottom: '0.5rem' }}>Configuración de precio por peso</h4>
-                {jewelryPriceMode === 'fixed' && !esEmpleado && (
-                  <div style={{ display: 'grid', gap: '0.5rem' }}>
-                    <label>Cómo definir el precio estático</label>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button
-                        type="button"
-                        className={`inventario-btn ${precioVentaModo === 'manual' ? 'inventario-btn-primary' : 'inventario-btn-outline'}`}
-                        onClick={() => setPrecioVentaModo('manual')}
-                      >
-                        Valor específico
-                      </button>
-                      <button
-                        type="button"
-                        className={`inventario-btn ${precioVentaModo === 'porcentaje' ? 'inventario-btn-primary' : 'inventario-btn-outline'}`}
-                        onClick={() => setPrecioVentaModo('porcentaje')}
-                      >
-                        % sobre compra
-                      </button>
+              <div style={{ marginTop: '1.5rem', padding: '1rem', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                <h4 style={{ fontSize: '1rem', fontWeight: 600, color: '#1e293b', marginBottom: '1.25rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem' }}>
+                  Definición de Precio de Joyería
+                </h4>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
+                  <div style={{ display: 'grid', gap: '0.4rem' }}>
+                    <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>Modo de Precio</label>
+                    <select {...register('jewelry_price_mode')} className="input-form">
+                      <option value="fixed">Precio Fijo</option>
+                      <option value="variable">Precio Variable</option>
+                    </select>
+                  </div>
+
+                  <div style={{ display: 'grid', gap: '0.4rem' }}>
+                    <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>Tipo de Material</label>
+                    <select {...register('jewelry_material_type')} className="input-form">
+                      <option value="na">No aplica</option>
+                      <option value="local">Nacional</option>
+                      <option value="international">Internacional</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Paso 2: Cómo definir el precio según el modo */}
+                <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '1rem', marginTop: '0.5rem' }}>
+                  {jewelryPriceMode === 'fixed' && (
+                    <>
+                      <label style={{ fontWeight: 600, fontSize: '0.9rem', display: 'block', marginBottom: '0.5rem', textAlign: 'center' }}>
+                        ¿Cómo definir el precio estático?
+                      </label>
+                      <div style={{ display: 'flex', gap: '0.5rem', width: '100%', justifyContent: 'center', marginBottom: '1rem' }}>
+                        <button
+                          type="button"
+                          className={`inventario-btn ${precioVentaModo === 'manual' ? 'inventario-btn-primary' : 'inventario-btn-outline'}`}
+                          onClick={() => setPrecioVentaModo('manual')}
+                          style={{ flex: 1, maxWidth: '150px', padding: '0.5rem' }}
+                        >
+                          Valor específico
+                        </button>
+                        <button
+                          type="button"
+                          className={`inventario-btn ${precioVentaModo === 'porcentaje' ? 'inventario-btn-primary' : 'inventario-btn-outline'}`}
+                          onClick={() => setPrecioVentaModo('porcentaje')}
+                          style={{ flex: 1, maxWidth: '150px', padding: '0.5rem' }}
+                        >
+                          % sobre compra
+                        </button>
+                      </div>
+
+                      {precioVentaModo === 'porcentaje' && (
+                        <div style={{ display: 'grid', gap: '0.4rem', marginBottom: '1rem' }}>
+                          <label style={{ fontWeight: 600, fontSize: '0.85rem' }}>% Margen sobre compra</label>
+                          <input
+                            value={margenPorcentaje}
+                            onChange={handleMargenPorcentajeChange}
+                            inputMode="decimal"
+                            placeholder="Ej: 30"
+                            className="input-form"
+                          />
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {jewelryPriceMode === 'variable' && (
+                    <div style={{ display: 'grid', gap: '0.4rem', marginBottom: '1rem' }}>
+                      <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>Margen mínimo (%)</label>
+                      <input
+                        {...register('jewelry_min_margin')}
+                        type="text"
+                        inputMode="decimal"
+                        step="any"
+                        placeholder="Ej: 10"
+                        className="input-form"
+                      />
+                      <span style={{ fontSize: '0.7rem', color: '#64748b', textAlign: 'center' }}>
+                        Si se deja vacío, usa los valores globales de la organización.
+                      </span>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {jewelryPriceMode === 'fixed' && precioVentaModo === 'porcentaje' && (
-                  <div style={{ display: 'grid', gap: '0.5rem' }}>
-                    <label>Porcentaje sobre compra (%)</label>
+                  {/* RESULTADO FINAL: PRECIO DE VENTA */}
+                  <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
+                    <label style={{ fontWeight: 700, fontSize: '0.95rem', color: '#166534', display: 'block', marginBottom: '0.5rem', textAlign: 'center' }}>
+                      Precio de Venta Final
+                    </label>
                     <input
-                      value={margenPorcentaje}
-                      onChange={handleMargenPorcentajeChange}
-                      inputMode="decimal"
-                      placeholder="Ej: 30"
-                      className="input-form"
+                      {...register('precioVenta')}
+                      value={precioVentaInput.displayValue}
+                      onChange={handlePrecioVentaChange}
+                      inputMode="numeric"
+                      placeholder="Ej: 50.000"
+                      className={`input-form ${errors.precioVenta ? 'error' : ''}`}
+                      disabled={jewelryPriceMode === 'variable' || precioVentaModo === 'porcentaje'}
+                      style={{ 
+                        textAlign: 'center', 
+                        fontSize: '1.2rem', 
+                        fontWeight: 'bold',
+                        color: jewelryPriceMode === 'variable' || precioVentaModo === 'porcentaje' ? '#166534' : 'inherit',
+                        backgroundColor: jewelryPriceMode === 'variable' || precioVentaModo === 'porcentaje' ? '#fff' : '#fff'
+                      }}
                     />
+                    {errors.precioVenta && <span className="error-message">{errors.precioVenta.message}</span>}
+                    
+                    {jewelryPriceMode === 'variable' && precioBaseGramoActual > 0 && pesoNumerico > 0 && (
+                      <div style={{ fontSize: '0.75rem', color: '#166534', textAlign: 'center', marginTop: '0.5rem' }}>
+                        Calculado: {formatCurrency(precioBaseGramoActual)} x {pesoNumerico}{organization?.jewelry_weight_unit || 'g'}
+                        {aplicaPureza && ` x ${purezaWatch || '24k'}`}
+                        <div style={{ marginTop: '0.25rem', opacity: 0.9 }}>
+                          Regla: {reglaAplicada}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
-
-                {jewelryPriceMode === 'variable' && (
-                  <div style={{ display: 'grid', gap: '0.5rem' }}>
-                    <label>Margen mínimo (%)</label>
-                    <input
-                      {...register('jewelry_min_margin')}
-                      type="number"
-                      inputMode="decimal"
-                      placeholder="Ej: 10"
-                      className="input-form"
-                    />
-                    <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                      Si no lo defines, se usará el valor de preferencias según el tipo de material.
-                    </span>
-                  </div>
-                )}
-
-                <div style={{ display: 'grid', gap: '0.5rem' }}>
-                  <label>Tipo de material</label>
-                  <select {...register('jewelry_material_type')} className="input-form">
-                    <option value="na">No aplica</option>
-                    <option value="local">Nacional</option>
-                    <option value="international">Internacional</option>
-                  </select>
                 </div>
               </div>
             )}
@@ -1460,6 +1495,8 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
                   {margenCombo === 'otro' && (
                     <input
                       type="number"
+                      step="any"
+                      inputMode="decimal"
                       placeholder="% personalizado"
                       className="input-form"
                       style={{ marginTop: '0.5rem' }}
@@ -1734,12 +1771,15 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
             {formStep === 3 && (
               <div className="form-step-content">
                 <h3 className="step-title" style={{ fontSize: '1.25rem', fontWeight: 600, color: '#0f172a', marginBottom: '1.5rem' }}>Campos Adicionales</h3>
-                <p className="step-description">Agrega información extra si lo necesitas</p>
+                <p className="step-description">Agrega información extra si lo necesitas. (v2.1 decimales habilitados)</p>
                 
                 {/* Campos opcionales según el tipo de producto */}
                 {typeFields.optional.map(fieldId => {
                   const fieldConfig = ADDITIONAL_FIELDS[fieldId];
                   if (!fieldConfig || fieldId === 'categoria') return null;
+                  
+                  // Evitar duplicar peso si ya se mostró en el paso 1 para joyerías
+                  if (isJewelryBusiness && fieldId === 'peso') return null;
 
                   return (
                     <div key={fieldId} className="additional-field-wrapper">
@@ -1762,7 +1802,9 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
                       ) : (
                         <input
                           {...register(fieldId)}
-                          type={fieldConfig.type}
+                          type={fieldId === 'peso' ? 'text' : fieldConfig.type}
+                          inputMode={fieldId === 'peso' ? 'decimal' : (fieldConfig.inputMode || (fieldConfig.type === 'number' ? 'decimal' : undefined))}
+                          step={fieldId === 'peso' ? 'any' : (fieldConfig.type === 'number' ? 'any' : undefined)}
                           className="input-form"
                           placeholder={fieldConfig.placeholder}
                         />
@@ -1804,7 +1846,9 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
                   ) : (
                     <input
                       {...register(fieldId)}
-                      type={fieldConfig.type}
+                      type={fieldId === 'peso' ? 'text' : fieldConfig.type}
+                      inputMode={fieldId === 'peso' ? 'decimal' : (fieldConfig.inputMode || (fieldConfig.type === 'number' ? 'decimal' : undefined))}
+                      step={fieldId === 'peso' ? 'any' : (fieldConfig.type === 'number' ? 'any' : undefined)}
                       className="input-form"
                       placeholder={fieldConfig.placeholder}
                     />

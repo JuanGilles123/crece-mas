@@ -1319,7 +1319,7 @@ const Inventario = () => {
                       <div className={modoLista ? "inventario-lista-info" : "inventario-info"}>
 
                         <div className="inventario-nombre" title={prod.nombre}>{prod.nombre}</div>
-                        {isJewelryBusiness && (
+                        {(isJewelryBusiness || prod.metadata?.jewelry_price_mode) && (
                           <div style={{ display: 'flex', gap: '0.2rem', marginBottom: '0.2rem', flexWrap: 'wrap', justifyContent: modoLista ? 'flex-start' : 'center' }}>
                             {prod.metadata?.peso && (
                               <span style={{

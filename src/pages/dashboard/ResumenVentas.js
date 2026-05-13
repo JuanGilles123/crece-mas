@@ -22,6 +22,7 @@ import {
   ShoppingCart,
   Target,
   Award,
+  Scale,
   X,
   CreditCard,
   Percent,
@@ -135,7 +136,9 @@ const MultiSelectFilter = ({ label, options, selectedValues, onToggle, icon: Ico
 
 const ResumenVentas = () => {
   const { isDarkMode } = useTheme();
-  const { userProfile } = useAuth();
+  const { userProfile, organization } = useAuth();
+  const isJewelryBusiness = organization?.business_type === 'jewelry_metals';
+  const weightUnit = organization?.jewelry_weight_unit || 'g';
 
   // Hooks para obtener datos reales
   const { data: ventas = [], isLoading: cargandoVentas, refetch: refetchVentas } = useVentas(
@@ -598,9 +601,10 @@ const ResumenVentas = () => {
 
         if (matchingItems.length === 0 && !matchBaseSearch) return null;
 
-        // Si hay filtro de categoría, ajustamos el total para reflejar solo lo filtrado
-        if (hasCatFilter) {
-          const nuevoTotal = matchingItems.reduce((acc, it) => acc + (Number(it.subtotal) || (Number(it.precio) * Number(it.cantidad))), 0);
+        // Si hay filtros que afectan a los items (Categoría o Búsqueda), 
+        // devolvemos una versión filtrada de la venta para que los totales y desgloses sean correctos
+        if (hasCatFilter || hasSearch) {
+          const nuevoTotal = matchingItems.reduce((acc, it) => acc + (Number(it.subtotal) || (Number(it.precio || it.precio_venta) * Number(it.qty || it.cantidad))), 0);
           return { ...venta, items: matchingItems, total: nuevoTotal };
         }
 
@@ -699,6 +703,7 @@ const ResumenVentas = () => {
       } else {
         toast.success('Datos actualizados', { id: 'sync-ventas' });
       }
+
     } catch (error) {
       console.error('Error al actualizar:', error);
       toast.error('Error al actualizar datos', { id: 'sync-ventas' });
@@ -780,6 +785,8 @@ const ResumenVentas = () => {
           'Categoria': categoria,
           'Variante Nombre': item.variant_nombre || '',
           'Variante Codigo': item.variant_codigo || '',
+          'Peso Unitario': isJewelryBusiness ? parseFloat(item.metadata?.peso || item.peso || 0) : '',
+          'Peso Total': isJewelryBusiness ? (parseFloat(item.metadata?.peso || item.peso || 0) * cantidad) : '',
           'Variaciones': obtenerVariacionesItem(item),
           'Toppings': obtenerToppingsItem(item),
           'Notas Item': item.notas || item.notas_item || ''
@@ -890,16 +897,24 @@ const ResumenVentas = () => {
     let ventaTotal = 0;
     const ventasPorDiaMap = {};
 
+    let totalPeso = 0;
+
     ventasFiltradas.forEach(venta => {
       const dia = format(new Date(venta.created_at), 'yyyy-MM-dd');
       let totalVentaCalculado = parseFloat(venta.total || 0);
       
-      // Intentar calcular el costo total basado en items
+      // Intentar calcular el costo total y peso basado en items
       if (Array.isArray(venta.items)) {
         venta.items.forEach(item => {
           const cantidad = item.qty || item.cantidad || 1;
           const precioCompra = parseFloat(item.precio_compra || 0);
           costoTotal += precioCompra * cantidad;
+          
+          if (isJewelryBusiness) {
+            // El peso puede estar en item.metadata.peso o item.peso
+            const pesoItem = parseFloat(item.metadata?.peso || item.peso || 0);
+            totalPeso += pesoItem * cantidad;
+          }
         });
       }
 
@@ -972,65 +987,29 @@ const ResumenVentas = () => {
       periodoAnterior,
       mejorDia,
       promedioVentaDiaria,
-      horaPico
+      horaPico,
+      totalPeso,
+      utilidadPorGramo: totalPeso > 0 ? utilidadReal / totalPeso : 0,
+      ventaPorGramo: totalPeso > 0 ? totalVentas / totalPeso : 0
     };
-  }, [ventasFiltradas, calcularMetricasPeriodoAnterior]);
+  }, [ventasFiltradas, calcularMetricasPeriodoAnterior, isJewelryBusiness]);
 
   // Obtener ventas por método de pago
   const obtenerVentasPorMetodoPago = useMemo(() => {
     const ventasPorMetodo = {};
 
     ventasFiltradas.forEach(venta => {
-      const metodoOriginal = venta.metodo_pago || '';
-
-      // Si es un pago Mixto
-      if (metodoOriginal === 'Mixto' || metodoOriginal.startsWith('Mixto (')) {
-        let detalles = venta.detalles_pago_mixto;
-
-        // Intentar parsear si es string
-        if (typeof detalles === 'string') {
-          try { detalles = JSON.parse(detalles); } catch (e) { detalles = null; }
-        }
-
-        if (detalles && typeof detalles === 'object') {
-          // Caso 1: Estructura explícita { monto1, metodo1, monto2, metodo2 }
-          if (detalles.monto1 && detalles.metodo1) {
-            const m1Norm = normalizarMetodoPago(detalles.metodo1);
-            const v1 = parseFloat(detalles.monto1) || 0;
-            if (v1 > 0) {
-              if (!ventasPorMetodo[m1Norm]) ventasPorMetodo[m1Norm] = { cantidad: 0, total: 0 };
-              ventasPorMetodo[m1Norm].total += v1;
-            }
-          }
-          if (detalles.monto2 && detalles.metodo2) {
-            const m2Norm = normalizarMetodoPago(detalles.metodo2);
-            const v2 = parseFloat(detalles.monto2) || 0;
-            if (v2 > 0) {
-              if (!ventasPorMetodo[m2Norm]) ventasPorMetodo[m2Norm] = { cantidad: 0, total: 0 };
-              ventasPorMetodo[m2Norm].total += v2;
-            }
-          }
-
-          // Caso 2: Estructura de objeto genérico { Efectivo: 1000, ... }
-          Object.entries(detalles).forEach(([nombre, valor]) => {
-            if (['monto1', 'metodo1', 'monto2', 'metodo2'].includes(nombre)) return;
-            const metodoNorm = normalizarMetodoPago(nombre);
-            const monto = parseFloat(valor) || 0;
-            if (monto > 0) {
-              if (!ventasPorMetodo[metodoNorm]) ventasPorMetodo[metodoNorm] = { cantidad: 0, total: 0 };
-              ventasPorMetodo[metodoNorm].total += monto;
-            }
-          });
-        } else if (metodoOriginal.includes('(')) {
-          // Caso 2: Parseo de string "Mixto (Efectivo: 100 + Transferencia: 200)"
-          const match = metodoOriginal.match(/\((.+?)\)/);
-          if (match && match[1]) {
-            const partes = match[1].split(/[+,]/);
-            partes.forEach(parte => {
-              const [nombre, valorStr] = parte.split(':');
-              if (nombre && valorStr) {
-                const metodoNorm = normalizarMetodoPago(nombre.trim());
-                const valor = parseFloat(valorStr.replace(/[^\d.]/g, '')) || 0;
+      const metodoOriginal = venta.metodo_pago || 'Efectivo';
+      
+      if (metodoOriginal.includes('{')) {
+        // Caso Pago Mixto
+        try {
+          const mixto = JSON.parse(metodoOriginal);
+          if (mixto && typeof mixto === 'object') {
+            Object.entries(mixto).forEach(([metodo, valorStr]) => {
+              if (valorStr) {
+                const metodoNorm = normalizarMetodoPago(metodo);
+                const valor = parseFloat(String(valorStr).replace(/[^\d.]/g, '')) || 0;
                 if (valor > 0) {
                   if (!ventasPorMetodo[metodoNorm]) ventasPorMetodo[metodoNorm] = { cantidad: 0, total: 0 };
                   ventasPorMetodo[metodoNorm].total += valor;
@@ -1038,12 +1017,7 @@ const ResumenVentas = () => {
               }
             });
           }
-        }
-
-        // Siempre contar la transacción original
-        const catContable = 'Mixto';
-        if (!ventasPorMetodo[catContable]) ventasPorMetodo[catContable] = { cantidad: 0, total: 0 };
-        ventasPorMetodo[catContable].cantidad += 1;
+        } catch (e) {}
       } else {
         // Pago simple
         const metodoNormalizado = normalizarMetodoPago(metodoOriginal);
@@ -1055,10 +1029,10 @@ const ResumenVentas = () => {
       }
     });
 
-    // Filtrar el item "Mixto" si su total es 0 (porque se desglosó todo)
+    // Filtrar el item "Mixto" para que no aparezca en el resumen
     const rdo = Object.entries(ventasPorMetodo)
       .map(([metodo, data]) => ({ metodo, ...data }))
-      .filter(m => m.metodo !== 'Mixto' || m.total > 0);
+      .filter(m => m.metodo !== 'Mixto' && m.total > 0);
 
     // Ordenar: primero por total descendente, luego por nombre
     const metodosEstandar = ['Efectivo', 'Transferencia', 'Tarjeta', 'Nequi', 'Mixto', 'Crédito', 'Cotización'];
@@ -1243,15 +1217,17 @@ const ResumenVentas = () => {
         const qty = item.qty || item.cantidad || 1;
         const pv = parseFloat(item.precio_venta || item.precio || 0);
         const pc = parseFloat(item.precio_compra || 0);
+        const pesoItem = parseFloat(item.metadata?.peso || item.peso || 0);
         const key = productoId || item.nombre || 'unknown';
         const nombreActual = prod ? prod.nombre : (item.nombre || 'Desconocido');
         if (!map[key]) {
-          map[key] = { id: productoId, nombre: nombreActual, categoria, cantidad: 0, total: 0, costo: 0, ganancia: 0 };
+          map[key] = { id: productoId, nombre: nombreActual, categoria, cantidad: 0, total: 0, costo: 0, ganancia: 0, pesoTotal: 0 };
         }
         map[key].cantidad += qty;
         map[key].total += pv * qty;
         map[key].costo += pc * qty;
         map[key].ganancia += (pv - pc) * qty;
+        map[key].pesoTotal += pesoItem * qty;
       });
     });
     return Object.values(map).sort((a, b) => b.cantidad - a.cantidad);
@@ -1264,7 +1240,10 @@ const ResumenVentas = () => {
       const totalVenta = parseFloat(venta.total || 0);
       
       if (!Array.isArray(venta.items) || venta.items.length === 0) {
-        // Venta sin items, asignar a "Sin categoría"
+        // Ignorar ventas sin items que tengan valor $0 (posibles registros basura o pruebas)
+        if (totalVenta <= 0) return;
+        
+        // Venta sin items pero con valor (ej. venta rápida antigua o abono), asignar a "Sin categoría"
         const cat = 'Sin categoría';
         if (!map[cat]) map[cat] = { nombre: cat, cantidad: 0, total: 0, costo: 0, ganancia: 0, ventasSet: new Set(), productos: {} };
         map[cat].total += totalVenta;
@@ -1470,8 +1449,17 @@ const ResumenVentas = () => {
       });
     }
 
+    if (isJewelryBusiness && metricas.totalPeso > 0) {
+      insights.push({
+        title: 'Eficiencia de Material',
+        text: `Estás generando ${formatCOP(metricas.ventaPorGramo)} por cada ${weightUnit} vendido.`,
+        icon: <Scale size={18} />,
+        color: 'var(--cp-warning)'
+      });
+    }
+
     return insights;
-  }, [ventasPorDia, obtenerVentasPorMetodoPago, metricas.horaPico.hora]);
+  }, [ventasPorDia, obtenerVentasPorMetodoPago, metricas.horaPico.hora, isJewelryBusiness, metricas.totalPeso, metricas.ventaPorGramo, weightUnit]);
 
   if (cargando) {
     return (
@@ -1645,8 +1633,12 @@ const ResumenVentas = () => {
             {[
               { label: 'Ventas Totales', value: formatCOP(metricas.totalVentas), icon: <ShoppingCart />, color: 'var(--cp-primary)', trend: `${metricas.variacionVentas >= 0 ? '+' : ''}${metricas.variacionVentas.toFixed(1)}%`, isUp: metricas.variacionVentas >= 0 },
               { label: 'Utilidad Real', value: formatCOP(metricas.utilidad), icon: <Award />, color: 'var(--cp-success)', trend: '+12.5%', isUp: true },
-              { label: 'Ticket Promedio', value: formatCOP(metricas.promedioVenta), icon: <TrendingUp />, color: 'var(--cp-primary)', trend: '+4.2%', isUp: true },
-              { label: 'Cantidad Ventas', value: metricas.cantidadVentas, icon: <Package />, color: 'var(--cp-warning)', trend: '-1.8%', isUp: false },
+              isJewelryBusiness 
+                ? { label: `Peso Vendido (${weightUnit})`, value: `${metricas.totalPeso.toFixed(2)} ${weightUnit}`, icon: <Scale />, color: 'var(--cp-warning)', trend: 'Ponderado', isUp: true }
+                : { label: 'Ticket Promedio', value: formatCOP(metricas.promedioVenta), icon: <TrendingUp />, color: 'var(--cp-primary)', trend: '+4.2%', isUp: true },
+              isJewelryBusiness
+                ? { label: `Venta por ${weightUnit}`, value: formatCOP(metricas.ventaPorGramo), icon: <TrendingUp />, color: 'var(--cp-primary)', trend: 'Eficiencia', isUp: true }
+                : { label: 'Cantidad Ventas', value: metricas.cantidadVentas, icon: <Package />, color: 'var(--cp-warning)', trend: '-1.8%', isUp: false },
               { label: 'Margen Bruto', value: `${metricas.margenGanancia.toFixed(1)}%`, icon: <Percent />, color: 'var(--cp-primary)', trend: '+0.5%', isUp: true }
             ].map((kpi, idx) => (
               <div key={idx} className="cp-card cp-kpi-card-enhanced">
@@ -2117,9 +2109,20 @@ const ResumenVentas = () => {
             <div className="cp-card">
               <div className="cp-table-container">
                 <table className="cp-table">
-                  {vistaActual === 'productos' && (
-                    <>
-                      <thead><tr><th>#</th><th>Producto</th><th>Categoría</th><th>Unidades</th><th>Ingresos</th><th>Costo</th><th>Ganancia</th></tr></thead>
+                    {vistaActual === 'productos' && (
+                      <>
+                        <thead>
+                          <tr>
+                            <th>#</th>
+                            <th>Producto</th>
+                            <th>Categoría</th>
+                            <th>Unidades</th>
+                            {isJewelryBusiness && <th>Peso Total</th>}
+                            <th>Ingresos</th>
+                            <th>Costo</th>
+                            <th>Ganancia</th>
+                          </tr>
+                        </thead>
                       <tbody>
                         {visibleProductos.map((p, i) => (
                           <tr key={i}>
@@ -2127,6 +2130,7 @@ const ResumenVentas = () => {
                             <td style={{ fontWeight: 700 }}>{p.nombre}</td>
                             <td style={{ textAlign: 'center' }}><span className="cp-badge cp-badge-primary">{p.categoria}</span></td>
                             <td style={{ textAlign: 'center', fontWeight: 700 }}>{Math.round(p.cantidad)}</td>
+                            {isJewelryBusiness && <td style={{ textAlign: 'center' }}>{p.pesoTotal.toFixed(2)} {weightUnit}</td>}
                             <td style={{ textAlign: 'center' }}>{formatCOP(p.total)}</td>
                             <td style={{ textAlign: 'center' }}>{formatCOP(p.costo)}</td>
                             <td style={{ textAlign: 'center', color: 'var(--cp-success)', fontWeight: 700 }}>{formatCOP(p.ganancia)}</td>
@@ -2138,17 +2142,33 @@ const ResumenVentas = () => {
 
                   {vistaActual === 'ventas' && (
                     <>
-                      <thead><tr><th>Ticket</th><th>Fecha</th><th>Cliente</th><th>Vendedor</th><th>Total</th></tr></thead>
+                      <thead>
+                        <tr>
+                          <th>Ticket</th>
+                          <th>Fecha</th>
+                          <th>Cliente</th>
+                          <th>Vendedor</th>
+                          {isJewelryBusiness && <th>Peso</th>}
+                          <th>Total</th>
+                        </tr>
+                      </thead>
                       <tbody>
-                        {visibleVentas.map((v, i) => (
-                          <tr key={i}>
-                            <td style={{ fontWeight: 700, color: 'var(--cp-primary)' }}>{v.numero_venta || `#${i + 1}`}</td>
-                            <td>{v.created_at ? format(parseISO(v.created_at), 'dd MMM, HH:mm', { locale: es }) : '—'}</td>
-                            <td>{v.cliente?.nombre || v.cliente_nombre || 'General'}</td>
-                            <td>{obtenerNombreVendedor(v)}</td>
-                            <td style={{ textAlign: 'right', fontWeight: 700 }}>{formatCOP(v.total)}</td>
-                          </tr>
-                        ))}
+                        {visibleVentas.map((v, i) => {
+                          const pesoVenta = isJewelryBusiness && Array.isArray(v.items)
+                            ? v.items.reduce((acc, it) => acc + (parseFloat(it.metadata?.peso || it.peso || 0) * (it.qty || it.cantidad || 1)), 0)
+                            : 0;
+                          
+                          return (
+                            <tr key={i}>
+                              <td style={{ fontWeight: 700, color: 'var(--cp-primary)' }}>{v.numero_venta || `#${i + 1}`}</td>
+                              <td>{v.created_at ? format(parseISO(v.created_at), 'dd MMM, HH:mm', { locale: es }) : '—'}</td>
+                              <td>{v.cliente?.nombre || v.cliente_nombre || 'General'}</td>
+                              <td>{obtenerNombreVendedor(v)}</td>
+                              {isJewelryBusiness && <td style={{ textAlign: 'center', fontWeight: 600 }}>{pesoVenta.toFixed(2)} {weightUnit}</td>}
+                              <td style={{ textAlign: 'right', fontWeight: 700 }}>{formatCOP(v.total)}</td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                       <tfoot>
                         <tr style={{ background: 'var(--cp-primary-soft)', borderTop: '2px solid var(--cp-primary)' }}>

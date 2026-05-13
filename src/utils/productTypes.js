@@ -57,8 +57,9 @@ export const PRODUCT_TYPES = {
 export const ADDITIONAL_FIELDS = {
   peso: {
     id: 'peso',
-    label: 'Peso',
-    type: 'number',
+    label: 'Peso (gramos/decimales)',
+    type: 'text',
+    inputMode: 'decimal',
     unit: 'kg',
     placeholder: 'Ej: 0.5'
   },
@@ -143,7 +144,8 @@ export const ADDITIONAL_FIELDS = {
   calorias: {
     id: 'calorias',
     label: 'Calorías',
-    type: 'number',
+    type: 'text',
+    inputMode: 'decimal',
     placeholder: 'Ej: 250'
   },
   porcion: {
