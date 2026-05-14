@@ -1,6 +1,7 @@
 
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
 import './Inventario.css';
@@ -15,7 +16,7 @@ import InventarioStats from '../../components/inventario/InventarioStats';
 import InventarioFilters from '../../components/inventario/InventarioFilters';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../services/api/supabaseClient';
-import { List, Grid3X3, PackagePlus, Search, RefreshCw, Download, CheckSquare, X, Edit3 } from 'lucide-react';
+import { List, Grid3X3, PackagePlus, Search, RefreshCw, Download, CheckSquare, X, Edit3, Trash2, ChevronDown, SlidersHorizontal, ArrowUpDown, Tag, Layers, Check, Package, Upload } from 'lucide-react';
 import { useProductos, useEliminarProducto } from '../../hooks/useProductos';
 import EntradaInventarioModal from '../../components/modals/EntradaInventarioModal';
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
@@ -41,6 +42,141 @@ const deleteImageFromStorage = async (imagePath) => {
   }
 };
 
+// Componente para filtros de multiselección (Diseño Resumen de Ventas)
+const MultiSelectFilter = ({ label, options, selectedValues, onToggle, icon: Icon }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div className="cp-dropdown-filter" ref={containerRef}>
+      <button
+        className={`cp-select-minimal ${selectedValues.length > 0 ? 'active' : ''}`}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        {Icon && <Icon size={16} />}
+        <span className="ms-label">
+          {selectedValues.length === 0
+            ? label
+            : selectedValues.length === 1
+              ? (options.find(o => (o.value !== undefined ? o.value : o) === selectedValues[0])?.label || selectedValues[0])
+              : `${label}: ${selectedValues.length}`}
+        </span>
+        <ChevronDown size={14} className={`ms-chevron ${isOpen ? 'open' : ''}`} />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 5 }}
+            className="cp-dropdown-menu"
+          >
+            <div className="cp-dropdown-items">
+              {options.map(option => {
+                const val = option.value !== undefined ? option.value : option;
+                const labelText = option.label !== undefined ? option.label : option;
+                const isSelected = selectedValues.includes(val);
+
+                return (
+                  <div
+                    key={val}
+                    className={`cp-dropdown-item ${isSelected ? 'selected' : ''}`}
+                    onClick={() => onToggle(val)}
+                  >
+                    <div className={`cp-checkbox ${isSelected ? 'checked' : ''}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {isSelected && <Check size={12} strokeWidth={3} color="white" />}
+                    </div>
+                    <span>{labelText}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+// Componente para filtros de selección única
+const SingleSelectFilter = ({ label, options, value, onChange, icon: IconComponent, compact = false }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedOption = options.find(o => (o.value !== undefined ? o.value : o) === value);
+  const displayLabel = selectedOption?.label || selectedOption || label;
+
+  return (
+    <div className={`cp-dropdown-filter ${compact ? 'compact' : ''}`} ref={containerRef}>
+      <button
+        className={`cp-select-minimal ${compact ? 'compact' : ''} ${isOpen ? 'active' : ''}`}
+        onClick={() => setIsOpen(!isOpen)}
+        title={compact ? `Ordenar: ${displayLabel}` : ''}
+        type="button"
+      >
+        {IconComponent ? <IconComponent size={20} strokeWidth={2.5} /> : <ArrowUpDown size={20} strokeWidth={2.5} />}
+        {!compact && <span className="ms-label">{displayLabel}</span>}
+        {!compact && <ChevronDown size={14} className={`ms-chevron ${isOpen ? 'open' : ''}`} />}
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 5 }}
+            className="cp-dropdown-menu"
+            style={compact ? { left: 'auto', right: 0 } : {}}
+          >
+            <div className="cp-dropdown-items">
+              {options.map(option => {
+                const val = option.value !== undefined ? option.value : option;
+                const labelText = option.label !== undefined ? option.label : option;
+                const isSelected = val === value;
+
+                return (
+                  <div
+                    key={val}
+                    className={`cp-dropdown-item ${isSelected ? 'selected' : ''}`}
+                    onClick={() => {
+                      onChange(val);
+                      setIsOpen(false);
+                    }}
+                  >
+                    <span>{labelText}</span>
+                    {isSelected && <Check size={14} strokeWidth={3} style={{ color: 'var(--accent-primary)', marginLeft: 'auto' }} />}
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 const Inventario = () => {
   const { user, organization, userProfile, hasPermission } = useAuth();
   const location = useLocation();
@@ -51,7 +187,7 @@ const Inventario = () => {
   const [entradaInventarioOpen, setEntradaInventarioOpen] = useState(false);
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
   const [varianteSeleccionadaId, setVarianteSeleccionadaId] = useState(null);
-  const [modoLista, setModoLista] = useState(false);
+  const [modoLista, setModoLista] = useState(true);
   const [manualSpin, setManualSpin] = useState(false);
   const [ordenProductos, setOrdenProductos] = useState('created_desc');
   const [query, setQuery] = useState('');
@@ -64,6 +200,20 @@ const Inventario = () => {
   const [campoEdicion, setCampoEdicion] = useState('categoria');
   const [valoresEdicion, setValoresEdicion] = useState({});
   const [guardandoMasivo, setGuardandoMasivo] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const advancedFiltersRef = useRef(null);
+
+  // Cerrar filtros avanzados al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (advancedFiltersRef.current && !advancedFiltersRef.current.contains(event.target)) {
+        setShowAdvancedFilters(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const [lastModifiedId, setLastModifiedId] = useState(null);
 
   // Suponiendo que el usuario tiene moneda en user.user_metadata.moneda
@@ -171,8 +321,10 @@ const Inventario = () => {
     if (!peso || !precioBaseGramo) return 0;
     return Math.round(peso * precioBaseGramo * purityFactor * 100) / 100;
   }, [getGoldPriceLocal, getGoldPriceGlobal, getPurityFactor, organization?.jewelry_min_margin_local, organization?.jewelry_min_margin_international, parseNumber]);
+
   const umbralStockBajo = Number(user?.user_metadata?.umbralStockBajo ?? 10);
   const umbralStockBajoSeguro = Number.isFinite(umbralStockBajo) && umbralStockBajo > 0 ? umbralStockBajo : 10;
+
   const getUmbralProducto = useCallback((producto) => {
     const umbralProducto = Number(producto?.metadata?.umbral_stock_bajo);
     if (Number.isFinite(umbralProducto) && umbralProducto > 0) {
@@ -1119,163 +1271,270 @@ const Inventario = () => {
           {/* Header con búsqueda y acciones - Separados para mejor control responsive */}
           <div className="inventario-header-wrapper">
             <div className="inventario-actions">
-              {(hasPermission('inventario.create') || ['owner', 'admin'].includes(userProfile?.role)) && (
-                <>
-                  <button className="inventario-btn inventario-btn-primary" onClick={() => setModalOpen(true)}>Nuevo producto</button>
-                  <button 
-                    className="inventario-btn inventario-btn-masivo" 
-                    onClick={() => setCreacionMasivaOpen(true)}
-                    title="Crea múltiples productos a la vez tipo Excel"
+              <div className="inventario-actions-left">
+                {(hasPermission('inventario.create') || ['owner', 'admin'].includes(userProfile?.role)) && (
+                  <>
+                    <button className="inventario-btn inventario-btn-primary" onClick={() => setModalOpen(true)}>Nuevo producto</button>
+                    <button
+                      className="inventario-btn inventario-btn-masivo"
+                      onClick={() => setCreacionMasivaOpen(true)}
+                      title="Crea múltiples productos a la vez tipo Excel"
+                    >
+                      Creación Masiva
+                    </button>
+                  </>
+                )}
+                {(hasPermission('inventario.edit') || ['owner', 'admin'].includes(userProfile?.role)) && (
+                  <button
+                    className="inventario-btn inventario-btn-action"
+                    onClick={() => setEntradaInventarioOpen(true)}
+                    title="Registrar entrada de inventario"
                   >
-                    Creación Masiva
+                    <PackagePlus size={18} />
+                    Entrada Inventario
                   </button>
-                </>
-              )}
-              <button
-                className="inventario-btn inventario-btn-action inventario-btn-square"
-                onClick={async () => {
-                  setManualSpin(true);
-                  await refetch();
-                  toast.success('Inventario actualizado');
-                  setTimeout(() => setManualSpin(false), 500); // Pequeño delay para que se vea el giro
-                }}
-                disabled={isFetching}
-                title="Actualizar inventario"
-              >
-                <RefreshCw size={18} className={manualSpin ? 'spin' : ''} />
-              </button>
-              {(hasPermission('inventario.edit') || ['owner', 'admin'].includes(userProfile?.role)) && (
+                )}
                 <button
-                  className="inventario-btn inventario-btn-action"
-                  onClick={() => setEntradaInventarioOpen(true)}
-                  title="Registrar entrada de inventario"
+                  className="inventario-btn inventario-btn-action inventario-btn-square"
+                  onClick={async () => {
+                    setManualSpin(true);
+                    await refetch();
+                    toast.success('Inventario actualizado');
+                    setTimeout(() => setManualSpin(false), 500);
+                  }}
+                  disabled={isFetching}
+                  title="Actualizar inventario"
                 >
-                  <PackagePlus size={18} />
-                  Entrada Inventario
+                  <RefreshCw size={18} className={manualSpin ? 'spin' : ''} />
                 </button>
-              )}
-              <FeatureGuard
-                feature="importCSV"
-                recommendedPlan="professional"
-                showInline={false}
-                fallback={
+                <button
+                  className="inventario-btn inventario-btn-action inventario-btn-square"
+                  onClick={() => setModoLista(m => !m)}
+                  title="Cambiar vista"
+                >
+                  {modoLista ? <Grid3X3 size={18} /> : <List size={18} />}
+                </button>
+
+                <div className="inventario-btn-icon-wrapper">
+                  {seleccionados.length > 0 && <span className="inventario-counter">{seleccionados.length}</span>}
                   <button
-                    className="inventario-btn inventario-btn-action"
-                    onClick={() => toast.error('La importación CSV está disponible en el plan Estándar')}
-                    style={{ opacity: 0.5, cursor: 'not-allowed' }}
-                    title="🔒 Plan Estándar"
+                    type="button"
+                    className={`inventario-btn inventario-btn-action inventario-btn-square ${todosSeleccionados ? 'active' : ''}`}
+                    onClick={toggleSeleccionarTodos}
+                    title={todosSeleccionados ? 'Quitar selección' : 'Seleccionar todo'}
                   >
-                    Importar CSV
+                    <CheckSquare size={18} />
                   </button>
-                }
-              >
-                <button className="inventario-btn inventario-btn-action" onClick={() => setCsvModalOpen(true)}>Importar CSV</button>
-              </FeatureGuard>
-              <FeatureGuard
-                feature="exportData"
-                recommendedPlan="professional"
-                showInline={false}
-                fallback={
-                  <button
-                    className="inventario-btn inventario-btn-action"
-                    onClick={() => toast.error('La exportación de datos está disponible en el plan Estándar')}
-                    style={{ opacity: 0.5, cursor: 'not-allowed' }}
-                    title="🔒 Plan Estándar"
-                  >
+                </div>
+
+                {seleccionados.length > 0 && (hasPermission('inventario.edit') || ['owner', 'admin'].includes(userProfile?.role)) && (
+                  <div className="inventario-btn-icon-wrapper">
+                    <span className="inventario-counter">{seleccionados.length}</span>
+                    <button
+                      className="inventario-btn inventario-btn-action inventario-btn-square"
+                      onClick={abrirEdicionMasiva}
+                      title="Editar en masa los productos seleccionados"
+                    >
+                      <Edit3 size={18} />
+                    </button>
+                  </div>
+                )}
+
+                {seleccionados.length > 0 && (hasPermission('inventario.delete') || ['owner', 'admin'].includes(userProfile?.role)) && (
+                  <div className="inventario-btn-icon-wrapper">
+                    <span className="inventario-counter">{seleccionados.length}</span>
+                    <button
+                      className="inventario-btn inventario-btn-action inventario-btn-danger inventario-btn-square"
+                      onClick={handleEliminarSeleccionados}
+                      disabled={eliminandoSeleccionados}
+                      title="Eliminar productos seleccionados"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="inventario-actions-right">
+                <FeatureGuard
+                  feature="importCSV"
+                  recommendedPlan="professional"
+                  showInline={false}
+                  fallback={
+                    <button
+                      className="inventario-btn inventario-btn-action"
+                      onClick={() => toast.error('La importación CSV está disponible en el plan Estándar')}
+                      style={{ opacity: 0.5, cursor: 'not-allowed' }}
+                      title="🔒 Plan Estándar"
+                    >
+                      <Upload size={18} />
+                      <span>Importar</span>
+                    </button>
+                  }
+                >
+                  <button className="inventario-btn inventario-btn-action" onClick={() => setCsvModalOpen(true)}>
+                    <Upload size={18} />
+                    <span>Importar</span>
+                  </button>
+                </FeatureGuard>
+
+                <FeatureGuard
+                  feature="exportData"
+                  recommendedPlan="professional"
+                  showInline={false}
+                  fallback={
+                    <button
+                      className="inventario-btn inventario-btn-action"
+                      onClick={() => toast.error('La exportación de datos está disponible en el plan Estándar')}
+                      style={{ opacity: 0.5, cursor: 'not-allowed' }}
+                      title="🔒 Plan Estándar"
+                    >
+                      <Download size={18} />
+                      Exportar
+                    </button>
+                  }
+                >
+                  <button className="inventario-btn inventario-btn-action" onClick={exportarInventarioExcel}>
                     <Download size={18} />
                     Exportar
                   </button>
-                }
-              >
-                <button className="inventario-btn inventario-btn-action" onClick={exportarInventarioExcel}>
-                  <Download size={18} />
-                  Exportar
-                </button>
-              </FeatureGuard>
-              <button
-                type="button"
-                className="inventario-btn inventario-btn-action"
-                onClick={toggleSeleccionarTodos}
-              >
-                <CheckSquare size={18} />
-                {todosSeleccionados ? 'Quitar selección' : 'Seleccionar todo'}
-              </button>
-              {seleccionados.length > 0 && (hasPermission('inventario.delete') || ['owner', 'admin'].includes(userProfile?.role)) && (
-                <button
-                  className="inventario-btn inventario-btn-action inventario-btn-danger"
-                  onClick={handleEliminarSeleccionados}
-                  disabled={eliminandoSeleccionados}
-                >
-                  {eliminandoSeleccionados ? 'Eliminando...' : `Eliminar (${seleccionados.length})`}
-                </button>
-              )}
-              {seleccionados.length > 0 && (hasPermission('inventario.edit') || ['owner', 'admin'].includes(userProfile?.role)) && (
-                <button
-                  className="inventario-btn inventario-btn-action"
-                  onClick={abrirEdicionMasiva}
-                  title="Editar en masa los productos seleccionados"
-                >
-                  <Edit3 size={18} />
-                  Editar masivo ({seleccionados.length})
-                </button>
-              )}
-              <button className="inventario-btn inventario-btn-action inventario-btn-square" onClick={() => setModoLista(m => !m)}>
-                {modoLista ? <Grid3X3 size={18} /> : <List size={18} />}
-              </button>
-            </div>
-            <div className="inventario-search-container">
-              <div className="inventario-sort">
-                <select
-                  className="inventario-sort-select"
-                  value={ordenProductos}
-                  onChange={(e) => setOrdenProductos(e.target.value)}
-                  aria-label="Ordenar productos"
-                >
-                  <option value="created_desc">Más recientes</option>
-                  <option value="created_asc">Más antiguos</option>
-                  <option value="name_asc">Nombre A-Z</option>
-                  <option value="name_desc">Nombre Z-A</option>
-                  <option value="stock_desc">Stock mayor</option>
-                  <option value="stock_asc">Stock menor</option>
-                </select>
+                </FeatureGuard>
               </div>
-              <div className="search-input-wrapper">
-                <Search size={18} className="inventario-search-icon-outside" />
+            </div>
+            <div className="inventario-search-row">
+              <div className="search-input-wrapper compact">
+                <Search size={16} className="inventario-search-icon-outside" />
                 <input
                   ref={combinedSearchInputRef}
                   className="inventario-search"
-                  placeholder="Buscar por nombre, código, marca, modelo, categoría..."
+                  placeholder="Buscar..."
                   value={query}
                   onChange={(e) => {
                     setQuery(e.target.value);
                     handleBarcodeInputChange(e);
                   }}
                   onKeyDown={handleBarcodeKeyDown}
-                  autoFocus={false}
                 />
                 {query && (
+                  <button className="clear-search-btn" onClick={() => setQuery('')}>
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+
+
+              <div className="inventario-quick-filters">
+                <SingleSelectFilter
+                  compact={true}
+                  label="Ordenar"
+                  icon={ArrowUpDown}
+                  options={[
+                    { value: 'created_desc', label: 'Más recientes' },
+                    { value: 'created_asc', label: 'Más antiguos' },
+                    { value: 'name_asc', label: 'Nombre A-Z' },
+                    { value: 'name_desc', label: 'Nombre Z-A' },
+                    { value: 'stock_desc', label: 'Stock mayor' },
+                    { value: 'stock_asc', label: 'Stock menor' }
+                  ]}
+                  value={ordenProductos}
+                  onChange={setOrdenProductos}
+                />
+                <MultiSelectFilter
+                  label="Categoría"
+                  icon={Layers}
+                  options={[
+                    { value: '__sin_categoria__', label: 'Sin categoría' },
+                    ...[...new Set(productos.map(p => p.metadata?.categoria).filter(Boolean))].sort()
+                  ]}
+                  selectedValues={filters.categoria_multi || []}
+                  onToggle={(val) => {
+                    setFilters(prev => {
+                      const current = prev.categoria_multi || [];
+                      const next = current.includes(val)
+                        ? current.filter(v => v !== val)
+                        : [...current, val];
+                      return { ...prev, categoria_multi: next.length > 0 ? next : undefined };
+                    });
+                  }}
+                />
+
+                <MultiSelectFilter
+                  label="Stock"
+                  icon={Package}
+                  options={[
+                    { value: 'bajo', label: 'Stock Bajo' },
+                    { value: 'sin', label: 'Sin Stock' },
+                    { value: 'con', label: 'Con Stock' }
+                  ]}
+                  selectedValues={filters.stock_condition ? [filters.stock_condition] : []}
+                  onToggle={(val) => {
+                    setFilters(prev => {
+                      const next = { ...prev };
+                      if (next.stock_condition === val) delete next.stock_condition;
+                      else next.stock_condition = val;
+                      return next;
+                    });
+                  }}
+                />
+
+                <MultiSelectFilter
+                  label="Tipo"
+                  icon={Tag}
+                  options={[
+                    { value: 'fisico', label: 'Físico' },
+                    { value: 'servicio', label: 'Servicio' },
+                    { value: 'comida', label: 'Comida' },
+                    { value: 'accesorio', label: 'Accesorio' }
+                  ]}
+                  selectedValues={filters.tipo_multi || []}
+                  onToggle={(val) => {
+                    setFilters(prev => {
+                      const current = prev.tipo_multi || [];
+                      const next = current.includes(val)
+                        ? current.filter(v => v !== val)
+                        : [...current, val];
+                      return { ...prev, tipo_multi: next.length > 0 ? next : undefined };
+                    });
+                  }}
+                />
+
+                <div className="inventario-advanced-filters-wrapper" ref={advancedFiltersRef}>
                   <button
-                    className="clear-search-btn"
-                    onClick={() => {
-                      setQuery('');
-                      if (searchInputRef.current) searchInputRef.current.focus();
-                    }}
-                    type="button"
-                    title="Limpiar búsqueda"
+                    className={`inventario-btn-more-filters ${showAdvancedFilters ? 'active' : ''} ${Object.keys(filters).length > 0 ? 'has-active' : ''}`}
+                    onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                    title="Más filtros"
+                    style={{ width: 'auto', padding: '0 12px', gap: '8px', position: 'relative' }}
                   >
-                    <X size={16} />
+                    <SlidersHorizontal size={20} strokeWidth={2.5} />
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Más Filtros</span>
+                    {Object.keys(filters).length > 0 && <span className="filter-active-indicator" />}
+                  </button>
+
+                  <AnimatePresence>
+                    {showAdvancedFilters && (
+                      <InventarioFilters
+                        productos={productos}
+                        onFilterChange={setFilters}
+                        filters={filters}
+                        onClose={() => setShowAdvancedFilters(false)}
+                      />
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {(query || Object.keys(filters).length > 0) && (
+                  <button
+                    className="inventario-clear-btn-final-fix"
+                    onClick={() => { setQuery(''); setFilters({}); }}
+                    title="Limpiar todos los filtros"
+                  >
+                    &times;
                   </button>
                 )}
               </div>
             </div>
           </div>
-
-          {/* Filtros - Debajo del buscador y antes de los productos */}
-          <InventarioFilters
-            productos={productos}
-            filters={filters}
-            onFilterChange={setFilters}
-          />
 
           {/* Contenido de productos */}
           <div className="inventario-content">
@@ -1323,7 +1582,6 @@ const Inventario = () => {
                           <div style={{ display: 'flex', gap: '0.2rem', marginBottom: '0.2rem', flexWrap: 'wrap', justifyContent: modoLista ? 'flex-start' : 'center' }}>
                             {prod.metadata?.peso && (
                               <span style={{
-                                fontSize: '0.65rem',
                                 backgroundColor: '#f3f4f6',
                                 padding: '1px 4px',
                                 borderRadius: '3px',
@@ -1337,7 +1595,6 @@ const Inventario = () => {
 
                             {prod.metadata?.jewelry_material_type && prod.metadata.jewelry_material_type !== 'na' && (
                               <span style={{
-                                fontSize: '0.65rem',
                                 backgroundColor: prod.metadata.jewelry_material_type === 'local' ? '#eff6ff' : '#fff7ed',
                                 color: prod.metadata.jewelry_material_type === 'local' ? '#2563eb' : '#ea580c',
                                 padding: '1px 4px',
@@ -1351,8 +1608,8 @@ const Inventario = () => {
                           </div>
                         )}
                         <div className={modoLista ? "inventario-lista-precios" : ""} style={!modoLista ? { display: 'flex', gap: '0.8rem', justifyContent: 'center', marginBottom: 2 } : {}}>
-                          <span style={{ color: 'var(--accent-primary)', fontWeight: 700, fontSize: modoLista ? 'inherit' : '0.85rem' }}>Compra: {prod.precio_compra?.toLocaleString('es-CO')}</span>
-                          <span style={{ color: 'var(--accent-success)', fontWeight: 700, fontSize: modoLista ? 'inherit' : '0.85rem' }}>Venta: {getCurrentVentaPrice(prod).toLocaleString('es-CO')}</span>
+                          <span style={{ color: 'var(--accent-primary)', fontWeight: 700 }}>Compra: {prod.precio_compra?.toLocaleString('es-CO')}</span>
+                          <span style={{ color: 'var(--accent-success)', fontWeight: 700 }}>Venta: {getCurrentVentaPrice(prod).toLocaleString('es-CO')}</span>
                         </div>
                         <div className="inventario-stock">Stock: {prod.stock !== null && prod.stock !== undefined ? parseFloat(prod.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 4 }) : '0'}</div>
                       </div>
@@ -1401,13 +1658,13 @@ const Inventario = () => {
         </>
       )}
       <AgregarProductoModalV2 open={modalOpen} onClose={() => setModalOpen(false)} onProductoAgregado={handleAgregarProducto} moneda={moneda} />
-      <CreacionMasivaModal 
-        open={creacionMasivaOpen} 
-        onClose={() => setCreacionMasivaOpen(false)} 
+      <CreacionMasivaModal
+        open={creacionMasivaOpen}
+        onClose={() => setCreacionMasivaOpen(false)}
         onProductosCreados={() => {
           refetch();
           setCreacionMasivaOpen(false);
-        }} 
+        }}
       />
       <EditarProductoModalV2
         open={editarModalOpen}
@@ -1439,17 +1696,17 @@ const Inventario = () => {
 
       {/* MODAL DE EDICIÓN MASIVA */}
       {edicionMasivaOpen && (
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:'1rem'}}>
-          <div style={{background:'var(--bg-primary,#1a1a2e)',borderRadius:'16px',width:'100%',maxWidth:'720px',maxHeight:'85vh',display:'flex',flexDirection:'column',boxShadow:'0 24px 60px rgba(0,0,0,0.5)',border:'1px solid var(--border-color,#2a2a4a)'}}>
-            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'1.25rem 1.5rem',borderBottom:'1px solid var(--border-color,#2a2a4a)'}}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+          <div style={{ background: 'var(--bg-primary,#1a1a2e)', borderRadius: '16px', width: '100%', maxWidth: '720px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 60px rgba(0,0,0,0.5)', border: '1px solid var(--border-color,#2a2a4a)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-color,#2a2a4a)' }}>
               <div>
-                <h2 style={{margin:0,fontSize:'1.1rem',fontWeight:700,color:'var(--text-primary,#fff)'}}>Edición Masiva</h2>
-                <p style={{margin:0,fontSize:'0.8rem',color:'var(--text-secondary,#aaa)',marginTop:'2px'}}>{seleccionados.length} productos seleccionados</p>
+                <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary,#fff)' }}>Edición Masiva</h2>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary,#aaa)', marginTop: '2px' }}>{seleccionados.length} productos seleccionados</p>
               </div>
-              <button onClick={() => setEdicionMasivaOpen(false)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-secondary,#aaa)',padding:'4px'}}><X size={20} /></button>
+              <button onClick={() => setEdicionMasivaOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary,#aaa)', padding: '4px' }}><X size={20} /></button>
             </div>
-            <div style={{padding:'1rem 1.5rem',borderBottom:'1px solid var(--border-color,#2a2a4a)',display:'flex',alignItems:'center',gap:'1rem',flexWrap:'wrap'}}>
-              <label style={{color:'var(--text-secondary,#aaa)',fontSize:'0.85rem',fontWeight:600,whiteSpace:'nowrap'}}>Campo a editar:</label>
+            <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color,#2a2a4a)', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+              <label style={{ color: 'var(--text-secondary,#aaa)', fontSize: '0.85rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Campo a editar:</label>
               <select
                 value={campoEdicion}
                 onChange={e => {
@@ -1460,11 +1717,11 @@ const Inventario = () => {
                     const p = productos.find(pr => pr.id === id);
                     if (!p) return;
                     const meta = typeof p.metadata === 'string' ? JSON.parse(p.metadata || '{}') : (p.metadata || {});
-                    init[id] = ['precio_venta','precio_compra','stock'].includes(campo) ? (p[campo] ?? '') : (meta[campo] ?? '');
+                    init[id] = ['precio_venta', 'precio_compra', 'stock'].includes(campo) ? (p[campo] ?? '') : (meta[campo] ?? '');
                   });
                   setValoresEdicion(init);
                 }}
-                style={{background:'var(--bg-secondary,#0f0f23)',color:'var(--text-primary,#fff)',border:'1px solid var(--border-color,#2a2a4a)',borderRadius:'8px',padding:'8px 12px',fontSize:'0.875rem',cursor:'pointer',flex:1,minWidth:'160px'}}
+                style={{ background: 'var(--bg-secondary,#0f0f23)', color: 'var(--text-primary,#fff)', border: '1px solid var(--border-color,#2a2a4a)', borderRadius: '8px', padding: '8px 12px', fontSize: '0.875rem', cursor: 'pointer', flex: 1, minWidth: '160px' }}
               >
                 <option value="categoria">Categoría</option>
                 <option value="precio_venta">Precio de Venta</option>
@@ -1484,40 +1741,40 @@ const Inventario = () => {
                   setValoresEdicion(masivo);
                   toast.success('Valor del primero aplicado a todos');
                 }}
-                style={{background:'var(--bg-secondary,#0f0f23)',color:'var(--accent,#7c3aed)',border:'1px solid var(--accent,#7c3aed)',borderRadius:'8px',padding:'8px 14px',fontSize:'0.8rem',cursor:'pointer',whiteSpace:'nowrap',fontWeight:600}}
+                style={{ background: 'var(--bg-secondary,#0f0f23)', color: 'var(--accent,#7c3aed)', border: '1px solid var(--accent,#7c3aed)', borderRadius: '8px', padding: '8px 14px', fontSize: '0.8rem', cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: 600 }}
               >
                 Aplicar primero a todos
               </button>
             </div>
-            <div style={{overflowY:'auto',flex:1,padding:'0.5rem 0'}}>
+            <div style={{ overflowY: 'auto', flex: 1, padding: '0.5rem 0' }}>
               {seleccionados.map((id, index) => {
                 const producto = productos.find(p => p.id === id);
                 if (!producto) return null;
-                const esNumero = ['precio_venta','precio_compra','stock'].includes(campoEdicion);
+                const esNumero = ['precio_venta', 'precio_compra', 'stock'].includes(campoEdicion);
                 return (
-                  <div key={id} style={{display:'flex',alignItems:'center',gap:'12px',padding:'10px 1.5rem',borderBottom:'1px solid var(--border-color,#1e1e3a)',background:index%2===0?'transparent':'rgba(255,255,255,0.02)'}}>
-                    <span style={{color:'var(--text-secondary,#aaa)',fontSize:'0.75rem',minWidth:'20px',textAlign:'right'}}>{index+1}</span>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{color:'var(--text-primary,#fff)',fontSize:'0.85rem',fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{producto.nombre}</div>
-                      <div style={{color:'var(--text-secondary,#aaa)',fontSize:'0.72rem'}}>{producto.codigo||'Sin código'}</div>
+                  <div key={id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 1.5rem', borderBottom: '1px solid var(--border-color,#1e1e3a)', background: index % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
+                    <span style={{ color: 'var(--text-secondary,#aaa)', fontSize: '0.75rem', minWidth: '20px', textAlign: 'right' }}>{index + 1}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ color: 'var(--text-primary,#fff)', fontSize: '0.85rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{producto.nombre}</div>
+                      <div style={{ color: 'var(--text-secondary,#aaa)', fontSize: '0.72rem' }}>{producto.codigo || 'Sin código'}</div>
                     </div>
                     <input
-                      type={esNumero?'number':'text'}
-                      value={valoresEdicion[id]??''}
-                      onChange={e=>setValoresEdicion(prev=>({...prev,[id]:e.target.value}))}
+                      type={esNumero ? 'number' : 'text'}
+                      value={valoresEdicion[id] ?? ''}
+                      onChange={e => setValoresEdicion(prev => ({ ...prev, [id]: e.target.value }))}
                       placeholder={`Nuevo ${campoEdicion}...`}
-                      style={{background:'var(--bg-secondary,#0f0f23)',color:'var(--text-primary,#fff)',border:'1px solid var(--border-color,#2a2a4a)',borderRadius:'8px',padding:'7px 12px',fontSize:'0.85rem',width:'200px',outline:'none'}}
-                      onFocus={e=>e.target.style.borderColor='var(--accent,#7c3aed)'}
-                      onBlur={e=>e.target.style.borderColor='var(--border-color,#2a2a4a)'}
+                      style={{ background: 'var(--bg-secondary,#0f0f23)', color: 'var(--text-primary,#fff)', border: '1px solid var(--border-color,#2a2a4a)', borderRadius: '8px', padding: '7px 12px', fontSize: '0.85rem', width: '200px', outline: 'none' }}
+                      onFocus={e => e.target.style.borderColor = 'var(--accent,#7c3aed)'}
+                      onBlur={e => e.target.style.borderColor = 'var(--border-color,#2a2a4a)'}
                     />
                   </div>
                 );
               })}
             </div>
-            <div style={{padding:'1rem 1.5rem',borderTop:'1px solid var(--border-color,#2a2a4a)',display:'flex',justifyContent:'flex-end',gap:'12px'}}>
-              <button onClick={()=>setEdicionMasivaOpen(false)} style={{background:'none',color:'var(--text-secondary,#aaa)',border:'1px solid var(--border-color,#2a2a4a)',borderRadius:'8px',padding:'9px 20px',cursor:'pointer',fontSize:'0.875rem'}}>Cancelar</button>
-              <button onClick={handleGuardarEdicionMasiva} disabled={guardandoMasivo} style={{background:'var(--accent,#7c3aed)',color:'#fff',border:'none',borderRadius:'8px',padding:'9px 24px',cursor:guardandoMasivo?'not-allowed':'pointer',fontSize:'0.875rem',fontWeight:700,opacity:guardandoMasivo?0.7:1}}>
-                {guardandoMasivo?'Guardando...':`Guardar ${seleccionados.length} productos`}
+            <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border-color,#2a2a4a)', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button onClick={() => setEdicionMasivaOpen(false)} style={{ background: 'none', color: 'var(--text-secondary,#aaa)', border: '1px solid var(--border-color,#2a2a4a)', borderRadius: '8px', padding: '9px 20px', cursor: 'pointer', fontSize: '0.875rem' }}>Cancelar</button>
+              <button onClick={handleGuardarEdicionMasiva} disabled={guardandoMasivo} style={{ background: 'var(--accent,#7c3aed)', color: '#fff', border: 'none', borderRadius: '8px', padding: '9px 24px', cursor: guardandoMasivo ? 'not-allowed' : 'pointer', fontSize: '0.875rem', fontWeight: 700, opacity: guardandoMasivo ? 0.7 : 1 }}>
+                {guardandoMasivo ? 'Guardando...' : `Guardar ${seleccionados.length} productos`}
               </button>
             </div>
           </div>

@@ -140,7 +140,7 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
   const { organization, userProfile } = useAuth();
   const { hasFeature } = useSubscription();
   const { isOnline } = useNetworkStatus();
-  const isJewelryBusiness = organization?.business_type === 'jewelry_metals' || (producto?.metadata?.jewelry_price_mode !== undefined);
+  const isJewelryBusiness = organization?.business_type === 'jewelry_metals';
   const parseWeightValue = useCallback((value) => {
     if (value === '' || value === null || value === undefined) return 0;
     const normalized = value.toString().replace(',', '.');

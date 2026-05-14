@@ -1,0 +1,25 @@
+.inventario-clear-btn-final-fix {
+  width: 42px !important;
+  height: 42px !important;
+  background-color: #ef4444 !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  font-size: 28px !important;
+  font-weight: bold !important;
+  line-height: 1 !important;
+  flex-shrink: 0 !important;
+  box-shadow: 0 4px 6px rgba(239, 68, 68, 0.3) !important;
+  transition: all 0.2s ease !important;
+  z-index: 9999 !important;
+  text-align: center !important;
+}
+
+.inventario-clear-btn-final-fix:hover {
+  background-color: #dc2626 !important;
+  transform: scale(1.1) rotate(90deg) !important;
+}
