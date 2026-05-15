@@ -14,6 +14,7 @@ import { useToppings } from '../../hooks/useToppings';
 import { useGuardarCotizacion, useActualizarCotizacion, useCotizaciones, useEliminarCotizacion } from '../../hooks/useCotizaciones';
 import { generarCodigoVenta, generarCodigoVentaLocal } from '../../utils/generarCodigoVenta';
 import { enqueueVenta } from '../../utils/offlineQueue';
+import { actualizarStockVenta } from '../../utils/ventas/actualizarStockVenta';
 import { getEmployeeSession } from '../../utils/employeeSession';
 import { useCurrencyInput } from '../../hooks/useCurrencyInput';
 import { useClientes, useCrearCliente } from '../../hooks/useClientes';
@@ -942,9 +943,9 @@ export default function Caja({
     if (isEmployeeMode) {
       // Si no hay sesión de empleado pero estamos en modo empleado,
       // DEBEMOS enviar el user.id actual para no violar restricciones de DB
-      return { 
-        ventaUserId: user?.id || organization?.owner_id || null, 
-        ventaEmployeeId: null 
+      return {
+        ventaUserId: user?.id || organization?.owner_id || null,
+        ventaEmployeeId: null
       };
     }
     // Usuario normal (dueño o admin)
@@ -3471,357 +3472,210 @@ export default function Caja({
       return;
     }
 
-    const maxIntentos = 3;
-    let intento = 0;
-    let ventaResult = null;
-    let exito = false;
-
-    while (intento < maxIntentos && !exito) {
-      try {
-        // Generar código de venta amigable (forzar único en reintentos)
-        const numeroVenta = await generarCodigoVenta(organization.id, metodoPagoFinal, intento > 0);
-
-        // Guardar la venta en la base de datos
-        const ventaData = {
-          organization_id: organization.id,
-          user_id: ventaUserId,
-          employee_id: ventaEmployeeId,
-          total: total,
-          subtotal: subtotal,
-          descuento: montoDescuento > 0 ? {
-            tipo: descuento.tipo,
-            valor: descuento.valor,
-            monto: montoDescuento,
-            alcance: descuento.alcance,
-            productosIds: descuento.productosIds
-          } : null,
-          metodo_pago: metodoPagoFinal,
-          items: cart.map(item => {
-            const producto = productos.find(p => p.id === item.id);
-            return {
-              id: item.id,
-              nombre: item.nombre,
-              qty: item.qty,
-              cantidad: item.qty,
-              precio_venta: item.precio_venta,
-              precio_compra: item.precio_compra || 0,
-              precio: item.precio_venta,
-              precio_unitario: item.precio_venta,
-              toppings: item.toppings || [],
-              variaciones: item.variaciones || {},
-              metadata: {
-                ...item.metadata,
-                peso: item.metadata?.peso || producto?.metadata?.peso,
-                material: item.metadata?.material || producto?.metadata?.material,
-                jewelry_material_type: item.metadata?.jewelry_material_type || producto?.metadata?.jewelry_material_type,
-              },
-              variant_id: item.variant_id || null,
-              variant_nombre: item.variant_nombre || null,
-              notas: item.notas || null
-            };
-          }),
-          fecha: fechaVenta,
-          created_at: fechaVenta,
-          pago_cliente: montoPagoCliente,
-          detalles_pago_mixto: metodoActual === "Mixto" && detallesPagoMixto ? detallesPagoMixto : null,
-          numero_venta: numeroVenta,
-          cliente_id: clienteSeleccionado?.id || null,
-          es_credito: metodoActual === 'Credito',
-          notas: (cotizacionId ? `[Venta desde Cotización #${cotizacionId}] ` : '') + (notas || '')
-        };
-
-        const { data: result, error: ventaError } = await supabase
-          .from('ventas')
-          .insert([ventaData])
-          .select();
-
-        if (ventaError) {
-          // Detectar error de clave duplicada
-          const esDuplicado = ventaError.code === '23505' ||
-            ventaError.message?.includes('duplicate key') ||
-            ventaError.message?.includes('idx_ventas_numero_venta_unique');
-
-          if (esDuplicado && intento < maxIntentos - 1) {
-            intento++;
-            // Esperar un poco antes de reintentar para evitar condiciones de carrera
-            const tiempoEspera = 100 * intento;
-            await new Promise(resolve => setTimeout(resolve, tiempoEspera));
-            continue;
-          }
-
-          toast.error(`Error al guardar la venta: ${ventaError.message} `);
-          setProcesandoVenta(false);
-          return;
-        }
-
-        if (!result || result.length === 0) {
-          toast.error('Error: No se pudo obtener el ID de la venta');
-          setProcesandoVenta(false);
-          return;
-        }
-
-        ventaResult = result;
-        exito = true;
-      } catch (error) {
-        // Si no es un error de duplicado o ya agotamos los intentos, mostrar error
-        const esDuplicado = error.code === '23505' ||
-          error.message?.includes('duplicate key') ||
-          error.message?.includes('idx_ventas_numero_venta_unique');
-
-        if (!esDuplicado || intento >= maxIntentos - 1) {
-          toast.error(`Error al guardar la venta: ${error.message || 'Error desconocido'} `);
-          setProcesandoVenta(false);
-          return;
-        }
-
-        // Si es duplicado y aún hay intentos, continuar el loop
-        intento++;
-        const tiempoEsperaActual = 100 * intento;
-        await new Promise(resolve => setTimeout(resolve, tiempoEsperaActual));
-      }
-    }
-
-    if (!exito || !ventaResult) {
-      toast.error('Error: No se pudo guardar la venta después de varios intentos');
-      setProcesandoVenta(false);
-      return;
-    }
-
-    // Si es crédito, crear el registro de crédito
-    let creditoId = null;
-    if (metodoActual === 'Credito' && clienteSeleccionado) {
-      try {
-        // Calcular fecha de vencimiento (por defecto 30 días desde hoy)
-        const fechaVenc = fechaVencimientoCredito
-          ? new Date(fechaVencimientoCredito)
-          : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-
-        // Si hubo abono, montoPagoCliente tiene el valor
-        const abonoInicial = tieneAbono ? montoPagoCliente : 0;
-
-        const creditoData = {
-          organization_id: organization.id,
-          venta_id: ventaResult[0].id,
-          cliente_id: clienteSeleccionado.id,
-          monto_total: total,
-          // Iniciamos en 0 para que el trigger de Supabase actualice monto_pagado
-          // cuando se inserte el abono en pagos_creditos (evita doble conteo)
-          monto_pagado: 0,
-          monto_pendiente: total,
-          fecha_vencimiento: fechaVenc.toISOString().split('T')[0],
-          estado: 'pendiente',
-          notas: `Crédito generado automáticamente por venta ${ventaResult[0].numero_venta}${tieneAbono ? ` (Abono Inicial: ${formatCOP(abonoInicial)} en ${detallesPagoMixto.metodoAbono})` : ''}`
-        };
-
-        const creditoCreado = await crearCreditoMutation.mutateAsync(creditoData);
-        creditoId = creditoCreado.id;
-
-        // Actualizar la venta con el credito_id
-        await supabase
-          .from('ventas')
-          .update({ credito_id: creditoId })
-          .eq('id', ventaResult[0].id);
-
-        // Si hubo abono, registrar el pago del abono en pagos_creditos
-        if (tieneAbono && abonoInicial > 0) {
-          const pagoAbonoData = {
-            organization_id: organization.id,
-            credito_id: creditoId,
-            monto: abonoInicial,
-            metodo_pago: detallesPagoMixto.metodoAbono,
-            notas: 'Abono inicial al momento de la venta',
-            user_id: ventaUserId || null,
-          };
-          const { error: errorPago } = await supabase
-            .from('pagos_creditos')
-            .insert([pagoAbonoData]);
-          if (errorPago) {
-            console.error('Error registrando abono inicial en pagos_creditos:', errorPago);
-          } else {
-            // Actualizar manualmente el crédito con los montos correctos
-            // (evita doble conteo si hay un trigger en Supabase que sume pagos_creditos)
-            const deudaReal = total - abonoInicial;
-            await supabase
-              .from('creditos')
-              .update({
-                monto_pagado: abonoInicial,
-                monto_pendiente: Math.max(deudaReal, 0),
-                estado: deudaReal <= 0 ? 'pagado' : 'parcial'
-              })
-              .eq('id', creditoId);
-          }
-        }
-
-      } catch (error) {
-        console.error('Error al crear crédito:', error);
-        toast.error('La venta se guardó pero hubo un error al crear el crédito. Por favor, créalo manualmente.');
-      }
-    }
-
     try {
-      // Los pedidos ya fueron actualizados arriba en la sección principal de procesamiento
+      const maxIntentos = 3;
+      let intento = 0;
+      let ventaResult = null;
+      let exito = false;
 
-      // Actualizar stock de productos y toppings
-      for (const item of cart) {
-        // Si es un topping individual, actualizar stock en la tabla toppings
-        if (item.es_topping || (typeof item.id === 'string' && item.id.startsWith('topping_'))) {
-          const toppingId = item.topping_id || (typeof item.id === 'string' && item.id.startsWith('topping_') ? item.id.replace('topping_', '') : item.id);
+      while (intento < maxIntentos && !exito) {
+        try {
+          // Generar código de venta amigable (forzar único en reintentos)
+          const numeroVenta = await generarCodigoVenta(organization.id, metodoPagoFinal, intento > 0);
 
-          // Obtener el topping actual para verificar stock
-          const { data: topping, error: toppingError } = await supabase
-            .from('toppings')
-            .select('stock')
-            .eq('id', toppingId)
-            .single();
+          // Guardar la venta en la base de datos
+          const ventaData = {
+            organization_id: organization.id,
+            user_id: ventaUserId,
+            employee_id: ventaEmployeeId,
+            total: total,
+            subtotal: subtotal,
+            descuento: montoDescuento > 0 ? {
+              tipo: descuento.tipo,
+              valor: descuento.valor,
+              monto: montoDescuento,
+              alcance: descuento.alcance,
+              productosIds: descuento.productosIds
+            } : null,
+            metodo_pago: metodoPagoFinal,
+            items: cart.map(item => {
+              const producto = productos.find(p => p.id === item.id);
+              return {
+                id: item.id,
+                nombre: item.nombre,
+                qty: item.qty,
+                cantidad: item.qty,
+                precio_venta: item.precio_venta,
+                precio_compra: item.precio_compra || 0,
+                precio: item.precio_venta,
+                precio_unitario: item.precio_venta,
+                toppings: item.toppings || [],
+                variaciones: item.variaciones || {},
+                metadata: {
+                  ...item.metadata,
+                  peso: item.metadata?.peso || producto?.metadata?.peso,
+                  material: item.metadata?.material || producto?.metadata?.material,
+                  jewelry_material_type: item.metadata?.jewelry_material_type || producto?.metadata?.jewelry_material_type,
+                },
+                variant_id: item.variant_id || null,
+                variant_nombre: item.variant_nombre || null,
+                notas: item.notas || null
+              };
+            }),
+            fecha: fechaVenta,
+            created_at: fechaVenta,
+            pago_cliente: montoPagoCliente,
+            detalles_pago_mixto: metodoActual === "Mixto" && detallesPagoMixto ? detallesPagoMixto : null,
+            numero_venta: numeroVenta,
+            cliente_id: clienteSeleccionado?.id || null,
+            es_credito: metodoActual === 'Credito',
+            notas: (cotizacionId ? `[Venta desde Cotización #${cotizacionId}] ` : '') + (notas || '')
+          };
 
-          if (!toppingError && topping && topping.stock !== null && topping.stock !== undefined) {
-            const nuevoStock = topping.stock - item.qty;
-            const { error: stockError } = await supabase
-              .from('toppings')
-              .update({ stock: nuevoStock })
-              .eq('id', toppingId);
+          const { data: result, error: ventaError } = await supabase
+            .from('ventas')
+            .insert([ventaData])
+            .select();
 
-            if (stockError) {
-              console.error(`Error al actualizar el stock del topping ${item.nombre}: `, stockError);
-              toast.error(`Error al actualizar el stock de ${item.nombre}. La venta se guardó pero el stock no se actualizó.`);
+          if (ventaError) {
+            // Detectar error de clave duplicada
+            const esDuplicado = ventaError.code === '23505' ||
+              ventaError.message?.includes('duplicate key') ||
+              ventaError.message?.includes('idx_ventas_numero_venta_unique');
+
+            if (esDuplicado && intento < maxIntentos - 1) {
+              intento++;
+              // Esperar un poco antes de reintentar para evitar condiciones de carrera
+              const tiempoEspera = 100 * intento;
+              await new Promise(resolve => setTimeout(resolve, tiempoEspera));
+              continue;
             }
-          }
-        } else {
-          // Es un producto normal
-          // Primero intentar obtener el producto del array, si no está, obtenerlo de la BD
-          let producto = productos.find(p => p.id === item.id);
 
-          // Si no está en el array, obtenerlo directamente de la BD
-          if (!producto) {
-            const { data: productoBD, error: productoBDError } = await supabase
-              .from('productos')
-              .select('id, nombre, stock, metadata')
-              .eq('id', item.id)
-              .single();
-
-            if (!productoBDError && productoBD) {
-              producto = productoBD;
-            }
-          }
-
-          if (item.variant_id) {
-            const { data: variante, error: varianteError } = await supabase
-              .from('product_variants')
-              .select('stock')
-              .eq('id', item.variant_id)
-              .single();
-
-            if (!varianteError && variante && variante.stock !== null && variante.stock !== undefined) {
-              const nuevoStock = variante.stock - item.qty;
-              const { error: stockError } = await supabase
-                .from('product_variants')
-                .update({ stock: nuevoStock })
-                .eq('id', item.variant_id);
-
-              if (stockError) {
-                console.error(`Error al actualizar el stock de la variante ${item.variant_nombre || item.nombre}: `, stockError);
-                toast.error(`Error al actualizar el stock de ${item.nombre}. La venta se guardó pero el stock de la variante no se actualizó.`);
-              }
-            }
-          } else if (producto && producto.stock !== null && producto.stock !== undefined) {
-            const nuevoStock = producto.stock - item.qty;
-            const { error: stockError } = await supabase
-              .from('productos')
-              .update({ stock: nuevoStock })
-              .eq('id', item.id);
-
-            if (stockError) {
-              console.error(`Error al actualizar el stock de ${item.nombre}: `, stockError);
-              toast.error(`Error al actualizar el stock de ${item.nombre}. La venta se guardó pero el stock no se actualizó.`);
-            }
-          }
-
-          // Descontar productos vinculados si existen
-          // Parsear metadata si viene como string
-          let metadata = producto?.metadata;
-          if (typeof metadata === 'string') {
-            try {
-              metadata = JSON.parse(metadata);
-            } catch (e) {
-              console.warn('Error parseando metadata:', e);
-              metadata = null;
-            }
+            toast.error(`Error al guardar la venta: ${ventaError.message} `);
+            setProcesandoVenta(false);
+            return;
           }
 
-          const productosVinculados = metadata?.productos_vinculados;
-          if (productosVinculados && Array.isArray(productosVinculados) && productosVinculados.length > 0) {
-            for (const productoVinculado of productosVinculados) {
-              // Validar que tenga producto_id
-              if (!productoVinculado.producto_id) {
-                console.warn('Producto vinculado sin producto_id:', productoVinculado);
-                continue;
-              }
-
-              // Calcular cantidad a descontar (puede ser fraccionada)
-              const cantidadADescontar = parseFloat(productoVinculado.cantidad || 0) * parseFloat(item.qty || 1);
-
-              console.log(`📦 Descontando producto vinculado: `, {
-                producto_id: productoVinculado.producto_id,
-                producto_nombre: productoVinculado.producto_nombre,
-                cantidad_por_unidad: productoVinculado.cantidad,
-                cantidad_vendida: item.qty,
-                cantidad_total_a_descontar: cantidadADescontar,
-                es_porcion: productoVinculado.es_porcion
-              });
-
-              // Obtener el producto vinculado actual
-              const { data: prodVinculado, error: prodError } = await supabase
-                .from('productos')
-                .select('id, nombre, stock')
-                .eq('id', productoVinculado.producto_id)
-                .single();
-
-              if (prodError) {
-                console.error(`Error obteniendo producto vinculado ${productoVinculado.producto_id}: `, prodError);
-                toast.error(`Error al obtener producto vinculado ${productoVinculado.producto_nombre || productoVinculado.producto_id}. La venta se guardó pero el stock no se actualizó.`);
-                continue;
-              }
-
-              if (prodVinculado && prodVinculado.stock !== null && prodVinculado.stock !== undefined) {
-                // Convertir stock actual a número (puede venir como string)
-                const stockActual = parseFloat(prodVinculado.stock) || 0;
-                const nuevoStockVinculado = Math.max(0, stockActual - cantidadADescontar);
-
-                // Redondear a 2 decimales para evitar problemas de precisión
-                const nuevoStockRedondeado = Math.round(nuevoStockVinculado * 100) / 100;
-
-                console.log(`📊 Actualizando stock: `, {
-                  producto: prodVinculado.nombre,
-                  stock_actual: stockActual,
-                  cantidad_a_descontar: cantidadADescontar,
-                  nuevo_stock: nuevoStockRedondeado
-                });
-
-                const { error: stockVinculadoError } = await supabase
-                  .from('productos')
-                  .update({ stock: nuevoStockRedondeado })
-                  .eq('id', productoVinculado.producto_id);
-
-                if (stockVinculadoError) {
-                  console.error(`❌ Error al actualizar el stock del producto vinculado ${productoVinculado.producto_nombre || prodVinculado.nombre}: `, stockVinculadoError);
-                  console.error(`   Detalles del error: `, JSON.stringify(stockVinculadoError, null, 2));
-                  console.error(`   Valores usados: `, {
-                    producto_id: productoVinculado.producto_id,
-                    stock_actual: stockActual,
-                    cantidad_a_descontar: cantidadADescontar,
-                    nuevo_stock: nuevoStockRedondeado
-                  });
-                  toast.error(`Error al actualizar el stock de ${productoVinculado.producto_nombre || prodVinculado.nombre}. La venta se guardó pero el stock no se actualizó.`);
-                } else {
-                  console.log(`✅ Stock actualizado para producto vinculado: ${prodVinculado.nombre} (${stockActual} -> ${nuevoStockRedondeado})`);
-                }
-              } else {
-                console.warn(`Producto vinculado ${prodVinculado?.nombre || productoVinculado.producto_id} no tiene stock configurado`);
-              }
-            }
+          if (!result || result.length === 0) {
+            toast.error('Error: No se pudo obtener el ID de la venta');
+            setProcesandoVenta(false);
+            return;
           }
+
+          ventaResult = result;
+          exito = true;
+        } catch (error) {
+          // Si no es un error de duplicado o ya agotamos los intentos, mostrar error
+          const esDuplicado = error.code === '23505' ||
+            error.message?.includes('duplicate key') ||
+            error.message?.includes('idx_ventas_numero_venta_unique');
+
+          if (!esDuplicado || intento >= maxIntentos - 1) {
+            toast.error(`Error al guardar la venta: ${error.message || 'Error desconocido'} `);
+            setProcesandoVenta(false);
+            return;
+          }
+
+          // Si es duplicado y aún hay intentos, continuar el loop
+          intento++;
+          const tiempoEsperaActual = 100 * intento;
+          await new Promise(resolve => setTimeout(resolve, tiempoEsperaActual));
         }
       }
+
+      if (!exito || !ventaResult) {
+        toast.error('Error: No se pudo guardar la venta después de varios intentos');
+        setProcesandoVenta(false);
+        return;
+      }
+
+      // Si es crédito, crear el registro de crédito
+      let creditoId = null;
+      if (metodoActual === 'Credito' && clienteSeleccionado) {
+        try {
+          // Calcular fecha de vencimiento (por defecto 30 días desde hoy)
+          const fechaVenc = fechaVencimientoCredito
+            ? new Date(fechaVencimientoCredito)
+            : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+          // Si hubo abono, montoPagoCliente tiene el valor
+          const abonoInicial = tieneAbono ? montoPagoCliente : 0;
+
+          const creditoData = {
+            organization_id: organization.id,
+            venta_id: ventaResult[0].id,
+            cliente_id: clienteSeleccionado.id,
+            monto_total: total,
+            // Iniciamos en 0 para que el trigger de Supabase actualice monto_pagado
+            // cuando se inserte el abono en pagos_creditos (evita doble conteo)
+            monto_pagado: 0,
+            monto_pendiente: total,
+            fecha_vencimiento: fechaVenc.toISOString().split('T')[0],
+            estado: 'pendiente',
+            notas: `Crédito generado automáticamente por venta ${ventaResult[0].numero_venta}${tieneAbono ? ` (Abono Inicial: ${formatCOP(abonoInicial)} en ${detallesPagoMixto.metodoAbono})` : ''}`
+          };
+
+          const creditoCreado = await crearCreditoMutation.mutateAsync(creditoData);
+          creditoId = creditoCreado.id;
+
+          // Actualizar la venta con el credito_id
+          await supabase
+            .from('ventas')
+            .update({ credito_id: creditoId })
+            .eq('id', ventaResult[0].id);
+
+          // Si hubo abono, registrar el pago del abono en pagos_creditos
+          if (tieneAbono && abonoInicial > 0) {
+            const pagoAbonoData = {
+              organization_id: organization.id,
+              credito_id: creditoId,
+              monto: abonoInicial,
+              metodo_pago: detallesPagoMixto.metodoAbono,
+              notas: 'Abono inicial al momento de la venta',
+              user_id: ventaUserId || null,
+            };
+            const { error: errorPago } = await supabase
+              .from('pagos_creditos')
+              .insert([pagoAbonoData]);
+            if (errorPago) {
+              console.error('Error registrando abono inicial en pagos_creditos:', errorPago);
+            } else {
+              // Actualizar manualmente el crédito con los montos correctos
+              // (evita doble conteo si hay un trigger en Supabase que sume pagos_creditos)
+              const deudaReal = total - abonoInicial;
+              await supabase
+                .from('creditos')
+                .update({
+                  monto_pagado: abonoInicial,
+                  monto_pendiente: Math.max(deudaReal, 0),
+                  estado: deudaReal <= 0 ? 'pagado' : 'parcial'
+                })
+                .eq('id', creditoId);
+            }
+          }
+
+        } catch (error) {
+          console.error('Error al crear crédito:', error);
+          toast.error('La venta se guardó pero hubo un error al crear el crédito. Por favor, créalo manualmente.');
+        }
+      }
+
+      // Actualizar stock de productos y toppings y registrar movimientos
+      await actualizarStockVenta({
+        supabase,
+        items: cart.map(item => ({
+          ...item,
+          id: item.id,
+          qty: item.qty,
+          variant_id: item.variant_id
+        })),
+        productos,
+        organizationId: organization.id,
+        userId: ventaUserId,
+        userName: userProfile?.full_name || user?.user_metadata?.full_name || user?.email || 'Usuario',
+        ventaId: ventaResult[0].id
+      });
+
 
       // Obtener información del cliente si existe
       // Priorizar cliente seleccionado en caja, si no hay, usar el nombre del pedido

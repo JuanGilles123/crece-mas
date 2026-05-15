@@ -22,7 +22,8 @@ import {
   ShoppingCart,
   Store,
   FileBarChart,
-  ClipboardList
+  ClipboardList,
+  ArrowRightLeft
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSubscription } from '../../hooks/useSubscription';
@@ -151,6 +152,13 @@ const DashboardLayout = () => {
             icon: Package,
             label: "Inventario inicial",
             title: "Registro inicial colaborativo",
+            visible: hasPermission('inventory') || true
+          },
+          {
+            to: "/dashboard/inventario/movimientos",
+            icon: ArrowRightLeft,
+            label: "Movimiento Stock",
+            title: "Historial de entradas y salidas",
             visible: hasPermission('inventory') || true
           },
           {

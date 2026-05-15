@@ -22,6 +22,8 @@ import EntradaInventarioModal from '../../components/modals/EntradaInventarioMod
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
+import MovimientosStockModal from '../../components/modals/MovimientosStockModal';
+import { History } from 'lucide-react';
 
 
 // Función para eliminar imagen del storage
@@ -187,7 +189,7 @@ const Inventario = () => {
   const [entradaInventarioOpen, setEntradaInventarioOpen] = useState(false);
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
   const [varianteSeleccionadaId, setVarianteSeleccionadaId] = useState(null);
-  const [modoLista, setModoLista] = useState(true);
+  const [modoLista, setModoLista] = useState(false);
   const [manualSpin, setManualSpin] = useState(false);
   const [ordenProductos, setOrdenProductos] = useState('created_desc');
   const [query, setQuery] = useState('');
@@ -199,6 +201,9 @@ const Inventario = () => {
   const [edicionMasivaOpen, setEdicionMasivaOpen] = useState(false);
   const [campoEdicion, setCampoEdicion] = useState('categoria');
   const [valoresEdicion, setValoresEdicion] = useState({});
+  const [movimientosModalOpen, setMovimientosModalOpen] = useState(false);
+  const [movimientosProducto, setMovimientosProducto] = useState(null);
+  const [movimientosVarianteId, setMovimientosVarianteId] = useState(null);
   const [guardandoMasivo, setGuardandoMasivo] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const advancedFiltersRef = useRef(null);
@@ -1538,11 +1543,7 @@ const Inventario = () => {
 
           {/* Contenido de productos */}
           <div className="inventario-content">
-            {cargando ? (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}>
-                <LottieLoader size="medium" message="Cargando productos..." />
-              </div>
-            ) : sortedProducts.length === 0 ? (
+            {sortedProducts.length === 0 ? (
               <div className="sin-resultados-busqueda">
                 <Search size={48} />
                 <h3>No se encontraron productos</h3>
@@ -1614,20 +1615,36 @@ const Inventario = () => {
                         <div className="inventario-stock">Stock: {prod.stock !== null && prod.stock !== undefined ? parseFloat(prod.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 4 }) : '0'}</div>
                       </div>
                       <div className={modoLista ? "inventario-lista-actions" : "inventario-card-actions"} onClick={(e) => e.stopPropagation()}>
+                        <button
+                          className="inventario-btn inventario-btn-outline historial"
+                          onClick={() => {
+                            setMovimientosProducto(prod);
+                            setMovimientosVarianteId(null);
+                            setMovimientosModalOpen(true);
+                          }}
+                          title="Ver historial de movimientos"
+                        >
+                          <History size={16} />
+                          {modoLista && <span>Historial</span>}
+                        </button>
                         {(hasPermission('inventario.edit') || ['owner', 'admin'].includes(userProfile?.role)) && (
                           <button
-                            className="inventario-btn inventario-btn-outline"
+                            className="inventario-btn inventario-btn-outline editar"
                             onClick={() => handleEditarProducto(prod)}
+                            title="Editar producto"
                           >
-                            Editar
+                            <Edit3 size={16} />
+                            {modoLista && <span>Editar</span>}
                           </button>
                         )}
                         {(hasPermission('inventario.delete') || ['owner', 'admin'].includes(userProfile?.role)) && (
                           <button
                             className="inventario-btn inventario-btn-outline eliminar"
                             onClick={() => handleEliminarProducto(prod)}
+                            title="Eliminar producto"
                           >
-                            Eliminar
+                            <Trash2 size={16} />
+                            {modoLista && <span>Eliminar</span>}
                           </button>
                         )}
                       </div>
@@ -1780,6 +1797,13 @@ const Inventario = () => {
           </div>
         </div>
       )}
+
+      <MovimientosStockModal 
+        open={movimientosModalOpen}
+        onClose={() => setMovimientosModalOpen(false)}
+        producto={movimientosProducto}
+        varianteId={movimientosVarianteId}
+      />
     </div>
   );
 };

@@ -860,7 +860,13 @@ export const syncOutbox = async ({ supabase }) => {
             .in('id', pedidosIds);
         }
 
-        await actualizarStockVenta({ supabase, items: ventaData?.items || [] });
+        await actualizarStockVenta({ 
+          supabase, 
+          items: ventaData?.items || [],
+          organizationId: ventaData?.organization_id,
+          userId: ventaData?.user_id,
+          ventaId: ventaResult.id
+        });
 
         await db.ventas_local.update(tempId, {
           synced: 1,

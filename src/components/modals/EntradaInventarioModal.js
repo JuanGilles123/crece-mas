@@ -1,39 +1,55 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Search, Check, Building2, Plus } from 'lucide-react';
+import { X, Search, Check, Building2, Plus, LayoutGrid, List } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useProductos, useActualizarProducto } from '../../hooks/useProductos';
 import { useProveedores, useCrearGastoVariable, useCrearCreditoProveedor } from '../../hooks/useEgresos';
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
 import OptimizedProductImage from '../../components/business/OptimizedProductImage';
 import AgregarProductoModalV2 from './AgregarProductoModalV2';
+import EditarProductoModalV2 from './EditarProductoModalV2';
 import ProveedorModal from './ProveedorModal';
 import toast from 'react-hot-toast';
 import { supabase } from '../../services/api/supabaseClient';
 import './EntradaInventarioModal.css';
 
 const EntradaInventarioModal = ({ open, onClose }) => {
+
+
   const { organization, user } = useAuth();
   const moneda = user?.user_metadata?.moneda || 'COP';
-  const { data: productos = [] } = useProductos(organization?.id);
+  const { data: productos = [], refetch: refetchProductos } = useProductos(organization?.id);
   const actualizarProducto = useActualizarProducto();
   const { data: proveedores = [], refetch: refetchProveedores } = useProveedores(organization?.id, { activo: true });
   const crearGastoVariable = useCrearGastoVariable();
   const crearCreditoProveedor = useCrearCreditoProveedor();
-  
+
   const [productosSeleccionados, setProductosSeleccionados] = useState([]);
   const [productosParaAgregar, setProductosParaAgregar] = useState([]); // IDs de productos seleccionados en búsqueda
   const [mostrarBusqueda, setMostrarBusqueda] = useState(false);
   const [busqueda, setBusqueda] = useState('');
+  const [busquedaDebounced, setBusquedaDebounced] = useState('');
+  const [visibleCount, setVisibleCount] = useState(60); // Carga inicial
+  const busquedaDebounceRef = useRef(null);
+  const gridScrollRef = useRef(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [vistaLista, setVistaLista] = useState(false); // false = grid, true = lista
   const [mostrarCrearProducto, setMostrarCrearProducto] = useState(false);
   const [productosActualizando, setProductosActualizando] = useState(new Set()); // IDs de productos que se están actualizando
   const [modalProveedor, setModalProveedor] = useState({ open: false, proveedor: null });
   const [proveedorSeleccionado, setProveedorSeleccionado] = useState(null); // ID del proveedor seleccionado
+  const [mostrarSeleccionProveedor, setMostrarSeleccionProveedor] = useState(false);
   const [tipoPago, setTipoPago] = useState(null); // 'credito' | 'pagado' | null
   const [metodoPago, setMetodoPago] = useState('transferencia');
   const [fechaPago, setFechaPago] = useState(new Date().toISOString().split('T')[0]);
-  
+  const [modalEditar, setModalEditar] = useState({ open: false, producto: null });
+
+  // Categorías existentes para el selector
+  const categoriasExistentes = useMemo(() => {
+    const cats = new Set(productos.map(p => p.metadata?.categoria || p.categoria).filter(Boolean));
+    return Array.from(cats).sort();
+  }, [productos]);
+
   // Handler para cuando se escanea un código de barras en el buscador
   const handleBarcodeScanned = useCallback((barcode) => {
     setBusqueda(barcode);
@@ -48,10 +64,10 @@ const EntradaInventarioModal = ({ open, onClose }) => {
   }, [mostrarBusqueda]);
 
   // Hook para lector de códigos de barras en el buscador
-  const { 
-    inputRef: barcodeInputRef, 
-    handleKeyDown: handleBarcodeKeyDown, 
-    handleInputChange: handleBarcodeInputChange 
+  const {
+    inputRef: barcodeInputRef,
+    handleKeyDown: handleBarcodeKeyDown,
+    handleInputChange: handleBarcodeInputChange
   } = useBarcodeScanner(handleBarcodeScanned, {
     minLength: 3,
     maxTimeBetweenChars: 50,
@@ -68,6 +84,40 @@ const EntradaInventarioModal = ({ open, onClose }) => {
   const globalBarcodeTimeoutRef = useRef(null);
   const globalBarcodeProcessingRef = useRef(false);
 
+  // Refrescar productos cada vez que se abre el modal
+  useEffect(() => {
+    if (open && organization?.id) {
+      refetchProductos();
+    }
+  }, [open, organization?.id, refetchProductos]);
+
+  // Sincronizar cambios externos (desde el modal de edición) con la lista local
+  useEffect(() => {
+    if (productos.length > 0 && productosSeleccionados.length > 0) {
+      setProductosSeleccionados(prev => {
+        let huboCambios = false;
+        const nuevos = prev.map(p => {
+          const latest = productos.find(lp => lp.id === p.producto_id);
+          if (latest) {
+            const nuevaCat = latest.categoria || latest.metadata?.categoria || '';
+            const nuevaImg = latest.imagen;
+
+            if (p.categoria !== nuevaCat || p.imagen_url !== nuevaImg) {
+              huboCambios = true;
+              return {
+                ...p,
+                categoria: nuevaCat,
+                imagen_url: nuevaImg
+              };
+            }
+          }
+          return p;
+        });
+        return huboCambios ? nuevos : prev;
+      });
+    }
+  }, [productos, productosSeleccionados.length]);
+
   // Listener global para detectar códigos de barras cuando el modal está abierto
   useEffect(() => {
     // Solo activar si el modal está abierto
@@ -78,36 +128,36 @@ const EntradaInventarioModal = ({ open, onClose }) => {
     const handleGlobalKeyDown = (e) => {
       // Ignorar si el usuario está escribiendo en un input, textarea o contenteditable
       const target = e.target;
-      const isInputElement = target.tagName === 'INPUT' || 
-                            target.tagName === 'TEXTAREA' || 
-                            target.isContentEditable ||
-                            target.closest('input') ||
-                            target.closest('textarea');
-      
+      const isInputElement = target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable ||
+        target.closest('input') ||
+        target.closest('textarea');
+
       // Si está en el input del buscador, dejar que el hook normal lo maneje
       if (target === busquedaInputRef.current || target === barcodeInputRef?.current) {
         return;
       }
-      
+
       // Si está en otro input, no procesar como código de barras
       if (isInputElement) {
         return;
       }
-      
+
       // Si es Enter o Tab, podría ser el final del código de barras
       if (e.key === 'Enter' || e.key === 'Tab') {
         e.preventDefault();
         e.stopPropagation();
-        
+
         const barcode = globalBarcodeBufferRef.current.trim();
         if (barcode.length >= 3 && !globalBarcodeProcessingRef.current) {
           globalBarcodeProcessingRef.current = true;
           handleBarcodeScanned(barcode);
-          
+
           // Limpiar buffer
           globalBarcodeBufferRef.current = '';
           globalLastCharTimeRef.current = null;
-          
+
           // Resetear flag después de un delay
           setTimeout(() => {
             globalBarcodeProcessingRef.current = false;
@@ -115,36 +165,36 @@ const EntradaInventarioModal = ({ open, onClose }) => {
         }
         return;
       }
-      
+
       // Si es un carácter imprimible
       if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
         const now = Date.now();
-        
+
         // Si pasó mucho tiempo desde el último carácter, resetear buffer
         if (globalLastCharTimeRef.current && (now - globalLastCharTimeRef.current) > 150) {
           globalBarcodeBufferRef.current = '';
         }
-        
+
         // Agregar carácter al buffer
         globalBarcodeBufferRef.current += e.key;
         globalLastCharTimeRef.current = now;
-        
+
         // Limpiar timeout anterior
         if (globalBarcodeTimeoutRef.current) {
           clearTimeout(globalBarcodeTimeoutRef.current);
         }
-        
+
         // Si después de un tiempo no hay más caracteres, procesar como código de barras
         globalBarcodeTimeoutRef.current = setTimeout(() => {
           const barcode = globalBarcodeBufferRef.current.trim();
           if (barcode.length >= 3 && !globalBarcodeProcessingRef.current) {
             globalBarcodeProcessingRef.current = true;
             handleBarcodeScanned(barcode);
-            
+
             // Limpiar buffer
             globalBarcodeBufferRef.current = '';
             globalLastCharTimeRef.current = null;
-            
+
             // Resetear flag después de un delay
             setTimeout(() => {
               globalBarcodeProcessingRef.current = false;
@@ -153,9 +203,9 @@ const EntradaInventarioModal = ({ open, onClose }) => {
         }, 150);
       }
     };
-    
+
     window.addEventListener('keydown', handleGlobalKeyDown);
-    
+
     return () => {
       window.removeEventListener('keydown', handleGlobalKeyDown);
       if (globalBarcodeTimeoutRef.current) {
@@ -210,20 +260,27 @@ const EntradaInventarioModal = ({ open, onClose }) => {
     return items;
   }, [productos]);
 
-  // Filtrar productos para búsqueda
-  const productosFiltrados = useMemo(() => {
-    // Si no hay búsqueda o está vacía, mostrar todos los productos
-    if (!busqueda || (typeof busqueda === 'string' && busqueda.trim() === '')) {
+  // Debounce de búsqueda para no filtrar en cada tecla
+  useEffect(() => {
+    if (busquedaDebounceRef.current) clearTimeout(busquedaDebounceRef.current);
+    busquedaDebounceRef.current = setTimeout(() => {
+      setBusquedaDebounced(busqueda);
+      setVisibleCount(60); // Resetear paginación al buscar
+    }, 300);
+    return () => clearTimeout(busquedaDebounceRef.current);
+  }, [busqueda]);
+
+  // Filtrar productos para búsqueda (usa debounced para no bloquear el input)
+  const productosFiltradosTodos = useMemo(() => {
+    if (!busquedaDebounced || busquedaDebounced.trim() === '') {
       return catalogoProductos;
     }
-    
-    const termino = busqueda.toLowerCase();
+    const termino = busquedaDebounced.toLowerCase();
     return catalogoProductos.filter(item => {
       const nombre = (item.nombre || '').toLowerCase();
       const codigo = (item.codigo || '').toLowerCase();
       const descripcion = (item.descripcion || '').toLowerCase();
       const metadata = item.metadata || {};
-      
       return (
         nombre.includes(termino) ||
         codigo.includes(termino) ||
@@ -233,8 +290,23 @@ const EntradaInventarioModal = ({ open, onClose }) => {
         (metadata.categoria && metadata.categoria.toLowerCase().includes(termino))
       );
     });
-  }, [catalogoProductos, busqueda]);
-  
+  }, [catalogoProductos, busquedaDebounced]);
+
+  // Limitar items visibles para no renderizar todo a la vez
+  const productosFiltrados = useMemo(
+    () => productosFiltradosTodos.slice(0, visibleCount),
+    [productosFiltradosTodos, visibleCount]
+  );
+  const hayMasProductos = productosFiltradosTodos.length > visibleCount;
+
+  // Cargar más al hacer scroll en el grid
+  const handleGridScroll = useCallback((e) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (scrollHeight - scrollTop - clientHeight < 300) {
+      setVisibleCount(prev => prev + 60);
+    }
+  }, []);
+
   // Formatear moneda
   const formatearMoneda = (valor) => {
     if (!valor && valor !== 0) return '';
@@ -242,14 +314,16 @@ const EntradaInventarioModal = ({ open, onClose }) => {
     if (isNaN(num)) return '';
     return num.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   };
-  
+
   // Parsear moneda
   const parsearMoneda = (valor) => {
     if (!valor) return 0;
-    const num = parseFloat(valor.toString().replace(/[^\d.-]/g, ''));
+    // Eliminar todo lo que no sea número para evitar problemas con separadores de miles (.)
+    const num = parseFloat(valor.toString().replace(/[^\d]/g, ''));
     return isNaN(num) ? 0 : num;
   };
-  
+
+
   // Toggle selección de producto en búsqueda
   const toggleProductoSeleccion = (itemKey) => {
     setProductosParaAgregar(prev => {
@@ -268,8 +342,8 @@ const EntradaInventarioModal = ({ open, onClose }) => {
       return;
     }
 
-    const productosAAgregar = productosFiltrados.filter(p => 
-      productosParaAgregar.includes(p.key) && 
+    const productosAAgregar = productosFiltrados.filter(p =>
+      productosParaAgregar.includes(p.key) &&
       !productosSeleccionados.find(ps => ps.key === p.key)
     );
 
@@ -282,16 +356,17 @@ const EntradaInventarioModal = ({ open, onClose }) => {
       const precioCompra = item.precio_compra || 0;
       const precioVenta = item.precio_venta || 0;
       // Calcular porcentaje inicial basado en precios actuales
-      const porcentajeInicial = precioCompra > 0 
-        ? ((precioVenta - precioCompra) / precioCompra) * 100 
+      const porcentajeInicial = precioCompra > 0
+        ? ((precioVenta - precioCompra) / precioCompra) * 100
         : 0;
-      
+
       return {
         key: item.key,
         producto_id: item.producto_id,
         variante_id: item.variante_id || null,
         tipo_item: item.tipo_item,
         nombre: item.nombre,
+        nombre_original: item.nombre,
         codigo: item.codigo || '',
         variante_nombre: item.variante_nombre || '',
         precio_compra_actual: precioCompra,
@@ -301,7 +376,9 @@ const EntradaInventarioModal = ({ open, onClose }) => {
         porcentaje_ganancia: porcentajeInicial,
         stock_actual: item.stock || 0,
         cantidad_agregar: 0,
-        stock_nuevo: item.stock || 0
+        stock_nuevo: item.stock || 0,
+        imagen_url: item.imagen,
+        categoria: item.categoria || item.metadata?.categoria || ''
       };
     });
 
@@ -312,16 +389,16 @@ const EntradaInventarioModal = ({ open, onClose }) => {
 
   // Seleccionar/deseleccionar todos
   const toggleSeleccionarTodos = () => {
-    const productosDisponibles = productosFiltrados.filter(p => 
+    const productosDisponibles = productosFiltrados.filter(p =>
       !productosSeleccionados.find(ps => ps.key === p.key)
     );
-    
+
     if (productosDisponibles.length === 0) {
       setProductosParaAgregar([]);
       return;
     }
 
-    const todosSeleccionados = productosDisponibles.every(p => 
+    const todosSeleccionados = productosDisponibles.every(p =>
       productosParaAgregar.includes(p.key)
     );
 
@@ -331,7 +408,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
       setProductosParaAgregar(productosDisponibles.map(p => p.key));
     }
   };
-  
+
   // Eliminar producto de la lista
   const eliminarProducto = (key) => {
     if (window.confirm('¿Estás seguro de que deseas eliminar este producto de la lista?')) {
@@ -339,34 +416,34 @@ const EntradaInventarioModal = ({ open, onClose }) => {
       toast.success('Producto eliminado de la lista');
     }
   };
-  
+
   // Actualizar producto individualmente
   const handleActualizarProductoIndividual = async (producto) => {
     if (producto.precio_compra_nuevo === undefined || producto.precio_compra_nuevo === null || producto.precio_compra_nuevo === '') {
       toast.error('Debes ingresar un precio de compra');
       return;
     }
-    
+
     if (producto.cantidad_agregar === undefined || producto.cantidad_agregar === null || producto.cantidad_agregar === '') {
       toast.error('Debes ingresar una cantidad');
       return;
     }
-    
+
     setProductosActualizando(prev => new Set(prev).add(producto.key));
-    
+
     try {
       const updates = {};
-      
+
       // Actualizar precio de compra si cambió
       if (producto.precio_compra_nuevo !== undefined && producto.precio_compra_nuevo !== producto.precio_compra_actual) {
         updates.precio_compra = producto.precio_compra_nuevo;
       }
-      
+
       // Actualizar precio de venta si cambió
       if (producto.precio_venta_nuevo !== undefined && producto.precio_venta_nuevo !== producto.precio_venta_actual) {
         updates.precio_venta = producto.precio_venta_nuevo;
       }
-      
+
       // Actualizar stock (sumar cantidad_agregar al stock actual)
       if (producto.cantidad_agregar > 0) {
         const nuevoStock = (producto.stock_actual || 0) + producto.cantidad_agregar;
@@ -382,7 +459,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
           updates.stock = nuevoStock;
         }
       }
-      
+
       // Solo actualizar si hay cambios
       if (Object.keys(updates).length > 0) {
         await actualizarProducto.mutateAsync({
@@ -390,7 +467,24 @@ const EntradaInventarioModal = ({ open, onClose }) => {
           updates,
           organizationId: organization?.id
         });
-        
+
+        // Registrar movimiento de stock si hubo cambio en el inventario
+        if (producto.cantidad_agregar > 0) {
+          await supabase.from('movimientos_stock').insert([{
+            organization_id: organization?.id,
+            producto_id: producto.producto_id,
+            producto_nombre: producto.nombre,
+            variante_id: producto.variante_id || null,
+            tipo: 'entrada',
+            cantidad: producto.cantidad_agregar,
+            stock_anterior: producto.stock_actual,
+            stock_nuevo: producto.stock_nuevo,
+            usuario_id: user?.id,
+            usuario_nombre: user?.user_metadata?.full_name || user?.email || 'Sistema',
+            notas: `Entrada individual: ${producto.nombre}${producto.variante_nombre ? ` (${producto.variante_nombre})` : ''}`
+          }]);
+        }
+
         // Actualizar el producto en la lista con los nuevos valores
         setProductosSeleccionados(productosSeleccionados.map(p => {
           if (p.key === producto.key) {
@@ -407,7 +501,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
           }
           return p;
         }));
-        
+
         toast.success(`${producto.nombre} actualizado exitosamente`);
       } else {
         toast.info('No hay cambios para actualizar');
@@ -423,7 +517,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
       });
     }
   };
-  
+
   // Calcular precio de venta basado en precio de compra y porcentaje
   const calcularPrecioVenta = (precioCompra, porcentaje) => {
     const precio = parseFloat(precioCompra) || 0;
@@ -444,13 +538,13 @@ const EntradaInventarioModal = ({ open, onClose }) => {
     setProductosSeleccionados(productosSeleccionados.map(p => {
       if (p.key === itemKey) {
         const actualizado = { ...p, [campo]: valor };
-        
+
         // Si se actualiza cantidad_agregar, calcular stock_nuevo
         if (campo === 'cantidad_agregar') {
           const cantidad = parseFloat(valor) || 0;
           actualizado.stock_nuevo = actualizado.stock_actual + cantidad;
         }
-        
+
         // Si se actualiza precio_compra_nuevo, recalcular precio_venta_nuevo basado en porcentaje
         if (campo === 'precio_compra_nuevo') {
           const precioCompra = parsearMoneda(valor);
@@ -460,27 +554,27 @@ const EntradaInventarioModal = ({ open, onClose }) => {
             actualizado.precio_venta_nuevo = calcularPrecioVenta(precioCompra, actualizado.porcentaje_ganancia || 0);
           }
         }
-        
+
         // Si se actualiza porcentaje_ganancia, recalcular precio_venta_nuevo
         if (campo === 'porcentaje_ganancia') {
           const porcentaje = parseFloat(valor) || 0;
           actualizado.porcentaje_ganancia = porcentaje;
           actualizado.precio_venta_nuevo = calcularPrecioVenta(actualizado.precio_compra_nuevo || 0, porcentaje);
         }
-        
+
         // Si se actualiza precio_venta_nuevo manualmente, recalcular porcentaje_ganancia
         if (campo === 'precio_venta_nuevo') {
           const precioVenta = parsearMoneda(valor);
           actualizado.precio_venta_nuevo = precioVenta;
           actualizado.porcentaje_ganancia = calcularPorcentaje(actualizado.precio_compra_nuevo || 0, precioVenta);
         }
-        
+
         return actualizado;
       }
       return p;
     }));
   };
-  
+
   // Actualizar precio (manejar formato de moneda)
   const actualizarPrecio = (id, campo, valor) => {
     const valorNumerico = parsearMoneda(valor);
@@ -492,7 +586,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
     const porcentaje = parseFloat(valor) || 0;
     actualizarCampo(id, 'porcentaje_ganancia', porcentaje);
   };
-  
+
   // Calcular total de la compra
   const calcularTotalCompra = () => {
     const total = productosSeleccionados.reduce((sum, producto) => {
@@ -503,37 +597,37 @@ const EntradaInventarioModal = ({ open, onClose }) => {
     }, 0);
     return Math.round(total * 100) / 100; // Redondear a 2 decimales
   };
-  
+
   // Guardar cambios
   const handleGuardar = async () => {
     if (productosSeleccionados.length === 0) {
       toast.error('Debes agregar al menos un producto');
       return;
     }
-    
+
     // Si hay proveedor, preguntar por tipo de pago
     if (proveedorSeleccionado && !tipoPago) {
       toast.error('Debes seleccionar si fue a crédito o pagado');
       return;
     }
-    
+
     setIsSubmitting(true);
-    
+
     try {
       // Actualizar cada producto
       for (const producto of productosSeleccionados) {
         const updates = {};
-        
+
         // Actualizar precio de compra si cambió
         if (producto.precio_compra_nuevo !== producto.precio_compra_actual) {
           updates.precio_compra = producto.precio_compra_nuevo;
         }
-        
+
         // Actualizar precio de venta si cambió
         if (producto.precio_venta_nuevo !== producto.precio_venta_actual) {
           updates.precio_venta = producto.precio_venta_nuevo;
         }
-        
+
         // Actualizar stock si hay cantidad agregada
         if (producto.cantidad_agregar > 0) {
           // Solo actualizar stock para productos físicos o comida
@@ -552,7 +646,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
             }
           }
         }
-        
+
         // Solo actualizar si hay cambios
         if (Object.keys(updates).length > 0) {
           await actualizarProducto.mutateAsync({
@@ -561,44 +655,61 @@ const EntradaInventarioModal = ({ open, onClose }) => {
             organizationId: organization?.id
           });
         }
+
+        // Registrar movimiento de stock si hubo cambio
+        if (producto.cantidad_agregar > 0) {
+          await supabase.from('movimientos_stock').insert([{
+            organization_id: organization?.id,
+            producto_id: producto.producto_id,
+            producto_nombre: producto.nombre,
+            variante_id: producto.variante_id || null,
+            tipo: 'entrada',
+            cantidad: producto.cantidad_agregar,
+            stock_anterior: producto.stock_actual,
+            stock_nuevo: producto.stock_nuevo,
+            usuario_id: user?.id,
+            usuario_nombre: user?.user_metadata?.full_name || user?.email || 'Sistema',
+            notas: `Entrada de inventario masiva${proveedorSeleccionado ? ` - Proveedor: ${proveedores.find(p => p.id === proveedorSeleccionado)?.nombre}` : ''}`
+          }]);
+        }
       }
-      
-      // Si hay proveedor, registrar en egresos
-      if (proveedorSeleccionado && tipoPago) {
+
+      // Si hay tipo de pago, registrar en egresos (incluso sin proveedor para gastos pagados)
+      if (tipoPago) {
         const totalCompra = calcularTotalCompra();
-        
+
         if (totalCompra <= 0) {
           toast.error('El total de la compra debe ser mayor a cero');
           setIsSubmitting(false);
           return;
         }
-        
+
         const proveedor = proveedores.find(p => p.id === proveedorSeleccionado);
         const nombreProveedor = proveedor?.nombre || 'Proveedor';
-        
+
         try {
           if (tipoPago === 'credito') {
             // Crear crédito a proveedor
             const creditoData = {
-              organization_id: organization.id,
+              organization_id: organization?.id,
               proveedor_id: proveedorSeleccionado,
               monto_total: totalCompra,
               monto_pagado: 0,
               monto_pendiente: totalCompra,
               fecha_emision: new Date().toISOString().split('T')[0],
-              fecha_vencimiento: null,
+              fecha_vencimiento: fechaPago,
               factura_numero: null,
               notas: `Entrada de inventario: ${productosSeleccionados.map(p => p.nombre).join(', ')}`,
               estado: 'pendiente'
             };
-            
+
             await crearCreditoProveedor.mutateAsync(creditoData);
             toast.success('Crédito a proveedor creado exitosamente');
           } else if (tipoPago === 'pagado') {
             // Crear gasto variable
             const gastoData = {
-              organization_id: organization.id,
-              user_id: user.id,
+              organization_id: organization?.id,
+              user_id: user?.id,
               nombre: `Compra de inventario - ${nombreProveedor}`,
               descripcion: `Productos: ${productosSeleccionados.map(p => `${p.nombre} (${p.cantidad_agregar || 0})`).join(', ')}`,
               monto: totalCompra.toString(),
@@ -607,7 +718,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
               proveedor_id: proveedorSeleccionado,
               notas: `Entrada de inventario registrada automáticamente`
             };
-            
+
             await crearGastoVariable.mutateAsync(gastoData);
             toast.success('Gasto variable registrado exitosamente');
           }
@@ -617,7 +728,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
           // Continuar aunque falle el registro en egresos, el inventario ya se actualizó
         }
       }
-      
+
       toast.success('Inventario actualizado exitosamente');
       setProductosSeleccionados([]);
       setTipoPago(null);
@@ -630,7 +741,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
       setIsSubmitting(false);
     }
   };
-  
+
   // Limpiar al cerrar
   const handleClose = () => {
     setProductosSeleccionados([]);
@@ -643,82 +754,85 @@ const EntradaInventarioModal = ({ open, onClose }) => {
     setFechaPago(new Date().toISOString().split('T')[0]);
     onClose();
   };
-  
+
   // Manejar cuando se crea un nuevo proveedor
   const handleProveedorCreado = () => {
     refetchProveedores();
     setModalProveedor({ open: false, proveedor: null });
   };
 
+  const handleAbrirEdicion = (item) => {
+    const p = productos.find(prod => prod.id === item.producto_id);
+    if (p) {
+      setModalEditar({ open: true, producto: p });
+    } else {
+      toast.error('No se encontró la información completa del producto');
+    }
+  };
+
+
+
   const handleProductoCreado = () => {
     setMostrarCrearProducto(false);
     setMostrarBusqueda(true);
   };
-  
+
   if (!open) return null;
-  
+
   const modalContent = (
     <div className="modal-overlay entrada-inventario-overlay" onClick={handleClose}>
       <div className="modal-content entrada-inventario-modal" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="entrada-inventario-header">
-          <h2>Entrada de Inventario</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <h2>Entrada de Inventario</h2>
+
+            {/* Selector de Proveedor Compacto */}
+            <div className="header-proveedor-compact">
+              {!proveedorSeleccionado ? (
+                <button
+                  type="button"
+                  className="btn-header-add-proveedor"
+                  onClick={() => setMostrarSeleccionProveedor(true)}
+                  title="Seleccionar proveedor"
+                >
+                  <Plus size={16} />
+                  <span>Proveedor</span>
+                </button>
+              ) : (
+                <div className="proveedor-active-badge">
+                  <Building2 size={14} />
+                  <span className="proveedor-name-header">
+                    {proveedores.find(p => p.id === proveedorSeleccionado)?.nombre}
+                  </span>
+                  <button
+                    type="button"
+                    className="btn-change-proveedor"
+                    onClick={() => setMostrarSeleccionProveedor(true)}
+                    title="Cambiar proveedor"
+                  >
+                    <Plus size={12} />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-remove-proveedor-header"
+                    onClick={() => setProveedorSeleccionado(null)}
+                    title="Quitar proveedor"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
           <button className="modal-close" onClick={handleClose}>
             <X size={20} />
           </button>
         </div>
-        
-        {/* Body */}
-        <div className="entrada-inventario-body">
-          {/* Selector de Proveedor */}
-          <div className="entrada-inventario-proveedor-section">
-            <label className="entrada-inventario-label">
-              <Building2 size={16} />
-              Proveedor
-            </label>
-            <div className="entrada-inventario-proveedor-selector">
-              <select
-                value={proveedorSeleccionado || ''}
-                onChange={(e) => setProveedorSeleccionado(e.target.value || null)}
-                className="entrada-inventario-select"
-              >
-                <option value="">Seleccionar proveedor (opcional)</option>
-                {proveedores.map((proveedor) => (
-                  <option key={proveedor.id} value={proveedor.id}>
-                    {proveedor.nombre} {proveedor.nit ? `- NIT: ${proveedor.nit}` : ''}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                className="btn-agregar-proveedor-small"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setModalProveedor({ open: true, proveedor: null });
-                }}
-                title="Agregar nuevo proveedor"
-              >
-                <span className="icon-plus">+</span>
-              </button>
-            </div>
-            {proveedorSeleccionado && (
-              <div className="entrada-inventario-proveedor-info">
-                {(() => {
-                  const proveedor = proveedores.find(p => p.id === proveedorSeleccionado);
-                  return proveedor ? (
-                    <div>
-                      <strong>{proveedor.nombre}</strong>
-                      {proveedor.telefono && <span> • Tel: {proveedor.telefono}</span>}
-                      {proveedor.email && <span> • {proveedor.email}</span>}
-                    </div>
-                  ) : null;
-                })()}
-              </div>
-            )}
-          </div>
-          
-          {/* Botones de acción */}
-          <div className="entrada-inventario-actions">
+
+        {/* Botones de acción - Movido fuera del body para fijarlo arriba */}
+        <div className="entrada-inventario-actions">
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
             <button
               type="button"
               className="btn-buscar-productos"
@@ -727,16 +841,62 @@ const EntradaInventarioModal = ({ open, onClose }) => {
               <Search size={16} />
               {mostrarBusqueda ? 'Ocultar búsqueda' : 'Buscar productos'}
             </button>
-          <button
-            type="button"
-            className="btn-buscar-productos"
-            onClick={() => setMostrarCrearProducto(true)}
-          >
-            <Plus size={16} />
-            Crear producto
-          </button>
+
+            <button
+              type="button"
+              className="btn-buscar-productos"
+              onClick={() => setMostrarCrearProducto(true)}
+            >
+              <Plus size={16} />
+              Crear producto
+            </button>
+
+            {productosParaAgregar.length > 0 && (
+              <button
+                type="button"
+                className="btn-buscar-productos"
+                onClick={agregarProductosSeleccionados}
+                style={{
+                  background: 'var(--accent-success, #10b981)',
+                  color: 'white',
+                  border: 'none',
+                  animation: 'pulse-green 2s infinite'
+                }}
+              >
+                <Check size={16} />
+                Agregar seleccionados ({productosParaAgregar.length})
+              </button>
+            )}
           </div>
-          
+
+          {/* Sumatoria en tiempo real */}
+          {productosSeleccionados.length > 0 && (
+            <div className="entrada-inventario-resumen-rapido">
+              <div className="resumen-item">
+                <span className="resumen-label">Total Factura:</span>
+                <span className="resumen-value inversion">
+                  {calcularTotalCompra().toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })}
+                </span>
+              </div>
+              <div className="resumen-divider" />
+              <div className="resumen-item">
+                <span className="resumen-label">Productos:</span>
+                <span className="resumen-value">{productosSeleccionados.length}</span>
+              </div>
+              <div className="resumen-divider" />
+              <div className="resumen-item">
+                <span className="resumen-label">Unidades:</span>
+                <span className="resumen-value">
+                  {productosSeleccionados.reduce((sum, p) => sum + (parseFloat(p.cantidad_agregar) || 0), 0)}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Body */}
+        <div className="entrada-inventario-body">
+
           {/* Modal de búsqueda */}
           {mostrarBusqueda && (
             <div className="productos-busqueda-modal">
@@ -762,6 +922,41 @@ const EntradaInventarioModal = ({ open, onClose }) => {
                         : 'Seleccionar todos'}
                     </button>
                   )}
+                </div>
+                {/* Toggle de vista */}
+                <div style={{ display: 'flex', gap: '0.35rem', marginRight: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setVistaLista(false)}
+                    title="Vista cuadrícula"
+                    style={{
+                      padding: '0.4rem',
+                      border: `1.5px solid ${!vistaLista ? 'var(--accent-primary)' : 'var(--border-primary)'}`,
+                      borderRadius: '6px',
+                      background: !vistaLista ? 'var(--accent-primary)' : 'transparent',
+                      color: !vistaLista ? 'white' : 'var(--text-secondary)',
+                      cursor: 'pointer',
+                      display: 'flex', alignItems: 'center'
+                    }}
+                  >
+                    <LayoutGrid size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVistaLista(true)}
+                    title="Vista lista"
+                    style={{
+                      padding: '0.4rem',
+                      border: `1.5px solid ${vistaLista ? 'var(--accent-primary)' : 'var(--border-primary)'}`,
+                      borderRadius: '6px',
+                      background: vistaLista ? 'var(--accent-primary)' : 'transparent',
+                      color: vistaLista ? 'white' : 'var(--text-secondary)',
+                      cursor: 'pointer',
+                      display: 'flex', alignItems: 'center'
+                    }}
+                  >
+                    <List size={16} />
+                  </button>
                 </div>
                 <button onClick={() => {
                   setMostrarBusqueda(false);
@@ -791,86 +986,108 @@ const EntradaInventarioModal = ({ open, onClose }) => {
                   className="productos-busqueda-input"
                 />
               </div>
-              <div className="productos-busqueda-grid">
-                {productosFiltrados.length === 0 ? (
-                  <p className="productos-busqueda-empty">No se encontraron productos</p>
-                ) : (
-                  productosFiltrados.map((producto) => {
-                    const yaAgregado = productosSeleccionados.find(p => p.key === producto.key);
-                    const estaSeleccionado = productosParaAgregar.includes(producto.key);
-                    return (
-                      <div
-                        key={producto.key}
-                        className={`productos-busqueda-card ${yaAgregado ? 'agregado' : ''} ${estaSeleccionado ? 'seleccionado' : ''}`}
-                        onClick={() => !yaAgregado && toggleProductoSeleccion(producto.key)}
-                      >
-                        {!yaAgregado && estaSeleccionado && (
-                          <div className="productos-busqueda-check-badge">
-                            <Check size={16} />
-                          </div>
-                        )}
-                        {yaAgregado && (
-                          <div className="productos-busqueda-check-badge">
-                            <Check size={16} />
-                          </div>
-                        )}
-                        <div className="productos-busqueda-card-image">
-                          <OptimizedProductImage
-                            imagePath={producto.imagen}
-                            alt={producto.nombre}
-                            className="productos-busqueda-image"
-                          />
-                        </div>
-                        <div className="productos-busqueda-card-info">
-                          <div className="productos-busqueda-card-nombre">{producto.nombre}</div>
-                          {producto.codigo && (
-                            <div className="productos-busqueda-card-codigo">{producto.codigo}</div>
+              {/* VISTA GRID */}
+              {!vistaLista && (
+                <div className="productos-busqueda-grid" onScroll={handleGridScroll} ref={gridScrollRef}>
+                  {productosFiltrados.length === 0 ? (
+                    <p className="productos-busqueda-empty">No se encontraron productos</p>
+                  ) : (
+                    productosFiltrados.map((producto) => {
+                      const yaAgregado = productosSeleccionados.find(p => p.key === producto.key);
+                      const estaSeleccionado = productosParaAgregar.includes(producto.key);
+                      return (
+                        <div
+                          key={producto.key}
+                          className={`productos-busqueda-card ${yaAgregado ? 'agregado' : ''} ${estaSeleccionado ? 'seleccionado' : ''}`}
+                          onClick={() => !yaAgregado && toggleProductoSeleccion(producto.key)}
+                        >
+                          {!yaAgregado && estaSeleccionado && (
+                            <div className="productos-busqueda-check-badge">
+                              <Check size={16} />
+                            </div>
                           )}
-                          <div className="productos-busqueda-card-precio">
-                            ${formatearMoneda(producto.precio_venta)}
+                          {yaAgregado && (
+                            <div className="productos-busqueda-check-badge">
+                              <Check size={16} />
+                            </div>
+                          )}
+                          <div className="productos-busqueda-card-image">
+                            <OptimizedProductImage
+                              imagePath={producto.imagen}
+                              alt={producto.nombre}
+                              className="productos-busqueda-image"
+                            />
                           </div>
-                          <div className="productos-busqueda-card-stock">
-                            Stock: {producto.stock || 0}
+                          <div className="productos-busqueda-card-info">
+                            <div className="productos-busqueda-card-nombre">{producto.nombre}</div>
+                            {producto.codigo && (
+                              <div className="productos-busqueda-card-codigo">{producto.codigo}</div>
+                            )}
+                            <div className="productos-busqueda-card-precio">
+                              ${formatearMoneda(producto.precio_venta)}
+                            </div>
+                            <div className="productos-busqueda-card-stock">
+                              Stock: {producto.stock || 0}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-              {productosParaAgregar.length > 0 && (
-                <div style={{ 
-                  padding: '1rem 1.25rem', 
-                  borderTop: '1px solid #e5e7eb',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  background: '#f9fafb'
-                }}>
-                  <span style={{ fontSize: '0.875rem', color: 'var(--text-primary)' }}>
-                    {productosParaAgregar.length} producto(s) seleccionado(s)
-                  </span>
-                  <button
-                    type="button"
-                    onClick={agregarProductosSeleccionados}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      background: 'var(--accent-primary)',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontSize: '0.875rem',
-                      fontWeight: 500
-                    }}
-                  >
-                    Agregar seleccionados
-                  </button>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+
+              {/* VISTA LISTA */}
+              {vistaLista && (
+                <div className="pbl-lista-wrapper" onScroll={handleGridScroll}>
+                  {productosFiltrados.length === 0 ? (
+                    <p className="productos-busqueda-empty">No se encontraron productos</p>
+                  ) : (
+                    <table className="pbl-table">
+                      <thead>
+                        <tr>
+                          <th style={{ width: '32px' }}></th>
+                          <th>Producto</th>
+                          <th>Código</th>
+                          <th style={{ textAlign: 'right' }}>Precio</th>
+                          <th style={{ textAlign: 'center' }}>Stock</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {productosFiltrados.map((producto) => {
+                          const yaAgregado = productosSeleccionados.find(p => p.key === producto.key);
+                          const estaSeleccionado = productosParaAgregar.includes(producto.key);
+                          return (
+                            <tr
+                              key={producto.key}
+                              className={`pbl-row ${yaAgregado ? 'pbl-row-agregado' : ''} ${estaSeleccionado ? 'pbl-row-seleccionado' : ''}`}
+                              onClick={() => !yaAgregado && toggleProductoSeleccion(producto.key)}
+                            >
+                              <td className="pbl-td-check">
+                                <div className={`pbl-checkbox ${estaSeleccionado || yaAgregado ? 'checked' : ''}`}>
+                                  {(estaSeleccionado || yaAgregado) && <Check size={12} />}
+                                </div>
+                              </td>
+                              <td className="pbl-td-nombre">{producto.nombre}{producto.variante_nombre ? <span className="pbl-variante"> · {producto.variante_nombre}</span> : null}</td>
+                              <td className="pbl-td-codigo">{producto.codigo || '—'}</td>
+                              <td className="pbl-td-precio">${formatearMoneda(producto.precio_venta)}</td>
+                              <td className="pbl-td-stock">{producto.stock || 0}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              )}
+              {hayMasProductos && (
+                <div style={{ textAlign: 'center', padding: '0.75rem', fontSize: '0.8rem', color: '#9ca3af', borderTop: '1px solid #f3f4f6' }}>
+                  Mostrando {productosFiltrados.length} de {productosFiltradosTodos.length} productos. Desplázate para cargar más.
                 </div>
               )}
             </div>
           )}
-          
+
           {/* Lista de productos seleccionados */}
           {productosSeleccionados.length === 0 ? (
             <div className="entrada-inventario-empty">
@@ -891,7 +1108,9 @@ const EntradaInventarioModal = ({ open, onClose }) => {
                     <th>Cantidad</th>
                     <th>Stock Actual</th>
                     <th>Stock Nuevo</th>
-                    <th></th>
+                    <th className="col-has-imagen">¿Tiene Imagen?</th>
+                    <th className="col-categoria">Categoría</th>
+                    <th className="col-acciones"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -919,11 +1138,12 @@ const EntradaInventarioModal = ({ open, onClose }) => {
                           type="number"
                           value={producto.porcentaje_ganancia || ''}
                           onChange={(e) => actualizarPorcentaje(producto.key, e.target.value)}
+                          onWheel={(e) => e.target.blur()}
                           placeholder="0"
                           step="0.1"
                           className="input-porcentaje"
                         />
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginLeft: '0.25rem' }}>%</span>
+                        <span className="unit-label">%</span>
                       </td>
                       <td className="col-precio">
                         <input
@@ -938,10 +1158,11 @@ const EntradaInventarioModal = ({ open, onClose }) => {
                         <input
                           type="number"
                           value={producto.cantidad_agregar || ''}
-                          onChange={(e) => actualizarCampo(producto.key, 'cantidad_agregar', parseFloat(e.target.value) || 0)}
+                          onChange={(e) => actualizarCampo(producto.key, 'cantidad_agregar', parseInt(e.target.value) || 0)}
+                          onWheel={(e) => e.target.blur()}
                           placeholder="0"
                           min="0"
-                          step="0.01"
+                          step="1"
                           className="input-cantidad"
                         />
                       </td>
@@ -951,14 +1172,43 @@ const EntradaInventarioModal = ({ open, onClose }) => {
                       <td className="col-stock">
                         <span className="stock-nuevo">{producto.stock_nuevo}</span>
                       </td>
+                      <td className="col-has-imagen" style={{ textAlign: 'center' }}>
+                        {producto.imagen_url ? (
+                          <span style={{ color: '#10b981', fontSize: '0.75rem', fontWeight: 700 }}>SÍ</span>
+                        ) : (
+                          <span style={{ color: '#ef4444', fontSize: '0.75rem', fontWeight: 600 }}>NO</span>
+                        )}
+                      </td>
+                      <td className="col-categoria">
+                        <select
+                          value={producto.categoria || ''}
+                          onChange={(e) => actualizarCampo(producto.key, 'categoria', e.target.value)}
+                          className="input-categoria-select"
+                        >
+                          <option value="">Sin categoría</option>
+                          {categoriasExistentes.map(cat => (
+                            <option key={cat} value={cat}>{cat}</option>
+                          ))}
+                        </select>
+                      </td>
                       <td className="col-acciones">
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                        <div className="btn-actions-wrapper">
+                          <button
+                            type="button"
+                            className="btn-edit-item"
+                            onClick={() => handleAbrirEdicion(producto)}
+                            title="Editar"
+                            tabIndex="-1"
+                          >
+                            <span className="icon-edit">✐</span>
+                          </button>
                           <button
                             type="button"
                             className={`btn-save-item ${productosActualizando.has(producto.key) ? 'disabled' : ''}`}
                             onClick={() => handleActualizarProductoIndividual(producto)}
-                            title="Actualizar este producto"
+                            title="Actualizar"
                             disabled={productosActualizando.has(producto.key)}
+                            tabIndex="-1"
                           >
                             {productosActualizando.has(producto.key) ? (
                               <div className="spinner-icon" />
@@ -970,8 +1220,9 @@ const EntradaInventarioModal = ({ open, onClose }) => {
                             type="button"
                             className={`btn-remove-item ${productosActualizando.has(producto.key) ? 'disabled' : ''}`}
                             onClick={() => eliminarProducto(producto.key)}
-                            title="Eliminar de la lista"
+                            title="Eliminar"
                             disabled={productosActualizando.has(producto.key)}
+                            tabIndex="-1"
                           >
                             <span className="icon-trash">×</span>
                           </button>
@@ -983,126 +1234,134 @@ const EntradaInventarioModal = ({ open, onClose }) => {
               </table>
             </div>
           )}
-        </div>
-        
-        {/* Sección de Pago (solo si hay proveedor y productos) */}
-        {proveedorSeleccionado && productosSeleccionados.length > 0 && (
-          <div className="entrada-inventario-pago-section" style={{ padding: '1.5rem', borderTop: '1px solid #e5e7eb' }}>
-            <h3 style={{ marginBottom: '1rem', fontSize: '1rem', fontWeight: 600 }}>
-              Registro de Pago
-            </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>
-                  Tipo de Pago *
-                </label>
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                  <button
-                    type="button"
-                    onClick={() => setTipoPago('credito')}
-                    style={{
-                      flex: 1,
-                      padding: '0.75rem',
-                      border: '2px solid',
-                      borderColor: tipoPago === 'credito' ? '#3b82f6' : '#e5e7eb',
-                      background: tipoPago === 'credito' ? '#eff6ff' : '#fff',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontWeight: tipoPago === 'credito' ? 600 : 400,
-                      color: tipoPago === 'credito' ? '#3b82f6' : '#374151',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    A Crédito
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTipoPago('pagado')}
-                    style={{
-                      flex: 1,
-                      padding: '0.75rem',
-                      border: '2px solid',
-                      borderColor: tipoPago === 'pagado' ? '#10b981' : '#e5e7eb',
-                      background: tipoPago === 'pagado' ? '#f0fdf4' : '#fff',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontWeight: tipoPago === 'pagado' ? 600 : 400,
-                      color: tipoPago === 'pagado' ? '#10b981' : '#374151',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    Pagado
-                  </button>
-                </div>
-              </div>
-              
-              {tipoPago === 'pagado' && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>
-                      Método de Pago
-                    </label>
-                    <select
-                      value={metodoPago}
-                      onChange={(e) => setMetodoPago(e.target.value)}
+          {productosSeleccionados.length > 0 && (
+            <div className="entrada-inventario-pago-section" style={{ padding: '1.5rem', borderTop: '1px solid #e5e7eb' }}>
+              <h3 style={{ marginBottom: '1rem', fontSize: '1rem', fontWeight: 600 }}>
+                Registro de Pago
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>
+                    Tipo de Pago *
+                  </label>
+                  <div style={{ display: 'flex', gap: '1rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!proveedorSeleccionado) {
+                          toast.error('Selecciona un proveedor para comprar a crédito');
+                          return;
+                        }
+                        setTipoPago('credito');
+                      }}
                       style={{
-                        width: '100%',
-                        padding: '0.5rem',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '6px',
-                        fontSize: '0.875rem'
+                        flex: 1,
+                        padding: '0.75rem',
+                        border: '2px solid',
+                        borderColor: tipoPago === 'credito' ? '#3b82f6' : '#e5e7eb',
+                        background: tipoPago === 'credito' ? '#eff6ff' : '#fff',
+                        borderRadius: '8px',
+                        cursor: proveedorSeleccionado ? 'pointer' : 'not-allowed',
+                        fontWeight: tipoPago === 'credito' ? 600 : 400,
+                        color: tipoPago === 'credito' ? '#3b82f6' : '#374151',
+                        transition: 'all 0.2s',
+                        opacity: proveedorSeleccionado ? 1 : 0.5
+                      }}
+                      title={!proveedorSeleccionado ? "Debes seleccionar un proveedor para usar crédito" : ""}
+                    >
+                      A Crédito
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTipoPago('pagado')}
+                      style={{
+                        flex: 1,
+                        padding: '0.75rem',
+                        border: '2px solid',
+                        borderColor: tipoPago === 'pagado' ? '#10b981' : '#e5e7eb',
+                        background: tipoPago === 'pagado' ? '#f0fdf4' : '#fff',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontWeight: tipoPago === 'pagado' ? 600 : 400,
+                        color: tipoPago === 'pagado' ? '#10b981' : '#374151',
+                        transition: 'all 0.2s'
                       }}
                     >
-                      <option value="efectivo">Efectivo</option>
-                      <option value="transferencia">Transferencia</option>
-                      <option value="tarjeta">Tarjeta</option>
-                      <option value="cheque">Cheque</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>
-                      Fecha de Pago
-                    </label>
-                    <input
-                      type="date"
-                      value={fechaPago}
-                      onChange={(e) => setFechaPago(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '0.5rem',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '6px',
-                        fontSize: '0.875rem'
-                      }}
-                    />
+                      Pagado
+                    </button>
                   </div>
                 </div>
-              )}
-              
-              {tipoPago && (
-                <div style={{
-                  padding: '1rem',
-                  background: '#f3f4f6',
-                  borderRadius: '8px',
-                  fontSize: '0.875rem'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                    <span style={{ fontWeight: 500 }}>Total de la compra:</span>
-                    <span style={{ fontWeight: 600, fontSize: '1rem' }}>
-                      {calcularTotalCompra().toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })}
-                    </span>
+
+                {tipoPago && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    {tipoPago === 'pagado' && (
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>
+                          Método de Pago
+                        </label>
+                        <select
+                          value={metodoPago}
+                          onChange={(e) => setMetodoPago(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '0.5rem',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '6px',
+                            fontSize: '0.875rem'
+                          }}
+                        >
+                          <option value="efectivo">Efectivo</option>
+                          <option value="transferencia">Transferencia</option>
+                          <option value="tarjeta">Tarjeta</option>
+                          <option value="cheque">Cheque</option>
+                        </select>
+                      </div>
+                    )}
+                    <div style={tipoPago === 'credito' ? { gridColumn: 'span 2' } : {}}>
+                      <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>
+                        {tipoPago === 'pagado' ? 'Fecha de Pago' : 'Fecha de Vencimiento'}
+                      </label>
+                      <input
+                        type="date"
+                        value={fechaPago}
+                        onChange={(e) => setFechaPago(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '0.5rem',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '6px',
+                          fontSize: '0.875rem'
+                        }}
+                      />
+                    </div>
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                    {tipoPago === 'credito' 
-                      ? 'Se creará un crédito a proveedor que podrás pagar después'
-                      : 'Se registrará como un gasto variable en egresos'}
+                )}
+
+                {tipoPago && (
+                  <div style={{
+                    padding: '1rem',
+                    background: '#f3f4f6',
+                    borderRadius: '8px',
+                    fontSize: '0.875rem'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                      <span style={{ fontWeight: 500 }}>Total de la compra:</span>
+                      <span style={{ fontWeight: 600, fontSize: '1rem' }}>
+                        {calcularTotalCompra().toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                      {tipoPago === 'credito'
+                        ? 'Se creará un crédito a proveedor que podrás pagar después'
+                        : 'Se registrará como un gasto variable en egresos'}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
-        )}
-        
+          )}
+        </div>
+
         {/* Footer */}
         <div className="entrada-inventario-footer">
           <button
@@ -1125,7 +1384,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
       </div>
     </div>
   );
-  
+
   return (
     <>
       {createPortal(modalContent, document.body)}
@@ -1145,6 +1404,70 @@ const EntradaInventarioModal = ({ open, onClose }) => {
           onProductoAgregado={handleProductoCreado}
           moneda={moneda}
         />,
+        document.body
+      )}
+      {createPortal(
+        <EditarProductoModalV2
+          open={modalEditar.open}
+          onClose={() => {
+            setModalEditar({ open: false, producto: null });
+            refetchProductos();
+          }}
+          producto={modalEditar.producto}
+          onProductoEditado={() => refetchProductos()}
+        />,
+        document.body
+      )}
+      {createPortal(
+        <>
+          {mostrarSeleccionProveedor && (
+            <div className="modal-overlay" style={{ zIndex: 11000 }} onClick={() => setMostrarSeleccionProveedor(false)}>
+              <div className="modal-content select-proveedor-compact-modal" onClick={e => e.stopPropagation()}>
+                <div className="modal-header">
+                  <h3>Seleccionar Proveedor</h3>
+                  <button onClick={() => setMostrarSeleccionProveedor(false)} className="modal-close">
+                    <X size={18} />
+                  </button>
+                </div>
+                <div className="modal-body" style={{ padding: '0.75rem' }}>
+                  <div className="proveedores-list-compact">
+                    <div
+                      className={`proveedor-item-compact ${!proveedorSeleccionado ? 'selected' : ''}`}
+                      onClick={() => { setProveedorSeleccionado(null); setMostrarSeleccionProveedor(false); }}
+                    >
+                      <span>Ninguno (Entrada sin proveedor)</span>
+                    </div>
+                    {proveedores.map(p => (
+                      <div
+                        key={p.id}
+                        className={`proveedor-item-compact ${proveedorSeleccionado === p.id ? 'selected' : ''}`}
+                        onClick={() => { setProveedorSeleccionado(p.id); setMostrarSeleccionProveedor(false); }}
+                      >
+                        <div className="p-item-info">
+                          <strong>{p.nombre}</strong>
+                          {p.nit && <span className="p-item-nit">NIT: {p.nit}</span>}
+                        </div>
+                        {proveedorSeleccionado === p.id && <Check size={16} className="text-success" />}
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ padding: '0.75rem', borderTop: '1px solid #f1f5f9' }}>
+                    <button
+                      type="button"
+                      className="btn-nuevo-proveedor-compact"
+                      onClick={() => {
+                        setMostrarSeleccionProveedor(false);
+                        setModalProveedor({ open: true, proveedor: null });
+                      }}
+                    >
+                      <Plus size={16} /> Crear Nuevo Proveedor
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </>,
         document.body
       )}
     </>
