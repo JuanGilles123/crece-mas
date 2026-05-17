@@ -1105,12 +1105,11 @@ const ResumenVentas = () => {
       .slice(0, 10);
   }, [ventasFiltradas, normalizarNombreVendedor, obtenerNombreVendedor]);
 
-  // Obtener flujo horario (Horas Pico)
+  // Obtener flujo horario detallado
   const obtenerVentasPorHora = useMemo(() => {
     const horasMap = {};
-    // Inicializar las 24 horas
     for (let i = 0; i < 24; i++) {
-      horasMap[i] = 0;
+      horasMap[i] = { cantidad: 0, total: 0 };
     }
 
     ventasFiltradas.forEach(v => {
@@ -1120,18 +1119,23 @@ const ResumenVentas = () => {
         const d = (typeof timestamp === 'string') ? parseISO(timestamp) : new Date(timestamp);
         if (!isNaN(d.getTime())) {
           const h = d.getHours();
-          horasMap[h] = (horasMap[h] || 0) + 1;
+          if (horasMap[h]) {
+            horasMap[h].cantidad += 1;
+            horasMap[h].total += parseFloat(v.total || 0);
+          }
         }
       } catch (err) { }
     });
 
     return Object.entries(horasMap)
-      .map(([hora, cantidad]) => ({
+      .map(([hora, data]) => ({
         hora: parseInt(hora),
         label: `${hora}:00`,
-        cantidad
+        cantidad: data.cantidad,
+        total: data.total,
+        ticketPromedio: data.cantidad > 0 ? data.total / data.cantidad : 0
       }))
-      .filter(h => h.cantidad > 0);
+      .filter(h => h.cantidad > 0 || h.total > 0);
   }, [ventasFiltradas]);
 
   // Obtener ventas por día (basado en filtros de fecha)
@@ -1356,6 +1360,7 @@ const ResumenVentas = () => {
     { id: 'productos', nombre: 'Por Producto', icono: Package },
     { id: 'categoria', nombre: 'Por Categoría', icono: Target },
     { id: 'vendedor', nombre: 'Por Vendedor', icono: Users },
+    { id: 'horario', nombre: 'Análisis Horario', icono: Clock },
     { id: 'cliente', nombre: 'Por Cliente', icono: ShoppingCart },
     { id: 'ventas', nombre: 'Detalle Ventas', icono: BarChart3 },
   ];
@@ -1416,15 +1421,21 @@ const ResumenVentas = () => {
   const automaticInsights = useMemo(() => {
     const insights = [];
 
-    // Mejor día
+    // Mejor día o Mejor hora (Solo si hay ventas reales)
     if (ventasPorDia.length > 0) {
-      const mejorDia = [...ventasPorDia].sort((a, b) => b.total - a.total)[0];
-      insights.push({
-        title: 'Rendimiento diario',
-        text: `El ${mejorDia.fechaFormateada} fue tu mejor día con ${formatCOP(mejorDia.total)}.`,
-        icon: <TrendingUp size={18} />,
-        color: 'var(--cp-primary)'
-      });
+      const mejorPeriodo = [...ventasPorDia].sort((a, b) => b.total - a.total)[0];
+      const esPorHora = mejorPeriodo.esPorHora;
+      
+      if (mejorPeriodo.total > 0) {
+        insights.push({
+          title: esPorHora ? 'Mejor horario' : 'Rendimiento diario',
+          text: esPorHora 
+            ? `Las ${mejorPeriodo.fechaFormateada} fue tu hora de mayores ventas con ${formatCOP(mejorPeriodo.total)}.`
+            : `El ${format(parseISO(mejorPeriodo.fecha), "EEEE d 'de' MMMM", { locale: es })} fue tu mejor día con ${formatCOP(mejorPeriodo.total)}.`,
+          icon: <TrendingUp size={18} />,
+          color: 'var(--cp-primary)'
+        });
+      }
     }
 
     // Método de pago estrella
@@ -2105,11 +2116,88 @@ const ResumenVentas = () => {
                 </div>
               </div>
             </div>
+          ) : vistaActual === 'horario' ? (
+            <div className="cp-horario-view-container" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div className="cp-card">
+                <h3 className="cp-widget-title" style={{ marginBottom: '1.5rem' }}>
+                  <BarChart3 size={20} color="var(--cp-primary)" /> Distribución Horaria de Ingresos
+                </h3>
+                <div style={{ height: '320px' }}>
+                  <Bar
+                    data={{
+                      labels: obtenerVentasPorHora.map(h => h.label),
+                      datasets: [{
+                        label: 'Ventas Totales ($)',
+                        data: obtenerVentasPorHora.map(h => h.total),
+                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                        borderColor: 'rgb(59, 130, 246)',
+                        borderWidth: 2,
+                        borderRadius: 4,
+                      }]
+                    }}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                          callbacks: {
+                            label: (context) => `Ventas: ${formatCOP(context.raw)}`
+                          }
+                        }
+                      },
+                      scales: {
+                        x: { grid: { display: false } },
+                        y: { 
+                          beginAtZero: true,
+                          ticks: { callback: (val) => formatCOP(val).split(',')[0] }
+                        }
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="cp-card">
+                <div className="cp-table-container">
+                  <table className="cp-table">
+                    <thead>
+                      <tr>
+                        <th>Rango Horario</th>
+                        <th style={{ textAlign: 'right' }}>Total Ventas</th>
+                        <th style={{ textAlign: 'center' }}>Volumen (Trans.)</th>
+                        <th style={{ textAlign: 'right' }}>Ticket Promedio</th>
+                        <th style={{ textAlign: 'center' }}>Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {obtenerVentasPorHora.sort((a, b) => a.hora - b.hora).map((h, i) => {
+                        const esPicoDinero = h.total === Math.max(...obtenerVentasPorHora.map(x => x.total));
+                        const esPicoVolumen = h.cantidad === Math.max(...obtenerVentasPorHora.map(x => x.cantidad));
+
+                        return (
+                          <tr key={i} style={esPicoDinero ? { background: 'var(--cp-primary-soft)' } : {}}>
+                            <td style={{ fontWeight: 700 }}>{h.label}</td>
+                            <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--cp-primary)' }}>{formatCOP(h.total)}</td>
+                            <td style={{ textAlign: 'center', fontWeight: 600 }}>{h.cantidad} vtas</td>
+                            <td style={{ textAlign: 'right' }}>{formatCOP(h.ticketPromedio)}</td>
+                            <td style={{ textAlign: 'center' }}>
+                              {esPicoDinero && <span className="cp-badge cp-badge-primary" style={{ fontSize: '0.65rem' }}>MÁX. INGRESOS</span>}
+                              {esPicoVolumen && !esPicoDinero && <span className="cp-badge cp-badge-success" style={{ fontSize: '0.65rem' }}>MÁX. VOLUMEN</span>}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
           ) : (
             <div className="cp-card">
               <div className="cp-table-container">
                 <table className="cp-table">
-                    {vistaActual === 'productos' && (
+                  {vistaActual === 'productos' && (
                       <>
                         <thead>
                           <tr>

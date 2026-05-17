@@ -42,12 +42,14 @@ const AperturaCajaModal = ({ isOpen, onClose, onAperturaExitosa }) => {
     }
   }, [isOpen, otrasCajas, loadingOtras, montoInicialInput]);
 
-  const handleSeleccionarModo = (modo) => {
+  const handleSeleccionarModo = (modo, aperturaParaSincronizar = null) => {
     setModoElegido(modo);
     if (modo === 'sincronizar') {
-      // Sincronizar: usar la apertura existente directamente
-      const aperturaExistente = otrasCajas[0];
+      // Sincronizar: usar la apertura seleccionada o la primera por defecto
+      const aperturaExistente = aperturaParaSincronizar || otrasCajas[0];
       
+      if (!aperturaExistente) return;
+
       // Guardar en localStorage que estamos sincronizados a esta apertura
       localStorage.setItem(`synced_apertura_${organization.id}`, aperturaExistente.id);
       
@@ -170,42 +172,45 @@ const AperturaCajaModal = ({ isOpen, onClose, onAperturaExitosa }) => {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {/* Opción: Sincronizar */}
-                <button
-                  onClick={() => handleSeleccionarModo('sincronizar')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '1rem',
-                    padding: '1rem 1.25rem',
-                    background: 'rgba(99, 102, 241, 0.1)',
-                    border: '1px solid rgba(99, 102, 241, 0.3)',
-                    borderRadius: '12px',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    transition: 'all 0.2s',
-                    color: 'var(--text-primary)'
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(99, 102, 241, 0.2)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(99, 102, 241, 0.1)'}
-                >
-                  <div style={{
-                    width: '42px', height: '42px', borderRadius: '10px',
-                    background: 'rgba(99, 102, 241, 0.2)', display: 'flex',
-                    alignItems: 'center', justifyContent: 'center', flexShrink: 0
-                  }}>
-                    <Users size={20} style={{ color: '#818cf8' }} />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, marginBottom: '0.25rem' }}>
-                      Unirme a la caja de {otrasCajas[0]?.vendedor?.employee_name || otrasCajas[0]?.user_profile?.full_name || 'otro usuario'}
+                {/* Opciones de Sincronización para cada caja abierta */}
+                {otrasCajas.map((caja) => (
+                  <button
+                    key={caja.id}
+                    onClick={() => handleSeleccionarModo('sincronizar', caja)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '1rem',
+                      padding: '1rem 1.25rem',
+                      background: 'rgba(99, 102, 241, 0.1)',
+                      border: '1px solid rgba(99, 102, 241, 0.3)',
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      transition: 'all 0.2s',
+                      color: 'var(--text-primary)'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(99, 102, 241, 0.2)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(99, 102, 241, 0.1)'}
+                  >
+                    <div style={{
+                      width: '42px', height: '42px', borderRadius: '10px',
+                      background: 'rgba(99, 102, 241, 0.2)', display: 'flex',
+                      alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                    }}>
+                      <Users size={20} style={{ color: '#818cf8' }} />
                     </div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                      Compartir balance y ventas con esta caja. Solo el titular puede cerrar.
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, marginBottom: '0.25rem' }}>
+                        Unirme a la caja de {caja.vendedor?.employee_name || caja.user_profile?.full_name || 'otro usuario'}
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                        Compartir balance y ventas con esta caja. Solo el titular puede cerrar.
+                      </div>
                     </div>
-                  </div>
-                  <ArrowRight size={18} style={{ color: '#818cf8', flexShrink: 0 }} />
-                </button>
+                    <ArrowRight size={18} style={{ color: '#818cf8', flexShrink: 0 }} />
+                  </button>
+                ))}
 
                 {/* Opción: Independiente */}
                 <button

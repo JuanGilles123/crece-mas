@@ -210,7 +210,7 @@ export const useActualizarProducto = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, updates, organizationId }) => {
+    mutationFn: async ({ id, updates, organizationId, silent }) => {
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
         const orgId = updates.organization_id || organizationId;
         return await enqueueProductoUpdate({ id, updates, organizationId: orgId });
@@ -228,7 +228,7 @@ export const useActualizarProducto = () => {
 
       return data[0];
     },
-    onSuccess: (updatedProducto) => {
+    onSuccess: (updatedProducto, variables) => {
       // Actualización manual del cache para feedback inmediato
       if (updatedProducto && updatedProducto.organization_id) {
         queryClient.setQueryData(['productos', updatedProducto.organization_id], (old = []) => {
@@ -244,15 +244,19 @@ export const useActualizarProducto = () => {
         queryClient.invalidateQueries({ queryKey: ['productos-paginados', updatedProducto.organization_id] });
       }
 
-      if (updatedProducto?.synced === 0) {
-        toast.success('Producto actualizado localmente. Se sincronizará al reconectar.');
-      } else {
-        toast.success('¡Producto actualizado exitosamente!');
+      if (!variables?.silent) {
+        if (updatedProducto?.synced === 0) {
+          toast.success('Producto actualizado localmente. Se sincronizará al reconectar.');
+        } else {
+          toast.success('¡Producto actualizado exitosamente!');
+        }
       }
     },
-    onError: (error) => {
+    onError: (error, variables) => {
       console.error('Error updating producto:', error);
-      toast.error('Error al actualizar producto');
+      if (!variables?.silent) {
+        toast.error('Error al actualizar producto');
+      }
     },
   });
 };

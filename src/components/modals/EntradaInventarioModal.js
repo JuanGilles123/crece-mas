@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Search, Check, Building2, Plus, LayoutGrid, List } from 'lucide-react';
+import { X, Search, Check, Building2, Plus, LayoutGrid, List, RefreshCw, Link2, Link2Off, Save, FileText, CheckCircle2, FolderOpen, Coins, Wallet } from 'lucide-react';
+
 import { useAuth } from '../../context/AuthContext';
 import { useProductos, useActualizarProducto } from '../../hooks/useProductos';
 import { useProveedores, useCrearGastoVariable, useCrearCreditoProveedor } from '../../hooks/useEgresos';
@@ -32,7 +33,11 @@ const EntradaInventarioModal = ({ open, onClose }) => {
   const [visibleCount, setVisibleCount] = useState(60); // Carga inicial
   const busquedaDebounceRef = useRef(null);
   const gridScrollRef = useRef(null);
+  const isDraftCheckedRef = useRef(false); // Ref para evitar borrado accidental en la inicialización
+  const isClosingRef = useRef(false); // Ref para evitar limpieza del borrador durante el cierre del modal
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false); // Estado para refrescar catálogo
+  const [tieneBorrador, setTieneBorrador] = useState(false); // Si existe un borrador guardado
   const [vistaLista, setVistaLista] = useState(false); // false = grid, true = lista
   const [mostrarCrearProducto, setMostrarCrearProducto] = useState(false);
   const [productosActualizando, setProductosActualizando] = useState(new Set()); // IDs de productos que se están actualizando
@@ -43,6 +48,55 @@ const EntradaInventarioModal = ({ open, onClose }) => {
   const [metodoPago, setMetodoPago] = useState('transferencia');
   const [fechaPago, setFechaPago] = useState(new Date().toISOString().split('T')[0]);
   const [modalEditar, setModalEditar] = useState({ open: false, producto: null });
+  const [afectaCaja, setAfectaCaja] = useState(false); // Nuevo estado para saber si el dinero salió de caja
+  
+  // Estados para el Historial de Entradas de Inventario y Borradores en Base de Datos
+  const [activeSubTab, setActiveSubTab] = useState('entrada'); // 'entrada' | 'historial'
+  const [activeBatchId, setActiveBatchId] = useState(null); // ID del lote (borrador) activo
+  const [loadingHistorial, setLoadingHistorial] = useState(false);
+  const [batchesHistorial, setBatchesHistorial] = useState([]);
+  const [itemsHistorial, setItemsHistorial] = useState([]);
+  const [filtroHistorial, setFiltroHistorial] = useState('todos'); // 'todos' | 'borradores' | 'completados'
+  const [busquedaHistorial, setBusquedaHistorial] = useState('');
+  const [selectedBatchDetail, setSelectedBatchDetail] = useState(null);
+
+  // Lógica para arrastrar y minimizar el buscador
+  const [posicionBusqueda, setPosicionBusqueda] = useState({ x: 0, y: 0 });
+  const [busquedaMinimizada, setBusquedaMinimizada] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
+  const handleDragStart = (e) => {
+    if (e.target.closest('.productos-busqueda-header') && !e.target.closest('button')) {
+      setIsDragging(true);
+      setDragStart({
+        x: e.clientX - posicionBusqueda.x,
+        y: e.clientY - posicionBusqueda.y
+      });
+    }
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (isDragging) {
+        setPosicionBusqueda({
+          x: e.clientX - dragStart.x,
+          y: e.clientY - dragStart.y
+        });
+      }
+    };
+
+    const handleMouseUp = () => setIsDragging(false);
+
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, dragStart]);
 
   // Categorías existentes para el selector
   const categoriasExistentes = useMemo(() => {
@@ -91,23 +145,66 @@ const EntradaInventarioModal = ({ open, onClose }) => {
     }
   }, [open, organization?.id, refetchProductos]);
 
-  // Sincronizar cambios externos (desde el modal de edición) con la lista local
+  // Sincronizar cambios externos (desde el modal de edición o actualización de catálogo) con la lista local
   useEffect(() => {
     if (productos.length > 0 && productosSeleccionados.length > 0) {
       setProductosSeleccionados(prev => {
         let huboCambios = false;
         const nuevos = prev.map(p => {
-          const latest = productos.find(lp => lp.id === p.producto_id);
-          if (latest) {
-            const nuevaCat = latest.categoria || latest.metadata?.categoria || '';
-            const nuevaImg = latest.imagen;
+          const latestProduct = productos.find(lp => lp.id === p.producto_id);
+          if (latestProduct) {
+            let latestStock = latestProduct.stock || 0;
+            let latestNombre = latestProduct.nombre;
+            
+            // Si es una variante, buscar el stock y nombre correspondiente de la variante
+            if (p.variante_id) {
+              const latestVariante = (latestProduct.variantes || []).find(v => v.id === p.variante_id);
+              if (latestVariante) {
+                latestStock = latestVariante.stock ?? 0;
+                latestNombre = `${latestProduct.nombre} - ${latestVariante.nombre || 'Variante'}`;
+              }
+            }
 
-            if (p.categoria !== nuevaCat || p.imagen_url !== nuevaImg) {
+            const nuevaCat = latestProduct.categoria || latestProduct.metadata?.categoria || '';
+            const nuevaImg = latestProduct.imagen || '';
+            const latestPrecioCompra = latestProduct.precio_compra || 0;
+            const latestPrecioVenta = latestProduct.precio_venta || 0;
+
+            const nameChanged = p.nombre !== latestNombre;
+            const catChanged = p.categoria !== nuevaCat;
+            const imgChanged = p.imagen_url !== nuevaImg;
+            const stockChanged = p.stock_actual !== latestStock;
+            const pcChanged = p.precio_compra_actual !== latestPrecioCompra;
+            const pvChanged = p.precio_venta_actual !== latestPrecioVenta;
+
+            if (nameChanged || catChanged || imgChanged || stockChanged || pcChanged || pvChanged) {
               huboCambios = true;
+              
+              // Si el usuario no ha modificado los valores nuevos, los actualizamos también
+              const precioCompraNuevo = p.precio_compra_nuevo === p.precio_compra_actual 
+                ? latestPrecioCompra 
+                : p.precio_compra_nuevo;
+                
+              const precioVentaNuevo = p.precio_venta_nuevo === p.precio_venta_actual 
+                ? latestPrecioVenta 
+                : p.precio_venta_nuevo;
+
+              const cantidad = parseFloat(p.cantidad_agregar) || 0;
+
               return {
                 ...p,
+                nombre: latestNombre,
                 categoria: nuevaCat,
-                imagen_url: nuevaImg
+                imagen_url: nuevaImg,
+                stock_actual: latestStock,
+                stock_nuevo: latestStock + cantidad,
+                precio_compra_actual: latestPrecioCompra,
+                precio_compra_nuevo: precioCompraNuevo,
+                precio_venta_actual: latestPrecioVenta,
+                precio_venta_nuevo: precioVentaNuevo,
+                porcentaje_ganancia: p.precio_compra_nuevo === p.precio_compra_actual && p.precio_venta_nuevo === p.precio_venta_actual
+                  ? (latestPrecioCompra > 0 ? ((latestPrecioVenta - latestPrecioCompra) / latestPrecioCompra) * 100 : 0)
+                  : p.porcentaje_ganancia
               };
             }
           }
@@ -117,6 +214,52 @@ const EntradaInventarioModal = ({ open, onClose }) => {
       });
     }
   }, [productos, productosSeleccionados.length]);
+
+  // Verificar si hay borrador al abrir el modal
+  useEffect(() => {
+    if (open && organization?.id) {
+      isClosingRef.current = false; // Resetear bandera de cierre al abrir el modal
+      const savedDraft = localStorage.getItem(`entrada_inventario_borrador_${organization.id}`);
+      if (savedDraft) {
+        try {
+          const parsed = JSON.parse(savedDraft);
+          if (parsed && parsed.productosSeleccionados && parsed.productosSeleccionados.length > 0) {
+            setTieneBorrador(true);
+          }
+        } catch (e) {
+          console.error('Error parsing draft:', e);
+        }
+      } else {
+        setTieneBorrador(false);
+      }
+      isDraftCheckedRef.current = true;
+    } else if (!open) {
+      isDraftCheckedRef.current = false;
+      setTieneBorrador(false);
+    }
+  }, [open, organization?.id]);
+
+  // Auto-guardar borrador en localStorage
+  useEffect(() => {
+    // Retornar temprano si el modal no está abierto, no hay organización, no se ha verificado el borrador, hay un borrador pendiente de recuperación, o el modal se está cerrando
+    if (!open || !organization?.id || !isDraftCheckedRef.current || tieneBorrador || isClosingRef.current) {
+      return;
+    }
+
+    if (productosSeleccionados.length > 0) {
+      const borrador = {
+        productosSeleccionados,
+        proveedorSeleccionado,
+        tipoPago,
+        metodoPago,
+        fechaPago,
+        afectaCaja
+      };
+      localStorage.setItem(`entrada_inventario_borrador_${organization.id}`, JSON.stringify(borrador));
+    } else {
+      localStorage.removeItem(`entrada_inventario_borrador_${organization.id}`);
+    }
+  }, [productosSeleccionados, proveedorSeleccionado, tipoPago, metodoPago, fechaPago, afectaCaja, open, organization?.id, tieneBorrador]);
 
   // Listener global para detectar códigos de barras cuando el modal está abierto
   useEffect(() => {
@@ -342,7 +485,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
       return;
     }
 
-    const productosAAgregar = productosFiltrados.filter(p =>
+    const productosAAgregar = catalogoProductos.filter(p =>
       productosParaAgregar.includes(p.key) &&
       !productosSeleccionados.find(ps => ps.key === p.key)
     );
@@ -357,8 +500,9 @@ const EntradaInventarioModal = ({ open, onClose }) => {
       const precioVenta = item.precio_venta || 0;
       // Calcular porcentaje inicial basado en precios actuales
       const porcentajeInicial = precioCompra > 0
-        ? ((precioVenta - precioCompra) / precioCompra) * 100
+        ? Math.round(((precioVenta - precioCompra) / precioCompra) * 100 * 10) / 10
         : 0;
+
 
       return {
         key: item.key,
@@ -378,8 +522,10 @@ const EntradaInventarioModal = ({ open, onClose }) => {
         cantidad_agregar: 0,
         stock_nuevo: item.stock || 0,
         imagen_url: item.imagen,
-        categoria: item.categoria || item.metadata?.categoria || ''
+        categoria: item.categoria || item.metadata?.categoria || '',
+        precios_vinculados: true
       };
+
     });
 
     setProductosSeleccionados([...productosSeleccionados, ...nuevosProductos]);
@@ -389,7 +535,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
 
   // Seleccionar/deseleccionar todos
   const toggleSeleccionarTodos = () => {
-    const productosDisponibles = productosFiltrados.filter(p =>
+    const productosDisponibles = productosFiltradosTodos.filter(p =>
       !productosSeleccionados.find(ps => ps.key === p.key)
     );
 
@@ -525,13 +671,14 @@ const EntradaInventarioModal = ({ open, onClose }) => {
     return precio * (1 + porc / 100);
   };
 
-  // Calcular porcentaje basado en precio de compra y precio de venta
   const calcularPorcentaje = (precioCompra, precioVenta) => {
     const compra = parseFloat(precioCompra) || 0;
     const venta = parseFloat(precioVenta) || 0;
     if (compra === 0) return 0;
-    return ((venta - compra) / compra) * 100;
+    const res = ((venta - compra) / compra) * 100;
+    return Math.round(res * 10) / 10;
   };
+
 
   // Actualizar campo de un producto
   const actualizarCampo = (itemKey, campo, valor) => {
@@ -545,13 +692,19 @@ const EntradaInventarioModal = ({ open, onClose }) => {
           actualizado.stock_nuevo = actualizado.stock_actual + cantidad;
         }
 
-        // Si se actualiza precio_compra_nuevo, recalcular precio_venta_nuevo basado en porcentaje
+        // Si se actualiza precio_compra_nuevo, recalcular precio_venta_nuevo o mantenerlo fijo
         if (campo === 'precio_compra_nuevo') {
           const precioCompra = parsearMoneda(valor);
           actualizado.precio_compra_nuevo = precioCompra;
-          // Solo recalcular si el porcentaje existe, de lo contrario mantener el precio de venta actual
-          if (actualizado.porcentaje_ganancia !== undefined && actualizado.porcentaje_ganancia !== null) {
-            actualizado.precio_venta_nuevo = calcularPrecioVenta(precioCompra, actualizado.porcentaje_ganancia || 0);
+          
+          if (p.precios_vinculados === false) {
+            // Mantener precio_venta_nuevo congelado y en su lugar recalcular el porcentaje de ganancia
+            actualizado.porcentaje_ganancia = calcularPorcentaje(precioCompra, actualizado.precio_venta_nuevo || 0);
+          } else {
+            // Solo recalcular si el porcentaje existe, de lo contrario mantener el precio de venta actual
+            if (actualizado.porcentaje_ganancia !== undefined && actualizado.porcentaje_ganancia !== null) {
+              actualizado.precio_venta_nuevo = calcularPrecioVenta(precioCompra, actualizado.porcentaje_ganancia || 0);
+            }
           }
         }
 
@@ -597,6 +750,18 @@ const EntradaInventarioModal = ({ open, onClose }) => {
     }, 0);
     return Math.round(total * 100) / 100; // Redondear a 2 decimales
   };
+
+  // Calcular total de la venta proyectado
+  const calcularTotalVenta = () => {
+    const total = productosSeleccionados.reduce((sum, producto) => {
+      const precioVenta = parseFloat(producto.precio_venta_nuevo) || parseFloat(producto.precio_venta_actual) || 0;
+      const cantidad = parseFloat(producto.cantidad_agregar) || 0;
+      const subtotal = precioVenta * cantidad;
+      return sum + subtotal;
+    }, 0);
+    return Math.round(total * 100) / 100;
+  };
+
 
   // Guardar cambios
   const handleGuardar = async () => {
@@ -652,7 +817,8 @@ const EntradaInventarioModal = ({ open, onClose }) => {
           await actualizarProducto.mutateAsync({
             id: producto.producto_id,
             updates,
-            organizationId: organization?.id
+            organizationId: organization?.id,
+            silent: true
           });
         }
 
@@ -677,6 +843,16 @@ const EntradaInventarioModal = ({ open, onClose }) => {
       // Si hay tipo de pago, registrar en egresos (incluso sin proveedor para gastos pagados)
       if (tipoPago) {
         const totalCompra = calcularTotalCompra();
+
+        // Reconfirmación de afectación de caja
+        const confirmMsg = afectaCaja 
+          ? `El gasto de ${totalCompra.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })} SE DESCONTARÁ de la caja actual.\n\n¿Es correcto?`
+          : `El gasto de ${totalCompra.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })} NO se descontará de la caja (solo registro informativo).\n\n¿Es correcto?`;
+        
+        if (!window.confirm(confirmMsg)) {
+          setIsSubmitting(false);
+          return;
+        }
 
         if (totalCompra <= 0) {
           toast.error('El total de la compra debe ser mayor a cero');
@@ -716,6 +892,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
               fecha: fechaPago,
               metodo_pago: metodoPago,
               proveedor_id: proveedorSeleccionado,
+              afecta_caja: afectaCaja,
               notas: `Entrada de inventario registrada automáticamente`
             };
 
@@ -729,10 +906,95 @@ const EntradaInventarioModal = ({ open, onClose }) => {
         }
       }
 
-      toast.success('Inventario actualizado exitosamente');
+      // 1. Guardar la entrada completada en el historial de la base de datos
+      try {
+        const nombreProveedor = proveedorSeleccionado 
+          ? proveedores.find(p => p.id === proveedorSeleccionado)?.nombre 
+          : 'Proveedor no especificado';
+        const batchName = `Entrada: ${nombreProveedor} - ${new Date().toLocaleDateString('es-CO')}`;
+
+        const { data: batch, error: batchError } = await supabase
+          .from('inventory_import_batches')
+          .insert([{
+            organization_id: organization.id,
+            name: batchName,
+            status: 'approved',
+            created_by: user.id
+          }])
+          .select()
+          .single();
+
+        if (!batchError && batch) {
+          const itemsToInsert = productosSeleccionados.map(p => ({
+            batch_id: batch.id,
+            organization_id: organization.id,
+            codigo: p.codigo || null,
+            nombre: p.nombre,
+            precio_compra: Number(p.precio_compra_nuevo) || 0,
+            precio_venta: Number(p.precio_venta_nuevo) || 0,
+            stock: Number(p.cantidad_agregar) || 0,
+            tipo: p.tipo || 'fisico',
+            created_by: user.id,
+            metadata: {
+              producto_id: p.producto_id,
+              variante_id: p.variante_id || null,
+              precio_compra_actual: p.precio_compra_actual,
+              precio_venta_actual: p.precio_venta_actual,
+              stock_actual: p.stock_actual,
+              stock_nuevo: p.stock_nuevo,
+              key: p.key,
+              proveedorSeleccionado,
+              tipoPago,
+              metodoPago,
+              fechaPago,
+              afectaCaja
+            }
+          }));
+
+          await supabase.from('inventory_import_items').insert(itemsToInsert);
+        }
+
+        // 2. Si estábamos editando un borrador activo, lo archivamos
+        if (activeBatchId) {
+          await supabase
+            .from('inventory_import_batches')
+            .update({ status: 'deleted' })
+            .eq('id', activeBatchId);
+        }
+      } catch (historyError) {
+        console.error('Error al registrar entrada en historial de base de datos:', historyError);
+      }
+
+      // Limpiar borrador local al guardar con éxito
+      localStorage.removeItem(`entrada_inventario_borrador_${organization?.id}`);
+      setTieneBorrador(false);
+
+      // Mostrar resumen detallado y amigable
+      const totalImpactados = productosSeleccionados.length;
+      const totalUnidades = productosSeleccionados.reduce((sum, p) => sum + (parseFloat(p.cantidad_agregar) || 0), 0);
+      toast.success(
+        <div style={{ textAlign: 'left' }}>
+          <strong>¡Inventario actualizado exitosamente!</strong>
+          <div style={{ fontSize: '0.8rem', marginTop: '4px', opacity: 0.9 }}>
+            <div>• {totalImpactados} producto(s) modificado(s) con éxito.</div>
+            {totalUnidades > 0 && <div>• {totalUnidades} unidad(es) ingresadas al stock.</div>}
+            {proveedorSeleccionado && <div>• Proveedor: {proveedores.find(p => p.id === proveedorSeleccionado)?.nombre}</div>}
+            {tipoPago === 'pagado' && <div>• Gasto registrado ({metodoPago})</div>}
+            {tipoPago === 'credito' && <div>• Crédito de proveedor registrado</div>}
+          </div>
+        </div>,
+        { duration: 6000 }
+      );
+
+      isClosingRef.current = true;
       setProductosSeleccionados([]);
       setTipoPago(null);
       setProveedorSeleccionado(null);
+      
+      // Resetear estados del historial
+      setActiveSubTab('entrada');
+      setActiveBatchId(null);
+      
       onClose();
     } catch (error) {
       console.error('Error al actualizar inventario:', error);
@@ -744,6 +1006,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
 
   // Limpiar al cerrar
   const handleClose = () => {
+    isClosingRef.current = true;
     setProductosSeleccionados([]);
     setProductosParaAgregar([]);
     setBusqueda('');
@@ -752,6 +1015,15 @@ const EntradaInventarioModal = ({ open, onClose }) => {
     setTipoPago(null);
     setMetodoPago('transferencia');
     setFechaPago(new Date().toISOString().split('T')[0]);
+    setAfectaCaja(true);
+    
+    // Resetear estados del historial
+    setActiveSubTab('entrada');
+    setActiveBatchId(null);
+    setFiltroHistorial('todos');
+    setBusquedaHistorial('');
+    setSelectedBatchDetail(null);
+    
     onClose();
   };
 
@@ -777,18 +1049,673 @@ const EntradaInventarioModal = ({ open, onClose }) => {
     setMostrarBusqueda(true);
   };
 
+  // Refrescar catálogo manual
+  const handleActualizarCatalogo = async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        refetchProductos(),
+        refetchProveedores()
+      ]);
+      toast.success('Catálogo de productos y proveedores actualizado');
+    } catch (error) {
+      console.error('Error al actualizar catálogo:', error);
+      toast.error('Error al actualizar el catálogo');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // Guardar borrador y salir
+  // Cargar Historial y Borradores desde Supabase
+  const cargarHistorialBatches = async () => {
+    if (!organization?.id) return;
+    setLoadingHistorial(true);
+    try {
+      const { data: batches, error: errorBatches } = await supabase
+        .from('inventory_import_batches')
+        .select('*')
+        .eq('organization_id', organization.id)
+        .neq('status', 'deleted')
+        .order('created_at', { ascending: false });
+
+      if (errorBatches) throw errorBatches;
+
+      const { data: items, error: errorItems } = await supabase
+        .from('inventory_import_items')
+        .select('*')
+        .eq('organization_id', organization.id);
+
+      if (errorItems) throw errorItems;
+
+      setBatchesHistorial(batches || []);
+      setItemsHistorial(items || []);
+    } catch (e) {
+      console.error('Error cargando historial:', e);
+      toast.error('Error al cargar el historial de la base de datos');
+    } finally {
+      setLoadingHistorial(false);
+    }
+  };
+
+  // Guardar borrador en base de datos
+  const handleGuardarBorradorDB = async () => {
+    if (productosSeleccionados.length === 0) {
+      toast.error('No hay productos en la planilla para guardar');
+      return;
+    }
+
+    setIsSubmitting(true);
+    const loadingToastId = toast.loading('Guardando borrador en la base de datos...');
+    try {
+      // 1. Si estábamos editando un borrador existente, lo archivamos primero
+      if (activeBatchId) {
+        await supabase
+          .from('inventory_import_batches')
+          .update({ status: 'deleted' })
+          .eq('id', activeBatchId);
+      }
+
+      // 2. Crear el nuevo lote en la base de datos
+      const nombreProveedor = proveedorSeleccionado 
+        ? proveedores.find(p => p.id === proveedorSeleccionado)?.nombre 
+        : 'Proveedor no especificado';
+      
+      const batchName = `Borrador: ${nombreProveedor} - ${new Date().toLocaleDateString('es-CO')}`;
+
+      const { data: batch, error: batchError } = await supabase
+        .from('inventory_import_batches')
+        .insert([{
+          organization_id: organization.id,
+          name: batchName,
+          status: 'open',
+          created_by: user.id
+        }])
+        .select()
+        .single();
+
+      if (batchError) throw batchError;
+
+      // 3. Crear los ítems del lote
+      const itemsToInsert = productosSeleccionados.map(p => ({
+        batch_id: batch.id,
+        organization_id: organization.id,
+        codigo: p.codigo || null,
+        nombre: p.nombre,
+        precio_compra: Number(p.precio_compra_nuevo) || 0,
+        precio_venta: Number(p.precio_venta_nuevo) || 0,
+        stock: Number(p.cantidad_agregar) || 0,
+        tipo: p.tipo || 'fisico',
+        created_by: user.id,
+        metadata: {
+          producto_id: p.producto_id,
+          variante_id: p.variante_id || null,
+          precio_compra_actual: p.precio_compra_actual,
+          precio_venta_actual: p.precio_venta_actual,
+          stock_actual: p.stock_actual,
+          stock_nuevo: p.stock_nuevo,
+          key: p.key,
+          proveedorSeleccionado,
+          tipoPago,
+          metodoPago,
+          fechaPago,
+          afectaCaja
+        }
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('inventory_import_items')
+        .insert(itemsToInsert);
+
+      if (itemsError) throw itemsError;
+
+      toast.success('Borrador guardado en la base de datos con éxito.', { id: loadingToastId });
+      handleClose();
+    } catch (e) {
+      console.error('Error al guardar borrador en DB:', e);
+      toast.error('No se pudo guardar el borrador en la base de datos', { id: loadingToastId });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Retomar Borrador de la Base de Datos
+  const handleRetomarBorradorDB = (batch) => {
+    const batchItems = itemsHistorial.filter(item => item.batch_id === batch.id);
+    if (batchItems.length === 0) {
+      toast.error('Este borrador no contiene productos');
+      return;
+    }
+
+    try {
+      const reconstructed = batchItems.map(item => {
+        const metadata = item.metadata || {};
+        return {
+          producto_id: metadata.producto_id,
+          variante_id: metadata.variante_id || null,
+          nombre: item.nombre,
+          codigo: item.codigo || '',
+          precio_compra_actual: metadata.precio_compra_actual || 0,
+          precio_compra_nuevo: item.precio_compra || 0,
+          precio_venta_actual: metadata.precio_venta_actual || 0,
+          precio_venta_nuevo: item.precio_venta || 0,
+          stock_actual: metadata.stock_actual || 0,
+          stock_nuevo: metadata.stock_nuevo || 0,
+          cantidad_agregar: item.stock || 0,
+          key: metadata.key || `${metadata.producto_id}-${metadata.variante_id || 'base'}`,
+          precios_vinculados: true
+        };
+      });
+
+      const firstMetadata = batchItems[0]?.metadata || {};
+      setProveedorSeleccionado(firstMetadata.proveedorSeleccionado || null);
+      setTipoPago(firstMetadata.tipoPago || null);
+      setMetodoPago(firstMetadata.metodoPago || 'transferencia');
+      setFechaPago(firstMetadata.fechaPago || new Date().toISOString().split('T')[0]);
+      setAfectaCaja(firstMetadata.afectaCaja ?? true);
+
+      setProductosSeleccionados(reconstructed);
+      setActiveBatchId(batch.id); // Lote activo para actualizar al guardar
+      setActiveSubTab('entrada'); // Cambiar a planilla
+      toast.success('Borrador cargado desde la base de datos');
+    } catch (e) {
+      console.error('Error al retomar borrador:', e);
+      toast.error('Error al cargar los datos del borrador');
+    }
+  };
+
+  // Duplicar Entrada Completada como Nueva Planilla
+  const handleDuplicarEntradaDB = (batch) => {
+    const batchItems = itemsHistorial.filter(item => item.batch_id === batch.id);
+    if (batchItems.length === 0) {
+      toast.error('Esta entrada no contiene productos');
+      return;
+    }
+
+    try {
+      const reconstructed = batchItems.map(item => {
+        const metadata = item.metadata || {};
+        return {
+          producto_id: metadata.producto_id,
+          variante_id: metadata.variante_id || null,
+          nombre: item.nombre,
+          codigo: item.codigo || '',
+          precio_compra_actual: metadata.precio_compra_actual || 0,
+          precio_compra_nuevo: item.precio_compra || 0,
+          precio_venta_actual: metadata.precio_venta_actual || 0,
+          precio_venta_nuevo: item.precio_venta || 0,
+          stock_actual: metadata.stock_actual || 0,
+          stock_nuevo: metadata.stock_nuevo || 0,
+          cantidad_agregar: item.stock || 0,
+          key: metadata.key || `${metadata.producto_id}-${metadata.variante_id || 'base'}`,
+          precios_vinculados: true
+        };
+      });
+
+      const firstMetadata = batchItems[0]?.metadata || {};
+      setProveedorSeleccionado(firstMetadata.proveedorSeleccionado || null);
+      setTipoPago(firstMetadata.tipoPago || null);
+      setMetodoPago(firstMetadata.metodoPago || 'transferencia');
+      setFechaPago(firstMetadata.fechaPago || new Date().toISOString().split('T')[0]);
+      setAfectaCaja(firstMetadata.afectaCaja ?? true);
+
+      setProductosSeleccionados(reconstructed);
+      setActiveBatchId(null); // Es una nueva entrada, no sobrescribe el borrador viejo
+      setActiveSubTab('entrada'); // Cambiar a planilla
+      toast.success('Entrada duplicada en la planilla');
+    } catch (e) {
+      console.error('Error al duplicar entrada:', e);
+      toast.error('Error al duplicar los datos de la entrada');
+    }
+  };
+
+  // Eliminar/Archivar Borrador en DB
+  const handleEliminarBorradorDB = async (batchId) => {
+    if (!window.confirm('¿Estás seguro de que deseas eliminar este borrador de la base de datos?')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('inventory_import_batches')
+        .update({ status: 'deleted' })
+        .eq('id', batchId);
+
+      if (error) throw error;
+
+      toast.success('Borrador eliminado correctamente');
+      cargarHistorialBatches();
+    } catch (e) {
+      console.error('Error eliminando borrador:', e);
+      toast.error('No se pudo eliminar el borrador');
+    }
+  };
+
+  const filteredBatches = useMemo(() => {
+    return batchesHistorial.filter(batch => {
+      if (filtroHistorial === 'borradores' && batch.status !== 'open') return false;
+      if (filtroHistorial === 'completados' && batch.status !== 'approved') return false;
+      
+      if (busquedaHistorial) {
+        const query = busquedaHistorial.toLowerCase();
+        return batch.name?.toLowerCase().includes(query) || 
+               new Date(batch.created_at).toLocaleDateString('es-CO').includes(query);
+      }
+      return true;
+    });
+  }, [batchesHistorial, filtroHistorial, busquedaHistorial]);
+
+  const renderHistorialContent = () => {
+    if (loadingHistorial) {
+      return (
+        <div className="historial-loading-container">
+          <div className="historial-loading-spinner" />
+          <p>Cargando historial y cotizaciones desde la base de datos...</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="historial-tab-content">
+        {/* Filtros */}
+        <div className="historial-filters-bar">
+          <div className="historial-search-wrapper">
+            <Search size={16} />
+            <input
+              type="text"
+              placeholder="Buscar por proveedor o fecha (DD/MM/AAAA)..."
+              value={busquedaHistorial}
+              onChange={(e) => setBusquedaHistorial(e.target.value)}
+              className="historial-search-input"
+            />
+          </div>
+          <div className="historial-pills">
+            <button
+              type="button"
+              className={`historial-pill ${filtroHistorial === 'todos' ? 'active' : ''}`}
+              onClick={() => setFiltroHistorial('todos')}
+            >
+              Todos ({batchesHistorial.length})
+            </button>
+            <button
+              type="button"
+              className={`historial-pill ${filtroHistorial === 'borradores' ? 'active' : ''}`}
+              onClick={() => setFiltroHistorial('borradores')}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              <FileText size={14} /> Cotizaciones ({batchesHistorial.filter(b => b.status === 'open').length})
+            </button>
+            <button
+              type="button"
+              className={`historial-pill ${filtroHistorial === 'completados' ? 'active' : ''}`}
+              onClick={() => setFiltroHistorial('completados')}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              <CheckCircle2 size={14} /> Completadas ({batchesHistorial.filter(b => b.status === 'approved').length})
+            </button>
+
+          </div>
+        </div>
+
+        {/* Lista de lotes */}
+        {filteredBatches.length === 0 ? (
+          <div className="historial-empty-state">
+            <div className="empty-icon">
+              <FolderOpen size={48} style={{ color: '#94a3b8' }} />
+            </div>
+            <h3>No se encontraron registros</h3>
+
+
+            <p>No hay entradas de inventario o borradores que coincidan con la búsqueda.</p>
+          </div>
+        ) : (
+          <div className="historial-grid">
+            {filteredBatches.map(batch => {
+              const batchItems = itemsHistorial.filter(item => item.batch_id === batch.id);
+              const totalItemsCount = batchItems.length;
+              const totalUnidades = batchItems.reduce((sum, item) => sum + (Number(item.stock) || 0), 0);
+              const totalInversion = batchItems.reduce((sum, item) => sum + (Number(item.precio_compra) * Number(item.stock) || 0), 0);
+              const isDraft = batch.status === 'open';
+
+              return (
+                <div key={batch.id} className={`historial-card ${isDraft ? 'draft-card' : 'approved-card'}`}>
+                  <div className="card-header">
+                    <div className="card-status-badge">
+                      {isDraft ? (
+                        <span className="badge-draft">📝 Cotización / Borrador</span>
+                      ) : (
+                        <span className="badge-completed">✅ Completada</span>
+                      )}
+                    </div>
+                    <span className="card-date">
+                      {new Date(batch.created_at).toLocaleDateString('es-CO', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
+                  </div>
+
+                  <div className="card-title">
+                    <h4>{batch.name}</h4>
+                  </div>
+
+                  <div className="card-stats">
+                    <div className="stat-row">
+                      <span>Variedades:</span>
+                      <strong>{totalItemsCount}</strong>
+                    </div>
+                    <div className="stat-row">
+                      <span>Stock agregado:</span>
+                      <strong>{totalUnidades} uds</strong>
+                    </div>
+                    <div className="stat-row highlight">
+                      <span>Costo total:</span>
+                      <strong>
+                        {totalInversion.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })}
+                      </strong>
+                    </div>
+                  </div>
+
+                  {batchItems.length > 0 && (
+                    <div className="card-products-preview">
+                      <h5>Vista previa:</h5>
+                      <ul>
+                        {batchItems.slice(0, 3).map((item, idx) => (
+                          <li key={idx}>
+                            • {item.nombre} <span className="preview-qty">x{item.stock}</span>
+                          </li>
+                        ))}
+                        {batchItems.length > 3 && (
+                          <li className="preview-more">y {batchItems.length - 3} más...</li>
+                        )}
+                      </ul>
+                    </div>
+                  )}
+
+                  <div className="card-actions">
+                    {isDraft ? (
+                      <>
+                        <button
+                          type="button"
+                          className="btn-card-secondary"
+                          onClick={() => setSelectedBatchDetail(batch)}
+                          title="Ver detalle completo"
+                          style={{ flex: 'none', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', padding: 0 }}
+                        >
+                          👁️
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-card-primary retomar"
+                          onClick={() => handleRetomarBorradorDB(batch)}
+                          title="Retomar borrador"
+                        >
+                          ✏️ Retomar
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-card-danger"
+                          onClick={() => handleEliminarBorradorDB(batch.id)}
+                          title="Eliminar borrador"
+                        >
+                          🗑️
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="btn-card-secondary"
+                          onClick={() => setSelectedBatchDetail(batch)}
+                          title="Ver detalle completo"
+                          style={{ flex: 'none', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', padding: 0 }}
+                        >
+                          👁️
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-card-secondary duplicar"
+                          onClick={() => handleDuplicarEntradaDB(batch)}
+                          title="Cargar productos en la planilla"
+                        >
+                          🔄 Duplicar en Planilla
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderDetalleBatchModal = () => {
+    if (!selectedBatchDetail) return null;
+
+    const batch = selectedBatchDetail;
+    const batchItems = itemsHistorial.filter(item => item.batch_id === batch.id);
+    const totalItemsCount = batchItems.length;
+    const totalUnidades = batchItems.reduce((sum, item) => sum + (Number(item.stock) || 0), 0);
+    const totalInversion = batchItems.reduce((sum, item) => sum + (Number(item.precio_compra) * Number(item.stock) || 0), 0);
+    const isDraft = batch.status === 'open';
+
+    const firstMetadata = batchItems[0]?.metadata || {};
+    const pSel = firstMetadata.proveedorSeleccionado;
+    const proveedorName = pSel 
+      ? proveedores.find(p => p.id === pSel)?.nombre 
+      : 'Proveedor no especificado';
+    const tPago = firstMetadata.tipoPago;
+    const mPago = firstMetadata.metodoPago;
+    const fPago = firstMetadata.fechaPago;
+    const afCaja = firstMetadata.afectaCaja;
+
+    return (
+      <div className="batch-detail-overlay" onClick={() => setSelectedBatchDetail(null)}>
+        <div className="batch-detail-content" onClick={(e) => e.stopPropagation()}>
+          <div className="batch-detail-header">
+            <div>
+              <span className={`batch-detail-badge ${isDraft ? 'draft' : 'completed'}`}>
+                {isDraft ? '📝 Cotización / Borrador' : '✅ Entrada Completada'}
+              </span>
+              <h3>Detalle de Entrada: {batch.name}</h3>
+              <p className="batch-detail-subtitle">
+                Registrado el {new Date(batch.created_at).toLocaleString('es-CO')}
+              </p>
+            </div>
+            <button 
+              type="button" 
+              className="btn-close-detail"
+              onClick={() => setSelectedBatchDetail(null)}
+            >
+              <X size={20} />
+            </button>
+          </div>
+
+          <div className="batch-detail-body">
+            <div className="batch-detail-meta-grid">
+              <div className="meta-card">
+                <span className="meta-label">Proveedor</span>
+                <span className="meta-val">{proveedorName}</span>
+              </div>
+              <div className="meta-card">
+                <span className="meta-label">Tipo de Pago</span>
+                <span className="meta-val">
+                  {tPago === 'credito' ? '⏳ Crédito de Proveedor' : tPago === 'pagado' ? '💵 De contado' : 'No especificado'}
+                </span>
+              </div>
+              {tPago === 'pagado' && (
+                <div className="meta-card">
+                  <span className="meta-label">Método de Pago</span>
+                  <span className="meta-val" style={{ textTransform: 'capitalize' }}>{mPago}</span>
+                </div>
+              )}
+              {fPago && (
+                <div className="meta-card">
+                  <span className="meta-label">
+                    {tPago === 'credito' ? 'Fecha Vencimiento' : 'Fecha de Pago'}
+                  </span>
+                  <span className="meta-val">
+                    {new Date(fPago + 'T00:00:00').toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                  </span>
+                </div>
+              )}
+              {tPago === 'pagado' && (
+                <div className="meta-card">
+                  <span className="meta-label">Afectó Caja Diario</span>
+                  <span className={`meta-val ${afCaja ? 'orange' : 'blue'}`}>
+                    {afCaja ? 'Sí (Descontado de saldo)' : 'No (Solo registro)'}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="batch-detail-table-container">
+              <table className="batch-detail-table">
+                <thead>
+                  <tr>
+                    <th>Producto</th>
+                    <th>Código</th>
+                    <th style={{ textAlign: 'right' }}>Precio Compra</th>
+                    <th style={{ textAlign: 'right' }}>Precio Venta</th>
+                    <th style={{ textAlign: 'center' }}>Cantidad</th>
+                    <th style={{ textAlign: 'right' }}>Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {batchItems.map((item, idx) => {
+                    const subtotal = (Number(item.precio_compra) || 0) * (Number(item.stock) || 0);
+                    return (
+                      <tr key={idx}>
+                        <td>
+                          <div style={{ fontWeight: 600, color: '#1e293b' }}>{item.nombre}</div>
+                          {item.metadata?.variante_id && (
+                            <span className="variante-badge">Variante activa</span>
+                          )}
+                        </td>
+                        <td style={{ color: '#64748b', fontSize: '0.8rem' }}>{item.codigo || '-'}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 500 }}>
+                          {Number(item.precio_compra).toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })}
+                        </td>
+                        <td style={{ textAlign: 'right', color: '#059669', fontWeight: 600 }}>
+                          {Number(item.precio_venta).toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })}
+                        </td>
+                        <td style={{ textAlign: 'center', fontWeight: 700, color: '#1e293b' }}>{item.stock}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 700, color: '#1e293b' }}>
+                          {subtotal.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="batch-detail-footer">
+            <div className="detail-totals">
+              <div className="total-stat">
+                <span>Variedades:</span>
+                <strong>{totalItemsCount}</strong>
+              </div>
+              <div className="total-stat">
+                <span>Stock Total:</span>
+                <strong>{totalUnidades} uds</strong>
+              </div>
+              <div className="total-stat highlight">
+                <span>Inversión Total:</span>
+                <strong>
+                  {totalInversion.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })}
+                </strong>
+              </div>
+            </div>
+
+            <div className="detail-actions">
+              {isDraft ? (
+                <button
+                  type="button"
+                  className="btn-detail-primary"
+                  onClick={() => {
+                    handleRetomarBorradorDB(batch);
+                    setSelectedBatchDetail(null);
+                  }}
+                >
+                  ✏️ Retomar Borrador
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn-detail-primary secondary"
+                  onClick={() => {
+                    handleDuplicarEntradaDB(batch);
+                    setSelectedBatchDetail(null);
+                  }}
+                >
+                  🔄 Duplicar en Planilla
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn-detail-close"
+                onClick={() => setSelectedBatchDetail(null)}
+              >
+                Cerrar Detalle
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (!open) return null;
+
 
   const modalContent = (
     <div className="modal-overlay entrada-inventario-overlay" onClick={handleClose}>
       <div className="modal-content entrada-inventario-modal" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="entrada-inventario-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <h2>Entrada de Inventario</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flex: 1 }}>
+            <h2 style={{ margin: 0 }}>Entrada de Inventario</h2>
+            
+            {/* Pestañas de Navegación Premium */}
+            <div className="entrada-tabs-container">
+              <button
+                type="button"
+                className={`entrada-tab-button ${activeSubTab === 'entrada' ? 'active' : ''}`}
+                onClick={() => setActiveSubTab('entrada')}
+              >
+                Planilla de Entrada
+              </button>
+              <button
+                type="button"
+                className={`entrada-tab-button ${activeSubTab === 'historial' ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveSubTab('historial');
+                  cargarHistorialBatches();
+                }}
+              >
+                Historial y Cotizaciones
+              </button>
+            </div>
 
-            {/* Selector de Proveedor Compacto */}
-            <div className="header-proveedor-compact">
+            {activeSubTab === 'entrada' && productosSeleccionados.length > 0 && (
+              <span className="auto-save-badge" title="Tus cambios se guardan automáticamente en tu navegador">
+                <Save size={12} /> Auto-guardado
+              </span>
+            )}
+
+          </div>
+
+          {activeSubTab === 'entrada' && (
+            /* Selector de Proveedor Compacto */
+            <div className="header-proveedor-compact" style={{ marginRight: '1rem' }}>
               {!proveedorSeleccionado ? (
                 <button
                   type="button"
@@ -824,269 +1751,86 @@ const EntradaInventarioModal = ({ open, onClose }) => {
                 </div>
               )}
             </div>
-          </div>
+          )}
+
           <button className="modal-close" onClick={handleClose}>
             <X size={20} />
           </button>
         </div>
 
         {/* Botones de acción - Movido fuera del body para fijarlo arriba */}
-        <div className="entrada-inventario-actions">
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <button
-              type="button"
-              className="btn-buscar-productos"
-              onClick={() => setMostrarBusqueda(!mostrarBusqueda)}
-            >
-              <Search size={16} />
-              {mostrarBusqueda ? 'Ocultar búsqueda' : 'Buscar productos'}
-            </button>
-
-            <button
-              type="button"
-              className="btn-buscar-productos"
-              onClick={() => setMostrarCrearProducto(true)}
-            >
-              <Plus size={16} />
-              Crear producto
-            </button>
-
-            {productosParaAgregar.length > 0 && (
+        {activeSubTab === 'entrada' && (
+          <div className="entrada-inventario-actions">
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
               <button
                 type="button"
                 className="btn-buscar-productos"
-                onClick={agregarProductosSeleccionados}
-                style={{
-                  background: 'var(--accent-success, #10b981)',
-                  color: 'white',
-                  border: 'none',
-                  animation: 'pulse-green 2s infinite'
-                }}
+                onClick={() => setMostrarBusqueda(!mostrarBusqueda)}
               >
-                <Check size={16} />
-                Agregar seleccionados ({productosParaAgregar.length})
+                <Search size={16} />
+                {mostrarBusqueda ? 'Ocultar búsqueda' : 'Buscar productos'}
               </button>
-            )}
-          </div>
 
-          {/* Sumatoria en tiempo real */}
-          {productosSeleccionados.length > 0 && (
-            <div className="entrada-inventario-resumen-rapido">
-              <div className="resumen-item">
-                <span className="resumen-label">Total Factura:</span>
-                <span className="resumen-value inversion">
-                  {calcularTotalCompra().toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })}
-                </span>
-              </div>
-              <div className="resumen-divider" />
-              <div className="resumen-item">
-                <span className="resumen-label">Productos:</span>
-                <span className="resumen-value">{productosSeleccionados.length}</span>
-              </div>
-              <div className="resumen-divider" />
-              <div className="resumen-item">
-                <span className="resumen-label">Unidades:</span>
-                <span className="resumen-value">
-                  {productosSeleccionados.reduce((sum, p) => sum + (parseFloat(p.cantidad_agregar) || 0), 0)}
-                </span>
-              </div>
+              <button
+                type="button"
+                className="btn-buscar-productos"
+                onClick={handleActualizarCatalogo}
+                disabled={isRefreshing}
+                title="Actualiza el catálogo de productos con la base de datos sin perder lo que ya agregaste"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+              >
+                <RefreshCw size={16} className={isRefreshing ? 'spin-animation' : ''} />
+                {isRefreshing ? 'Sincronizando...' : 'Actualizar Catálogo'}
+              </button>
+
+              <button
+                type="button"
+                className="btn-buscar-productos"
+                onClick={() => setMostrarCrearProducto(true)}
+              >
+                <Plus size={16} />
+                Crear producto
+              </button>
             </div>
-          )}
-        </div>
+
+            {/* Sumatoria en tiempo real */}
+            {productosSeleccionados.length > 0 && (
+              <div className="entrada-inventario-resumen-rapido">
+                <div className="resumen-item">
+                  <span className="resumen-label">Total Compra:</span>
+                  <span className="resumen-value inversion">
+                    {calcularTotalCompra().toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })}
+                  </span>
+                </div>
+                <div className="resumen-divider" />
+                <div className="resumen-item">
+                  <span className="resumen-label">Total Venta:</span>
+                  <span className="resumen-value venta" style={{ color: '#059669', fontWeight: 700 }}>
+                    {calcularTotalVenta().toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })}
+                  </span>
+                </div>
+                <div className="resumen-divider" />
+                <div className="resumen-item">
+                  <span className="resumen-label">Productos:</span>
+                  <span className="resumen-value">{productosSeleccionados.length}</span>
+                </div>
+                <div className="resumen-divider" />
+                <div className="resumen-item">
+                  <span className="resumen-label">Unidades:</span>
+                  <span className="resumen-value">
+                    {productosSeleccionados.reduce((sum, p) => sum + (parseFloat(p.cantidad_agregar) || 0), 0)}
+                  </span>
+                </div>
+              </div>
+            )}
+
+          </div>
+        )}
 
         {/* Body */}
-        <div className="entrada-inventario-body">
-
-          {/* Modal de búsqueda */}
-          {mostrarBusqueda && (
-            <div className="productos-busqueda-modal">
-              <div className="productos-busqueda-header">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
-                  <h3>Buscar Productos</h3>
-                  {productosFiltrados.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={toggleSeleccionarTodos}
-                      className="btn-seleccionar-todos"
-                      style={{
-                        padding: '0.5rem 1rem',
-                        fontSize: '0.85rem',
-                        background: 'var(--bg-tertiary)',
-                        border: '1px solid var(--border-primary)',
-                        borderRadius: '6px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      {productosFiltrados.filter(p => !productosSeleccionados.find(ps => ps.key === p.key)).every(p => productosParaAgregar.includes(p.key)) && productosFiltrados.filter(p => !productosSeleccionados.find(ps => ps.key === p.key)).length > 0
-                        ? 'Deseleccionar todos'
-                        : 'Seleccionar todos'}
-                    </button>
-                  )}
-                </div>
-                {/* Toggle de vista */}
-                <div style={{ display: 'flex', gap: '0.35rem', marginRight: '0.5rem' }}>
-                  <button
-                    type="button"
-                    onClick={() => setVistaLista(false)}
-                    title="Vista cuadrícula"
-                    style={{
-                      padding: '0.4rem',
-                      border: `1.5px solid ${!vistaLista ? 'var(--accent-primary)' : 'var(--border-primary)'}`,
-                      borderRadius: '6px',
-                      background: !vistaLista ? 'var(--accent-primary)' : 'transparent',
-                      color: !vistaLista ? 'white' : 'var(--text-secondary)',
-                      cursor: 'pointer',
-                      display: 'flex', alignItems: 'center'
-                    }}
-                  >
-                    <LayoutGrid size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setVistaLista(true)}
-                    title="Vista lista"
-                    style={{
-                      padding: '0.4rem',
-                      border: `1.5px solid ${vistaLista ? 'var(--accent-primary)' : 'var(--border-primary)'}`,
-                      borderRadius: '6px',
-                      background: vistaLista ? 'var(--accent-primary)' : 'transparent',
-                      color: vistaLista ? 'white' : 'var(--text-secondary)',
-                      cursor: 'pointer',
-                      display: 'flex', alignItems: 'center'
-                    }}
-                  >
-                    <List size={16} />
-                  </button>
-                </div>
-                <button onClick={() => {
-                  setMostrarBusqueda(false);
-                  setProductosParaAgregar([]);
-                }}>
-                  <X size={18} />
-                </button>
-              </div>
-              <div className="productos-busqueda-input-container">
-                <Search size={18} className="productos-busqueda-icon-outside" />
-                <input
-                  ref={(node) => {
-                    busquedaInputRef.current = node;
-                    if (barcodeInputRef && node) {
-                      barcodeInputRef.current = node;
-                    }
-                  }}
-                  type="text"
-                  placeholder="Buscar por nombre, código, descripción..."
-                  value={busqueda}
-                  onChange={(e) => {
-                    const newValue = e.target.value;
-                    setBusqueda(newValue);
-                    handleBarcodeInputChange(e);
-                  }}
-                  onKeyDown={handleBarcodeKeyDown}
-                  className="productos-busqueda-input"
-                />
-              </div>
-              {/* VISTA GRID */}
-              {!vistaLista && (
-                <div className="productos-busqueda-grid" onScroll={handleGridScroll} ref={gridScrollRef}>
-                  {productosFiltrados.length === 0 ? (
-                    <p className="productos-busqueda-empty">No se encontraron productos</p>
-                  ) : (
-                    productosFiltrados.map((producto) => {
-                      const yaAgregado = productosSeleccionados.find(p => p.key === producto.key);
-                      const estaSeleccionado = productosParaAgregar.includes(producto.key);
-                      return (
-                        <div
-                          key={producto.key}
-                          className={`productos-busqueda-card ${yaAgregado ? 'agregado' : ''} ${estaSeleccionado ? 'seleccionado' : ''}`}
-                          onClick={() => !yaAgregado && toggleProductoSeleccion(producto.key)}
-                        >
-                          {!yaAgregado && estaSeleccionado && (
-                            <div className="productos-busqueda-check-badge">
-                              <Check size={16} />
-                            </div>
-                          )}
-                          {yaAgregado && (
-                            <div className="productos-busqueda-check-badge">
-                              <Check size={16} />
-                            </div>
-                          )}
-                          <div className="productos-busqueda-card-image">
-                            <OptimizedProductImage
-                              imagePath={producto.imagen}
-                              alt={producto.nombre}
-                              className="productos-busqueda-image"
-                            />
-                          </div>
-                          <div className="productos-busqueda-card-info">
-                            <div className="productos-busqueda-card-nombre">{producto.nombre}</div>
-                            {producto.codigo && (
-                              <div className="productos-busqueda-card-codigo">{producto.codigo}</div>
-                            )}
-                            <div className="productos-busqueda-card-precio">
-                              ${formatearMoneda(producto.precio_venta)}
-                            </div>
-                            <div className="productos-busqueda-card-stock">
-                              Stock: {producto.stock || 0}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              )}
-
-              {/* VISTA LISTA */}
-              {vistaLista && (
-                <div className="pbl-lista-wrapper" onScroll={handleGridScroll}>
-                  {productosFiltrados.length === 0 ? (
-                    <p className="productos-busqueda-empty">No se encontraron productos</p>
-                  ) : (
-                    <table className="pbl-table">
-                      <thead>
-                        <tr>
-                          <th style={{ width: '32px' }}></th>
-                          <th>Producto</th>
-                          <th>Código</th>
-                          <th style={{ textAlign: 'right' }}>Precio</th>
-                          <th style={{ textAlign: 'center' }}>Stock</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {productosFiltrados.map((producto) => {
-                          const yaAgregado = productosSeleccionados.find(p => p.key === producto.key);
-                          const estaSeleccionado = productosParaAgregar.includes(producto.key);
-                          return (
-                            <tr
-                              key={producto.key}
-                              className={`pbl-row ${yaAgregado ? 'pbl-row-agregado' : ''} ${estaSeleccionado ? 'pbl-row-seleccionado' : ''}`}
-                              onClick={() => !yaAgregado && toggleProductoSeleccion(producto.key)}
-                            >
-                              <td className="pbl-td-check">
-                                <div className={`pbl-checkbox ${estaSeleccionado || yaAgregado ? 'checked' : ''}`}>
-                                  {(estaSeleccionado || yaAgregado) && <Check size={12} />}
-                                </div>
-                              </td>
-                              <td className="pbl-td-nombre">{producto.nombre}{producto.variante_nombre ? <span className="pbl-variante"> · {producto.variante_nombre}</span> : null}</td>
-                              <td className="pbl-td-codigo">{producto.codigo || '—'}</td>
-                              <td className="pbl-td-precio">${formatearMoneda(producto.precio_venta)}</td>
-                              <td className="pbl-td-stock">{producto.stock || 0}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  )}
-                </div>
-              )}
-              {hayMasProductos && (
-                <div style={{ textAlign: 'center', padding: '0.75rem', fontSize: '0.8rem', color: '#9ca3af', borderTop: '1px solid #f3f4f6' }}>
-                  Mostrando {productosFiltrados.length} de {productosFiltradosTodos.length} productos. Desplázate para cargar más.
-                </div>
-              )}
-            </div>
-          )}
+        <div className="entrada-inventario-body" style={activeSubTab === 'historial' ? { padding: '1.5rem', overflowY: 'auto' } : {}}>
+          {activeSubTab === 'entrada' ? (
+            <>
 
           {/* Lista de productos seleccionados */}
           {productosSeleccionados.length === 0 ? (
@@ -1101,14 +1845,16 @@ const EntradaInventarioModal = ({ open, onClose }) => {
               <table className="entrada-inventario-table">
                 <thead>
                   <tr>
-                    <th>Producto</th>
-                    <th>Precio Compra</th>
-                    <th>%</th>
-                    <th>Precio Venta</th>
-                    <th>Cantidad</th>
-                    <th>Stock Actual</th>
-                    <th>Stock Nuevo</th>
-                    <th className="col-has-imagen">¿Tiene Imagen?</th>
+                    <th className="col-producto">Producto</th>
+                    <th className="col-precio">Precio<br/>Compra</th>
+                    <th className="col-porcentaje">%</th>
+                    <th className="col-precio">Precio<br/>Venta</th>
+                    <th className="col-cantidad">Cantidad</th>
+                    <th className="col-subtotal" style={{ textAlign: 'right' }}>Total<br/>Compra</th>
+                    <th className="col-subtotal" style={{ textAlign: 'right' }}>Total<br/>Venta</th>
+                    <th className="col-stock">Stock<br/>Actual</th>
+                    <th className="col-stock">Stock<br/>Nuevo</th>
+                    <th className="col-has-imagen">¿Tiene<br/>Imagen?</th>
                     <th className="col-categoria">Categoría</th>
                     <th className="col-acciones"></th>
                   </tr>
@@ -1134,17 +1880,54 @@ const EntradaInventarioModal = ({ open, onClose }) => {
                         />
                       </td>
                       <td className="col-porcentaje">
-                        <input
-                          type="number"
-                          value={producto.porcentaje_ganancia || ''}
-                          onChange={(e) => actualizarPorcentaje(producto.key, e.target.value)}
-                          onWheel={(e) => e.target.blur()}
-                          placeholder="0"
-                          step="0.1"
-                          className="input-porcentaje"
-                        />
-                        <span className="unit-label">%</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'center' }}>
+                          <input
+                            type="number"
+                            value={producto.porcentaje_ganancia || ''}
+                            onChange={(e) => actualizarPorcentaje(producto.key, e.target.value)}
+                            onWheel={(e) => e.target.blur()}
+                            placeholder="0"
+                            step="0.1"
+                            className="input-porcentaje"
+                          />
+                          <span className="unit-label">%</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const nuevoEstado = producto.precios_vinculados !== false ? false : true;
+                              setProductosSeleccionados(productosSeleccionados.map(p => 
+                                p.key === producto.key ? { ...p, precios_vinculados: nuevoEstado } : p
+                              ));
+                              if (nuevoEstado) {
+                                toast.success('Precio de venta vinculado al %');
+                              } else {
+                                toast.success('Precio de venta congelado (no cambiará al variar compra)');
+                              }
+                            }}
+                            className={`btn-link-precio ${producto.precios_vinculados !== false ? 'linked' : 'unlinked'}`}
+                            title={producto.precios_vinculados !== false 
+                              ? "Vínculo activo: Cambiar la compra recalcula la venta" 
+                              : "Vínculo pausado: Cambiar la compra NO altera la venta"
+                            }
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              padding: '2px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              borderRadius: '4px',
+                              marginLeft: '4px',
+                              color: producto.precios_vinculados !== false ? 'var(--accent-primary, #3b82f6)' : '#94a3b8',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            {producto.precios_vinculados !== false ? <Link2 size={14} /> : <Link2Off size={14} />}
+                          </button>
+                        </div>
                       </td>
+
                       <td className="col-precio">
                         <input
                           type="text"
@@ -1166,6 +1949,14 @@ const EntradaInventarioModal = ({ open, onClose }) => {
                           className="input-cantidad"
                         />
                       </td>
+                      <td className="col-subtotal" style={{ fontWeight: 600, textAlign: 'right', fontSize: '0.85rem', color: '#1e293b' }}>
+                        ${formatearMoneda(producto.precio_compra_nuevo * (producto.cantidad_agregar || 0))}
+                      </td>
+                      <td className="col-subtotal" style={{ fontWeight: 600, textAlign: 'right', fontSize: '0.85rem', color: '#059669' }}>
+                        ${formatearMoneda(producto.precio_venta_nuevo * (producto.cantidad_agregar || 0))}
+                      </td>
+
+
                       <td className="col-stock">
                         <span className="stock-actual">{producto.stock_actual}</span>
                       </td>
@@ -1231,7 +2022,40 @@ const EntradaInventarioModal = ({ open, onClose }) => {
                     </tr>
                   ))}
                 </tbody>
+                <tfoot>
+                  <tr className="entrada-inventario-totals-row">
+                    <td className="col-producto" style={{ fontWeight: 700, color: '#1e293b' }}>TOTALES</td>
+                    <td className="col-precio" style={{ fontWeight: 700, color: '#1e293b', textAlign: 'right' }}>
+                      ${formatearMoneda(productosSeleccionados.reduce((sum, p) => sum + (parseFloat(p.precio_compra_nuevo) || 0), 0))}
+                    </td>
+                    <td className="col-porcentaje"></td>
+                    <td className="col-precio" style={{ fontWeight: 700, color: '#059669', textAlign: 'right' }}>
+                      ${formatearMoneda(productosSeleccionados.reduce((sum, p) => sum + (parseFloat(p.precio_venta_nuevo) || 0), 0))}
+                    </td>
+                    <td className="col-cantidad" style={{ fontWeight: 700, color: '#1e293b', textAlign: 'center' }}>
+                      {productosSeleccionados.reduce((sum, p) => sum + (parseFloat(p.cantidad_agregar) || 0), 0)}
+                    </td>
+                    <td className="col-subtotal" style={{ fontWeight: 700, color: '#1e293b', textAlign: 'right' }}>
+                      ${formatearMoneda(calcularTotalCompra())}
+                    </td>
+                    <td className="col-subtotal" style={{ fontWeight: 700, color: '#059669', textAlign: 'right' }}>
+                      ${formatearMoneda(calcularTotalVenta())}
+                    </td>
+
+                    <td className="col-stock" style={{ fontWeight: 600, color: '#64748b', textAlign: 'center' }}>
+                      {productosSeleccionados.reduce((sum, p) => sum + (parseFloat(p.stock_actual) || 0), 0)}
+                    </td>
+                    <td className="col-stock" style={{ fontWeight: 700, color: '#059669', textAlign: 'center' }}>
+                      {productosSeleccionados.reduce((sum, p) => sum + (parseFloat(p.stock_nuevo) || 0), 0)}
+                    </td>
+                    <td className="col-has-imagen"></td>
+                    <td className="col-categoria"></td>
+                    <td className="col-acciones"></td>
+                  </tr>
+                </tfoot>
+
               </table>
+
             </div>
           )}
           {productosSeleccionados.length > 0 && (
@@ -1337,6 +2161,60 @@ const EntradaInventarioModal = ({ open, onClose }) => {
                   </div>
                 )}
 
+                {tipoPago === 'pagado' && (
+                  <div 
+                    onClick={() => setAfectaCaja(!afectaCaja)}
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '0.75rem', 
+                      padding: '1rem', 
+                      background: afectaCaja ? '#fff7ed' : '#f0f9ff',
+                      border: `2px solid ${afectaCaja ? '#fb923c' : '#3b82f6'}`,
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                      marginTop: '0.5rem',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                      transition: 'all 0.2s ease',
+                      animation: !afectaCaja ? 'pulse-blue 2s infinite' : 'none'
+                    }}
+                  >
+                    <div style={{
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '6px',
+                      border: `2px solid ${afectaCaja ? '#fb923c' : '#3b82f6'}`,
+                      background: afectaCaja ? '#fb923c' : 'white',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 0.2s'
+                    }}>
+                      {afectaCaja && <Check size={16} color="white" strokeWidth={4} />}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.95rem', fontWeight: 800, color: afectaCaja ? '#9a3412' : '#1e40af', marginBottom: '2px' }}>
+                        {afectaCaja ? (
+                          <>
+                            <Coins size={16} /> SE DESCONTARÁ DE LA CAJA
+                          </>
+                        ) : (
+                          <>
+                            <Wallet size={16} /> NO DESCONTAR DE CAJA (Marcar para incluir)
+                          </>
+                        )}
+                      </div>
+
+                      <div style={{ fontSize: '0.8rem', color: afectaCaja ? '#c2410c' : '#1e3a8a', lineHeight: '1.3', fontWeight: 500 }}>
+                        {afectaCaja 
+                          ? 'El valor se restará del saldo final en el cierre de caja de hoy.' 
+                          : 'Para que este gasto reste dinero de tu caja hoy, debes marcar esta casilla.'}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {tipoPago && (
                   <div style={{
                     padding: '1rem',
@@ -1360,27 +2238,67 @@ const EntradaInventarioModal = ({ open, onClose }) => {
               </div>
             </div>
           )}
+            </>
+          ) : (
+            renderHistorialContent()
+          )}
         </div>
 
         {/* Footer */}
         <div className="entrada-inventario-footer">
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={handleClose}
-            disabled={isSubmitting}
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={handleGuardar}
-            disabled={isSubmitting || productosSeleccionados.length === 0 || (proveedorSeleccionado && !tipoPago)}
-          >
-            {isSubmitting ? 'Guardando...' : 'Actualizar Inventario'}
-          </button>
+          {activeSubTab === 'entrada' ? (
+            <>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={handleClose}
+                disabled={isSubmitting}
+              >
+                Cancelar
+              </button>
+              {productosSeleccionados.length > 0 && (
+                <button
+                  type="button"
+                  className="btn-secondary btn-borrador-footer"
+                  onClick={handleGuardarBorradorDB}
+                  disabled={isSubmitting}
+                  style={{ marginRight: 'auto' }}
+                  title="Guardar borrador en la base de datos para retomar después"
+                >
+                  <Save size={14} style={{ marginRight: '6px' }} /> Guardar Borrador
+
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={handleGuardar}
+                disabled={isSubmitting || productosSeleccionados.length === 0 || (proveedorSeleccionado && !tipoPago)}
+              >
+                {isSubmitting ? 'Guardando...' : 'Actualizar Inventario'}
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setActiveSubTab('entrada')}
+                style={{ marginRight: 'auto' }}
+              >
+                ← Volver a la Planilla
+              </button>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={handleClose}
+              >
+                Cerrar
+              </button>
+            </>
+          )}
         </div>
+        {renderDetalleBatchModal()}
       </div>
     </div>
   );
@@ -1465,6 +2383,311 @@ const EntradaInventarioModal = ({ open, onClose }) => {
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Modal de búsqueda - PRIORIDAD TOTAL (PORTAL NIVEL SUPERIOR) */}
+          {mostrarBusqueda && (
+            <div 
+              className={`productos-busqueda-modal ${isDragging ? 'dragging' : ''} ${busquedaMinimizada ? 'minimized' : ''}`}
+              style={{
+                position: 'fixed',
+                left: '50%',
+                top: '10%',
+                transform: `translate(calc(-50% + ${posicionBusqueda.x}px), ${posicionBusqueda.y}px)`,
+                zIndex: 999999,
+                width: busquedaMinimizada ? '300px' : '90vw',
+                maxWidth: busquedaMinimizada ? '300px' : '1100px',
+                minHeight: busquedaMinimizada ? 'auto' : '500px',
+                boxShadow: '0 30px 60px rgba(0,0,0,0.6)',
+                border: '2px solid var(--accent-primary)',
+                background: 'white',
+                borderRadius: '12px',
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+                transition: isDragging ? 'none' : 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+              }}
+            >
+              <div 
+                className="productos-busqueda-header" 
+                onMouseDown={handleDragStart} 
+                style={{ 
+                  cursor: isDragging ? 'grabbing' : 'grab',
+                  background: 'var(--accent-primary)',
+                  color: 'white',
+                  padding: '0.75rem 1rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  userSelect: 'none'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1 }}>
+                  <Search size={18} />
+                  <h3 style={{ color: 'white', margin: 0, fontSize: '0.9rem', fontWeight: 700 }}>
+                    {busquedaMinimizada ? 'Búsqueda activa' : 'Buscar Productos'}
+                  </h3>
+                </div>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  {!busquedaMinimizada && productosFiltrados.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={toggleSeleccionarTodos}
+                      style={{
+                        padding: '0.35rem 0.75rem',
+                        fontSize: '0.75rem',
+                        background: 'rgba(255,255,255,0.2)',
+                        border: '1px solid rgba(255,255,255,0.3)',
+                        borderRadius: '6px',
+                        color: 'white',
+                        cursor: 'pointer',
+                        fontWeight: 500
+                      }}
+                    >
+                      {productosFiltrados.filter(p => !productosSeleccionados.find(ps => ps.key === p.key)).every(p => productosParaAgregar.includes(p.key)) && productosFiltrados.filter(p => !productosSeleccionados.find(ps => ps.key === p.key)).length > 0
+                        ? 'Quitar todos'
+                        : 'Seleccionar todos'}
+                    </button>
+                  )}
+
+                  <button 
+                    onClick={() => setBusquedaMinimizada(!busquedaMinimizada)}
+                    style={{ color: 'white', background: 'rgba(255,255,255,0.1)', border: 'none', padding: '6px', borderRadius: '6px', cursor: 'pointer', display: 'flex' }}
+                    title={busquedaMinimizada ? "Maximizar" : "Minimizar"}
+                  >
+                    {busquedaMinimizada ? <Plus size={18} /> : <div style={{ width: '14px', height: '2px', background: 'white', alignSelf: 'center' }} />}
+                  </button>
+                  
+                  <button 
+                    onClick={() => {
+                      setMostrarBusqueda(false);
+                      setProductosParaAgregar([]);
+                      setPosicionBusqueda({ x: 0, y: 0 });
+                    }}
+                    style={{ color: 'white', background: 'rgba(255,255,255,0.1)', border: 'none', padding: '6px', borderRadius: '6px', cursor: 'pointer', display: 'flex' }}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+
+              {!busquedaMinimizada && (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', padding: '0.75rem 1rem', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', gap: '1rem' }}>
+                    <div style={{ display: 'flex', background: '#e2e8f0', padding: '2px', borderRadius: '6px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setVistaLista(false)}
+                        style={{
+                          padding: '0.35rem 0.75rem',
+                          background: !vistaLista ? 'white' : 'transparent',
+                          border: 'none',
+                          borderRadius: '4px',
+                          display: 'flex', alignItems: 'center', cursor: 'pointer',
+                          boxShadow: !vistaLista ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                        }}
+                      >
+                        <LayoutGrid size={14} color={!vistaLista ? 'var(--accent-primary)' : '#64748b'} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setVistaLista(true)}
+                        style={{
+                          padding: '0.35rem 0.75rem',
+                          background: vistaLista ? 'white' : 'transparent',
+                          border: 'none',
+                          borderRadius: '4px',
+                          display: 'flex', alignItems: 'center', cursor: 'pointer',
+                          boxShadow: vistaLista ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                        }}
+                      >
+                        <List size={14} color={vistaLista ? 'var(--accent-primary)' : '#64748b'} />
+                      </button>
+                    </div>
+
+                    <div style={{ flex: 1, position: 'relative' }}>
+                      <Search size={18} style={{ 
+                        position: 'absolute', 
+                        left: '14px', 
+                        top: '50%', 
+                        transform: 'translateY(-50%)', 
+                        color: '#94a3b8',
+                        pointerEvents: 'none'
+                      }} />
+                      <input
+                        ref={(node) => {
+                          busquedaInputRef.current = node;
+                          if (barcodeInputRef && node) {
+                            barcodeInputRef.current = node;
+                          }
+                        }}
+                        type="text"
+                        autoFocus
+                        placeholder="Escribe para buscar productos..."
+                        value={busqueda}
+                        onChange={(e) => {
+                          const newValue = e.target.value;
+                          setBusqueda(newValue);
+                          handleBarcodeInputChange(e);
+                        }}
+                        onKeyDown={handleBarcodeKeyDown}
+                        style={{
+                          width: '100%',
+                          padding: '0.7rem 1rem 0.7rem 3rem', // Aumentado el padding izquierdo a 3rem
+                          border: '1px solid #d1d5db',
+                          borderRadius: '8px',
+                          fontSize: '0.95rem',
+                          outline: 'none',
+                          boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.05)'
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, background: 'white' }}>
+                    {!vistaLista && (
+                      <div className="productos-busqueda-grid" onScroll={handleGridScroll} ref={gridScrollRef}>
+                        {productosFiltrados.length === 0 ? (
+                          <p className="productos-busqueda-empty">No se encontraron productos</p>
+                        ) : (
+                          productosFiltrados.map((producto) => {
+                            const yaAgregado = productosSeleccionados.find(p => p.key === producto.key);
+                            const estaSeleccionado = productosParaAgregar.includes(producto.key);
+                            return (
+                              <div
+                                key={producto.key}
+                                className={`productos-busqueda-card ${yaAgregado ? 'agregado' : ''} ${estaSeleccionado ? 'seleccionado' : ''}`}
+                                onClick={() => !yaAgregado && toggleProductoSeleccion(producto.key)}
+                              >
+                                {!yaAgregado && estaSeleccionado && (
+                                  <div className="productos-busqueda-check-badge">
+                                    <Check size={16} />
+                                  </div>
+                                )}
+                                {yaAgregado && (
+                                  <div className="productos-busqueda-check-badge">
+                                    <Check size={16} />
+                                  </div>
+                                )}
+                                <div className="productos-busqueda-card-image">
+                                  <OptimizedProductImage
+                                    imagePath={producto.imagen}
+                                    alt={producto.nombre}
+                                    className="productos-busqueda-image"
+                                  />
+                                </div>
+                                <div className="productos-busqueda-card-info">
+                                  <div className="productos-busqueda-card-nombre">{producto.nombre}</div>
+                                  {producto.codigo && (
+                                    <div className="productos-busqueda-card-codigo">{producto.codigo}</div>
+                                  )}
+                                  <div className="productos-busqueda-card-precio">
+                                    ${formatearMoneda(producto.precio_venta)}
+                                  </div>
+                                  <div className="productos-busqueda-card-stock">
+                                    Stock: {producto.stock || 0}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    )}
+
+                    {vistaLista && (
+                      <div className="pbl-lista-wrapper" onScroll={handleGridScroll}>
+                        {productosFiltrados.length === 0 ? (
+                          <p className="productos-busqueda-empty">No se encontraron productos</p>
+                        ) : (
+                          <table className="pbl-table">
+                            <thead>
+                              <tr>
+                                <th style={{ width: '32px' }}></th>
+                                <th>Producto</th>
+                                <th>Código</th>
+                                <th style={{ textAlign: 'right' }}>Precio</th>
+                                <th style={{ textAlign: 'center' }}>Stock</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {productosFiltrados.map((producto) => {
+                                const yaAgregado = productosSeleccionados.find(p => p.key === producto.key);
+                                const estaSeleccionado = productosParaAgregar.includes(producto.key);
+                                return (
+                                  <tr
+                                    key={producto.key}
+                                    className={`pbl-row ${yaAgregado ? 'pbl-row-agregado' : ''} ${estaSeleccionado ? 'pbl-row-seleccionado' : ''}`}
+                                    onClick={() => !yaAgregado && toggleProductoSeleccion(producto.key)}
+                                  >
+                                    <td className="pbl-td-check">
+                                      <div className={`pbl-checkbox ${estaSeleccionado || yaAgregado ? 'checked' : ''}`}>
+                                        {(estaSeleccionado || yaAgregado) && <Check size={12} />}
+                                      </div>
+                                    </td>
+                                    <td className="pbl-td-nombre">{producto.nombre}{producto.variante_nombre ? <span className="pbl-variante"> · {producto.variante_nombre}</span> : null}</td>
+                                    <td className="pbl-td-codigo">{producto.codigo || '—'}</td>
+                                    <td className="pbl-td-precio">${formatearMoneda(producto.precio_venta)}</td>
+                                    <td className="pbl-td-stock">{producto.stock || 0}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        )}
+                      </div>
+                    )}
+                    {hayMasProductos && (
+                      <div style={{ textAlign: 'center', padding: '0.75rem', fontSize: '0.8rem', color: '#9ca3af', borderTop: '1px solid #f3f4f6' }}>
+                        Mostrando {productosFiltrados.length} de {productosFiltradosTodos.length} productos. Desplázate para cargar más.
+                      </div>
+                    )}
+                  </div>
+
+                  {productosParaAgregar.length > 0 && (
+                    <div className="busqueda-modal-footer" style={{
+                      padding: '0.75rem 1.25rem',
+                      background: '#f8fafc',
+                      borderTop: '1px solid #e2e8f0',
+                      display: 'flex',
+                      justifyContent: 'flex-end',
+                      alignItems: 'center',
+                      gap: '1rem',
+                      boxShadow: '0 -4px 12px rgba(0,0,0,0.03)',
+                      flexShrink: 0
+                    }}>
+                      <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 500 }}>
+                        Has seleccionado {productosParaAgregar.length} producto{productosParaAgregar.length > 1 ? 's' : ''}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={agregarProductosSeleccionados}
+                        style={{
+                          padding: '0.6rem 1.5rem',
+                          background: 'var(--accent-success, #10b981)',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontWeight: 600,
+                          fontSize: '0.875rem',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          boxShadow: '0 2px 8px rgba(16, 185, 129, 0.25)',
+                          transition: 'all 0.2s',
+                          animation: 'pulse-green 2s infinite'
+                        }}
+                      >
+                        <Check size={16} />
+                        Agregar seleccionados ({productosParaAgregar.length})
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           )}
         </>,

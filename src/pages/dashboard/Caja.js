@@ -1132,15 +1132,20 @@ export default function Caja({
     }
 
     // Solo mostrar el modal automáticamente si:
-    // 1. No está cargando
-    // 2. No hay apertura activa
-    // 3. Hay organización
-    // 4. No se ha mostrado inicialmente
-    // 5. El modal no está ya abierto manualmente
-    // 6. El usuario no lo cerró manualmente
-    if (!cargandoApertura && !aperturaActivaFinal && organization?.id && !modalMostradoInicialmente && !mostrarModalApertura && !modalCerradoManualmente && puedeAbrirCaja) {
-      setMostrarModalApertura(true);
-      setModalMostradoInicialmente(true);
+    // 1. No hay apertura activa en el estado final
+    // 2. Hay organización
+    // 3. No se ha mostrado inicialmente
+    // 4. El modal no está ya abierto manualmente
+    // 5. El usuario no lo cerró manualmente
+    // OPTIMIZACIÓN: Si no está cargando O si sabemos positivamente que no hay vinculación local, mostrar de inmediato
+    const sinVinculacionLocal = !localStorage.getItem(`synced_apertura_${organization?.id}`);
+    
+    if (!aperturaActivaFinal && organization?.id && !modalMostradoInicialmente && !mostrarModalApertura && !modalCerradoManualmente && puedeAbrirCaja) {
+      // Si ya terminó de cargar y no hay nada, o si aún cargando sabemos que no hay vínculo local
+      if (!cargandoApertura || sinVinculacionLocal) {
+        setMostrarModalApertura(true);
+        setModalMostradoInicialmente(true);
+      }
     }
   }, [cargandoApertura, aperturaActivaFinal, organization?.id, modalMostradoInicialmente, mostrarModalApertura, modalCerradoManualmente, esModoPedido, puedeAbrirCaja]);
 

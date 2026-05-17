@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../services/api/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { useCurrencyInput } from '../hooks/useCurrencyInput';
@@ -11,6 +13,8 @@ import { useOfflineSync } from '../hooks/useOfflineSync';
 import './CierreCaja.css';
 
 const CierreCaja = () => {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { userProfile, user, hasPermission, organization } = useAuth();
   const { isOnline } = useNetworkStatus();
   const { isSyncing } = useOfflineSync();
@@ -43,6 +47,7 @@ const CierreCaja = () => {
   const [yaCerrado, setYaCerrado] = useState(false);
   const [montoInicialApertura, setMontoInicialApertura] = useState(0);
   const [aperturaActivaObjeto, setAperturaActivaObjeto] = useState(null);
+  const [isSynced, setIsSynced] = useState(false);
   const [realAuthUid, setRealAuthUid] = useState(null);
 
   const puedeCerrarCaja = hasPermission('cierre.create') || ['owner', 'admin'].includes(userProfile?.role);
@@ -196,23 +201,13 @@ const CierreCaja = () => {
       if (!aperturaActiva) {
         setMontoInicialApertura(0);
         setAperturaActivaObjeto(null);
+        setIsSynced(false);
       } else {
         setMontoInicialApertura(aperturaActiva?.monto_inicial || 0);
         setAperturaActivaObjeto(aperturaActiva);
+        setIsSynced(!!aperturaActiva.is_synced);
       }
 
-      // Obtener OTRAS aperturas activas para filtrar ventas
-      const { data: rawOtrasAperturas } = await supabase
-        .from('aperturas_caja')
-        .select('id, employee_id, user_id, created_at')
-        .eq('organization_id', userProfile.organization_id)
-        .is('cierre_id', null)
-        .eq('estado', 'abierta')
-        .neq('id', aperturaActiva?.id || '');
-
-      const otrasAperturas = rawOtrasAperturas || [];
-
-      const employeeIdsOtrasAperturas = new Set((otrasAperturas || []).map(a => a.employee_id).filter(Boolean));
 
       // 1. Obtener el último cierre de caja (sin limitar por día)
       const { data: ultimoCierre, error: errorCierres } = await supabase
@@ -256,26 +251,17 @@ const CierreCaja = () => {
 
       if (error) throw error;
 
-      // FILTRAR: Excluir ventas que pertenecen a otras cajas independientes
-      // Lógica simplificada y robusta: Si una venta ocurrió DESPUÉS de abrir esta caja,
-      // debe incluirse, a menos que sepamos positivamente que pertenece a OTRA caja independiente
-      // que se abrió DESPUÉS de la nuestra.
-      
+      // FILTRAR: Solo incluir ventas que pertenecen a esta caja activa (particionamiento estricto por employee_id)
       const rawVentasData = (rawVentasDataAll || []).filter(venta => {
-        // Si no hay apertura activa propia, no podemos filtrar por relación de tiempo, 
-        // así que incluimos la venta por defecto.
-        if (!aperturaActiva?.created_at) return true;
-
-        // Si la venta tiene un employee_id que tiene su propia apertura abierta (e INDEPENDIENTE), 
-        // y esa apertura es POSTERIOR a la nuestra, entonces la venta es de la otra caja.
-        const otraAperturaRelacionada = (otrasAperturas || []).find(a => 
-          (a.employee_id === venta.employee_id || a.user_id === venta.user_id) && 
-          new Date(a.created_at) > new Date(aperturaActiva.created_at)
-        );
-
-        if (otraAperturaRelacionada) return false;
+        if (!aperturaActiva) return true;
         
-        return true;
+        // Si la caja es de un empleado específico, solo incluir sus ventas
+        if (aperturaActiva.employee_id) {
+          return venta.employee_id === aperturaActiva.employee_id;
+        }
+        
+        // Si la caja es del dueño (independiente), solo incluir ventas sin employee_id (las del dueño o sincronizados a él)
+        return venta.employee_id === null;
       });
 
       // Cargar vendedores manualmente
@@ -315,6 +301,7 @@ const CierreCaja = () => {
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       });
 
+      // Mostramos todas las ventas de la caja vinculada (detalle total)
       setVentasHoy(ventasCombinadas);
       setVentasCreditoHoy(ventasCredito);
       const total = ventasCombinadas.reduce((sum, venta) => sum + (venta.total || 0), 0);
@@ -347,21 +334,15 @@ const CierreCaja = () => {
         console.error('Error cargando pagos de créditos:', errorPagosCredito);
       }
 
-      // FILTRAR PAGOS: Solo excluir si pertenecen positivamente a OTRA caja activa
+      // FILTRAR PAGOS: Solo incluir pagos que pertenecen a esta caja activa (particionamiento estricto por employee_id)
       const rawPagosData = (rawPagosDataAll || []).filter(pago => {
-        // Si el pago tiene employee_id, verificar si ese empleado tiene otra apertura abierta
-        if (pago.employee_id && employeeIdsOtrasAperturas.has(pago.employee_id)) {
-          return false;
+        if (!aperturaActiva) return true;
+        
+        if (aperturaActiva.employee_id) {
+          return pago.employee_id === aperturaActiva.employee_id;
         }
         
-        // Si el pago no tiene employee_id, solo excluir si el user_id pertenece a otra apertura
-        // que NO es la actual y SI es una apertura de usuario (no de empleado)
-        if (!pago.employee_id && pago.user_id) {
-          const esDeOtraAperturaUsuario = otrasAperturas.some(a => !a.employee_id && a.user_id === pago.user_id);
-          if (esDeOtraAperturaUsuario) return false;
-        }
-        
-        return true;
+        return pago.employee_id === null;
       });
 
       // Cargar vendedores para pagos manualmente
@@ -545,7 +526,7 @@ const CierreCaja = () => {
       try {
         let egresosQuery = supabase
           .from('gastos_variables')
-          .select('monto')
+          .select('monto, afecta_caja, employee_id')
           .eq('organization_id', userProfile.organization_id);
 
         if (hayUltioCierre) {
@@ -556,9 +537,19 @@ const CierreCaja = () => {
 
         const { data: dataEgresos } = await egresosQuery;
         const rawEgresos = dataEgresos || [];
-        egresosTurno = rawEgresos.reduce((sum, e) => sum + parseFloat(e.monto || 0), 0);
+        // Filtrar solo los egresos que deben descontarse de caja y pertenecen a la caja activa
+        const egresosQueAfectan = rawEgresos.filter(e => {
+          if (e.afecta_caja === false) return false;
+          if (!aperturaActiva) return true;
+          if (aperturaActiva.employee_id) {
+            return e.employee_id === aperturaActiva.employee_id;
+          }
+          return e.employee_id === null;
+        });
+        
+        egresosTurno = egresosQueAfectan.reduce((sum, e) => sum + parseFloat(e.monto || 0), 0);
         setTotalEgresos(egresosTurno);
-        setEgresosDetalle(rawEgresos);
+        setEgresosDetalle(egresosQueAfectan);
       } catch (eError) {
         console.warn('Error cargando egresos:', eError);
       }
@@ -568,7 +559,7 @@ const CierreCaja = () => {
       try {
         let devolucionesQuery = supabase
           .from('devoluciones')
-          .select('*, venta:ventas(numero_venta, items)')
+          .select('*, venta:ventas(numero_venta, items, employee_id)')
           .eq('organization_id', userProfile.organization_id);
 
         if (hayUltioCierre) {
@@ -580,7 +571,17 @@ const CierreCaja = () => {
         const { data: dataDevoluciones } = await devolucionesQuery;
         const rawDevoluciones = dataDevoluciones || [];
         
-        devolucionesTurno = rawDevoluciones.reduce((sum, d) => {
+        // Filtrar devoluciones que pertenecen a la caja activa
+        const devolucionesFiltradas = rawDevoluciones.filter(d => {
+          if (!aperturaActiva) return true;
+          const ventaEmployeeId = d.venta?.employee_id || null;
+          if (aperturaActiva.employee_id) {
+            return ventaEmployeeId === aperturaActiva.employee_id;
+          }
+          return ventaEmployeeId === null;
+        });
+
+        devolucionesTurno = devolucionesFiltradas.reduce((sum, d) => {
           if (d.tipo === 'devolucion') {
             return sum + parseFloat(d.total_devolucion || 0);
           } else if (d.tipo === 'cambio' && (d.diferencia || 0) < 0) {
@@ -590,7 +591,7 @@ const CierreCaja = () => {
           return sum;
         }, 0);
         setTotalDevoluciones(devolucionesTurno);
-        setDevolucionesDetalle(rawDevoluciones);
+        setDevolucionesDetalle(devolucionesFiltradas);
       } catch (dError) {
         console.warn('Error cargando devoluciones:', dError);
       }
@@ -631,8 +632,17 @@ const CierreCaja = () => {
           .order('created_at', { ascending: false });
 
         if (!cotizacionesError && rawCotizaciones) {
+          // Filtrar cotizaciones que pertenecen a la caja activa
+          const cotizacionesFiltradas = rawCotizaciones.filter(c => {
+            if (!aperturaActiva) return true;
+            if (aperturaActiva.employee_id) {
+              return c.employee_id === aperturaActiva.employee_id;
+            }
+            return c.employee_id === null;
+          });
+
           // Cargar vendedores para cotizaciones
-          const cotizEmployeeIds = [...new Set(rawCotizaciones.map(v => v.employee_id).filter(Boolean))];
+          const cotizEmployeeIds = [...new Set(cotizacionesFiltradas.map(v => v.employee_id).filter(Boolean))];
           let cotizVendedoresMap = new Map();
           if (cotizEmployeeIds.length > 0) {
             const { data: cvData } = await supabase
@@ -642,7 +652,7 @@ const CierreCaja = () => {
             cotizVendedoresMap = new Map((cvData || []).map(v => [v.id, v]));
           }
 
-          const cotizacionesFinal = rawCotizaciones.map(v => ({
+          const cotizacionesFinal = cotizacionesFiltradas.map(v => ({
             ...v,
             vendedor: v.employee_id ? (cotizVendedoresMap.get(v.employee_id) || null) : null
           }));
@@ -700,7 +710,7 @@ const CierreCaja = () => {
     });
 
     const resumenSistema = puedeVerEsperado ? `
-📊 RESUMEN REGISTRADO EN SISTEMA:
+📊 RESUMEN ${isSynced ? 'DE MI TURNO' : 'REGISTRADO EN SISTEMA'}:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 💵 Efectivo en ventas: ${formatCOP(desgloseSistema.efectivo + totalEgresos + totalDevoluciones)}
 📲 Transferencias: ${formatCOP(desgloseSistema.transferencias)}
@@ -787,6 +797,31 @@ Generado por Crece+ 🚀
 
     setMensaje({ tipo: 'success', texto: 'Cierre descargado correctamente' });
     setTimeout(() => setMensaje({ tipo: '', texto: '' }), 3000);
+  };
+
+  const finalizarTurnoYDesvincular = () => {
+    const confirmar = window.confirm(
+      '¿Estás seguro de que deseas finalizar tu turno y desvincularte de esta caja? \n\nTu reporte personal de ventas ha sido generado. Podrás compartirlo antes de salir.'
+    );
+
+    if (confirmar) {
+      localStorage.removeItem(`synced_apertura_${userProfile.organization_id}`);
+      
+      // Limpiar cache de React Query para que la Caja sepa que ya no hay apertura activa
+      queryClient.invalidateQueries({ queryKey: ['apertura_caja_activa'] });
+      queryClient.invalidateQueries({ queryKey: ['otras_cajas_abiertas'] });
+
+      setMensaje({ tipo: 'success', texto: 'Turno finalizado con éxito. Redirigiendo...' });
+      setTimeout(() => {
+        // Redirigir según el tipo de sesión para evitar que el sistema los saque
+        const session = getEmployeeSession();
+        if (session) {
+          navigate('/empleado/caja');
+        } else {
+          navigate('/dashboard/caja');
+        }
+      }, 1500);
+    }
   };
 
   const guardarCierre = async () => {
@@ -1824,14 +1859,28 @@ Generado por Crece+ 🚀
               )}
             </div>
 
-            <button
-              className="btn-guardar-cierre"
-              onClick={guardarCierre}
-              disabled={!canSaveCierre || guardando || (efectivoRealInput.displayValue === '' && transferenciasRealInput.displayValue === '' && tarjetaRealInput.displayValue === '')}
-            >
-              <Save size={20} />
-              {guardando ? 'Guardando...' : 'Guardar Cierre de Caja'}
-            </button>
+            {canSaveCierre ? (
+              <button
+                className="btn-guardar-cierre"
+                onClick={guardarCierre}
+                disabled={guardando || (efectivoRealInput.displayValue === '' && transferenciasRealInput.displayValue === '' && tarjetaRealInput.displayValue === '')}
+              >
+                <Save size={20} />
+                {guardando ? 'Guardando...' : 'Guardar Cierre de Caja'}
+              </button>
+            ) : isSynced && (
+              <button
+                className="btn-guardar-cierre"
+                onClick={finalizarTurnoYDesvincular}
+                style={{ 
+                  background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+                  boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)' 
+                }}
+              >
+                <Share2 size={20} />
+                Finalizar Turno y Desvincularme
+              </button>
+            )}
 
 
 

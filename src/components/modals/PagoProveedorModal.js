@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { X } from 'lucide-react';
+import { X, Check } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCrearPagoProveedor, useCreditosProveedores, useCrearGastoVariable, useCategoriasGastos } from '../../hooks/useEgresos';
 import { useCurrencyInput } from '../../hooks/useCurrencyInput';
@@ -28,6 +28,7 @@ const PagoProveedorModal = ({ open, onClose, creditoId = null, aperturaActiva = 
   const { data: categorias = [] } = useCategoriasGastos(organization?.id, 'variable');
   const montoInput = useCurrencyInput();
   const [registrarEnEgresos, setRegistrarEnEgresos] = useState(true);
+  const [afectaCaja, setAfectaCaja] = useState(false);
   
   // Extraer funciones estables del hook (ya están en useCallback)
   const setMontoValue = montoInput.setValue;
@@ -68,6 +69,7 @@ const PagoProveedorModal = ({ open, onClose, creditoId = null, aperturaActiva = 
         comprobante_url: '',
         notas: ''
       });
+      setAfectaCaja(false);
     }
   }, [open, creditoId, reset, resetMonto]);
 
@@ -92,6 +94,15 @@ const PagoProveedorModal = ({ open, onClose, creditoId = null, aperturaActiva = 
       if (monto <= 0) {
         alert('El monto debe ser mayor a cero');
         return;
+      }
+
+      // Reconfirmación de afectación de caja si se registra en egresos
+      if (registrarEnEgresos) {
+        const confirmMsg = afectaCaja 
+          ? `¿Confirmas que este pago de $${montoInput.displayValue} SE DESCONTARÁ de la caja actual?`
+          : `¿Confirmas que este pago de $${montoInput.displayValue} NO se descontará de la caja actual? (Solo registro informativo)`;
+        
+        if (!window.confirm(confirmMsg)) return;
       }
 
       if (credito && monto > credito.monto_pendiente) {
@@ -148,7 +159,8 @@ const PagoProveedorModal = ({ open, onClose, creditoId = null, aperturaActiva = 
               orden_compra_id: credito.orden_compra_id || null,
               notas: data.notas || `Pago de crédito a proveedor${credito.factura_numero ? ` - Factura: ${credito.factura_numero}` : ''}`,
               user_id: aperturaActiva?.user_id || user.id,
-              employee_id: aperturaActiva?.employee_id || null
+              employee_id: aperturaActiva?.employee_id || null,
+              afecta_caja: afectaCaja
             };
 
             await crearGastoVariable.mutateAsync(gastoData);
@@ -319,12 +331,52 @@ const PagoProveedorModal = ({ open, onClose, creditoId = null, aperturaActiva = 
                   checked={registrarEnEgresos}
                   onChange={(e) => setRegistrarEnEgresos(e.target.checked)}
                 />
-                <span>Registrar este pago en Egresos (Gastos Variables)</span>
+               <span>Registrar este pago en Egresos (Gastos Variables)</span>
               </label>
               <small style={{ color: '#6b7280', fontSize: '0.75rem', display: 'block', marginTop: '0.25rem' }}>
                 Si está marcado, el pago se registrará automáticamente como un gasto variable en la sección de Egresos
               </small>
             </div>
+
+            {registrarEnEgresos && (
+              <div className="form-group" style={{ marginTop: '0.5rem' }}>
+                <label style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '0.75rem', 
+                  padding: '1rem', 
+                  background: afectaCaja ? '#fff7ed' : '#f0f9ff',
+                  border: `2px solid ${afectaCaja ? '#fb923c' : '#3b82f6'}`,
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }} onClick={() => setAfectaCaja(!afectaCaja)}>
+                  <div style={{
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '6px',
+                    border: `2px solid ${afectaCaja ? '#fb923c' : '#3b82f6'}`,
+                    background: afectaCaja ? '#fb923c' : 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.2s'
+                  }}>
+                    {afectaCaja && <Check size={16} color="white" strokeWidth={4} />}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: '0.875rem', fontWeight: 800, color: afectaCaja ? '#9a3412' : '#1e40af' }}>
+                      {afectaCaja ? '✅ SE DESCONTARÁ DE LA CAJA' : '⬜ NO DESCONTAR DE CAJA (Marcar para incluir)'}
+                    </span>
+                    <span style={{ fontSize: '0.75rem', color: afectaCaja ? '#c2410c' : '#1e3a8a', fontWeight: 500 }}>
+                      {afectaCaja 
+                        ? 'El valor se restará del saldo final en el cierre de caja de hoy.' 
+                        : 'Para que este gasto reste dinero de tu caja hoy, debes marcar esta casilla.'}
+                    </span>
+                  </div>
+                </label>
+              </div>
+            )}
           </div>
 
           <div className="modal-footer">
