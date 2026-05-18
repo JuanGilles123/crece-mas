@@ -44,7 +44,7 @@ const HistorialVentas = () => {
 
   const { data: ventas = [], isLoading, refetch } = useVentas(
     userProfile?.organization_id, 
-    500, 
+    5000, 
     historyDays,
     effectiveEmployeeId
   );
@@ -75,12 +75,27 @@ const HistorialVentas = () => {
         venta.total?.toString()
       ];
 
-      const camposItems = (venta.items || []).flatMap(item => [
-        item.nombre,
-        item.codigo,
-        item.variant_nombre,
-        item.variant_codigo
-      ]);
+      const camposItems = (venta.items || []).flatMap(item => {
+        const baseFields = [
+          item.nombre,
+          item.codigo,
+          item.variant_nombre,
+          item.variant_codigo
+        ];
+
+        let meta = item.metadata;
+        if (typeof meta === 'string') {
+          try { meta = JSON.parse(meta); } catch (e) {}
+        }
+        const vinculados = meta?.productos_vinculados;
+        if (vinculados && Array.isArray(vinculados)) {
+          vinculados.forEach(v => {
+            if (v.producto_nombre) baseFields.push(v.producto_nombre);
+          });
+        }
+
+        return baseFields;
+      });
 
       const cliente = venta.cliente || {};
       const camposCliente = [
@@ -124,7 +139,16 @@ const HistorialVentas = () => {
       supabase.removeChannel(channel);
     };
   }, [organization?.id, queryClient]);
+  const [busquedaLocal, setBusquedaLocal] = useState('');
   const [busqueda, setBusqueda] = useState('');
+
+  // Debounce para evitar parpadeos en la búsqueda
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setBusqueda(busquedaLocal);
+    }, 400); // 400ms de retraso
+    return () => clearTimeout(timer);
+  }, [busquedaLocal]);
   const [filtroFecha, setFiltroFecha] = useState('todos');
   const [filtroMetodoPago, setFiltroMetodoPago] = useState('todos');
   const [fechaEspecifica, setFechaEspecifica] = useState('');
@@ -134,6 +158,7 @@ const HistorialVentas = () => {
   // Hook para detectar código de barras
   const handleBarcodeScanned = useCallback((barcode) => {
     // Buscar en ventas por código de barras
+    setBusquedaLocal(barcode);
     setBusqueda(barcode);
     toast('Buscando por código de barras...', { icon: '🔍' }); // TODO: Reemplazar con icono
   }, []);
@@ -334,8 +359,8 @@ const HistorialVentas = () => {
       });
     }
 
-    // Filtro de fecha
-    if (filtroFecha !== 'todos') {
+    // Filtro de fecha (lo ignoramos si hay búsqueda activa para buscar en todo el historial)
+    if (filtroFecha !== 'todos' && !busqueda.trim()) {
       const hoy = new Date();
       hoy.setHours(0, 0, 0, 0);
 
@@ -1257,9 +1282,9 @@ const HistorialVentas = () => {
             ref={barcodeInputRef}
             type="text"
             placeholder="Buscar por ID, producto, código de barras o método de pago..."
-            value={busqueda}
+            value={busquedaLocal}
             onChange={(e) => {
-              setBusqueda(e.target.value);
+              setBusquedaLocal(e.target.value);
               // El hook manejará la detección de código de barras
               handleBarcodeInputChange(e);
             }}
@@ -1269,14 +1294,13 @@ const HistorialVentas = () => {
               e.target.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
             }}
           />
-          {busqueda && (
-            <button
-              className="clear-search"
-              onClick={() => setBusqueda('')}
-            >
-              <X size={16} />
-            </button>
-          )}
+          <button
+            className="clear-search"
+            onClick={() => { setBusquedaLocal(''); setBusqueda(''); }}
+            style={{ visibility: busquedaLocal ? 'visible' : 'hidden' }}
+          >
+            <X size={16} />
+          </button>
         </div>
 
         <div className="filtro-fecha" style={{ gap: '10px' }}>

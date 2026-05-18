@@ -357,13 +357,20 @@ const ResumenVentas = () => {
     return 'Vendedor desconocido';
   }, [nombresEmpleados, nombresUsuarios, normalizarNombreVendedor, miembrosMap, userProfile]);
 
-  // --- OPTIMIZACIÓN: MAPA DE BÚSQUEDA DE PRODUCTOS ---
   const productosMap = useMemo(() => {
     const map = { id: {}, codigo: {}, nombre: {} };
     productos.forEach(p => {
       if (p.id) map.id[String(p.id)] = p;
       if (p.codigo) map.codigo[String(p.codigo)] = p;
       if (p.nombre) map.nombre[p.nombre] = p;
+      
+      // Indexar también las variantes para que la búsqueda por ID y código funcione con variantes
+      if (Array.isArray(p.variantes)) {
+        p.variantes.forEach(v => {
+          if (v.id) map.id[String(v.id)] = p;
+          if (v.codigo) map.codigo[String(v.codigo)] = p;
+        });
+      }
     });
     return map;
   }, [productos]);
@@ -565,28 +572,100 @@ const ResumenVentas = () => {
         // Procesar Items (para Categoría y Búsqueda por producto)
         if (!Array.isArray(venta.items)) return matchBaseSearch ? venta : null;
 
-        let matchingItems = venta.items;
+        // Clonar los items para no modificar el cache original en Supabase/Offline
+        let matchingItems = (venta.items || []).map(it => ({ ...it }));
         if (hasCatFilter || hasSearch) {
-          matchingItems = venta.items.filter(item => {
+          matchingItems = matchingItems.filter(item => {
+            const prodId = String(item.id || item.producto_id);
+            const prod = productosMap.id[prodId] || productosMap.codigo[String(item.codigo)] || productosMap.nombre[item.nombre];
+            const vinculados = prod?.metadata?.productos_vinculados || item.metadata?.productos_vinculados;
+
             // Búsqueda por nombre de producto
             if (hasSearch && !matchBaseSearch) {
-              if (!(item.nombre || '').toLowerCase().includes(term)) return false;
+              let matchComponent = false;
+              if (vinculados && Array.isArray(vinculados)) {
+                matchComponent = vinculados.some(v => {
+                  const vProd = productosMap.id[String(v.producto_id)];
+                  const vNombre = String(v.producto_nombre || vProd?.nombre || '').toLowerCase();
+                  return vNombre.includes(term);
+                });
+              }
+              const itemNombre = String(item.nombre || '').toLowerCase();
+              if (!itemNombre.includes(term) && !matchComponent) {
+                return false;
+              }
             }
 
             // Lógica de Categoría (con expansión de combos)
             if (hasCatFilter) {
-              const prodId = String(item.id || item.producto_id);
-              const prod = productosMap.id[prodId] || productosMap.codigo[String(item.codigo)] || productosMap.nombre[item.nombre];
-              
-              const vinculados = prod?.metadata?.productos_vinculados || item.metadata?.productos_vinculados;
-              
               if (vinculados && Array.isArray(vinculados) && vinculados.length > 0) {
-                // Es un combo, verificar si ALGUNO de sus componentes pertenece a la categoría filtrada
-                return vinculados.some(v => {
+                // Es un combo, clasificar componentes físicos y no físicos
+                let totalPhysicalValor = 0;
+                let totalNonPhysicalValor = 0;
+                let filteredPhysicalValor = 0;
+                let filteredNonPhysicalValor = 0;
+
+                vinculados.forEach(v => {
                   const vProd = productosMap.id[String(v.producto_id)];
+                  const vPrecio = parseFloat(vProd?.precio_venta || 0);
                   const vCat = vProd?.metadata?.categoria || 'Sin categoría';
-                  return filtros.categoria.includes(vCat);
+                  const vQty = parseFloat(v.cantidad || 1);
+                  const vTotal = vPrecio * vQty;
+
+                  const nameLower = String(v.producto_nombre || vProd?.nombre || '').toLowerCase();
+                  const catLower = String(vCat).toLowerCase();
+                  const isNonPhysical = nameLower.includes('mano de obra') || 
+                                        nameLower.includes('margen') || 
+                                        nameLower.includes('decorac') || 
+                                        nameLower.includes('empaque') || 
+                                        nameLower.includes('servicio') || 
+                                        nameLower.includes('envio') || 
+                                        nameLower.includes('envío') || 
+                                        nameLower.includes('tarjeta') || 
+                                        catLower.includes('mano de obra') || 
+                                        catLower.includes('decoracion') || 
+                                        catLower.includes('decoración') || 
+                                        catLower.includes('servicios') || 
+                                        catLower.includes('empaques');
+
+                  if (isNonPhysical) {
+                    totalNonPhysicalValor += vTotal;
+                    if (filtros.categoria.includes(vCat)) {
+                      filteredNonPhysicalValor += vTotal;
+                    }
+                  } else {
+                    totalPhysicalValor += vTotal;
+                    if (filtros.categoria.includes(vCat)) {
+                      filteredPhysicalValor += vTotal;
+                    }
+                  }
                 });
+
+                let proporcion = 0;
+                if (totalPhysicalValor > 0) {
+                  // Si hay componentes físicos, el total filtrado es la porción física filtrada más su porción proporcional de no físicos
+                  const propFisicaFiltrada = filteredPhysicalValor / totalPhysicalValor;
+                  const valorFiltradoTeorico = filteredPhysicalValor + totalNonPhysicalValor * propFisicaFiltrada;
+                  const totalValorTeorico = totalPhysicalValor + totalNonPhysicalValor;
+                  proporcion = valorFiltradoTeorico / (totalValorTeorico || 1);
+                } else if (totalNonPhysicalValor > 0) {
+                  // Si solo hay componentes no físicos, usamos la proporción de no físicos filtrados
+                  proporcion = filteredNonPhysicalValor / totalNonPhysicalValor;
+                }
+
+                if (proporcion > 0) {
+                  const precioOriginal = parseFloat(item.precio_venta || item.precio || 0);
+                  const qty = item.qty || item.cantidad || 1;
+                  
+                  // Clonar el item y ajustar sus valores de forma proporcional
+                  item._proporcionFiltrada = proporcion;
+                  item.precio_venta = precioOriginal * proporcion;
+                  item.precio = precioOriginal * proporcion;
+                  item.subtotal = (Number(item.subtotal) || (precioOriginal * qty)) * proporcion;
+                  
+                  return true;
+                }
+                return false;
               } else {
                 // Producto normal
                 const cat = prod 
@@ -822,26 +901,174 @@ const ResumenVentas = () => {
   // Obtener productos más vendidos — optimizado con productosMap
   const productosMasVendidos = useMemo(() => {
     const productosVendidos = {};
+    const hasCatFilter = filtros.categoria.length > 0;
+    const term = terminoBusqueda.toLowerCase();
+    const hasSearch = term.length > 0;
 
     ventasFiltradas.forEach(venta => {
       const itemsArr = Array.isArray(venta.items) ? venta.items : [];
       
+      const totalItemsTeorico = itemsArr.reduce((sum, item) => {
+        const qty = item.qty || item.cantidad || 1;
+        const pv = parseFloat(item.precio_venta || item.precio || 0);
+        return sum + (pv * qty);
+      }, 0);
+
+      const factorAjuste = totalItemsTeorico > 0 ? parseFloat(venta.total || 0) / totalItemsTeorico : 1;
+
       itemsArr.forEach(item => {
         const prodId = String(item.id || item.producto_id);
         const codigo = item.codigo;
-        const cantidad = item.qty || item.cantidad || 1;
-        const precioVenta = parseFloat(item.precio_venta || item.precio || 0);
-        const precioCompra = parseFloat(item.precio_compra || 0);
-        const total = precioVenta * cantidad;
-        const costo = precioCompra * cantidad;
+        const qty = item.qty || item.cantidad || 1;
+        const pv = parseFloat(item.precio_venta || item.precio || 0);
+        const pc = parseFloat(item.precio_compra || 0);
+        
+        const totalItemAjustado = pv * qty * factorAjuste;
+
+        const prod = productosMap.id[prodId] || productosMap.codigo[String(codigo)] || productosMap.nombre[item.nombre];
+        const vinculados = prod?.metadata?.productos_vinculados || item.metadata?.productos_vinculados;
+
+        if (vinculados && Array.isArray(vinculados) && vinculados.length > 0) {
+          // 1. Identificar componentes físicos y no físicos
+          const componentesConInfo = vinculados.map(v => {
+            const vProd = productosMap.id[String(v.producto_id)];
+            const vPrecio = parseFloat(v.precio_venta || vProd?.precio_venta || 0);
+            const vCosto = parseFloat(v.precio_compra || vProd?.precio_compra || 0);
+            const vCat = vProd?.metadata?.categoria || 'Sin categoría';
+            const vQty = parseFloat(v.cantidad || 1);
+            const vTotal = vPrecio * vQty;
+
+            const nameLower = String(v.producto_nombre || vProd?.nombre || '').toLowerCase();
+            const catLower = String(vCat).toLowerCase();
+            const isNonPhysical = nameLower.includes('mano de obra') || 
+                                  nameLower.includes('margen') || 
+                                  nameLower.includes('decorac') || 
+                                  nameLower.includes('empaque') || 
+                                  nameLower.includes('servicio') || 
+                                  nameLower.includes('envio') || 
+                                  nameLower.includes('envío') || 
+                                  nameLower.includes('tarjeta') || 
+                                  catLower.includes('mano de obra') || 
+                                  catLower.includes('decoracion') || 
+                                  catLower.includes('decoración') || 
+                                  catLower.includes('servicios') || 
+                                  catLower.includes('empaques');
+
+            return {
+              producto_id: v.producto_id,
+              categoria: vCat,
+              nombre: v.producto_nombre || vProd?.nombre || 'Desconocido',
+              valorTeorico: vTotal,
+              costoUnitario: vCosto,
+              cantidad: vQty,
+              isNonPhysical
+            };
+          });
+
+          // 2. Calcular totales teóricos
+          let totalPhysicalValorTeorico = 0;
+          let totalNonPhysicalValorTeorico = 0;
+          componentesConInfo.forEach(comp => {
+            if (comp.isNonPhysical) {
+              totalNonPhysicalValorTeorico += comp.valorTeorico;
+            } else {
+              totalPhysicalValorTeorico += comp.valorTeorico;
+            }
+          });
+
+          // Si no hay componentes físicos, considerar todos como físicos
+          const realPhysicalTotal = totalPhysicalValorTeorico > 0 ? totalPhysicalValorTeorico : (totalPhysicalValorTeorico + totalNonPhysicalValorTeorico);
+
+          // 3. Procesar solo los componentes físicos (los no físicos se distribuyen)
+          componentesConInfo.forEach(comp => {
+            if (comp.isNonPhysical && totalPhysicalValorTeorico > 0) {
+              return;
+            }
+
+            const cat = comp.categoria;
+            // Si hay un filtro de categoría, solo incluimos este componente si pertenece a las categorías filtradas
+            if (hasCatFilter && !filtros.categoria.includes(cat)) {
+              return;
+            }
+            if (hasSearch && !String(comp.nombre || '').toLowerCase().includes(term)) {
+              return;
+            }
+
+            // Proporción del componente físico respecto al total físico
+            const proporcionFisica = realPhysicalTotal > 0 ? comp.valorTeorico / realPhysicalTotal : 1;
+            
+            // Cantidad del producto (solo la del producto físico)
+            const qtyAtribuido = comp.cantidad * qty;
+
+            // Valores atribuidos que absorben el margen/mano de obra
+            const propFiltrada = item._proporcionFiltrada !== undefined ? item._proporcionFiltrada : 1;
+            const totalUnscaled = propFiltrada > 0 ? totalItemAjustado / propFiltrada : totalItemAjustado;
+
+            const totalAtribuido = totalUnscaled * proporcionFisica;
+            // El costo es estrictamente el costo unitario del componente físico
+            const costoAtribuido = comp.costoUnitario * qtyAtribuido;
+            const gananciaAtribuido = totalAtribuido - costoAtribuido;
+
+            const pNombre = `${comp.nombre} (${item.nombre || 'Combo'})`;
+            const key = `${comp.producto_id || comp.nombre}_${item.producto_id || item.codigo || item.nombre}`;
+
+            if (productosVendidos[key]) {
+              productosVendidos[key].cantidad += qtyAtribuido;
+              productosVendidos[key].total += totalAtribuido;
+              productosVendidos[key].costo += costoAtribuido;
+              productosVendidos[key].ganancia += gananciaAtribuido;
+            } else {
+              productosVendidos[key] = {
+                id: comp.producto_id,
+                codigo: '',
+                nombre: pNombre,
+                cantidad: qtyAtribuido,
+                total: totalAtribuido,
+                costo: costoAtribuido,
+                ganancia: gananciaAtribuido
+              };
+            }
+          });
+          return;
+        }
+
+        const pNombreNormal = prod ? prod.nombre : (item.nombre || '');
+        const pCatNormal = prod 
+          ? (prod.metadata?.categoria || 'Sin categoría') 
+          : (item.categoria || item.metadata?.categoria || 'Sin categoría');
+        
+        const nameLowerNormal = String(pNombreNormal).toLowerCase();
+        const catLowerNormal = String(pCatNormal).toLowerCase();
+        const isNonPhysicalNormal = nameLowerNormal.includes('mano de obra') || 
+                                    nameLowerNormal.includes('margen') || 
+                                    nameLowerNormal.includes('decorac') || 
+                                    nameLowerNormal.includes('empaque') || 
+                                    nameLowerNormal.includes('servicio') || 
+                                    nameLowerNormal.includes('envio') || 
+                                    nameLowerNormal.includes('envío') || 
+                                    nameLowerNormal.includes('tarjeta') || 
+                                    catLowerNormal.includes('mano de obra') || 
+                                    catLowerNormal.includes('decoracion') || 
+                                    catLowerNormal.includes('decoración') || 
+                                    catLowerNormal.includes('servicios') || 
+                                    catLowerNormal.includes('empaques');
+
+        // Producto normal
+        const precioVenta = pv;
+        let precioCompra = isNonPhysicalNormal ? 0 : pc;
+        if (item._proporcionFiltrada !== undefined) {
+          precioCompra = precioCompra * item._proporcionFiltrada;
+        }
+        const total = precioVenta * qty * factorAjuste;
+        const costo = precioCompra * qty;
         const ganancia = total - costo;
 
-        const infoProducto = productosMap.id[prodId] || productosMap.codigo[String(codigo)];
+        const infoProducto = prod;
         const codigoFinal = codigo || infoProducto?.codigo || '';
         const key = prodId !== 'undefined' ? prodId : (item.nombre || 'unknown');
 
         if (productosVendidos[key]) {
-          productosVendidos[key].cantidad += cantidad;
+          productosVendidos[key].cantidad += qty;
           productosVendidos[key].total += total;
           productosVendidos[key].costo += costo;
           productosVendidos[key].ganancia += ganancia;
@@ -850,7 +1077,7 @@ const ResumenVentas = () => {
             id: prodId,
             codigo: codigoFinal,
             nombre: infoProducto?.nombre || item.nombre || 'Producto desconocido',
-            cantidad,
+            cantidad: qty,
             total,
             costo,
             ganancia
@@ -862,7 +1089,7 @@ const ResumenVentas = () => {
     return Object.values(productosVendidos)
       .sort((a, b) => b.cantidad - a.cantidad)
       .slice(0, 50);
-  }, [ventasFiltradas, productosMap]);
+  }, [ventasFiltradas, productosMap, filtros.categoria, terminoBusqueda]);
 
 
 
@@ -907,12 +1134,18 @@ const ResumenVentas = () => {
       if (Array.isArray(venta.items)) {
         venta.items.forEach(item => {
           const cantidad = item.qty || item.cantidad || 1;
-          const precioCompra = parseFloat(item.precio_compra || 0);
+          let precioCompra = parseFloat(item.precio_compra || 0);
+          if (item._proporcionFiltrada !== undefined) {
+            precioCompra = precioCompra * item._proporcionFiltrada;
+          }
           costoTotal += precioCompra * cantidad;
           
           if (isJewelryBusiness) {
             // El peso puede estar en item.metadata.peso o item.peso
-            const pesoItem = parseFloat(item.metadata?.peso || item.peso || 0);
+            let pesoItem = parseFloat(item.metadata?.peso || item.peso || 0);
+            if (item._proporcionFiltrada !== undefined) {
+              pesoItem = pesoItem * item._proporcionFiltrada;
+            }
             totalPeso += pesoItem * cantidad;
           }
         });
@@ -1205,41 +1438,200 @@ const ResumenVentas = () => {
   }, [ventasFiltradas, filtros.fechaInicio, filtros.fechaFin]);
 
 
-  // Detalle completo de productos (sin límite de 10, con categoría)
   const productosDetalle = useMemo(() => {
     const map = {};
+    const hasCatFilter = filtros.categoria.length > 0;
+    const term = terminoBusqueda.toLowerCase();
+    const hasSearch = term.length > 0;
+
     ventasFiltradas.forEach(venta => {
       if (!Array.isArray(venta.items)) return;
+
+      const totalItemsTeorico = venta.items.reduce((sum, item) => {
+        const qty = item.qty || item.cantidad || 1;
+        const pv = parseFloat(item.precio_venta || item.precio || 0);
+        return sum + (pv * qty);
+      }, 0);
+
+      const factorAjuste = totalItemsTeorico > 0 ? parseFloat(venta.total || 0) / totalItemsTeorico : 1;
+
       venta.items.forEach(item => {
-        const productoId = item.id || item.producto_id;
+        const prodId = String(item.id || item.producto_id);
         const codigo = item.codigo;
-        // Eliminado chequeo legacy que bloqueaba la visualización
-        const prod = productos.find(p => p.id === productoId || p.codigo === codigo);
-        const categoria = prod 
-          ? (prod.metadata?.categoria || 'Sin categoría') 
-          : (item.categoria || item.metadata?.categoria || 'Sin categoría');
         const qty = item.qty || item.cantidad || 1;
         const pv = parseFloat(item.precio_venta || item.precio || 0);
         const pc = parseFloat(item.precio_compra || 0);
         const pesoItem = parseFloat(item.metadata?.peso || item.peso || 0);
-        const key = productoId || item.nombre || 'unknown';
-        const nombreActual = prod ? prod.nombre : (item.nombre || 'Desconocido');
-        if (!map[key]) {
-          map[key] = { id: productoId, nombre: nombreActual, categoria, cantidad: 0, total: 0, costo: 0, ganancia: 0, pesoTotal: 0 };
+        
+        const totalItemAjustado = pv * qty * factorAjuste;
+
+        const prod = productosMap.id[prodId] || productosMap.codigo[String(codigo)] || productosMap.nombre[item.nombre];
+        const vinculados = prod?.metadata?.productos_vinculados || item.metadata?.productos_vinculados;
+
+        if (vinculados && Array.isArray(vinculados) && vinculados.length > 0) {
+          // 1. Identificar componentes físicos y no físicos
+          const componentesConInfo = vinculados.map(v => {
+            const vProd = productosMap.id[String(v.producto_id)];
+            const vPrecio = parseFloat(v.precio_venta || vProd?.precio_venta || 0);
+            const vCosto = parseFloat(v.precio_compra || vProd?.precio_compra || 0);
+            const vCat = vProd?.metadata?.categoria || 'Sin categoría';
+            const vQty = parseFloat(v.cantidad || 1);
+            const vTotal = vPrecio * vQty;
+            const vPeso = parseFloat(vProd?.metadata?.peso || vProd?.peso || 0);
+
+            const nameLower = String(v.producto_nombre || vProd?.nombre || '').toLowerCase();
+            const catLower = String(vCat).toLowerCase();
+            const isNonPhysical = nameLower.includes('mano de obra') || 
+                                  nameLower.includes('margen') || 
+                                  nameLower.includes('decorac') || 
+                                  nameLower.includes('empaque') || 
+                                  nameLower.includes('servicio') || 
+                                  nameLower.includes('envio') || 
+                                  nameLower.includes('envío') || 
+                                  nameLower.includes('tarjeta') || 
+                                  catLower.includes('mano de obra') || 
+                                  catLower.includes('decoracion') || 
+                                  catLower.includes('decoración') || 
+                                  catLower.includes('servicios') || 
+                                  catLower.includes('empaques');
+
+            return {
+              producto_id: v.producto_id,
+              categoria: vCat,
+              nombre: v.producto_nombre || vProd?.nombre || 'Desconocido',
+              valorTeorico: vTotal,
+              costoUnitario: vCosto,
+              cantidad: vQty,
+              peso: vPeso,
+              isNonPhysical
+            };
+          });
+
+          // 2. Calcular totales teóricos
+          let totalPhysicalValorTeorico = 0;
+          let totalNonPhysicalValorTeorico = 0;
+          componentesConInfo.forEach(comp => {
+            if (comp.isNonPhysical) {
+              totalNonPhysicalValorTeorico += comp.valorTeorico;
+            } else {
+              totalPhysicalValorTeorico += comp.valorTeorico;
+            }
+          });
+
+          // Si no hay componentes físicos, considerar todos como físicos
+          const realPhysicalTotal = totalPhysicalValorTeorico > 0 ? totalPhysicalValorTeorico : (totalPhysicalValorTeorico + totalNonPhysicalValorTeorico);
+
+          // 3. Procesar solo los componentes físicos
+          componentesConInfo.forEach(comp => {
+            if (comp.isNonPhysical && totalPhysicalValorTeorico > 0) {
+              return;
+            }
+
+            const cat = comp.categoria;
+            if (hasCatFilter && !filtros.categoria.includes(cat)) {
+              return;
+            }
+            if (hasSearch && !String(comp.nombre || '').toLowerCase().includes(term)) {
+              return;
+            }
+
+            const proporcionFisica = realPhysicalTotal > 0 ? comp.valorTeorico / realPhysicalTotal : 1;
+            const qtyAtribuido = comp.cantidad * qty;
+
+            const propFiltrada = item._proporcionFiltrada !== undefined ? item._proporcionFiltrada : 1;
+            const totalUnscaled = propFiltrada > 0 ? totalItemAjustado / propFiltrada : totalItemAjustado;
+
+            const totalAtribuido = totalUnscaled * proporcionFisica;
+            const costoAtribuido = comp.costoUnitario * qtyAtribuido;
+            const gananciaAtribuido = totalAtribuido - costoAtribuido;
+
+            const pNombre = `${comp.nombre} (${item.nombre || 'Combo'})`;
+            const key = `${comp.producto_id || comp.nombre}_${item.producto_id || item.codigo || item.nombre}`;
+
+            if (map[key]) {
+              map[key].cantidad += qtyAtribuido;
+              map[key].total += totalAtribuido;
+              map[key].costo += costoAtribuido;
+              map[key].ganancia += gananciaAtribuido;
+              map[key].pesoTotal += comp.peso * qtyAtribuido;
+            } else {
+              map[key] = {
+                id: comp.producto_id,
+                nombre: pNombre,
+                categoria: cat,
+                cantidad: qtyAtribuido,
+                total: totalAtribuido,
+                costo: costoAtribuido,
+                ganancia: gananciaAtribuido,
+                pesoTotal: comp.peso * qtyAtribuido
+              };
+            }
+          });
+          return;
         }
-        map[key].cantidad += qty;
-        map[key].total += pv * qty;
-        map[key].costo += pc * qty;
-        map[key].ganancia += (pv - pc) * qty;
-        map[key].pesoTotal += pesoItem * qty;
+
+        // Producto normal
+        const categoria = prod 
+          ? (prod.metadata?.categoria || 'Sin categoría') 
+          : (item.categoria || item.metadata?.categoria || 'Sin categoría');
+        const nombreActual = prod ? prod.nombre : (item.nombre || 'Desconocido');
+
+        const nameLowerNormal = String(nombreActual).toLowerCase();
+        const catLowerNormal = String(categoria).toLowerCase();
+        const isNonPhysicalNormal = nameLowerNormal.includes('mano de obra') || 
+                                    nameLowerNormal.includes('margen') || 
+                                    nameLowerNormal.includes('decorac') || 
+                                    nameLowerNormal.includes('empaque') || 
+                                    nameLowerNormal.includes('servicio') || 
+                                    nameLowerNormal.includes('envio') || 
+                                    nameLowerNormal.includes('envío') || 
+                                    nameLowerNormal.includes('tarjeta') || 
+                                    catLowerNormal.includes('mano de obra') || 
+                                    catLowerNormal.includes('decoracion') || 
+                                    catLowerNormal.includes('decoración') || 
+                                    catLowerNormal.includes('servicios') || 
+                                    catLowerNormal.includes('empaques');
+        
+        let precioCompra = isNonPhysicalNormal ? 0 : pc;
+        if (item._proporcionFiltrada !== undefined) {
+          precioCompra = precioCompra * item._proporcionFiltrada;
+        }
+
+        const total = pv * qty * factorAjuste;
+        const costo = precioCompra * qty;
+        const ganancia = total - costo;
+        const key = prodId !== 'undefined' ? prodId : (item.nombre || 'unknown');
+
+        if (map[key]) {
+          map[key].cantidad += qty;
+          map[key].total += total;
+          map[key].costo += costo;
+          map[key].ganancia += ganancia;
+          map[key].pesoTotal += pesoItem * qty;
+        } else {
+          map[key] = {
+            id: prodId,
+            nombre: nombreActual,
+            categoria,
+            cantidad: qty,
+            total,
+            costo,
+            ganancia,
+            pesoTotal: pesoItem * qty
+          };
+        }
       });
     });
+
     return Object.values(map).sort((a, b) => b.cantidad - a.cantidad);
-  }, [ventasFiltradas, productos]);
+  }, [ventasFiltradas, productosMap, filtros.categoria, terminoBusqueda]);
 
   // Detalle por categoría con sus productos — optimizado con productosMap y lógica de combos
   const categoriasDetalle = useMemo(() => {
     const map = {};
+    const hasCatFilter = filtros.categoria.length > 0;
+    const term = terminoBusqueda.toLowerCase();
+    const hasSearch = term.length > 0;
     ventasFiltradas.forEach(venta => {
       const totalVenta = parseFloat(venta.total || 0);
       
@@ -1278,66 +1670,130 @@ const ResumenVentas = () => {
         const costoItem = pc * qty;
 
         if (vinculados && Array.isArray(vinculados) && vinculados.length > 0) {
-          // Es un combo/ancheta, calcular la distribución proporcional
-          let totalValorTeorico = 0;
-          const componentes = vinculados.map(v => {
+          // 1. Identificar componentes físicos y no físicos
+          const componentesConInfo = vinculados.map(v => {
             const vProd = productosMap.id[String(v.producto_id)];
-            const vPrecio = parseFloat(vProd?.precio_venta || 0);
+            const vPrecio = parseFloat(v.precio_venta || vProd?.precio_venta || 0);
+            const vCosto = parseFloat(v.precio_compra || vProd?.precio_compra || 0);
             const vCat = vProd?.metadata?.categoria || 'Sin categoría';
             const vQty = parseFloat(v.cantidad || 1);
             const vTotal = vPrecio * vQty;
-            totalValorTeorico += vTotal;
+
+            const nameLower = String(v.producto_nombre || vProd?.nombre || '').toLowerCase();
+            const catLower = String(vCat).toLowerCase();
+            const isNonPhysical = nameLower.includes('mano de obra') || 
+                                  nameLower.includes('margen') || 
+                                  nameLower.includes('decorac') || 
+                                  nameLower.includes('empaque') || 
+                                  nameLower.includes('servicio') || 
+                                  nameLower.includes('envio') || 
+                                  nameLower.includes('envío') || 
+                                  nameLower.includes('tarjeta') || 
+                                  catLower.includes('mano de obra') || 
+                                  catLower.includes('decoracion') || 
+                                  catLower.includes('decoración') || 
+                                  catLower.includes('servicios') || 
+                                  catLower.includes('empaques');
+
             return {
+              producto_id: v.producto_id,
               categoria: vCat,
               nombre: v.producto_nombre || vProd?.nombre || 'Desconocido',
               valorTeorico: vTotal,
-              cantidad: vQty
+              costoUnitario: vCosto,
+              cantidad: vQty,
+              isNonPhysical
             };
           });
 
-          if (totalValorTeorico > 0) {
-            componentes.forEach(comp => {
-              const proporcion = comp.valorTeorico / totalValorTeorico;
-              const cat = comp.categoria;
-              const qtyAtribuido = comp.cantidad * qty;
-              const totalAtribuido = totalItemAjustado * proporcion;
-              const costoAtribuido = costoItem * proporcion;
+          // 2. Calcular totales teóricos
+          let totalPhysicalValorTeorico = 0;
+          let totalNonPhysicalValorTeorico = 0;
+          componentesConInfo.forEach(comp => {
+            if (comp.isNonPhysical) {
+              totalNonPhysicalValorTeorico += comp.valorTeorico;
+            } else {
+              totalPhysicalValorTeorico += comp.valorTeorico;
+            }
+          });
 
-              if (!map[cat]) map[cat] = { nombre: cat, cantidad: 0, total: 0, costo: 0, ganancia: 0, ventasSet: new Set(), productos: {} };
+          const realPhysicalTotal = totalPhysicalValorTeorico > 0 ? totalPhysicalValorTeorico : (totalPhysicalValorTeorico + totalNonPhysicalValorTeorico);
 
-              map[cat].cantidad += proporcion * qty;
-              map[cat].total += totalAtribuido;
-              map[cat].costo += costoAtribuido;
-              map[cat].ganancia += (totalAtribuido - costoAtribuido);
-              map[cat].ventasSet.add(venta.id);
+          // 3. Procesar solo los componentes físicos
+          componentesConInfo.forEach(comp => {
+            if (comp.isNonPhysical && totalPhysicalValorTeorico > 0) {
+              return;
+            }
 
-              const pNombre = `${comp.nombre} (de ${item.nombre || 'Combo'})`;
-              if (!map[cat].productos[pNombre]) map[cat].productos[pNombre] = { nombre: pNombre, cantidad: 0, total: 0, costo: 0 };
-              map[cat].productos[pNombre].cantidad += qtyAtribuido;
-              map[cat].productos[pNombre].total += totalAtribuido;
-              map[cat].productos[pNombre].costo += costoAtribuido;
-            });
-            return;
-          }
+            const cat = comp.categoria;
+            if (hasCatFilter && !filtros.categoria.includes(cat)) {
+              return;
+            }
+            if (hasSearch && !String(comp.nombre || '').toLowerCase().includes(term)) {
+              return;
+            }
+
+            const proporcionFisica = realPhysicalTotal > 0 ? comp.valorTeorico / realPhysicalTotal : 1;
+            const qtyAtribuido = comp.cantidad * qty;
+
+            const propFiltrada = item._proporcionFiltrada !== undefined ? item._proporcionFiltrada : 1;
+            const totalUnscaled = propFiltrada > 0 ? totalItemAjustado / propFiltrada : totalItemAjustado;
+
+            const totalAtribuido = totalUnscaled * proporcionFisica;
+            const costoAtribuido = comp.costoUnitario * qtyAtribuido;
+
+            if (!map[cat]) map[cat] = { nombre: cat, cantidad: 0, total: 0, costo: 0, ganancia: 0, ventasSet: new Set(), productos: {} };
+
+            map[cat].cantidad += qtyAtribuido;
+            map[cat].total += totalAtribuido;
+            map[cat].costo += costoAtribuido;
+            map[cat].ganancia += (totalAtribuido - costoAtribuido);
+            map[cat].ventasSet.add(venta.id);
+
+            const pNombre = `${comp.nombre} (${item.nombre || 'Combo'})`;
+            if (!map[cat].productos[pNombre]) map[cat].productos[pNombre] = { nombre: pNombre, cantidad: 0, total: 0, costo: 0 };
+            map[cat].productos[pNombre].cantidad += qtyAtribuido;
+            map[cat].productos[pNombre].total += totalAtribuido;
+            map[cat].productos[pNombre].costo += costoAtribuido;
+          });
+          return;
         }
 
         // Flujo normal
+        const pNombre = prod ? prod.nombre : (item.nombre || 'Desconocido');
         const cat = prod 
           ? (prod.metadata?.categoria || 'Sin categoría') 
           : (item.categoria || item.metadata?.categoria || 'Sin categoría');
-          
+
+        const nameLowerNormal = String(pNombre).toLowerCase();
+        const catLowerNormal = String(cat).toLowerCase();
+        const isNonPhysicalNormal = nameLowerNormal.includes('mano de obra') || 
+                                    nameLowerNormal.includes('margen') || 
+                                    nameLowerNormal.includes('decorac') || 
+                                    nameLowerNormal.includes('empaque') || 
+                                    nameLowerNormal.includes('servicio') || 
+                                    nameLowerNormal.includes('envio') || 
+                                    nameLowerNormal.includes('envío') || 
+                                    nameLowerNormal.includes('tarjeta') || 
+                                    catLowerNormal.includes('mano de obra') || 
+                                    catLowerNormal.includes('decoracion') || 
+                                    catLowerNormal.includes('decoración') || 
+                                    catLowerNormal.includes('servicios') || 
+                                    catLowerNormal.includes('empaques');
+
+        const costoItemAjustado = isNonPhysicalNormal ? 0 : costoItem;
+
         if (!map[cat]) map[cat] = { nombre: cat, cantidad: 0, total: 0, costo: 0, ganancia: 0, ventasSet: new Set(), productos: {} };
         map[cat].cantidad += qty;
         map[cat].total += totalItemAjustado;
-        map[cat].costo += costoItem;
-        map[cat].ganancia += (totalItemAjustado - costoItem);
+        map[cat].costo += costoItemAjustado;
+        map[cat].ganancia += (totalItemAjustado - costoItemAjustado);
         map[cat].ventasSet.add(venta.id);
         
-        const pNombre = prod ? prod.nombre : (item.nombre || 'Desconocido');
         if (!map[cat].productos[pNombre]) map[cat].productos[pNombre] = { nombre: pNombre, cantidad: 0, total: 0, costo: 0 };
         map[cat].productos[pNombre].cantidad += qty;
         map[cat].productos[pNombre].total += totalItemAjustado;
-        map[cat].productos[pNombre].costo += costoItem;
+        map[cat].productos[pNombre].costo += costoItemAjustado;
       });
     });
     
@@ -1345,7 +1801,7 @@ const ResumenVentas = () => {
       ...c, numVentas: c.ventasSet.size,
       productosArr: Object.values(c.productos).sort((a, b) => b.cantidad - a.cantidad)
     })).sort((a, b) => b.total - a.total);
-  }, [ventasFiltradas, productosMap]);
+  }, [ventasFiltradas, productosMap, filtros.categoria, terminoBusqueda]);
 
   // Ventas individuales ordenadas por fecha descendente
   const ventasIndividuales = useMemo(() =>

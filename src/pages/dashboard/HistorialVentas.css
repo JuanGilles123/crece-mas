@@ -194,6 +194,8 @@
 .ventas-lista {
   display: grid;
   gap: 1rem;
+  min-height: calc(100vh - 250px);
+  align-content: start;
 }
 
 .venta-card {
