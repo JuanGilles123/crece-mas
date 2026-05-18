@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../../services/api/supabaseClient';
-import { Search, Store, PackageX, Image as ImageIcon, ShoppingCart, ShoppingBag, Plus, Minus, MessageCircle, X, Instagram, Facebook, Phone, ArrowLeft, Sparkles, LayoutGrid, Rows } from 'lucide-react';
+import { Search, Store, PackageX, Image as ImageIcon, ShoppingCart, ShoppingBag, Plus, Minus, MessageCircle, X, Instagram, Facebook, Phone, ArrowLeft, ArrowRight, Sparkles, LayoutGrid, Rows } from 'lucide-react';
 import toast from 'react-hot-toast';
 import './Catalogo.css';
 
@@ -382,6 +382,27 @@ const Catalogo = () => {
           <h1 className="catalogo-title" style={{ color: 'var(--catalogo-header-text, #111827)' }}>{organizacion?.name || 'Tienda'}</h1>
         </div>
 
+        {/* Redes Sociales en el Encabezado Sticky */}
+        {(organizacion?.catalogo_config?.instagram || organizacion?.catalogo_config?.facebook || organizacion?.catalogo_config?.whatsapp) && (
+          <div className="catalogo-header-socials">
+            {organizacion.catalogo_config?.whatsapp && (
+              <a href={`https://wa.me/${organizacion.catalogo_config.whatsapp}`} target="_blank" rel="noreferrer" className="header-social-icon whatsapp" title="WhatsApp">
+                <Phone size={15} />
+              </a>
+            )}
+            {organizacion.catalogo_config?.instagram && (
+              <a href={`https://instagram.com/${organizacion.catalogo_config.instagram}`} target="_blank" rel="noreferrer" className="header-social-icon instagram" title="Instagram">
+                <Instagram size={15} />
+              </a>
+            )}
+            {organizacion.catalogo_config?.facebook && (
+              <a href={organizacion.catalogo_config.facebook} target="_blank" rel="noreferrer" className="header-social-icon facebook" title="Facebook">
+                <Facebook size={15} />
+              </a>
+            )}
+          </div>
+        )}
+
         {/* Buscador */}
         <div className="catalogo-header-search">
           <div className="catalogo-search">
@@ -488,15 +509,12 @@ const Catalogo = () => {
       {/* Mensaje de Bienvenida (debajo del carrusel) */}
       {organizacion?.catalogo_config?.mensaje_bienvenida && (
         <div className="catalogo-banner-container">
-          <div className="catalogo-banner" style={{
-            borderLeft: `4px solid var(--catalogo-theme-color, #4f46e5)`,
-            background: 'rgba(var(--catalogo-theme-rgb, 79, 70, 229), 0.04)',
-            padding: '0.85rem 1.25rem',
-            borderRadius: '10px'
-          }}>
-            <p style={{ fontWeight: '500', color: '#1f2937', margin: 0, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-              <Sparkles size={16} style={{ color: 'var(--catalogo-theme-color, #4f46e5)' }} />
-              {organizacion.catalogo_config.mensaje_bienvenida}
+          <div className="catalogo-banner" style={{ borderLeft: `4px solid var(--catalogo-theme-color, #4f46e5)` }}>
+            <p>
+              <Sparkles className="banner-sparkle" style={{ color: 'var(--catalogo-theme-color, #4f46e5)', flexShrink: 0 }} />
+              <span className="banner-text">
+                {organizacion.catalogo_config.mensaje_bienvenida}
+              </span>
             </p>
           </div>
         </div>
@@ -842,7 +860,19 @@ const Catalogo = () => {
             </div>
           </>
         )}
-        <p className="footer-credits">Potenciado por CreceMás</p>
+        
+        <div className="footer-creceplus-promo">
+          <div className="promo-divider" />
+          <p className="promo-subtitle">¿Quieres controlar tu inventario, registrar ventas y tener un catálogo como este?</p>
+          <a href="https://creceplus.app" target="_blank" rel="noreferrer" className="promo-button">
+            <Sparkles size={14} className="sparkle-icon" />
+            <span>Potencia tu negocio gratis con <strong>creceplus.app</strong></span>
+            <ArrowRight size={14} className="arrow-icon" />
+          </a>
+          <p className="footer-credits">
+            Desarrollado y Potenciado por <a href="https://creceplus.app" target="_blank" rel="noreferrer"><strong>CrecePlus.app</strong></a>
+          </p>
+        </div>
       </footer>
     </div>
   );

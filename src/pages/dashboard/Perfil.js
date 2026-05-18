@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { User, Settings, Building2, LogOut, Edit3, Save, X, Lock, Sliders, Bell, CreditCard, BarChart3, Crown, Sparkles, Shield, Key, Printer, Link, Copy, ExternalLink, Store, Palette, Instagram, Facebook, Phone, MessageSquare, Upload, Trash2, Image } from 'lucide-react';
-import { Eye, EyeOff, Mail, ShieldCheck, Tag, Columns } from 'lucide-react';
+import { Eye, EyeOff, Mail, ShieldCheck, Tag, Columns, Smartphone, Tablet, Monitor, Search, ShoppingCart } from 'lucide-react';
 import { useSubscription } from '../../hooks/useSubscription';
 import toast from 'react-hot-toast';
 import ThemeToggle from '../../components/ui/ThemeToggle';
@@ -356,6 +356,7 @@ const Perfil = () => {
   const [facebook, setFacebook] = useState('');
   const [mensajeBienvenida, setMensajeBienvenida] = useState('¡Hola! Bienvenidos a nuestra tienda virtual.');
   const [guardandoCatalogoConfig, setGuardandoCatalogoConfig] = useState(false);
+  const [previewDevice, setPreviewDevice] = useState('mobile'); // 'mobile', 'tablet', 'pc'
 
   // Nuevos estados para promociones y diseño
   const [layoutCategorias, setLayoutCategorias] = useState('top');
@@ -924,7 +925,12 @@ const Perfil = () => {
                   )}
                 </div>
 
-                <div className="perfil-catalogo-layout" style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '2rem' }}>
+                <div className="perfil-catalogo-layout" style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: previewDevice === 'pc' ? '1fr 500px' : previewDevice === 'tablet' ? '1fr 380px' : '1fr 320px', 
+                  gap: '2rem',
+                  transition: 'grid-template-columns 0.3s ease'
+                }}>
                   
                   {/* Formulario de Configuración */}
                   <div className="perfil-catalogo-form" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -1731,43 +1737,260 @@ const Perfil = () => {
 
                   </div>
 
-                  {/* Vista Previa Móvil (Mock) */}
-                  <div className="perfil-catalogo-preview" style={{ position: 'sticky', top: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#475569', margin: 0, textAlign: 'center' }}>
-                      Vista Previa (Móvil)
-                    </h3>
+                  {/* Vista Previa Multidispositivo */}
+                  <div className="perfil-catalogo-preview" style={{ 
+                    position: 'sticky', 
+                    top: '2rem', 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    gap: '1rem',
+                    alignItems: 'center',
+                    background: '#f8fafc',
+                    padding: '1.25rem',
+                    borderRadius: '16px',
+                    border: '1px solid #e2e8f0',
+                    width: '100%',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
+                  }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', width: '100%', marginBottom: '0.5rem' }}>
+                      <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#1e293b', margin: 0, textAlign: 'center', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <Sparkles size={16} style={{ color: 'var(--catalogo-theme-color, #4f46e5)' }} /> Vista Previa Interactiva
+                      </h3>
+                      <p style={{ fontSize: '0.78rem', color: '#64748b', margin: 0, textAlign: 'center' }}>
+                        Visualiza los cambios en tiempo real en diferentes pantallas.
+                      </p>
+                    </div>
+
+                    {/* Selector de Dispositivo */}
+                    <div style={{ 
+                      display: 'flex', 
+                      justifyContent: 'center', 
+                      gap: '0.35rem', 
+                      background: '#e2e8f0', 
+                      padding: '0.3rem', 
+                      borderRadius: '10px', 
+                      width: 'fit-content'
+                    }}>
+                      <button
+                        type="button"
+                        onClick={() => setPreviewDevice('mobile')}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                          padding: '0.45rem 0.85rem',
+                          background: previewDevice === 'mobile' ? '#ffffff' : 'transparent',
+                          color: previewDevice === 'mobile' ? 'var(--catalogo-theme-color, #4f46e5)' : '#475569',
+                          border: 'none',
+                          borderRadius: '7px',
+                          fontSize: '0.8rem',
+                          fontWeight: '700',
+                          cursor: 'pointer',
+                          boxShadow: previewDevice === 'mobile' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <Smartphone size={14} /> Móvil
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPreviewDevice('tablet')}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                          padding: '0.45rem 0.85rem',
+                          background: previewDevice === 'tablet' ? '#ffffff' : 'transparent',
+                          color: previewDevice === 'tablet' ? 'var(--catalogo-theme-color, #4f46e5)' : '#475569',
+                          border: 'none',
+                          borderRadius: '7px',
+                          fontSize: '0.8rem',
+                          fontWeight: '700',
+                          cursor: 'pointer',
+                          boxShadow: previewDevice === 'tablet' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <Tablet size={14} /> Tablet
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPreviewDevice('pc')}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                          padding: '0.45rem 0.85rem',
+                          background: previewDevice === 'pc' ? '#ffffff' : 'transparent',
+                          color: previewDevice === 'pc' ? 'var(--catalogo-theme-color, #4f46e5)' : '#475569',
+                          border: 'none',
+                          borderRadius: '7px',
+                          fontSize: '0.8rem',
+                          fontWeight: '700',
+                          cursor: 'pointer',
+                          boxShadow: previewDevice === 'pc' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <Monitor size={14} /> PC
+                      </button>
+                    </div>
                     
                     {/* Dispositivo de simulación */}
-                    <div style={{ width: '300px', height: '520px', background: colorFondo, border: '12px solid #0f172a', borderRadius: '36px', margin: '0 auto', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', position: 'relative' }}>
+                    <div style={{ 
+                      width: previewDevice === 'pc' ? '100%' : previewDevice === 'tablet' ? '330px' : '270px',
+                      maxWidth: '100%',
+                      height: '520px', 
+                      background: colorFondo, 
+                      border: previewDevice === 'pc' ? '1px solid #cbd5e1' : previewDevice === 'tablet' ? '12px solid #0f172a' : '10px solid #0f172a', 
+                      borderRadius: previewDevice === 'pc' ? '12px' : previewDevice === 'tablet' ? '28px' : '36px', 
+                      margin: '0 auto', 
+                      overflow: 'hidden', 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)', 
+                      position: 'relative',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                    }}>
                       
-                      {/* Notch */}
-                      <div style={{ width: '110px', height: '18px', background: '#0f172a', borderBottomLeftRadius: '12px', borderBottomRightRadius: '12px', position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', zIndex: 10 }} />
+                      {/* Notch / Cámara para Móvil y Tablet */}
+                      {previewDevice === 'mobile' && (
+                        <div style={{ width: '100px', height: '16px', background: '#0f172a', borderBottomLeftRadius: '10px', borderBottomRightRadius: '10px', position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', zIndex: 100 }} />
+                      )}
+                      {previewDevice === 'tablet' && (
+                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#0f172a', position: 'absolute', top: '4px', left: '50%', transform: 'translateX(-50%)', zIndex: 100 }} />
+                      )}
+
+                      {/* Browser Top Bar for PC Mockup */}
+                      {previewDevice === 'pc' && (
+                        <div style={{
+                          background: '#f1f5f9',
+                          borderBottom: '1px solid #cbd5e1',
+                          padding: '0.4rem 0.75rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.75rem',
+                          flexShrink: 0
+                        }}>
+                          {/* Ventanas */}
+                          <div style={{ display: 'flex', gap: '4px' }}>
+                            <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#ef4444' }} />
+                            <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#f59e0b' }} />
+                            <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#10b981' }} />
+                          </div>
+                          {/* Dirección URL */}
+                          <div style={{
+                            flex: 1,
+                            background: '#ffffff',
+                            border: '1px solid #cbd5e1',
+                            borderRadius: '5px',
+                            fontSize: '0.62rem',
+                            color: '#64748b',
+                            padding: '0.12rem 0.5rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.2rem',
+                            fontFamily: 'monospace',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            <Lock size={9} style={{ color: '#10b981' }} />
+                            crecemas.com/tienda/{organization?.slug || 'mi-negocio'}
+                          </div>
+                        </div>
+                      )}
                       
-                      {/* Contenedor interno */}
-                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', paddingTop: '1.25rem', fontFamily: `'${fuentePrincipal}', Inter, sans-serif` }}>
+                      {/* Contenedor interno del catálogo simulado */}
+                      <div style={{ 
+                        flex: 1, 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        overflowY: 'auto', 
+                        paddingTop: previewDevice === 'pc' ? '0' : previewDevice === 'tablet' ? '0.35rem' : '1.15rem', 
+                        fontFamily: `'${fuentePrincipal}', Inter, sans-serif` 
+                      }}>
                         
                         {/* Cabecera de la tienda simulada */}
-                        <div style={{ background: colorHeader, padding: '0.6rem 0.8rem', borderBottom: `2px solid ${colorBotones}`, display: 'flex', alignItems: 'center', gap: '0.5rem', position: 'sticky', top: '-1.25rem', zIndex: 10 }}>
-                          {logoUrl ? (
-                            <img
-                              src={logoUrl}
-                              alt="Logo Negocio"
-                              style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${colorBotones}`, flexShrink: 0 }}
-                              onError={(e) => { e.target.style.display = 'none'; }}
-                            />
-                          ) : (
-                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', border: `2px solid ${colorBotones}`, flexShrink: 0 }}>
-                              <Store size={16} style={{ color: colorBotones }} />
+                        <div style={{ 
+                          background: colorHeader, 
+                          padding: previewDevice === 'pc' ? '0.75rem 1rem' : '0.55rem 0.75rem', 
+                          borderBottom: `2px solid ${colorBotones}`, 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'space-between',
+                          gap: '0.5rem', 
+                          position: 'sticky', 
+                          top: 0, 
+                          zIndex: 10 
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', overflow: 'hidden' }}>
+                            {logoUrl ? (
+                              <img
+                                src={logoUrl}
+                                alt="Logo Negocio"
+                                style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', border: `1.5px solid ${colorBotones}`, flexShrink: 0 }}
+                                onError={(e) => { e.target.style.display = 'none'; }}
+                              />
+                            ) : (
+                              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1.5px solid ${colorBotones}`, flexShrink: 0 }}>
+                                <Store size={14} style={{ color: colorBotones }} />
+                              </div>
+                            )}
+                            <h4 style={{ 
+                              fontSize: previewDevice === 'pc' ? '0.88rem' : '0.8rem', 
+                              fontWeight: 'bold', 
+                              color: colorTextoHeader, 
+                              margin: 0, 
+                              overflow: 'hidden', 
+                              textOverflow: 'ellipsis', 
+                              whiteSpace: 'nowrap',
+                              maxWidth: previewDevice === 'pc' ? '180px' : '110px'
+                            }}>
+                              {organization?.name || 'Mi Tienda Virtual'}
+                            </h4>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            {previewDevice === 'pc' && (
+                              <div style={{
+                                background: '#f1f5f9',
+                                border: '1px solid #cbd5e1',
+                                borderRadius: '5px',
+                                padding: '0.12rem 0.35rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.2rem',
+                                width: '90px'
+                              }}>
+                                <Search size={9} style={{ color: '#94a3b8' }} />
+                                <span style={{ fontSize: '0.58rem', color: '#94a3b8' }}>Buscar...</span>
+                              </div>
+                            )}
+                            <div style={{ position: 'relative', color: colorBotones, display: 'flex', alignItems: 'center' }}>
+                              <ShoppingCart size={15} />
+                              <span style={{
+                                position: 'absolute',
+                                top: '-5px',
+                                right: '-5px',
+                                background: colorBotones,
+                                color: colorTextoBotones,
+                                fontSize: '0.45rem',
+                                borderRadius: '50%',
+                                width: '9px',
+                                height: '9px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontWeight: 'bold'
+                              }}>2</span>
                             </div>
-                          )}
-                          <h4 style={{ fontSize: '0.85rem', fontWeight: 'bold', color: colorTextoHeader, margin: 0, fontFamily: `'${fuentePrincipal}', Inter, sans-serif`, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {organization?.name || 'Luna Cosmetics'}
-                          </h4>
+                          </div>
                         </div>
 
                         {/* Carrete de Promociones simulado */}
                         {promociones.length > 0 && (
-                          <div style={{ position: 'relative', width: '100%', height: '90px', background: '#f1f5f9', flexShrink: 0, overflow: 'hidden' }}>
+                          <div style={{ position: 'relative', width: '100%', height: previewDevice === 'pc' ? '110px' : '85px', background: '#f1f5f9', flexShrink: 0, overflow: 'hidden' }}>
                             <div style={{ display: 'flex', width: '100%', height: '100%' }}>
                               <img
                                 src={promociones[0].imagen_url}
@@ -1781,13 +2004,13 @@ const Perfil = () => {
                                   left: 0,
                                   right: 0,
                                   background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.1) 100%)',
-                                  padding: '0.4rem 0.5rem',
+                                  padding: '0.35rem 0.5rem',
                                   display: 'flex',
                                   flexDirection: 'column',
                                   gap: '1px'
                                 }}>
-                                  <span style={{ fontSize: '0.5rem', fontWeight: '800', backgroundColor: colorBotones, color: colorTextoBotones, alignSelf: 'flex-start', padding: '0.05rem 0.25rem', borderRadius: '4px', textTransform: 'uppercase' }}>Destacado</span>
-                                  <span style={{ fontSize: '0.65rem', fontWeight: 'bold', color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{promociones[0].titulo}</span>
+                                  <span style={{ fontSize: '0.45rem', fontWeight: '800', backgroundColor: colorBotones, color: colorTextoBotones, alignSelf: 'flex-start', padding: '0.05rem 0.2rem', borderRadius: '3px', textTransform: 'uppercase' }}>Destacado</span>
+                                  <span style={{ fontSize: '0.62rem', fontWeight: 'bold', color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{promociones[0].titulo}</span>
                                 </div>
                               )}
                             </div>
@@ -1811,63 +2034,186 @@ const Perfil = () => {
 
                         {/* Banner de Bienvenida simulado */}
                         {mensajeBienvenida && (
-                          <div style={{ background: '#ffffff', margin: '0.75rem', padding: '0.75rem', borderRadius: '12px', borderLeft: `4px solid ${colorBotones}`, fontSize: '0.75rem', color: '#334155', lineHeight: '1.4', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
-                            {mensajeBienvenida}
+                          <div style={{ 
+                            background: '#ffffff', 
+                            margin: '0.5rem', 
+                            padding: previewDevice === 'pc' ? '0.75rem 1.25rem' : '0.5rem 0.6rem', 
+                            borderRadius: '8px', 
+                            borderLeft: `3px solid ${colorBotones}`, 
+                            fontSize: previewDevice === 'pc' ? '0.85rem' : '0.68rem', 
+                            fontWeight: previewDevice === 'pc' ? '600' : 'normal',
+                            color: '#334155', 
+                            lineHeight: '1.35', 
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.01)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: previewDevice === 'pc' ? '0.4rem' : '0.25rem'
+                          }}>
+                            <Sparkles size={previewDevice === 'pc' ? 14 : 11} style={{ color: colorBotones, flexShrink: 0 }} />
+                            <span style={{ 
+                              overflow: 'hidden', 
+                              textOverflow: 'ellipsis', 
+                              display: '-webkit-box', 
+                              WebkitLineClamp: 2, 
+                              WebkitBoxOrient: 'vertical',
+                              textAlign: 'center'
+                            }}>
+                              {mensajeBienvenida}
+                            </span>
                           </div>
                         )}
 
-                        {/* Listado de Categorías y catálogo simulado */}
-                        <div style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1 }}>
-                          <div style={{ display: 'flex', gap: '0.4rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
-                            <span style={{ fontSize: '0.7rem', fontWeight: 600, background: colorBotones, color: colorTextoBotones, padding: '0.3rem 0.6rem', borderRadius: '12px', whiteSpace: 'nowrap' }}>
-                              Todos
-                            </span>
-                            <span style={{ fontSize: '0.7rem', background: '#ffffff', border: '1px solid #cbd5e1', color: '#475569', padding: '0.3rem 0.6rem', borderRadius: '12px', whiteSpace: 'nowrap' }}>
-                              Labiales
-                            </span>
-                          </div>
-
-                          {/* Productos en Grid simulado */}
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                            {[1, 2].map((i) => (
-                              <div key={i} style={{ background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0', padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
-                                <div style={{ width: '100%', height: '80px', background: '#f1f5f9', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                  <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>Producto {i}</span>
-                                </div>
-                                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                  Brillo Mágico {i}
+                        {/* Categorías y Listado de Productos Simulado */}
+                        {layoutCategorias === 'side' && previewDevice !== 'mobile' ? (
+                          /* Diseño Lateral Izquierdo (solo Tablet y PC) */
+                          <div style={{ display: 'flex', flex: 1, overflow: 'hidden', borderTop: '1px solid #f1f5f9' }}>
+                            {/* Menú lateral */}
+                            <div style={{
+                              width: previewDevice === 'pc' ? '105px' : '85px',
+                              borderRight: '1px solid #e2e8f0',
+                              background: '#ffffff',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '0.2rem',
+                              padding: '0.4rem 0.2rem',
+                              overflowY: 'auto',
+                              flexShrink: 0
+                            }}>
+                              <span style={{ fontSize: '0.6rem', fontWeight: '700', color: colorBotones, background: `${colorBotones}15`, padding: '0.25rem 0.4rem', borderRadius: '5px', cursor: 'default' }}>
+                                Todos
+                              </span>
+                              {['Labiales', 'Polvos', 'Correctores', 'Skincare'].map((cat) => (
+                                <span key={cat} style={{ fontSize: '0.6rem', color: '#64748b', padding: '0.25rem 0.4rem', borderRadius: '5px', cursor: 'default', fontWeight: '500' }}>
+                                  {cat}
                                 </span>
-                                <span style={{ fontSize: '0.7rem', color: colorBotones, fontWeight: 'bold' }}>
-                                  $25.000
-                                </span>
-                                <button type="button" style={{ width: '100%', background: colorBotones, color: colorTextoBotones, border: 'none', borderRadius: '4px', fontSize: '0.65rem', padding: '0.3rem', fontWeight: 600, marginTop: '0.25rem', cursor: 'default' }}>
-                                  Agregar
-                                </button>
+                              ))}
+                            </div>
+                            
+                            {/* Grilla productos derecha */}
+                            <div style={{ flex: 1, padding: '0.4rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem' }}>
+                                {[1, 2, 3, 4].map((i) => (
+                                  <div key={i} style={{ background: '#ffffff', borderRadius: '6px', border: '1px solid #e2e8f0', padding: '0.35rem', display: 'flex', flexDirection: 'column', gap: '0.15rem', boxShadow: '0 2px 4px rgba(0,0,0,0.01)' }}>
+                                    <div style={{ width: '100%', height: '50px', background: '#f1f5f9', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                      <span style={{ fontSize: '0.55rem', color: '#94a3b8' }}>Producto {i}</span>
+                                    </div>
+                                    <span style={{ fontSize: '0.65rem', fontWeight: 600, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                      {i === 1 ? 'Base Matte' : i === 2 ? 'Labial Velvet' : i === 3 ? 'Polvo Traslúcido' : 'Rubor Compacto'}
+                                    </span>
+                                    <span style={{ fontSize: '0.6rem', color: colorBotones, fontWeight: 'bold' }}>
+                                      $22.000
+                                    </span>
+                                    <button type="button" style={{ width: '100%', background: colorBotones, color: colorTextoBotones, border: 'none', borderRadius: '4px', fontSize: '0.55rem', padding: '0.2rem', fontWeight: 600, cursor: 'default', marginTop: '0.15rem' }}>
+                                      Agregar
+                                    </button>
+                                  </div>
+                                ))}
                               </div>
-                            ))}
+                            </div>
                           </div>
-                        </div>
+                        ) : (
+                          /* Diseño Superior Deslizable (o móvil default) */
+                          <div style={{ padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
+                            {/* Píldoras horizontal */}
+                            <div style={{ display: 'flex', gap: '0.3rem', overflowX: 'auto', paddingBottom: '0.15rem', flexShrink: 0 }}>
+                              <span style={{ fontSize: '0.62rem', fontWeight: '700', background: colorBotones, color: colorTextoBotones, padding: '0.25rem 0.5rem', borderRadius: '10px', whiteSpace: 'nowrap' }}>
+                                Todos
+                              </span>
+                              {['Labiales', 'Polvos', 'Correctores', 'Skincare'].map((cat) => (
+                                <span key={cat} style={{ fontSize: '0.62rem', background: '#ffffff', border: '1px solid #cbd5e1', color: '#475569', padding: '0.25rem 0.5rem', borderRadius: '10px', whiteSpace: 'nowrap' }}>
+                                  {cat}
+                                </span>
+                              ))}
+                            </div>
+
+                            {/* Grilla de Productos */}
+                            <div style={{ 
+                              display: 'grid', 
+                              gridTemplateColumns: previewDevice === 'pc' ? '1fr 1fr 1fr' : '1fr 1fr', 
+                              gap: '0.4rem' 
+                            }}>
+                              {[1, 2, 3, 4, 5, 6].slice(0, previewDevice === 'pc' ? 6 : 4).map((i) => (
+                                <div key={i} style={{ background: '#ffffff', borderRadius: '7px', border: '1px solid #e2e8f0', padding: '0.4rem', display: 'flex', flexDirection: 'column', gap: '0.15rem', boxShadow: '0 2px 4px rgba(0,0,0,0.01)' }}>
+                                  <div style={{ width: '100%', height: previewDevice === 'pc' ? '60px' : '70px', background: '#f1f5f9', borderRadius: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <span style={{ fontSize: '0.6rem', color: '#94a3b8' }}>Producto {i}</span>
+                                  </div>
+                                  <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    {i === 1 ? 'Brillo Mágico' : i === 2 ? 'Polvo Matte' : i === 3 ? 'Corrector Bloom' : i === 4 ? 'Rubor Cremoso' : i === 5 ? 'Sérum Glow' : 'Fijador Makeup'}
+                                  </span>
+                                  <span style={{ fontSize: '0.62rem', color: colorBotones, fontWeight: 'bold' }}>
+                                    $25.000
+                                  </span>
+                                  <button type="button" style={{ width: '100%', background: colorBotones, color: colorTextoBotones, border: 'none', borderRadius: '4px', fontSize: '0.58rem', padding: '0.22rem', fontWeight: 600, marginTop: '0.2rem', cursor: 'default' }}>
+                                    Agregar
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
 
                         {/* Barra inferior simulada de contacto y redes */}
-                        <div style={{ background: '#ffffff', borderTop: '1px solid #e2e8f0', padding: '0.6rem', display: 'flex', justifyContent: 'space-around', alignItems: 'center' }}>
-                          {whatsapp && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#16a34a' }}>
-                              <Phone size={14} />
-                              <span style={{ fontSize: '0.65rem', fontWeight: 'bold' }}>Pedido</span>
+                        <div style={{ 
+                          background: '#ffffff', 
+                          borderTop: '1px solid #e2e8f0', 
+                          padding: '0.55rem 0.45rem', 
+                          display: 'flex', 
+                          flexDirection: 'column',
+                          alignItems: 'center', 
+                          gap: '0.4rem',
+                          flexShrink: 0,
+                          position: 'sticky',
+                          bottom: 0,
+                          zIndex: 10,
+                          marginTop: 'auto',
+                          boxShadow: '0 -2px 10px rgba(0,0,0,0.04)'
+                        }}>
+                          {/* Redes sociales */}
+                          <div style={{ display: 'flex', justifyContent: 'space-around', width: '100%', alignItems: 'center' }}>
+                            {whatsapp && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.15rem', color: '#16a34a', cursor: 'default' }}>
+                                <Phone size={11} />
+                                <span style={{ fontSize: '0.58rem', fontWeight: 'bold' }}>Pedido</span>
+                              </div>
+                            )}
+                            {instagram && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.15rem', color: '#db2777', cursor: 'default' }}>
+                                <Instagram size={11} />
+                                <span style={{ fontSize: '0.58rem', fontWeight: 'bold' }}>Instagram</span>
+                              </div>
+                            )}
+                            {facebook && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.15rem', color: '#2563eb', cursor: 'default' }}>
+                                <Facebook size={11} />
+                                <span style={{ fontSize: '0.58rem', fontWeight: 'bold' }}>Facebook</span>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Separador e invitación de CrecePlus */}
+                          <div style={{ width: '85%', height: '1px', background: '#f1f5f9', margin: '0.2rem 0' }} />
+                          <div style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: '0.15rem',
+                            textAlign: 'center'
+                          }}>
+                            <span style={{ fontSize: '0.52rem', color: '#64748b' }}>¿Quieres controlar tu inventario y ventas?</span>
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.15rem',
+                              background: 'rgba(79, 70, 229, 0.06)',
+                              padding: '0.15rem 0.4rem',
+                              borderRadius: '4px',
+                              border: '1px solid rgba(79, 70, 229, 0.1)'
+                            }}>
+                              <span style={{ fontSize: '0.55rem', fontWeight: 'bold', color: '#4f46e5' }}>creceplus.app</span>
+                              <ExternalLink size={7} style={{ color: '#4f46e5' }} />
                             </div>
-                          )}
-                          {instagram && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#db2777' }}>
-                              <Instagram size={14} />
-                              <span style={{ fontSize: '0.65rem', fontWeight: 'bold' }}>Instagram</span>
-                            </div>
-                          )}
-                          {facebook && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#2563eb' }}>
-                              <Facebook size={14} />
-                              <span style={{ fontSize: '0.65rem', fontWeight: 'bold' }}>Facebook</span>
-                            </div>
-                          )}
+                          </div>
                         </div>
 
                       </div>
