@@ -82,15 +82,42 @@ const Catalogo = () => {
         setOrganizacion(orgData);
         localStorage.setItem(cacheKeyOrg, JSON.stringify(orgData));
 
-        const { data: prodData, error: prodError } = await supabase
-          .from('public_productos')
-          .select('*')
-          .eq('organization_id', orgData.id)
-          .order('nombre');
+        let allProducts = [];
+        let from = 0;
+        let to = 999;
+        let hasMore = true;
+        let loopError = null;
 
-        if (!prodError && prodData) {
+        while (hasMore) {
+          const { data: prodData, error: prodError } = await supabase
+            .from('public_productos')
+            .select('*')
+            .eq('organization_id', orgData.id)
+            .order('nombre')
+            .range(from, to);
+
+          if (prodError) {
+            loopError = prodError;
+            console.error("Error al cargar lote de productos:", prodError);
+            break;
+          }
+
+          if (prodData && prodData.length > 0) {
+            allProducts = [...allProducts, ...prodData];
+            if (prodData.length < 1000) {
+              hasMore = false;
+            } else {
+              from += 1000;
+              to += 1000;
+            }
+          } else {
+            hasMore = false;
+          }
+        }
+
+        if (!loopError && allProducts.length > 0) {
           const categoriasMap = new Map();
-          const productosProcesados = prodData
+          const productosProcesados = allProducts
             .filter(p => {
               let meta = {};
               if (typeof p.metadata === 'string') {
