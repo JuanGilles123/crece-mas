@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { User, Settings, Building2, LogOut, Edit3, Save, X, Lock, Sliders, Bell, CreditCard, BarChart3, Crown, Sparkles, Shield, Key, Printer } from 'lucide-react';
-import { Eye, EyeOff, Mail, ShieldCheck } from 'lucide-react';
+import { User, Settings, Building2, LogOut, Edit3, Save, X, Lock, Sliders, Bell, CreditCard, BarChart3, Crown, Sparkles, Shield, Key, Printer, Link, Copy, ExternalLink, Store, Palette, Instagram, Facebook, Phone, MessageSquare, Upload, Trash2, Image } from 'lucide-react';
+import { Eye, EyeOff, Mail, ShieldCheck, Tag, Columns } from 'lucide-react';
 import { useSubscription } from '../../hooks/useSubscription';
 import toast from 'react-hot-toast';
 import ThemeToggle from '../../components/ui/ThemeToggle';
@@ -12,10 +12,11 @@ import { useUpdateEmployeeCredentials } from '../../hooks/useTeam';
 import EditarCodigoEmpleadoModal from '../../components/EditarCodigoEmpleadoModal';
 import PreferenciasAplicacion from '../../components/PreferenciasAplicacion';
 import ConfiguracionImpresora from '../../components/ConfiguracionImpresora';
+import { compressProductImage, compressPromoImage } from '../../services/storage/imageCompression';
 import './Perfil.css';
 
 const Perfil = () => {
-  const { user, organization, hasRole, userProfile } = useAuth();
+  const { user, organization, hasRole, userProfile, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { isVIP, planName, hasFeature } = useSubscription();
@@ -153,6 +154,9 @@ const Perfil = () => {
   const [editandoNombreNegocio, setEditandoNombreNegocio] = useState(false);
   const [nombreNegocio, setNombreNegocio] = useState(organization?.name || '');
   const [guardandoNombreNegocio, setGuardandoNombreNegocio] = useState(false);
+  const [editandoSlug, setEditandoSlug] = useState(false);
+  const [slugNegocio, setSlugNegocio] = useState(organization?.slug || '');
+  const [guardandoSlug, setGuardandoSlug] = useState(false);
   const [employeeData, setEmployeeData] = useState(null);
   const [editandoCodigo, setEditandoCodigo] = useState(false);
   const updateEmployeeCredentials = useUpdateEmployeeCredentials();
@@ -281,8 +285,8 @@ const Perfil = () => {
       } else {
         alert('Nombre del negocio actualizado exitosamente');
         setEditandoNombreNegocio(false);
-        // Recargar la página para actualizar el contexto
-        window.location.reload();
+        // Actualizar el perfil en el contexto de manera reactiva (sin recargar la página)
+        refreshProfile();
       }
     } catch (error) {
       console.error('Error:', error);
@@ -292,8 +296,296 @@ const Perfil = () => {
     }
   };
 
+  const handleEditarSlug = () => {
+    setEditandoSlug(true);
+    setSlugNegocio(organization?.slug || '');
+  };
+
+  const handleCancelarEdicionSlug = () => {
+    setEditandoSlug(false);
+    setSlugNegocio(organization?.slug || '');
+  };
+
+  const handleGuardarSlug = async () => {
+    const formatSlug = (text) => text.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+    const newSlug = formatSlug(slugNegocio);
+    
+    if (!newSlug) {
+      toast.error('Por favor ingresa un enlace válido. Usa solo letras y números.');
+      return;
+    }
+
+    if (!organization?.id) {
+      toast.error('No se pudo identificar la organización');
+      return;
+    }
+
+    setGuardandoSlug(true);
+    try {
+      const { error } = await supabase
+        .from('organizations')
+        .update({ slug: newSlug })
+        .eq('id', organization.id);
+
+      if (error) {
+        if (error.code === '23505') {
+          toast.error('Este enlace ya está en uso por otro negocio. Intenta con otro diferente.');
+        } else {
+          console.error('Error actualizando enlace:', error);
+          toast.error('Error al actualizar el enlace. Intenta de nuevo.');
+        }
+      } else {
+        toast.success('Enlace de tu catálogo actualizado exitosamente');
+        setEditandoSlug(false);
+        // Actualizar el perfil en el contexto de manera reactiva (sin recargar la página)
+        refreshProfile();
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Error al actualizar el enlace. Intenta de nuevo.');
+    } finally {
+      setGuardandoSlug(false);
+    }
+  };
+
+  // --- ESTADOS Y MANEJADORES PARA TIENDA VIRTUAL ---
+  const [logoUrl, setLogoUrl] = useState(organization?.logo_url || '');
+  const [colorTema, setColorTema] = useState('#4f46e5');
+  const [whatsapp, setWhatsapp] = useState('');
+  const [instagram, setInstagram] = useState('');
+  const [facebook, setFacebook] = useState('');
+  const [mensajeBienvenida, setMensajeBienvenida] = useState('¡Hola! Bienvenidos a nuestra tienda virtual.');
+  const [guardandoCatalogoConfig, setGuardandoCatalogoConfig] = useState(false);
+
+  // Nuevos estados para promociones y diseño
+  const [layoutCategorias, setLayoutCategorias] = useState('top');
+  const [promociones, setPromociones] = useState([]);
+  const [subiendoPromocion, setSubiendoPromocion] = useState(false);
+  const [nuevoTituloPromo, setNuevoTituloPromo] = useState('');
+  const [nuevoEnlaceFiltro, setNuevoEnlaceFiltro] = useState('');
+  const promocionInputRef = useRef(null);
+
+  // Estados de Colores Configurables
+  const [colorFondo, setColorFondo] = useState('#f9fafb');
+  const [colorBotones, setColorBotones] = useState('#4f46e5');
+  const [colorTextoBotones, setColorTextoBotones] = useState('#ffffff');
+  const [colorHeader, setColorHeader] = useState('#ffffff');
+  const [colorTextoHeader, setColorTextoHeader] = useState('#111827');
+  const [fuentePrincipal, setFuentePrincipal] = useState('Inter');
+
+  const handleTriggerPromoUpload = () => {
+    promocionInputRef.current?.click();
+  };
+
+  const handlePromoFileChange = async (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const files = Array.from(e.target.files);
+      setSubiendoPromocion(true);
+      try {
+        const orgId = organization?.id;
+        if (!orgId) throw new Error('No se pudo identificar la organización');
+
+        const nuevasPromos = [];
+        
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          const imgComprimida = await compressPromoImage(file);
+          const timestamp = Date.now() + i;
+          const extension = imgComprimida.name.split('.').pop() || 'png';
+          const nombreArchivo = `${orgId}/promociones/promo_${timestamp}.${extension}`;
+
+          const { error: errorUpload } = await supabase.storage
+            .from('productos')
+            .upload(nombreArchivo, imgComprimida);
+
+          if (errorUpload) {
+            toast.error(`Error al subir ${file.name}`);
+            continue;
+          }
+
+          const { data: publicUrlData } = supabase.storage
+            .from('productos')
+            .getPublicUrl(nombreArchivo);
+
+          nuevasPromos.push({
+            id: timestamp,
+            imagen_url: publicUrlData.publicUrl,
+            titulo: nuevoTituloPromo || '',
+            enlace_filtro: nuevoEnlaceFiltro || ''
+          });
+        }
+
+        if (nuevasPromos.length > 0) {
+          setPromociones(prev => [...prev, ...nuevasPromos]);
+          setNuevoTituloPromo('');
+          setNuevoEnlaceFiltro('');
+          toast.success(`¡Se cargaron ${nuevasPromos.length} imágenes de promoción!`);
+        }
+      } catch (error) {
+        console.error('Error al subir promociones:', error);
+        toast.error(error?.message || 'Error al subir las promociones');
+      } finally {
+        setSubiendoPromocion(false);
+        e.target.value = '';
+      }
+    }
+  };
+
+  const handleEliminarPromocion = (id) => {
+    setPromociones(prev => prev.filter(p => p.id !== id));
+    toast.success('Promoción eliminada de la lista');
+  };
+
+  // Refs y estados para la carga de Logo
+  const logoInputRef = useRef(null);
+  const [subiendoLogo, setSubiendoLogo] = useState(false);
+  const [mostrarUrlLogo, setMostrarUrlLogo] = useState(false);
+
+  const handleTriggerLogoUpload = () => {
+    logoInputRef.current?.click();
+  };
+
+  const handleLogoFileChange = async (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setSubiendoLogo(true);
+      try {
+        const logoComprimido = await compressProductImage(file);
+        const orgId = organization?.id;
+        if (!orgId) {
+          throw new Error('No se pudo identificar la organización');
+        }
+
+        const timestamp = Date.now();
+        const extension = logoComprimido.name.split('.').pop() || 'png';
+        const nombreArchivo = `${orgId}/logos/logo_${timestamp}.${extension}`;
+
+        const { error: errorUpload } = await supabase.storage
+          .from('productos')
+          .upload(nombreArchivo, logoComprimido);
+
+        if (errorUpload) throw errorUpload;
+
+        const { data: publicUrlData } = supabase.storage
+          .from('productos')
+          .getPublicUrl(nombreArchivo);
+
+        setLogoUrl(publicUrlData.publicUrl);
+        toast.success('¡Logo cargado exitosamente!');
+      } catch (error) {
+        console.error('Error al subir logo:', error);
+        toast.error(error?.message || 'Error al subir el logo. Intenta de nuevo.');
+      } finally {
+        setSubiendoLogo(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (organization) {
+      setLogoUrl(organization.logo_url || '');
+      const config = organization.catalogo_config || {};
+      setColorTema(config.color_tema || '#4f46e5');
+      setWhatsapp(config.whatsapp || '');
+      setInstagram(config.instagram || '');
+      setFacebook(config.facebook || '');
+      setMensajeBienvenida(config.mensaje_bienvenida || '¡Hola! Bienvenidos a nuestra tienda virtual.');
+      setLayoutCategorias(config.layout_categorias || 'top');
+      setPromociones(config.promociones || []);
+      
+      // Cargar Colores Personalizados
+      setColorFondo(config.color_fondo || '#f9fafb');
+      setColorBotones(config.color_botones || config.color_tema || '#4f46e5');
+      setColorTextoBotones(config.color_texto_botones || '#ffffff');
+      setColorHeader(config.color_header || '#ffffff');
+      setColorTextoHeader(config.color_texto_header || '#111827');
+      setFuentePrincipal(config.fuente_principal || 'Inter');
+    }
+  }, [organization]);
+
+  // Efecto para cargar dinámicamente la tipografía seleccionada para la vista previa en tiempo real
+  useEffect(() => {
+    if (fuentePrincipal) {
+      const fontId = 'preview-google-font';
+      let linkEl = document.getElementById(fontId);
+      if (!linkEl) {
+        linkEl = document.createElement('link');
+        linkEl.id = fontId;
+        linkEl.rel = 'stylesheet';
+        document.head.appendChild(linkEl);
+      }
+      const encoded = encodeURIComponent(fuentePrincipal);
+      linkEl.href = `https://fonts.googleapis.com/css2?family=${encoded.replace(/%20/g, '+')}:wght@400;500;600;700;800&display=swap`;
+    }
+  }, [fuentePrincipal]);
+
+  const handleGuardarConfigCatalogo = async () => {
+    if (!organization?.id) {
+      toast.error('No se pudo identificar la organización');
+      return;
+    }
+
+    setGuardandoCatalogoConfig(true);
+    try {
+      // Si el usuario escribió una leyenda o un enlace en el campo superior pero no ha sido asociada (UX fix)
+      let promosActualizadas = [...promociones];
+      if ((nuevoTituloPromo.trim() || nuevoEnlaceFiltro.trim()) && promosActualizadas.length > 0) {
+        const ultimoIndex = promosActualizadas.length - 1;
+        if (!promosActualizadas[ultimoIndex].titulo && !promosActualizadas[ultimoIndex].enlace_filtro) {
+          promosActualizadas[ultimoIndex] = {
+            ...promosActualizadas[ultimoIndex],
+            titulo: nuevoTituloPromo.trim(),
+            enlace_filtro: nuevoEnlaceFiltro.trim()
+          };
+          setPromociones(promosActualizadas);
+          setNuevoTituloPromo('');
+          setNuevoEnlaceFiltro('');
+        }
+      }
+
+      const configJson = {
+        color_tema: colorTema,
+        whatsapp: whatsapp,
+        instagram: instagram,
+        facebook: facebook,
+        mensaje_bienvenida: mensajeBienvenida,
+        layout_categorias: layoutCategorias,
+        promociones: promosActualizadas,
+        color_fondo: colorFondo,
+        color_botones: colorBotones,
+        color_texto_botones: colorTextoBotones,
+        color_header: colorHeader,
+        color_texto_header: colorTextoHeader,
+        fuente_principal: fuentePrincipal
+      };
+
+      const { error } = await supabase
+        .from('organizations')
+        .update({ 
+          logo_url: logoUrl,
+          catalogo_config: configJson
+        })
+        .eq('id', organization.id);
+
+      if (error) {
+        console.error('Error actualizando configuración de catálogo:', error);
+        toast.error('Error al guardar la configuración.');
+      } else {
+        toast.success('Configuración de catálogo guardada exitosamente');
+        // Actualizar el perfil en el contexto de manera reactiva (sin recargar la página)
+        refreshProfile();
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Error al guardar la configuración.');
+    } finally {
+      setGuardandoCatalogoConfig(false);
+    }
+  };
+
   const tabs = [
     { id: 'datos', label: 'Datos Personales', icon: User },
+    { id: 'catalogo', label: 'Tienda Virtual', icon: Store },
     { id: 'configuracion', label: 'Configuración', icon: Settings },
   ];
 
@@ -517,6 +809,8 @@ const Perfil = () => {
                     </div>
                   )}
                 </div>
+
+
                 <div className="perfil-dato-item">
                   <label className="perfil-dato-label">Nombre Completo</label>
                   {editandoNombre ? (
@@ -597,7 +891,990 @@ const Perfil = () => {
                     </div>
                   </div>
                 )}
+                
               </div>
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'catalogo' && (
+            <motion.div
+              key="catalogo"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="perfil-section">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                  <div>
+                    <h2 className="perfil-section-title" style={{ margin: 0 }}>Diseño y Datos de tu Tienda Virtual</h2>
+                    <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                      Personaliza el aspecto visual y la información de contacto de tu catálogo público.
+                    </p>
+                  </div>
+                  {organization?.slug && (
+                    <button
+                      className="btn-action"
+                      style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '0.6rem 1.2rem', borderRadius: '8px', fontSize: '0.9rem', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}
+                      onClick={() => window.open(`/tienda/${organization.slug}`, '_blank')}
+                    >
+                      <ExternalLink size={16} /> Ver Catálogo
+                    </button>
+                  )}
+                </div>
+
+                <div className="perfil-catalogo-layout" style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '2rem' }}>
+                  
+                  {/* Formulario de Configuración */}
+                  <div className="perfil-catalogo-form" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    
+                    {/* Tarjeta: Enlace del Catálogo Público */}
+                    <div className="perfil-card" style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                      <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#1e293b', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Link size={18} style={{ color: 'var(--catalogo-theme-color, #4f46e5)' }} /> Enlace de tu Catálogo Público
+                      </h3>
+                      <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>
+                        Comparte este enlace con tus clientes para que puedan ver tus productos disponibles y hacer pedidos desde su celular.
+                      </p>
+                      
+                      {editandoSlug ? (
+                        <div className="perfil-edit-form" style={{ width: '100%' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '8px', paddingRight: '0.5rem', overflow: 'hidden' }}>
+                            <span style={{ padding: '0.5rem 0.75rem', color: '#6b7280', borderRight: '1px solid #d1d5db', background: '#e5e7eb', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
+                              {window.location.origin}/tienda/
+                            </span>
+                            <input
+                              type="text"
+                              value={slugNegocio}
+                              onChange={(e) => setSlugNegocio(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                              style={{ border: 'none', padding: '0.5rem 0.75rem', flex: 1, outline: 'none', background: 'transparent', fontSize: '1rem', color: '#111827' }}
+                              placeholder="tu-negocio"
+                              disabled={guardandoSlug}
+                            />
+                          </div>
+                          <div className="perfil-edit-actions" style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem' }}>
+                            <button
+                              className="perfil-edit-btn perfil-edit-save"
+                              onClick={handleGuardarSlug}
+                              disabled={guardandoSlug}
+                              style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                            >
+                              <Save size={16} />
+                              {guardandoSlug ? 'Guardando...' : 'Guardar Enlace'}
+                            </button>
+                            <button
+                              className="perfil-edit-btn perfil-edit-cancel"
+                              onClick={handleCancelarEdicionSlug}
+                              disabled={guardandoSlug}
+                              style={{ background: '#e2e8f0', color: '#475569', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                            >
+                              <X size={16} />
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="perfil-dato-display" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '1rem', background: '#f9fafb', padding: '1rem', borderRadius: '12px', border: '1px dashed #cbd5e1', width: '100%' }}>
+                          {organization?.slug ? (
+                            <>
+                              <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                <div style={{ flex: 1, background: '#ffffff', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '1rem', color: '#3b82f6', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {window.location.origin}/tienda/{organization.slug}
+                                </div>
+                                <button
+                                  className="btn-action"
+                                  style={{ background: '#111827', color: 'white', border: 'none', padding: '0.6rem 1rem', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(`${window.location.origin}/tienda/${organization.slug}`);
+                                    toast.success('¡Enlace copiado al portapapeles!');
+                                  }}
+                                >
+                                  <Copy size={16} /> Copiar
+                                </button>
+                                <button
+                                  className="btn-action"
+                                  style={{ background: '#e2e8f0', color: '#111827', border: 'none', padding: '0.6rem 1rem', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                                  onClick={() => window.open(`/tienda/${organization.slug}`, '_blank')}
+                                >
+                                  <ExternalLink size={16} /> Visitar
+                                </button>
+                              </div>
+                              <button
+                                className="perfil-edit-btn perfil-edit-start"
+                                onClick={handleEditarSlug}
+                                style={{ alignSelf: 'flex-start', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem', background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600 }}
+                              >
+                                <Edit3 size={16} />
+                                Cambiar nombre del enlace
+                              </button>
+                            </>
+                          ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%' }}>
+                              <p style={{ color: '#d97706', fontWeight: '500', fontSize: '0.9rem', margin: 0 }}>
+                                ⚠️ Aún no has configurado tu enlace de catálogo.
+                              </p>
+                              <button
+                                className="perfil-edit-btn perfil-edit-start"
+                                onClick={handleEditarSlug}
+                                style={{ background: '#3b82f6', color: 'white', border: 'none', alignSelf: 'flex-start', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.9rem', fontWeight: 600 }}
+                              >
+                                <Link size={16} />
+                                Crear Enlace Ahora
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Tarjeta: Estética */}
+                    <div className="perfil-card" style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                      <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#1e293b', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Palette size={18} style={{ color: '#4f46e5' }} /> Estética de la Tienda
+                      </h3>
+                      
+                      {/* Logo */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        <label style={{ fontSize: '0.9rem', fontWeight: '500', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                          Logo del Negocio
+                        </label>
+                        
+                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                          {/* Botón de Cargar Archivo */}
+                          <div style={{ position: 'relative', display: 'inline-block' }}>
+                            <button
+                              type="button"
+                              onClick={handleTriggerLogoUpload}
+                              disabled={subiendoLogo}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                padding: '0.6rem 1rem',
+                                background: 'linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '8px',
+                                fontSize: '0.9rem',
+                                fontWeight: '500',
+                                cursor: 'pointer',
+                                boxShadow: '0 4px 6px -1px rgba(79, 70, 229, 0.2)',
+                                transition: 'all 0.2s',
+                              }}
+                            >
+                              <Upload size={16} />
+                              {subiendoLogo ? 'Subiendo logo...' : 'Subir desde dispositivo'}
+                            </button>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleLogoFileChange}
+                              ref={logoInputRef}
+                              style={{ display: 'none' }}
+                            />
+                          </div>
+
+                          {/* Previsualización del Logo cargado */}
+                          {logoUrl ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: '#f8fafc', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                              <img
+                                src={logoUrl}
+                                alt="Logo Previsualización"
+                                style={{ width: '42px', height: '42px', borderRadius: '8px', objectFit: 'cover', border: '1px solid #cbd5e1' }}
+                                onError={(e) => { e.target.style.display = 'none'; }}
+                              />
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '500' }}>Logo activo</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setLogoUrl('')}
+                                  style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.75rem', padding: 0, textAlign: 'left', cursor: 'pointer', fontWeight: '600' }}
+                                >
+                                  Eliminar logo
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <span style={{ fontSize: '0.85rem', color: '#64748b', fontStyle: 'italic' }}>Sin logo seleccionado</span>
+                          )}
+                        </div>
+
+                        {/* Input de URL alternativo */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.25rem' }}>
+                          <span style={{ fontSize: '0.8rem', color: '#4f46e5', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: '500' }} onClick={() => setMostrarUrlLogo(!mostrarUrlLogo)}>
+                            {mostrarUrlLogo ? 'Ocultar campo de dirección URL' : '✍️ ¿Prefieres ingresar una dirección URL web? Haz click aquí'}
+                          </span>
+                          {mostrarUrlLogo && (
+                            <input
+                              type="text"
+                              value={logoUrl}
+                              onChange={(e) => setLogoUrl(e.target.value)}
+                              placeholder="https://ejemplo.com/logo.png"
+                              style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.95rem', marginTop: '0.25rem' }}
+                            />
+                          )}
+                        </div>
+
+                        <p style={{ fontSize: '0.75rem', color: '#64748b', margin: 0 }}>
+                          Sube una imagen cuadrada (PNG, JPG o WebP) para que tu tienda luzca excelente.
+                        </p>
+                      </div>
+
+                      {/* Color del Tema */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <label style={{ fontSize: '0.9rem', fontWeight: '500', color: '#475569' }}>Color Principal de Marca</label>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                          {[
+                            { name: 'Azul Cobalto', value: '#2563eb' },
+                            { name: 'Esmeralda Premium', value: '#059669' },
+                            { name: 'Púrpura Imperial', value: '#7c3aed' },
+                            { name: 'Rosa Coral', value: '#db2777' },
+                            { name: 'Naranja Sunset', value: '#ea580c' },
+                            { name: 'Negro Luxury', value: '#111827' },
+                            { name: 'Indigo Original', value: '#4f46e5' },
+                            { name: 'Rojo Ruby', value: '#e11d48' },
+                          ].map((color) => (
+                            <button
+                              key={color.value}
+                              type="button"
+                              onClick={() => {
+                                setColorTema(color.value);
+                                setColorBotones(color.value);
+                              }}
+                              style={{
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '50%',
+                                backgroundColor: color.value,
+                                border: colorTema === color.value ? '3px solid #1e293b' : '1px solid #cbd5e1',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                transform: colorTema === color.value ? 'scale(1.1)' : 'scale(1)'
+                              }}
+                              title={color.name}
+                            />
+                          ))}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: '0.5rem' }}>
+                            <div style={{
+                              width: '32px',
+                              height: '32px',
+                              borderRadius: '50%',
+                              overflow: 'hidden',
+                              border: '2px solid #cbd5e1',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              backgroundColor: colorTema,
+                              position: 'relative',
+                              cursor: 'pointer',
+                              boxShadow: '0 2px 4px rgba(0,0,0,0.06)',
+                              transition: 'transform 0.15s ease'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.08)'}
+                            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                            >
+                              <input
+                                type="color"
+                                value={colorTema}
+                                onChange={(e) => {
+                                  setColorTema(e.target.value);
+                                  setColorBotones(e.target.value);
+                                }}
+                                style={{
+                                  position: 'absolute',
+                                  top: '-4px',
+                                  left: '-4px',
+                                  width: '40px',
+                                  height: '40px',
+                                  border: 'none',
+                                  padding: 0,
+                                  margin: 0,
+                                  cursor: 'pointer',
+                                  opacity: 0
+                                }}
+                              />
+                            </div>
+                            <span style={{ fontSize: '0.85rem', color: '#475569', fontFamily: 'monospace', fontWeight: '600' }}>{colorTema}</span>
+                          </div>
+                        </div>
+
+                        {/* Colores Personalizados Avanzados */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem', marginTop: '0.75rem', padding: '0.75rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                            <span style={{ fontSize: '0.8rem', fontWeight: '600', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                              <Palette size={14} style={{ color: '#64748b' }} /> Color de Fondo
+                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                              <div style={{
+                                width: '28px',
+                                height: '28px',
+                                borderRadius: '50%',
+                                overflow: 'hidden',
+                                border: '1.5px solid #cbd5e1',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                backgroundColor: colorFondo,
+                                position: 'relative',
+                                cursor: 'pointer',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                              }}>
+                                <input
+                                  type="color"
+                                  value={colorFondo}
+                                  onChange={(e) => setColorFondo(e.target.value)}
+                                  style={{
+                                    position: 'absolute',
+                                    top: '-4px',
+                                    left: '-4px',
+                                    width: '36px',
+                                    height: '36px',
+                                    border: 'none',
+                                    padding: 0,
+                                    margin: 0,
+                                    cursor: 'pointer',
+                                    opacity: 0
+                                  }}
+                                />
+                              </div>
+                              <span style={{ fontSize: '0.75rem', color: '#64748b', fontFamily: 'monospace', fontWeight: '600' }}>{colorFondo}</span>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                            <span style={{ fontSize: '0.8rem', fontWeight: '600', color: '#475569' }}>🔲 Color de Botones</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                              <div style={{
+                                width: '28px',
+                                height: '28px',
+                                borderRadius: '50%',
+                                overflow: 'hidden',
+                                border: '1.5px solid #cbd5e1',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                backgroundColor: colorBotones,
+                                position: 'relative',
+                                cursor: 'pointer',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                              }}>
+                                <input
+                                  type="color"
+                                  value={colorBotones}
+                                  onChange={(e) => {
+                                    setColorBotones(e.target.value);
+                                    setColorTema(e.target.value);
+                                  }}
+                                  style={{
+                                    position: 'absolute',
+                                    top: '-4px',
+                                    left: '-4px',
+                                    width: '36px',
+                                    height: '36px',
+                                    border: 'none',
+                                    padding: 0,
+                                    margin: 0,
+                                    cursor: 'pointer',
+                                    opacity: 0
+                                  }}
+                                />
+                              </div>
+                              <span style={{ fontSize: '0.75rem', color: '#64748b', fontFamily: 'monospace', fontWeight: '600' }}>{colorBotones}</span>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                            <span style={{ fontSize: '0.8rem', fontWeight: '600', color: '#475569' }}>🔤 Texto de Botones</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                              <div style={{
+                                width: '28px',
+                                height: '28px',
+                                borderRadius: '50%',
+                                overflow: 'hidden',
+                                border: '1.5px solid #cbd5e1',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                backgroundColor: colorTextoBotones,
+                                position: 'relative',
+                                cursor: 'pointer',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                              }}>
+                                <input
+                                  type="color"
+                                  value={colorTextoBotones}
+                                  onChange={(e) => setColorTextoBotones(e.target.value)}
+                                  style={{
+                                    position: 'absolute',
+                                    top: '-4px',
+                                    left: '-4px',
+                                    width: '36px',
+                                    height: '36px',
+                                    border: 'none',
+                                    padding: 0,
+                                    margin: 0,
+                                    cursor: 'pointer',
+                                    opacity: 0
+                                  }}
+                                />
+                              </div>
+                              <span style={{ fontSize: '0.75rem', color: '#64748b', fontFamily: 'monospace', fontWeight: '600' }}>{colorTextoBotones}</span>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                            <span style={{ fontSize: '0.8rem', fontWeight: '600', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                              <Tag size={14} style={{ color: '#64748b' }} /> Fondo del Encabezado
+                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                              <div style={{
+                                width: '28px',
+                                height: '28px',
+                                borderRadius: '50%',
+                                overflow: 'hidden',
+                                border: '1.5px solid #cbd5e1',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                backgroundColor: colorHeader,
+                                position: 'relative',
+                                cursor: 'pointer',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                              }}>
+                                <input
+                                  type="color"
+                                  value={colorHeader}
+                                  onChange={(e) => setColorHeader(e.target.value)}
+                                  style={{
+                                    position: 'absolute',
+                                    top: '-4px',
+                                    left: '-4px',
+                                    width: '36px',
+                                    height: '36px',
+                                    border: 'none',
+                                    padding: 0,
+                                    margin: 0,
+                                    cursor: 'pointer',
+                                    opacity: 0
+                                  }}
+                                />
+                              </div>
+                              <span style={{ fontSize: '0.75rem', color: '#64748b', fontFamily: 'monospace', fontWeight: '600' }}>{colorHeader}</span>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                            <span style={{ fontSize: '0.8rem', fontWeight: '600', color: '#475569' }}>✏️ Texto del Encabezado</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                              <div style={{
+                                width: '28px',
+                                height: '28px',
+                                borderRadius: '50%',
+                                overflow: 'hidden',
+                                border: '1.5px solid #cbd5e1',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                backgroundColor: colorTextoHeader,
+                                position: 'relative',
+                                cursor: 'pointer',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                              }}>
+                                <input
+                                  type="color"
+                                  value={colorTextoHeader}
+                                  onChange={(e) => setColorTextoHeader(e.target.value)}
+                                  style={{
+                                    position: 'absolute',
+                                    top: '-4px',
+                                    left: '-4px',
+                                    width: '36px',
+                                    height: '36px',
+                                    border: 'none',
+                                    padding: 0,
+                                    margin: 0,
+                                    cursor: 'pointer',
+                                    opacity: 0
+                                  }}
+                                />
+                              </div>
+                              <span style={{ fontSize: '0.75rem', color: '#64748b', fontFamily: 'monospace', fontWeight: '600' }}>{colorTextoHeader}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Tipografía */}
+                        <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e2e8f0' }}>
+                          <label style={{ fontSize: '0.9rem', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '0.6rem' }}>🔡 Tipografía de la Tienda</label>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.5rem' }}>
+                            {[
+                              { nombre: 'Inter', label: 'Inter (Moderna)' },
+                              { nombre: 'Poppins', label: 'Poppins (Elegante)' },
+                              { nombre: 'Montserrat', label: 'Montserrat (Bold)' },
+                              { nombre: 'Lato', label: 'Lato (Limpia)' },
+                              { nombre: 'Playfair Display', label: 'Playfair (Lujo)' },
+                              { nombre: 'Nunito', label: 'Nunito (Amigable)' },
+                              { nombre: 'Raleway', label: 'Raleway (Fashion)' },
+                              { nombre: 'Roboto', label: 'Roboto (Tech)' },
+                            ].map((fuente) => (
+                              <button
+                                key={fuente.nombre}
+                                type="button"
+                                onClick={() => setFuentePrincipal(fuente.nombre)}
+                                style={{
+                                  padding: '0.5rem 0.6rem',
+                                  border: fuentePrincipal === fuente.nombre ? `2px solid ${colorBotones}` : '1px solid #e2e8f0',
+                                  borderRadius: '8px',
+                                  background: fuentePrincipal === fuente.nombre ? `${colorBotones}15` : '#ffffff',
+                                  cursor: 'pointer',
+                                  fontSize: '0.78rem',
+                                  fontWeight: fuentePrincipal === fuente.nombre ? '700' : '500',
+                                  color: fuentePrincipal === fuente.nombre ? colorBotones : '#475569',
+                                  fontFamily: fuente.nombre,
+                                  transition: 'all 0.15s',
+                                  textAlign: 'left',
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis'
+                                }}
+                              >
+                                {fuente.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Diseño de Categorías */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem', paddingTop: '1rem', borderTop: '1px solid #e2e8f0' }}>
+                        <label style={{ fontSize: '0.9rem', fontWeight: '500', color: '#475569' }}>Diseño de Categorías (Pestañas)</label>
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => setLayoutCategorias('top')}
+                            style={{
+                              flex: 1,
+                              padding: '0.75rem',
+                              background: layoutCategorias === 'top' ? colorTema : '#ffffff',
+                              color: layoutCategorias === 'top' ? '#ffffff' : '#475569',
+                              border: layoutCategorias === 'top' ? '1px solid transparent' : '1px solid #cbd5e1',
+                              borderRadius: '8px',
+                              cursor: 'pointer',
+                              fontWeight: '600',
+                              fontSize: '0.85rem',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              boxShadow: layoutCategorias === 'top' ? `0 4px 6px -1px ${colorTema}33` : 'none',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                               <Sliders size={16} /> Superior Deslizable
+                             </span>
+                            <span style={{ fontSize: '0.7rem', opacity: 0.8, fontWeight: 'normal' }}>Píldoras horizontales en el encabezado</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setLayoutCategorias('side')}
+                            style={{
+                              flex: 1,
+                              padding: '0.75rem',
+                              background: layoutCategorias === 'side' ? colorTema : '#ffffff',
+                              color: layoutCategorias === 'side' ? '#ffffff' : '#475569',
+                              border: layoutCategorias === 'side' ? '1px solid transparent' : '1px solid #cbd5e1',
+                              borderRadius: '8px',
+                              cursor: 'pointer',
+                              fontWeight: '600',
+                              fontSize: '0.85rem',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              boxShadow: layoutCategorias === 'side' ? `0 4px 6px -1px ${colorTema}33` : 'none',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                               <Columns size={16} /> Lateral Izquierdo
+                             </span>
+                            <span style={{ fontSize: '0.7rem', opacity: 0.8, fontWeight: 'normal' }}>Menú lateral profesional (en PC)</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Tarjeta: Banners y Promociones */}
+                    <div className="perfil-card" style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                      <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#1e293b', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Image size={18} style={{ color: '#ec4899' }} /> Banners y Promociones Destacadas
+                      </h3>
+                      <p style={{ fontSize: '0.85rem', color: '#6b7280', margin: 0 }}>
+                        Sube imágenes promocionales (ofertas, lanzamientos, anuncios) para mostrar un carrete deslizante interactivo en la parte superior de tu tienda.
+                      </p>
+
+                      {/* Cargador de Promociones */}
+                      <div style={{ background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '12px', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                            <label style={{ fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>Título o Leyenda de la Promoción (Opcional)</label>
+                            <input
+                              type="text"
+                              value={nuevoTituloPromo}
+                              onChange={(e) => setNuevoTituloPromo(e.target.value)}
+                              placeholder="Ej: ¡25% en Correctores Bloomshell!"
+                              style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem' }}
+                            />
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                            <label style={{ fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>Búsqueda/Filtro al hacer clic (Opcional)</label>
+                            <input
+                              type="text"
+                              value={nuevoEnlaceFiltro}
+                              onChange={(e) => setNuevoEnlaceFiltro(e.target.value)}
+                              placeholder="Ej: corrector bloomshell"
+                              style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem' }}
+                            />
+                          </div>
+                        </div>
+                        
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <button
+                            type="button"
+                            onClick={handleTriggerPromoUpload}
+                            disabled={subiendoPromocion}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.5rem',
+                              padding: '0.6rem 1rem',
+                              background: colorBotones,
+                              color: colorTextoBotones,
+                              border: 'none',
+                              borderRadius: '8px',
+                              fontSize: '0.85rem',
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                              boxShadow: `0 4px 6px -1px ${colorBotones}33`
+                            }}
+                          >
+                            <Upload size={16} />
+                            {subiendoPromocion ? 'Subiendo imagen...' : 'Subir Banner de Promoción'}
+                          </button>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={handlePromoFileChange}
+                            ref={promocionInputRef}
+                            style={{ display: 'none' }}
+                          />
+                        </div>
+                        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Recomendado: Imágenes horizontales de aspecto 16:9 o rectangular.</span>
+                      </div>
+
+                      {/* Lista de Promociones Activas */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        <label style={{ fontSize: '0.9rem', fontWeight: '500', color: '#475569' }}>Promociones Activas ({promociones.length})</label>
+                        {promociones.length === 0 ? (
+                          <div style={{ textAlign: 'center', padding: '1.5rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #f1f5f9', color: '#94a3b8', fontSize: '0.85rem', fontStyle: 'italic' }}>
+                            Aún no has agregado banners de promociones.
+                          </div>
+                        ) : (
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.75rem' }}>
+                            {promociones.map((promo, index) => (
+                              <div key={promo.id || index} style={{ position: 'relative', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                                <img
+                                  src={promo.imagen_url}
+                                  alt={promo.titulo}
+                                  style={{ width: '100%', height: '100px', objectFit: 'cover', background: '#f1f5f9' }}
+                                />
+                                <div style={{ padding: '0.6rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                  {/* Título overlay */}
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                    <span style={{ fontSize: '0.7rem', fontWeight: '600', color: '#64748b' }}>📝 Título en Imagen</span>
+                                    <input
+                                      type="text"
+                                      value={promo.titulo || ''}
+                                      onChange={(e) => {
+                                        const nuevoValor = e.target.value;
+                                        setPromociones(prev => prev.map(p => p.id === promo.id ? { ...p, titulo: nuevoValor } : p));
+                                      }}
+                                      placeholder="Ej: ¡25% en Correctores!"
+                                      style={{
+                                        fontSize: '0.75rem',
+                                        padding: '0.3rem 0.5rem',
+                                        border: '1px solid #e2e8f0',
+                                        borderRadius: '6px',
+                                        width: '100%',
+                                        outline: 'none',
+                                        color: '#334155'
+                                      }}
+                                    />
+                                  </div>
+                                  
+                                  {/* Criterio de búsqueda */}
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                    <span style={{ fontSize: '0.7rem', fontWeight: '600', color: '#64748b' }}>🔗 Criterio de Búsqueda</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                      <input
+                                        type="text"
+                                        value={promo.enlace_filtro || ''}
+                                        onChange={(e) => {
+                                          const nuevoValor = e.target.value;
+                                          setPromociones(prev => prev.map(p => p.id === promo.id ? { ...p, enlace_filtro: nuevoValor } : p));
+                                        }}
+                                        placeholder="Ej: corrector bloomshell"
+                                        style={{
+                                          fontSize: '0.75rem',
+                                          padding: '0.3rem 0.5rem',
+                                          border: '1px solid #e2e8f0',
+                                          borderRadius: '6px',
+                                          width: '100%',
+                                          outline: 'none',
+                                          color: '#334155'
+                                        }}
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => handleEliminarPromocion(promo.id)}
+                                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.2rem', display: 'flex', alignItems: 'center' }}
+                                        title="Eliminar promoción"
+                                      >
+                                        <Trash2 size={14} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Tarjeta: Mensaje de Bienvenida */}
+                    <div className="perfil-card" style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                      <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#1e293b', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <MessageSquare size={18} style={{ color: '#10b981' }} /> Banner y Mensaje de Bienvenida
+                      </h3>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <label style={{ fontSize: '0.9rem', fontWeight: '500', color: '#475569' }}>Mensaje Informativo de Portada</label>
+                        <textarea
+                          rows={2}
+                          value={mensajeBienvenida}
+                          onChange={(e) => setMensajeBienvenida(e.target.value)}
+                          placeholder="Ej: ¡Bienvenidos a nuestro catálogo! Agrega productos al carrito y envíanos tu pedido directamente por WhatsApp."
+                          style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.95rem', fontFamily: 'inherit', resize: 'vertical' }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Tarjeta: Contacto y Redes */}
+                    <div className="perfil-card" style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                      <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#1e293b', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Phone size={18} style={{ color: '#f59e0b' }} /> Contacto y Redes Sociales
+                      </h3>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                          <label style={{ fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>WhatsApp para Pedidos</label>
+                          <div style={{ display: 'flex', alignItems: 'center', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px', paddingLeft: '0.75rem', overflow: 'hidden' }}>
+                            <span style={{ color: '#64748b', fontSize: '0.9rem', marginRight: '0.25rem' }}>+</span>
+                            <input
+                              type="tel"
+                              value={whatsapp}
+                              onChange={(e) => setWhatsapp(e.target.value.replace(/[^0-9]/g, ''))}
+                              placeholder="573001234567"
+                              style={{ border: 'none', outline: 'none', padding: '0.6rem 0.5rem', width: '100%', fontSize: '0.95rem' }}
+                            />
+                          </div>
+                          <span style={{ fontSize: '0.7rem', color: '#64748b' }}>Código de país + número, sin espacios.</span>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                          <label style={{ fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>Instagram (Usuario)</label>
+                          <div style={{ display: 'flex', alignItems: 'center', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px', paddingLeft: '0.75rem', overflow: 'hidden' }}>
+                            <span style={{ color: '#64748b', fontSize: '0.9rem', marginRight: '0.25rem' }}>@</span>
+                            <input
+                              type="text"
+                              value={instagram}
+                              onChange={(e) => setInstagram(e.target.value.replace(/[^a-zA-Z0-9_.]/g, ''))}
+                              placeholder="mi_negocio"
+                              style={{ border: 'none', outline: 'none', padding: '0.6rem 0.5rem', width: '100%', fontSize: '0.95rem' }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                        <label style={{ fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>Página de Facebook (URL)</label>
+                        <input
+                          type="text"
+                          value={facebook}
+                          onChange={(e) => setFacebook(e.target.value)}
+                          placeholder="https://facebook.com/mi.negocio"
+                          style={{ padding: '0.6rem 0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.95rem' }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Botón de guardar */}
+                    <button
+                      className="perfil-edit-btn perfil-edit-save"
+                      onClick={handleGuardarConfigCatalogo}
+                      disabled={guardandoCatalogoConfig}
+                      style={{ padding: '0.75rem 1.5rem', fontSize: '1rem', alignSelf: 'flex-start', background: '#10b981', color: '#fff', border: 'none', cursor: 'pointer', borderRadius: '8px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                    >
+                      <Save size={18} />
+                      {guardandoCatalogoConfig ? 'Guardando...' : 'Guardar Todo'}
+                    </button>
+
+                  </div>
+
+                  {/* Vista Previa Móvil (Mock) */}
+                  <div className="perfil-catalogo-preview" style={{ position: 'sticky', top: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#475569', margin: 0, textAlign: 'center' }}>
+                      Vista Previa (Móvil)
+                    </h3>
+                    
+                    {/* Dispositivo de simulación */}
+                    <div style={{ width: '300px', height: '520px', background: colorFondo, border: '12px solid #0f172a', borderRadius: '36px', margin: '0 auto', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', position: 'relative' }}>
+                      
+                      {/* Notch */}
+                      <div style={{ width: '110px', height: '18px', background: '#0f172a', borderBottomLeftRadius: '12px', borderBottomRightRadius: '12px', position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', zIndex: 10 }} />
+                      
+                      {/* Contenedor interno */}
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', paddingTop: '1.25rem', fontFamily: `'${fuentePrincipal}', Inter, sans-serif` }}>
+                        
+                        {/* Cabecera de la tienda simulada */}
+                        <div style={{ background: colorHeader, padding: '0.6rem 0.8rem', borderBottom: `2px solid ${colorBotones}`, display: 'flex', alignItems: 'center', gap: '0.5rem', position: 'sticky', top: '-1.25rem', zIndex: 10 }}>
+                          {logoUrl ? (
+                            <img
+                              src={logoUrl}
+                              alt="Logo Negocio"
+                              style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${colorBotones}`, flexShrink: 0 }}
+                              onError={(e) => { e.target.style.display = 'none'; }}
+                            />
+                          ) : (
+                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', border: `2px solid ${colorBotones}`, flexShrink: 0 }}>
+                              <Store size={16} style={{ color: colorBotones }} />
+                            </div>
+                          )}
+                          <h4 style={{ fontSize: '0.85rem', fontWeight: 'bold', color: colorTextoHeader, margin: 0, fontFamily: `'${fuentePrincipal}', Inter, sans-serif`, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {organization?.name || 'Luna Cosmetics'}
+                          </h4>
+                        </div>
+
+                        {/* Carrete de Promociones simulado */}
+                        {promociones.length > 0 && (
+                          <div style={{ position: 'relative', width: '100%', height: '90px', background: '#f1f5f9', flexShrink: 0, overflow: 'hidden' }}>
+                            <div style={{ display: 'flex', width: '100%', height: '100%' }}>
+                              <img
+                                src={promociones[0].imagen_url}
+                                alt="Promo Previa"
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              />
+                              {promociones[0].titulo && (
+                                <div style={{
+                                  position: 'absolute',
+                                  bottom: 0,
+                                  left: 0,
+                                  right: 0,
+                                  background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.1) 100%)',
+                                  padding: '0.4rem 0.5rem',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '1px'
+                                }}>
+                                  <span style={{ fontSize: '0.5rem', fontWeight: '800', backgroundColor: colorBotones, color: colorTextoBotones, alignSelf: 'flex-start', padding: '0.05rem 0.25rem', borderRadius: '4px', textTransform: 'uppercase' }}>Destacado</span>
+                                  <span style={{ fontSize: '0.65rem', fontWeight: 'bold', color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{promociones[0].titulo}</span>
+                                </div>
+                              )}
+                            </div>
+                            {promociones.length > 1 && (
+                              <div style={{ position: 'absolute', bottom: '4px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '3px', zIndex: 5 }}>
+                                {promociones.map((_, idx) => (
+                                  <div
+                                    key={idx}
+                                    style={{
+                                      width: '4px',
+                                      height: '4px',
+                                      borderRadius: '50%',
+                                      backgroundColor: idx === 0 ? colorBotones : 'rgba(255,255,255,0.6)'
+                                    }}
+                                  />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Banner de Bienvenida simulado */}
+                        {mensajeBienvenida && (
+                          <div style={{ background: '#ffffff', margin: '0.75rem', padding: '0.75rem', borderRadius: '12px', borderLeft: `4px solid ${colorBotones}`, fontSize: '0.75rem', color: '#334155', lineHeight: '1.4', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                            {mensajeBienvenida}
+                          </div>
+                        )}
+
+                        {/* Listado de Categorías y catálogo simulado */}
+                        <div style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1 }}>
+                          <div style={{ display: 'flex', gap: '0.4rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
+                            <span style={{ fontSize: '0.7rem', fontWeight: 600, background: colorBotones, color: colorTextoBotones, padding: '0.3rem 0.6rem', borderRadius: '12px', whiteSpace: 'nowrap' }}>
+                              Todos
+                            </span>
+                            <span style={{ fontSize: '0.7rem', background: '#ffffff', border: '1px solid #cbd5e1', color: '#475569', padding: '0.3rem 0.6rem', borderRadius: '12px', whiteSpace: 'nowrap' }}>
+                              Labiales
+                            </span>
+                          </div>
+
+                          {/* Productos en Grid simulado */}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                            {[1, 2].map((i) => (
+                              <div key={i} style={{ background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0', padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                                <div style={{ width: '100%', height: '80px', background: '#f1f5f9', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>Producto {i}</span>
+                                </div>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  Brillo Mágico {i}
+                                </span>
+                                <span style={{ fontSize: '0.7rem', color: colorBotones, fontWeight: 'bold' }}>
+                                  $25.000
+                                </span>
+                                <button type="button" style={{ width: '100%', background: colorBotones, color: colorTextoBotones, border: 'none', borderRadius: '4px', fontSize: '0.65rem', padding: '0.3rem', fontWeight: 600, marginTop: '0.25rem', cursor: 'default' }}>
+                                  Agregar
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Barra inferior simulada de contacto y redes */}
+                        <div style={{ background: '#ffffff', borderTop: '1px solid #e2e8f0', padding: '0.6rem', display: 'flex', justifyContent: 'space-around', alignItems: 'center' }}>
+                          {whatsapp && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#16a34a' }}>
+                              <Phone size={14} />
+                              <span style={{ fontSize: '0.65rem', fontWeight: 'bold' }}>Pedido</span>
+                            </div>
+                          )}
+                          {instagram && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#db2777' }}>
+                              <Instagram size={14} />
+                              <span style={{ fontSize: '0.65rem', fontWeight: 'bold' }}>Instagram</span>
+                            </div>
+                          )}
+                          {facebook && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#2563eb' }}>
+                              <Facebook size={14} />
+                              <span style={{ fontSize: '0.65rem', fontWeight: 'bold' }}>Facebook</span>
+                            </div>
+                          )}
+                        </div>
+
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
               </div>
             </motion.div>
           )}

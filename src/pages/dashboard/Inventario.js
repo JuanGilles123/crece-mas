@@ -1061,35 +1061,89 @@ const Inventario = () => {
     }
   };
 
-  // Edición masiva
+  // Edición masiva optimizada
   const handleGuardarEdicionMasiva = async () => {
     const ids = Object.keys(valoresEdicion).filter(id => seleccionados.includes(id));
     if (ids.length === 0) { toast.error('No hay cambios para guardar'); return; }
     setGuardandoMasivo(true);
+    
+    // Si hay muchos productos, mostramos una tostada inicial informativa
+    if (ids.length > 100) {
+      toast.loading(`Iniciando actualización masiva de ${ids.length} productos...`, { id: 'bulk-progress' });
+    }
+
     try {
-      for (const id of ids) {
-        const nuevoValor = valoresEdicion[id];
-        const producto = productos.find(p => p.id === id);
-        if (!producto) continue;
-        let updatePayload = {};
-        if (['precio_venta', 'precio_compra', 'stock'].includes(campoEdicion)) {
-          updatePayload[campoEdicion] = Number(nuevoValor) || 0;
-        } else {
-          const metadataActual = typeof producto.metadata === 'string'
-            ? JSON.parse(producto.metadata || '{}')
-            : (producto.metadata || {});
-          updatePayload.metadata = { ...metadataActual, [campoEdicion]: nuevoValor };
+      if (['precio_venta', 'precio_compra', 'stock'].includes(campoEdicion)) {
+        // --- ESTRATEGIA 1: AGRUPAR POR VALOR Y ACTUALIZAR EN BLOQUES (MÁXIMA VELOCIDAD) ---
+        const valueGroups = {};
+        for (const id of ids) {
+          const val = valoresEdicion[id];
+          if (!valueGroups[val]) {
+            valueGroups[val] = [];
+          }
+          valueGroups[val].push(id);
         }
-        await supabase.from('productos').update(updatePayload).eq('id', id);
+
+        // Ejecutar un update por cada valor único en lotes de 100
+        for (const [val, groupedIds] of Object.entries(valueGroups)) {
+          const numericVal = Number(val) || 0;
+          const CHUNK_SIZE = 100;
+          for (let i = 0; i < groupedIds.length; i += CHUNK_SIZE) {
+            const chunk = groupedIds.slice(i, i + CHUNK_SIZE);
+            const { error } = await supabase
+              .from('productos')
+              .update({ [campoEdicion]: numericVal })
+              .in('id', chunk);
+            
+            if (error) throw error;
+          }
+        }
+      } else {
+        // --- ESTRATEGIA 2: LOTES PARALELOS CONTROLADOS PARA EVITAR MERGE DE JSONB CONFLICTIVO ---
+        const BATCH_SIZE = 40; // Lote óptimo para paralelizar sin saturar la red ni el navegador
+        for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+          const batchIds = ids.slice(i, i + BATCH_SIZE);
+          const promesas = batchIds.map(async (id) => {
+            const nuevoValor = valoresEdicion[id];
+            const producto = productos.find(p => p.id === id);
+            if (!producto) return;
+            const metadataActual = typeof producto.metadata === 'string'
+              ? JSON.parse(producto.metadata || '{}')
+              : (producto.metadata || {});
+            
+            let updatePayload = {};
+            if (campoEdicion === 'ocultar_en_catalogo') {
+              updatePayload.metadata = { ...metadataActual, ocultar_en_catalogo: nuevoValor === 'true' };
+            } else {
+              updatePayload.metadata = { ...metadataActual, [campoEdicion]: nuevoValor };
+            }
+            const { error } = await supabase
+              .from('productos')
+              .update(updatePayload)
+              .eq('id', id);
+            
+            if (error) throw error;
+          });
+          
+          await Promise.all(promesas);
+          
+          if (ids.length > 100) {
+            toast.success(`Guardando... ${Math.min(i + BATCH_SIZE, ids.length)} de ${ids.length}`, {
+              id: 'bulk-progress',
+              duration: 2000
+            });
+          }
+        }
       }
-      toast.success(`${ids.length} productos actualizados`);
+
+      toast.success(`${ids.length} productos actualizados con éxito`, { id: 'bulk-progress' });
       setEdicionMasivaOpen(false);
       setValoresEdicion({});
       setSeleccionados([]);
       refetch();
     } catch (err) {
-      console.error(err);
-      toast.error('Error al guardar cambios masivos');
+      console.error('Error al guardar cambios masivos:', err);
+      toast.error('Error al guardar cambios masivos', { id: 'bulk-progress' });
     } finally {
       setGuardandoMasivo(false);
     }
@@ -1101,8 +1155,12 @@ const Inventario = () => {
       const p = productos.find(pr => pr.id === id);
       if (!p) return;
       const meta = typeof p.metadata === 'string' ? JSON.parse(p.metadata || '{}') : (p.metadata || {});
-      init[id] = ['precio_venta', 'precio_compra', 'stock'].includes(campoEdicion)
-        ? (p[campoEdicion] ?? '') : (meta[campoEdicion] ?? '');
+      if (campoEdicion === 'ocultar_en_catalogo') {
+        init[id] = (meta[campoEdicion] === 'true' || meta[campoEdicion] === true) ? 'true' : 'false';
+      } else {
+        init[id] = ['precio_venta', 'precio_compra', 'stock'].includes(campoEdicion)
+          ? (p[campoEdicion] ?? '') : (meta[campoEdicion] ?? '');
+      }
     });
     setValoresEdicion(init);
     setEdicionMasivaOpen(true);
@@ -1734,7 +1792,11 @@ const Inventario = () => {
                     const p = productos.find(pr => pr.id === id);
                     if (!p) return;
                     const meta = typeof p.metadata === 'string' ? JSON.parse(p.metadata || '{}') : (p.metadata || {});
-                    init[id] = ['precio_venta', 'precio_compra', 'stock'].includes(campo) ? (p[campo] ?? '') : (meta[campo] ?? '');
+                    if (campo === 'ocultar_en_catalogo') {
+                      init[id] = (meta[campo] === 'true' || meta[campo] === true) ? 'true' : 'false';
+                    } else {
+                      init[id] = ['precio_venta', 'precio_compra', 'stock'].includes(campo) ? (p[campo] ?? '') : (meta[campo] ?? '');
+                    }
                   });
                   setValoresEdicion(init);
                 }}
@@ -1748,6 +1810,7 @@ const Inventario = () => {
                 <option value="descripcion">Descripción</option>
                 <option value="color">Color</option>
                 <option value="material">Material</option>
+                <option value="ocultar_en_catalogo">Tienda Virtual (Visibilidad)</option>
               </select>
               <button
                 onClick={() => {
@@ -1775,15 +1838,26 @@ const Inventario = () => {
                       <div style={{ color: 'var(--text-primary,#fff)', fontSize: '0.85rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{producto.nombre}</div>
                       <div style={{ color: 'var(--text-secondary,#aaa)', fontSize: '0.72rem' }}>{producto.codigo || 'Sin código'}</div>
                     </div>
-                    <input
-                      type={esNumero ? 'number' : 'text'}
-                      value={valoresEdicion[id] ?? ''}
-                      onChange={e => setValoresEdicion(prev => ({ ...prev, [id]: e.target.value }))}
-                      placeholder={`Nuevo ${campoEdicion}...`}
-                      style={{ background: 'var(--bg-secondary,#0f0f23)', color: 'var(--text-primary,#fff)', border: '1px solid var(--border-color,#2a2a4a)', borderRadius: '8px', padding: '7px 12px', fontSize: '0.85rem', width: '200px', outline: 'none' }}
-                      onFocus={e => e.target.style.borderColor = 'var(--accent,#7c3aed)'}
-                      onBlur={e => e.target.style.borderColor = 'var(--border-color,#2a2a4a)'}
-                    />
+                    {campoEdicion === 'ocultar_en_catalogo' ? (
+                      <select
+                        value={valoresEdicion[id] ?? 'false'}
+                        onChange={e => setValoresEdicion(prev => ({ ...prev, [id]: e.target.value }))}
+                        style={{ background: 'var(--bg-secondary,#0f0f23)', color: 'var(--text-primary,#fff)', border: '1px solid var(--border-color,#2a2a4a)', borderRadius: '8px', padding: '7px 12px', fontSize: '0.85rem', width: '200px', outline: 'none', cursor: 'pointer' }}
+                      >
+                        <option value="false">👁️ Mostrar en Tienda</option>
+                        <option value="true">🔒 Ocultar en Tienda</option>
+                      </select>
+                    ) : (
+                      <input
+                        type={esNumero ? 'number' : 'text'}
+                        value={valoresEdicion[id] ?? ''}
+                        onChange={e => setValoresEdicion(prev => ({ ...prev, [id]: e.target.value }))}
+                        placeholder={`Nuevo ${campoEdicion}...`}
+                        style={{ background: 'var(--bg-secondary,#0f0f23)', color: 'var(--text-primary,#fff)', border: '1px solid var(--border-color,#2a2a4a)', borderRadius: '8px', padding: '7px 12px', fontSize: '0.85rem', width: '200px', outline: 'none' }}
+                        onFocus={e => e.target.style.borderColor = 'var(--accent,#7c3aed)'}
+                        onBlur={e => e.target.style.borderColor = 'var(--border-color,#2a2a4a)'}
+                      />
+                    )}
                   </div>
                 );
               })}

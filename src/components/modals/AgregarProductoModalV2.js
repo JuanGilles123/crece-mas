@@ -66,6 +66,7 @@ const createProductSchema = (productType, defaultPermiteToppings = true, isJewel
   baseSchema.variaciones = z.string().optional();
   baseSchema.pureza = z.string().optional();
   baseSchema.permite_toppings = z.boolean().optional().default(defaultPermiteToppings);
+  baseSchema.ocultar_en_catalogo = z.boolean().optional().default(false);
   baseSchema.umbral_stock_bajo = z.string().optional();
   baseSchema.jewelry_price_mode = z.enum(['fixed', 'variable']).optional();
   baseSchema.jewelry_static_mode = z.enum(['fixed', 'percent']).optional();
@@ -872,6 +873,11 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
         ? data.permite_toppings
         : defaultPermiteToppings;
 
+      // Agregar ocultar_en_catalogo al metadata
+      metadata.ocultar_en_catalogo = data.ocultar_en_catalogo !== undefined
+        ? data.ocultar_en_catalogo
+        : false;
+
       if (data.umbral_stock_bajo !== undefined && data.umbral_stock_bajo !== '') {
         const umbralProducto = Number(data.umbral_stock_bajo);
         if (Number.isFinite(umbralProducto) && umbralProducto > 0) {
@@ -1607,6 +1613,19 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
               />
               <label htmlFor="permite_toppings" style={{ cursor: 'pointer', fontWeight: 500, fontSize: '0.95rem' }}>
                 Permitir agregar toppings/adicionales a este producto
+              </label>
+            </div>
+
+            {/* Checkbox para ocultar en catálogo */}
+            <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <input
+                type="checkbox"
+                id="ocultar_en_catalogo"
+                {...register('ocultar_en_catalogo')}
+                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+              />
+              <label htmlFor="ocultar_en_catalogo" style={{ cursor: 'pointer', fontWeight: 500, fontSize: '0.95rem', color: '#dc2626' }}>
+                Ocultar este producto de mi catálogo público (Tienda Virtual)
               </label>
             </div>
 
