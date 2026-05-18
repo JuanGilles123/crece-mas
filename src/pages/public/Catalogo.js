@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../../services/api/supabaseClient';
-import { Search, Store, PackageX, Image as ImageIcon, ShoppingCart, ShoppingBag, Plus, Minus, MessageCircle, X, Instagram, Facebook, Phone, ArrowLeft, Sparkles } from 'lucide-react';
+import { Search, Store, PackageX, Image as ImageIcon, ShoppingCart, ShoppingBag, Plus, Minus, MessageCircle, X, Instagram, Facebook, Phone, ArrowLeft, Sparkles, LayoutGrid, Rows } from 'lucide-react';
 import toast from 'react-hot-toast';
 import './Catalogo.css';
 
@@ -17,6 +17,7 @@ const Catalogo = () => {
 
   const [categoriaActiva, setCategoriaActiva] = useState('todas');
   const [busqueda, setBusqueda] = useState('');
+  const [vistaLayout, setVistaLayout] = useState('grid');
   
   // Estados del carrito
   const [cart, setCart] = useState([]);
@@ -34,11 +35,40 @@ const Catalogo = () => {
   useEffect(() => {
     const fetchCatalogo = async () => {
       try {
-        setCargando(true);
+        const cacheKeyOrg = `crecemas_org_${slug}`;
+        const cacheKeyProd = `crecemas_prod_${slug}`;
+
+        // Intentar cargar del caché local instantáneamente
+        const cachedOrg = localStorage.getItem(cacheKeyOrg);
+        const cachedProd = localStorage.getItem(cacheKeyProd);
+        if (cachedOrg && cachedProd) {
+          try {
+            setOrganizacion(JSON.parse(cachedOrg));
+            const parsedProd = JSON.parse(cachedProd);
+            
+            // Re-procesar categorías del caché
+            const categoriasMap = new Map();
+            parsedProd.forEach(p => {
+              const catName = (p.metadata_parsed?.categoria || p.tipo || 'General').trim();
+              const catId = catName.toLowerCase().replace(/\s+/g, '-');
+              if (!categoriasMap.has(catId)) {
+                categoriasMap.set(catId, { id: catId, nombre: catName });
+              }
+            });
+            setCategorias(Array.from(categoriasMap.values()).sort((a, b) => a.nombre.localeCompare(b.nombre)));
+            setProductos(parsedProd);
+            
+            // Decir que ya no está cargando para visualización inmediata
+            setCargando(false);
+          } catch (e) {
+            console.error("Error al cargar caché:", e);
+          }
+        } else {
+          setCargando(true);
+        }
         setError(null);
 
-        // 1. Obtener la organización por su slug
-        // Utilizamos la vista pública public_organizations
+        // Fetch en red real
         const { data: orgData, error: orgError } = await supabase
           .from('public_organizations')
           .select('*')
@@ -50,8 +80,8 @@ const Catalogo = () => {
         }
 
         setOrganizacion(orgData);
+        localStorage.setItem(cacheKeyOrg, JSON.stringify(orgData));
 
-        // 3. Obtener productos de la tienda
         const { data: prodData, error: prodError } = await supabase
           .from('public_productos')
           .select('*')
@@ -59,9 +89,7 @@ const Catalogo = () => {
           .order('nombre');
 
         if (!prodError && prodData) {
-          // Parsear metadata si es string y extraer categoria_id
           const categoriasMap = new Map();
-          
           const productosProcesados = prodData
             .filter(p => {
               let meta = {};
@@ -79,14 +107,11 @@ const Catalogo = () => {
               } else if (p.metadata) {
                 meta = p.metadata;
               }
-              
               const catName = (meta.categoria || p.tipo || 'General').trim();
               const catId = catName.toLowerCase().replace(/\s+/g, '-');
-              
               if (!categoriasMap.has(catId)) {
                 categoriasMap.set(catId, { id: catId, nombre: catName });
               }
-              
               return {
                 ...p,
                 metadata_parsed: meta,
@@ -94,13 +119,17 @@ const Catalogo = () => {
                 descripcion: meta.descripcion || ''
               };
             });
-          
+
           setCategorias(Array.from(categoriasMap.values()).sort((a, b) => a.nombre.localeCompare(b.nombre)));
           setProductos(productosProcesados);
+          localStorage.setItem(cacheKeyProd, JSON.stringify(productosProcesados));
         }
       } catch (err) {
         console.error('Error cargando catálogo:', err);
-        setError(err.message || 'Error al cargar el catálogo');
+        // Si hay error pero tenemos caché, no mostramos error al usuario
+        if (!localStorage.getItem(`crecemas_org_${slug}`)) {
+          setError(err.message || 'Error al cargar el catálogo');
+        }
       } finally {
         setCargando(false);
       }
@@ -490,7 +519,30 @@ const Catalogo = () => {
             <p>Intenta con otra búsqueda o categoría.</p>
           </div>
         ) : (
-          <div className="productos-grid">
+          <>
+            <div className="catalogo-products-header">
+            <span className="products-count">{productosFiltrados.length} productos</span>
+            <div className="vista-toggle-container">
+              <button 
+                type="button"
+                className={`vista-toggle-btn ${vistaLayout === 'grid' ? 'active' : ''}`}
+                onClick={() => setVistaLayout('grid')}
+                title="Vista cuadrícula"
+              >
+                <LayoutGrid size={16} />
+              </button>
+              <button 
+                type="button"
+                className={`vista-toggle-btn ${vistaLayout === 'list' ? 'active' : ''}`}
+                onClick={() => setVistaLayout('list')}
+                title="Vista lista"
+              >
+                <Rows size={16} />
+              </button>
+            </div>
+          </div>
+
+          <div className={`productos-grid vista-${vistaLayout}`}>
             {productosFiltrados.map((producto) => {
               const hasStock = producto.es_servicio || (producto.stock_disponible || 0) > 0;
               return (
@@ -562,6 +614,7 @@ const Catalogo = () => {
               );
             })}
           </div>
+          </>
         )}
       </main>
     </div>

@@ -1043,3 +1043,207 @@ html, body {
 .btn-keep-shopping:active {
   transform: translateY(0);
 }
+
+/* ==========================================================================
+   INTERFACES DE MAQUETACIÓN: GRID / LIST VIEW Y OPTIMIZACIONES DE ANCHO
+   ========================================================================== */
+
+/* Cabecera del Listado de Productos */
+.catalogo-products-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0 auto 1rem;
+  padding: 0 0.5rem;
+  max-width: 100%;
+}
+
+.products-count {
+  font-size: 0.85rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.vista-toggle-container {
+  display: flex;
+  background: #f1f5f9;
+  padding: 3px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  gap: 2px;
+}
+
+.vista-toggle-btn {
+  border: none;
+  background: transparent;
+  padding: 6px 12px;
+  border-radius: 8px;
+  color: #64748b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.vista-toggle-btn:hover {
+  color: #1e293b;
+}
+
+.vista-toggle-btn.active {
+  background: #ffffff;
+  color: var(--catalogo-theme-color, #4f46e5);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+}
+
+/* --- OPTIMIZACIONES DE ANCHURA Y COLUMNAS --- */
+
+/* Forzar mínimo 2 columnas en teléfonos inteligentes (menos de 520px) en la vista Grid */
+@media (max-width: 520px) {
+  .productos-grid.vista-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.5rem !important; /* Gap más pequeño para ganar espacio */
+  }
+
+  .catalogo-main-layout {
+    padding: 0 0.5rem !important; /* Ganar valiosos píxeles horizontales */
+  }
+
+  .producto-card {
+    padding: 0.5rem !important;
+    border-radius: 12px !important;
+  }
+
+  .producto-img-container {
+    height: 110px !important; /* Imagen un poco más pequeña para no ocupar toda la pantalla */
+    border-radius: 8px !important;
+  }
+
+  .producto-nombre {
+    font-size: 0.82rem !important;
+    line-height: 1.25 !important;
+    height: auto !important;
+    max-height: 2.5em !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+  }
+
+  .producto-descripcion {
+    display: none !important; /* Ocultar descripciones largas en grid móvil */
+  }
+
+  .producto-precio {
+    font-size: 0.95rem !important;
+  }
+
+  .btn-agregar-pedido {
+    padding: 0.4rem 0.6rem !important;
+    font-size: 0.75rem !important;
+    border-radius: 6px !important;
+    width: 100% !important;
+    margin-top: 0.4rem !important;
+    text-align: center !important;
+  }
+
+  .producto-footer {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.25rem !important;
+  }
+}
+
+/* --- ESTILOS EXCLUSIVOS PARA LA VISTA LISTA --- */
+.productos-grid.vista-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.75rem !important;
+}
+
+.productos-grid.vista-list .producto-card {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  padding: 0.75rem !important;
+  gap: 1rem !important;
+  text-align: left !important;
+  border-radius: 12px !important;
+  width: 100% !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02) !important;
+}
+
+.productos-grid.vista-list .producto-img-container {
+  width: 90px !important;
+  height: 90px !important;
+  min-width: 90px !important;
+  max-width: 90px !important;
+  border-radius: 10px !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+}
+
+.productos-grid.vista-list .producto-info {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  flex: 1 !important;
+  padding: 0 !important;
+  height: 90px !important; /* Alinear exactamente con la imagen */
+}
+
+.productos-grid.vista-list .producto-categoria {
+  font-size: 0.65rem !important;
+  margin-bottom: 0.15rem !important;
+}
+
+.productos-grid.vista-list .producto-nombre {
+  font-size: 0.88rem !important;
+  font-weight: 700 !important;
+  color: #1f2937 !important;
+  margin: 0 0 0.15rem 0 !important;
+  line-height: 1.2 !important;
+  white-space: normal !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+}
+
+.productos-grid.vista-list .producto-descripcion {
+  font-size: 0.72rem !important;
+  color: #6b7280 !important;
+  margin: 0 0 0.35rem 0 !important;
+  line-height: 1.25 !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 1 !important; /* 1 sola línea en móvil para vista de fila */
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+  height: auto !important;
+}
+
+.productos-grid.vista-list .producto-footer {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  width: 100% !important;
+  margin-top: auto !important;
+}
+
+.productos-grid.vista-list .producto-precio {
+  font-size: 0.95rem !important;
+  font-weight: 800 !important;
+}
+
+.productos-grid.vista-list .producto-stock {
+  margin-top: 0 !important;
+}
+
+.productos-grid.vista-list .btn-agregar-pedido {
+  padding: 0.45rem 0.9rem !important;
+  font-size: 0.8rem !important;
+  border-radius: 8px !important;
+  margin: 0 !important;
+  width: auto !important;
+}
