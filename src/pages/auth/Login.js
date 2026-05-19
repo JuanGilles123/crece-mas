@@ -126,22 +126,38 @@ const Login = () => {
               }}
             />
           </div>
-          <h2>¡Bienvenido de vuelta!</h2>
-          <p>Accede a tu panel de control y continúa gestionando tu negocio de manera eficiente.</p>
+          <h2>¿Listo para hacer Crecer tu Negocio hoy?</h2>
+          <p style={{ fontSize: '1.1rem', opacity: 0.95, lineHeight: '1.5', marginBottom: '2.5rem' }}>
+            Toma el control absoluto de tus ventas, inventarios y utilidades desde una sola herramienta en la nube.
+          </p>
           
           <div className={styles.features}>
-            <div className={styles.feature}>
-              <BarChart3 size={24} />
-              <span>Dashboard completo</span>
+            <div className={styles.feature} style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.08)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.15)', transition: 'all 0.3s ease' }}>
+              <BarChart3 size={28} style={{ flexShrink: 0, marginTop: '0.2rem' }} />
+              <div>
+                <strong style={{ display: 'block', fontSize: '1.05rem', marginBottom: '0.25rem' }}>Caja Registradora POS</strong>
+                <span style={{ fontSize: '0.9rem', opacity: 0.85, lineHeight: '1.4' }}>Registra ventas en segundos con pago mixto, facturas y tickets en cualquier dispositivo.</span>
+              </div>
             </div>
-            <div className={styles.feature}>
-              <Users size={24} />
-              <span>Gestión de inventario</span>
+            <div className={styles.feature} style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.08)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.15)', transition: 'all 0.3s ease' }}>
+              <Users size={28} style={{ flexShrink: 0, marginTop: '0.2rem' }} />
+              <div>
+                <strong style={{ display: 'block', fontSize: '1.05rem', marginBottom: '0.25rem' }}>Control de Stock Inteligente</strong>
+                <span style={{ fontSize: '0.9rem', opacity: 0.85, lineHeight: '1.4' }}>Evita pérdidas por descuadres de stock, recibe alertas de productos bajos y organiza tus categorías.</span>
+              </div>
             </div>
-            <div className={styles.feature}>
-              <TrendingUp size={24} />
-              <span>Reportes en tiempo real</span>
+            <div className={styles.feature} style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.08)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.15)', transition: 'all 0.3s ease' }}>
+              <TrendingUp size={28} style={{ flexShrink: 0, marginTop: '0.2rem' }} />
+              <div>
+                <strong style={{ display: 'block', fontSize: '1.05rem', marginBottom: '0.25rem' }}>Utilidades y Caja Diaria</strong>
+                <span style={{ fontSize: '0.9rem', opacity: 0.85, lineHeight: '1.4' }}>Visualiza tus ganancias netas, saldos e ingresos al instante desde cualquier lugar.</span>
+              </div>
             </div>
+          </div>
+
+          <div style={{ marginTop: '2.5rem', padding: '1.25rem', background: 'rgba(255,255,255,0.12)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.22)', fontSize: '0.95rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <span>💬 ¿Tienes problemas de acceso o necesitas ayuda?</span>
+            <strong>Soporte rápido por WhatsApp: <a href="https://wa.me/573046422366" target="_blank" rel="noopener noreferrer" style={{ color: '#ffffff', textDecoration: 'underline', fontWeight: 'bold' }}>304 642 2366</a></strong>
           </div>
         </motion.div>
 

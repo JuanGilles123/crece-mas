@@ -1,7 +1,7 @@
 /* Login - Diseño Moderno */
 .container {
   min-height: 100vh !important;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  background: linear-gradient(180deg, #bfd7ed 0%, #60a3d9 100%) !important;
   display: flex !important;
   flex-direction: column !important;
   position: relative !important;
@@ -17,9 +17,9 @@
   right: 0;
   bottom: 0;
   background: 
-    radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
-    radial-gradient(circle at 40% 40%, rgba(120, 119, 198, 0.2) 0%, transparent 50%);
+    radial-gradient(circle at 20% 80%, rgba(2, 165, 224, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.25) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(0, 68, 129, 0.1) 0%, transparent 50%);
   pointer-events: none;
 }
 
@@ -225,8 +225,8 @@
 
 .input:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: #02A5E0;
+  box-shadow: 0 0 0 3px rgba(2, 165, 224, 0.15);
 }
 
 .input::placeholder {
@@ -236,7 +236,7 @@
 
 .input:focus + .inputIcon,
 .input:focus ~ .inputIcon {
-  color: #3b82f6;
+  color: #004481;
 }
 
 .eyeButton {
@@ -268,7 +268,7 @@
 }
 
 .forgotLink {
-  color: #3b82f6;
+  color: #004481;
   text-decoration: none;
   font-size: 0.9rem;
   font-weight: 500;
@@ -276,7 +276,7 @@
 }
 
 .forgotLink:hover {
-  color: #2563eb;
+  color: #02A5E0;
   text-decoration: underline;
 }
 
@@ -428,10 +428,10 @@
 }
 
 .toggleButton.active:first-child {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: linear-gradient(135deg, #004481 0%, #0073C2 100%);
   color: white;
-  border-color: #2563eb;
-  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4);
+  border-color: #0073C2;
+  box-shadow: 0 8px 24px rgba(0, 68, 129, 0.3);
 }
 
 .toggleButton.active:first-child svg {
@@ -440,10 +440,10 @@
 }
 
 .toggleButton.active:last-child {
-  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  background: linear-gradient(135deg, #02A5E0 0%, #0073C2 100%);
   color: white;
-  border-color: #7c3aed;
-  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4);
+  border-color: #0073C2;
+  box-shadow: 0 8px 24px rgba(2, 165, 224, 0.3);
 }
 
 .toggleButton.active:last-child svg {
@@ -475,7 +475,7 @@
 
 .submitButton {
   width: 100% !important;
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
+  background: linear-gradient(135deg, #004481 0%, #02A5E0 100%) !important;
   color: white !important;
   border: none !important;
   border-radius: var(--pwa-radius-xl) !important;
@@ -491,8 +491,8 @@
 }
 
 .submitButton:hover {
-  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%) !important;
-  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4) !important;
+  background: linear-gradient(135deg, #072146 0%, #0073C2 100%) !important;
+  box-shadow: 0 6px 20px rgba(2, 165, 224, 0.4) !important;
   transform: translateY(-2px) !important;
 }
 
@@ -538,18 +538,18 @@
   width: 100% !important;
   padding: 0.75rem 1.2rem !important;
   border-radius: 0.75rem !important;
-  border: 2px dashed #c7d2fe !important;
-  background: #eef2ff !important;
-  color: #4338ca !important;
+  border: 2px dashed rgba(96, 163, 217, 0.3) !important;
+  background: rgba(191, 215, 237, 0.2) !important;
+  color: #004481;
   font-weight: 600 !important;
   text-decoration: none !important;
   transition: all 0.2s ease !important;
 }
 
 .switchButton:hover {
-  background: #e0e7ff !important;
-  border-color: #818cf8 !important;
-  color: #3730a3 !important;
+  background: rgba(191, 215, 237, 0.4) !important;
+  border-color: rgba(96, 163, 217, 0.5) !important;
+  color: #02A5E0 !important;
 }
 
 .signupLink p {
@@ -558,15 +558,15 @@
 }
 
 .link {
-  color: #3b82f6 !important;
-  text-decoration: none !important;
-  font-weight: 600 !important;
-  transition: color 0.3s ease !important;
+  color: #004481;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.3s ease;
 }
 
 .link:hover {
-  color: #2563eb !important;
-  text-decoration: underline !important;
+  color: #02A5E0;
+  text-decoration: underline;
 }
 
 /* Modal de términos */

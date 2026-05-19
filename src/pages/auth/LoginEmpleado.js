@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { User, Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { User, Lock, Eye, EyeOff, ArrowLeft, ShoppingBag, Smartphone, Clock } from 'lucide-react';
 import { loginEmployee } from '../../services/api/employeeAuthApi';
 import { getEmployeeSession } from '../../utils/employeeSession';
 import styles from './Login.module.css';
@@ -74,6 +74,57 @@ const LoginEmpleado = () => {
       </motion.div>
 
       <div className={styles.content}>
+        {/* Panel izquierdo con información para empleados */}
+        <motion.div 
+          className={styles.infoPanel}
+          initial={{ opacity: 0, x: -50 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <div className={styles.logo}>
+            <img
+              src="/logo-crece.svg"
+              alt="Crece+"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+          </div>
+          <h2>¡Hola, equipo de trabajo!</h2>
+          <p style={{ fontSize: '1.1rem', opacity: 0.95, lineHeight: '1.5', marginBottom: '2.5rem' }}>
+            Registra tus ventas de forma rápida, atiende a tus clientes y mantén el cuadre de caja al día de la forma más sencilla.
+          </p>
+          
+          <div className={styles.features}>
+            <div className={styles.feature} style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.08)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.15)', transition: 'all 0.3s ease' }}>
+              <ShoppingBag size={28} style={{ flexShrink: 0, marginTop: '0.2rem' }} />
+              <div>
+                <strong style={{ display: 'block', fontSize: '1.05rem', marginBottom: '0.25rem' }}>Atención al Cliente POS</strong>
+                <span style={{ fontSize: '0.9rem', opacity: 0.85, lineHeight: '1.4' }}>Registra productos en segundos, aplica descuentos y completa transacciones al instante.</span>
+              </div>
+            </div>
+            <div className={styles.feature} style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.08)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.15)', transition: 'all 0.3s ease' }}>
+              <Clock size={28} style={{ flexShrink: 0, marginTop: '0.2rem' }} />
+              <div>
+                <strong style={{ display: 'block', fontSize: '1.05rem', marginBottom: '0.25rem' }}>Cierre y Control del Turno</strong>
+                <span style={{ fontSize: '0.9rem', opacity: 0.85, lineHeight: '1.4' }}>Haz tus entregas de turno de manera impecable y sin dolores de cabeza por descuadres.</span>
+              </div>
+            </div>
+            <div className={styles.feature} style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.08)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.15)', transition: 'all 0.3s ease' }}>
+              <Smartphone size={28} style={{ flexShrink: 0, marginTop: '0.2rem' }} />
+              <div>
+                <strong style={{ display: 'block', fontSize: '1.05rem', marginBottom: '0.25rem' }}>Sincronización en la Nube</strong>
+                <span style={{ fontSize: '0.9rem', opacity: 0.85, lineHeight: '1.4' }}>Tus ventas se actualizan automáticamente para que el administrador las vea en tiempo real.</span>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ marginTop: '2.5rem', padding: '1.25rem', background: 'rgba(255,255,255,0.12)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.22)', fontSize: '0.95rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <span>💬 ¿Tienes dudas sobre tu usuario o código de acceso?</span>
+            <strong>Consulta a tu administrador o escríbenos al WhatsApp: <a href="https://wa.me/573046422366" target="_blank" rel="noopener noreferrer" style={{ color: '#ffffff', textDecoration: 'underline', fontWeight: 'bold' }}>304 642 2366</a></strong>
+          </div>
+        </motion.div>
+
         <motion.div 
           className={styles.formPanel}
           initial={{ opacity: 0, x: 50 }}

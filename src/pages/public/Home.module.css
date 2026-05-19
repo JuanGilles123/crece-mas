@@ -1,34 +1,213 @@
-/* Landing Page - Diseño Moderno */
+/* Landing Page - Premium iOS-inspired Light SaaS Aesthetic (BBVA Blue Palette) */
 .container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background-color: #bfd7ed;
+  background-image: linear-gradient(180deg, #bfd7ed 0%, #60a3d9 100%);
+  color: #072146;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   position: relative;
   overflow-x: hidden;
 }
 
-/* Efectos de fondo */
-.container::before {
-  content: '';
+/* Floating WhatsApp Widget with animation */
+.whatsappFloat {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  z-index: 9999;
+}
+
+.whatsappLink {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  position: relative;
+}
+
+.whatsappIconWrapper {
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(37, 211, 102, 0.3);
+  transition: all 0.3s ease;
+  animation: pulseWhatsapp 2s infinite;
+}
+
+@keyframes pulseWhatsapp {
+  0% {
+    box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.6);
+    transform: scale(1);
+  }
+  70% {
+    box-shadow: 0 0 0 15px rgba(37, 211, 102, 0);
+    transform: scale(1.05);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(37, 211, 102, 0);
+    transform: scale(1);
+  }
+}
+
+.whatsappLink:hover .whatsappIconWrapper {
+  transform: scale(1.1) rotate(5deg);
+  box-shadow: 0 10px 28px rgba(37, 211, 102, 0.4);
+}
+
+.whatsappTooltip {
   position: absolute;
+  right: 75px;
+  background: #072146;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+  padding: 0.6rem 1rem;
+  border-radius: 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(10px);
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.whatsappLink:hover .whatsappTooltip {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Glassmorphic Sticky Header */
+.navbar {
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  bottom: 0;
-  background: 
-    radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
-    radial-gradient(circle at 40% 40%, rgba(120, 119, 198, 0.2) 0%, transparent 50%);
-  pointer-events: none;
+  z-index: 1000;
+  background: rgba(191, 215, 237, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(96, 163, 217, 0.15);
+  transition: all 0.3s ease;
+}
+
+.navbarScrolled {
+  background: rgba(191, 215, 237, 0.92);
+  box-shadow: 0 4px 20px rgba(0, 68, 129, 0.04);
+  border-bottom: 1px solid rgba(96, 163, 217, 0.3);
+  padding: 0.6rem 0;
+}
+
+.navContainer {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.navLogo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+}
+
+.logoIcon {
+  color: #004481;
+  filter: drop-shadow(0 2px 6px rgba(2, 165, 224, 0.2));
+}
+
+.logoText {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: #072146;
+}
+
+.accentPlus {
+  color: #02A5E0;
+}
+
+.navLinks {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.navLinks a {
+  color: #475569;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: color 0.2s ease;
+}
+
+.navLinks a:hover {
+  color: #004481;
+}
+
+.navActions {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.navLogin {
+  color: #1e293b;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: opacity 0.2s;
+}
+
+.navLogin:hover {
+  opacity: 0.8;
+}
+
+.navRegister {
+  background: linear-gradient(135deg, #004481 0%, #02A5E0 100%);
+  color: white;
+  text-decoration: none;
+  padding: 0.6rem 1.25rem;
+  border-radius: 0.5rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+  box-shadow: 0 4px 14px rgba(2, 165, 224, 0.25);
+  transition: all 0.2s;
+}
+
+.navRegister:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 68, 129, 0.35);
+}
+
+.mobileMenuToggle {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  color: #072146;
+}
+
+.mobileNavActions {
+  display: none;
 }
 
 /* Hero Section */
 .hero {
-  min-height: 100vh;
+  padding-top: 10rem;
+  padding-bottom: 6rem;
+  min-height: 95vh;
   display: flex;
   align-items: center;
-  position: relative;
-  z-index: 1;
-  padding: 2rem 0;
 }
 
 .heroContent {
@@ -36,50 +215,52 @@
   margin: 0 auto;
   padding: 0 2rem;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4rem;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 5rem;
   align-items: center;
 }
 
 .heroText {
-  color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .badge {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  padding: 0.5rem 1rem;
+  background: rgba(2, 165, 224, 0.06);
+  border: 1px solid rgba(2, 165, 224, 0.15);
+  color: #004481;
+  padding: 0.4rem 1rem;
   border-radius: 2rem;
-  font-size: 0.9rem;
-  font-weight: 500;
-  margin-bottom: 2rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
 }
 
 .heroTitle {
   font-size: 3.5rem;
   font-weight: 800;
-  line-height: 1.1;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
   margin-bottom: 1.5rem;
-  color: white;
+  color: #072146;
 }
 
 .gradientText {
-  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  background: linear-gradient(135deg, #004481 0%, #02A5E0 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .heroSubtitle {
-  font-size: 1.25rem;
-  line-height: 1.6;
-  opacity: 0.9;
+  font-size: 1.15rem;
+  line-height: 1.7;
+  color: #475569;
   margin-bottom: 2.5rem;
-  color: rgba(255, 255, 255, 0.9);
 }
 
 .heroActions {
@@ -92,174 +273,230 @@
 .primaryButton {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  gap: 0.75rem;
+  background: linear-gradient(135deg, #004481 0%, #02A5E0 100%);
   color: white;
   text-decoration: none;
-  padding: 1rem 2rem;
+  padding: 0.9rem 1.8rem;
   border-radius: 0.75rem;
-  font-weight: 600;
-  font-size: 1.1rem;
+  font-weight: 700;
+  font-size: 1.05rem;
+  box-shadow: 0 4px 18px rgba(2, 165, 224, 0.25);
   transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(251, 191, 36, 0.3);
 }
 
 .primaryButton:hover {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  box-shadow: 0 6px 20px rgba(251, 191, 36, 0.4);
   transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 68, 129, 0.35);
 }
 
 .secondaryButton {
   display: inline-flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: white;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #1e293b;
   text-decoration: none;
-  padding: 1rem 2rem;
+  padding: 0.9rem 1.8rem;
   border-radius: 0.75rem;
   font-weight: 600;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
   transition: all 0.3s ease;
 }
 
 .secondaryButton:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: #f4f9fd;
+  border-color: #cbd5e1;
   transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.heroWhatsAppCallout {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: #334155;
+  background: rgba(37, 211, 102, 0.06);
+  border: 1px solid rgba(37, 211, 102, 0.15);
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+.phoneLink {
+  color: #128c7e;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.phoneLink:hover {
+  text-decoration: underline;
 }
 
 .trustIndicators {
   display: flex;
   align-items: center;
-  gap: 1rem;
 }
 
 .stars {
   display: flex;
   align-items: center;
   gap: 0.25rem;
+  color: #fbbf24;
 }
 
 .stars span {
-  margin-left: 0.5rem;
-  font-size: 0.9rem;
-  opacity: 0.8;
+  margin-left: 0.75rem;
+  font-size: 0.85rem;
+  color: #64748b;
+  font-weight: 500;
 }
 
-/* Hero Visual */
+/* Hero Mockup Frame CSS */
 .heroVisual {
   display: flex;
   justify-content: center;
-  align-items: center;
 }
 
-.dashboardPreview {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
-  border-radius: 1rem;
-  padding: 1.5rem;
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
+.heroMockupContainer {
+  background: #072146;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 1.25rem;
   width: 100%;
-  max-width: 400px;
+  max-width: 440px;
+  overflow: hidden;
+  box-shadow: 0 25px 60px rgba(0, 68, 129, 0.15);
 }
 
 .mockupHeader {
+  background: #021a35;
+  padding: 0.85rem 1.25rem;
   display: flex;
   align-items: center;
   gap: 1rem;
-  margin-bottom: 1.5rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .mockupDots {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 
 .dot {
-  width: 0.75rem;
-  height: 0.75rem;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  background: #e5e7eb;
 }
 
 .dot:nth-child(1) { background: #ef4444; }
 .dot:nth-child(2) { background: #fbbf24; }
-.dot:nth-child(3) { background: #22c55e; }
+.dot:nth-child(3) { background: #10b981; }
 
 .mockupHeader span {
+  font-size: 0.8rem;
+  color: #94a3b8;
   font-weight: 600;
-  color: #1f2937;
+  letter-spacing: 0.025em;
 }
 
-.mockupContent {
+.mockupBody {
+  padding: 1.5rem;
+  background: #f4f9fd;
+}
+
+/* Simulated POS component on Hero */
+.simulatedHeroPos {
+  background: #ffffff;
+  border: 1px solid rgba(0, 68, 129, 0.06);
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+}
+
+.simulatedHeroPosHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(0, 68, 129, 0.06);
+}
+
+.simulatedHeroPosTitle {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #072146;
+}
+
+.simulatedHeroPosBadge {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  color: #10b981;
+  font-weight: 800;
+  font-size: 0.9rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 0.25rem;
+}
+
+.simulatedHeroPosItems {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
 }
 
-.mockupChart {
-  height: 120px;
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-  border-radius: 0.5rem;
-  position: relative;
-  overflow: hidden;
+.simulatedHeroPosItem {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: #475569;
 }
 
-.mockupChart::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: 
-    linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
-  animation: shimmer 2s infinite;
+.simulatedHeroItemVal {
+  color: #072146;
+  font-weight: 600;
 }
 
-@keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+.simulatedHeroPosFooter {
+  border-top: 1px solid rgba(0, 68, 129, 0.06);
+  padding-top: 1rem;
 }
 
-.mockupStats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
+.simulatedHeroMethod {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  margin-bottom: 0.75rem;
 }
 
-.mockupStat {
-  height: 60px;
-  background: #f3f4f6;
-  border-radius: 0.5rem;
-  position: relative;
-  overflow: hidden;
+.methodLabel {
+  color: #64748b;
 }
 
-.mockupStat::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(90deg, #e5e7eb 0%, #f3f4f6 50%, #e5e7eb 100%);
-  animation: shimmer 2s infinite;
+.methodValue {
+  color: #004481;
+  font-weight: 600;
+}
+
+.simulatedHeroBtn {
+  background: #10b981;
+  color: white;
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 0.5rem;
+  border-radius: 0.35rem;
 }
 
 /* Stats Section */
 .stats {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-  padding: 3rem 0;
-  position: relative;
-  z-index: 1;
+  background: #ffffff;
+  border-top: 1px solid rgba(0, 68, 129, 0.05);
+  border-bottom: 1px solid rgba(0, 68, 129, 0.05);
+  padding: 3.5rem 0;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.01);
 }
 
 .statsContainer {
@@ -268,36 +505,34 @@
   padding: 0 2rem;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 2rem;
+  gap: 3rem;
 }
 
 .statItem {
   text-align: center;
-  color: white;
 }
 
 .statNumber {
-  font-size: 2.5rem;
+  font-size: 2.75rem;
   font-weight: 800;
-  margin-bottom: 0.5rem;
-  background: linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%);
+  margin-bottom: 0.25rem;
+  background: linear-gradient(135deg, #072146 0%, #475569 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  background-clip: text;
 }
 
 .statLabel {
-  font-size: 1rem;
-  opacity: 0.8;
-  font-weight: 500;
+  font-size: 0.95rem;
+  color: #64748b;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 /* Features Section */
 .features {
-  padding: 6rem 0;
-  background: rgba(255, 255, 255, 0.05);
-  position: relative;
-  z-index: 1;
+  padding: 7rem 0;
+  background: #ffffff;
 }
 
 .featuresContainer {
@@ -308,97 +543,792 @@
 
 .sectionHeader {
   text-align: center;
-  margin-bottom: 4rem;
-  color: white;
+  margin-bottom: 4.5rem;
 }
 
 .sectionHeader h2 {
   font-size: 2.5rem;
-  font-weight: 700;
+  font-weight: 800;
+  color: #072146;
   margin-bottom: 1rem;
-  color: white;
+  letter-spacing: -0.02em;
 }
 
 .sectionHeader p {
-  font-size: 1.2rem;
-  opacity: 0.8;
-  max-width: 600px;
+  font-size: 1.15rem;
+  color: #475569;
+  max-width: 700px;
   margin: 0 auto;
+  line-height: 1.6;
 }
 
 .featuresGrid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1.5rem;
-}
-
-@media (max-width: 1200px) {
-  .featuresGrid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-@media (max-width: 900px) {
-  .featuresGrid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 600px) {
-  .featuresGrid {
-    grid-template-columns: 1fr;
-  }
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
 }
 
 .featureCard {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 1rem;
-  padding: 1.5rem;
-  text-align: center;
-  color: white;
+  background: #ffffff;
+  border: 1px solid rgba(0, 68, 129, 0.06);
+  border-radius: 1.25rem;
+  padding: 2.25rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
   transition: all 0.3s ease;
 }
 
 .featureCard:hover {
-  background: rgba(255, 255, 255, 0.15);
-  transform: translateY(-5px);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(2, 165, 224, 0.06);
+  border-color: rgba(2, 165, 224, 0.2);
 }
 
 .featureIcon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 3rem;
-  height: 3rem;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 1rem;
-  margin-bottom: 1rem;
-  color: #fbbf24;
+  width: 52px;
+  height: 52px;
+  background: rgba(2, 165, 224, 0.06);
+  border: 1px solid rgba(2, 165, 224, 0.15);
+  color: #004481;
+  border-radius: 0.75rem;
+  margin-bottom: 1.5rem;
 }
 
 .featureCard h3 {
-  font-size: 1.2rem;
-  font-weight: 600;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #072146;
   margin-bottom: 0.75rem;
-  color: white;
 }
 
 .featureCard p {
   font-size: 0.95rem;
-  opacity: 0.9;
+  color: #475569;
+  line-height: 1.6;
+}
+
+/* Interactive Visual Mockups Showcase */
+.showcaseSection {
+  padding: 7rem 0;
+  background: rgba(255, 255, 255, 0.85);
+  border-top: 1px solid rgba(96, 163, 217, 0.2);
+  border-bottom: 1px solid rgba(96, 163, 217, 0.2);
+}
+
+.showcaseContainer {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.tabsRow {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 3.5rem;
+  background: rgba(2, 165, 224, 0.08);
+  padding: 0.4rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(2, 165, 224, 0.15);
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.tabBtn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  background: none;
+  border: none;
+  color: #475569;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 0.6rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.tabBtn:hover {
+  color: #072146;
+}
+
+.tabBtnActive {
+  background: #ffffff;
+  color: #004481;
+  box-shadow: 0 4px 12px rgba(0, 68, 129, 0.05);
+  border: 1px solid rgba(2, 165, 224, 0.15);
+}
+
+.showcaseContent {
+  display: grid;
+  grid-template-columns: 1.4fr 0.6fr;
+  gap: 4rem;
+  align-items: center;
+}
+
+/* Simulator Frame Styling */
+.mockupMainFrame {
+  background: #ffffff;
+  border: 1px solid rgba(0, 68, 129, 0.12);
+  border-radius: 1.25rem;
+  overflow: hidden;
+  box-shadow: 0 30px 70px rgba(0, 68, 129, 0.08);
+}
+
+.appHeader {
+  background: #f4f9fd;
+  border-bottom: 1px solid rgba(0, 68, 129, 0.06);
+  padding: 0.85rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.appBreadcrumb {
+  font-size: 0.8rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.activeBreadcrumb {
+  color: #072146;
+  font-weight: 700;
+}
+
+.appBody {
+  padding: 2rem;
+  min-height: 400px;
+  background: #EBF5FC;
+}
+
+/* Dynamic TAB 1: POS interactive frame styles */
+.posInteractiveGrid {
+  display: grid;
+  grid-template-columns: 1fr 1.1fr;
+  gap: 2rem;
+}
+
+.posCartPane, .posPaymentPane {
+  background: #ffffff;
+  border: 1px solid rgba(0, 68, 129, 0.05);
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+}
+
+.posCartPane h4, .posPaymentPane h4 {
+  font-size: 0.95rem;
+  color: #072146;
+  margin-bottom: 0.85rem;
+  font-weight: 700;
+  border-bottom: 1px solid rgba(0, 68, 129, 0.06);
+  padding-bottom: 0.5rem;
+}
+
+.posCartItems {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  height: 160px;
+  overflow-y: auto;
+  margin-bottom: 1.25rem;
+  padding-right: 0.25rem;
+}
+
+.posCartItems::-webkit-scrollbar {
+  width: 4px;
+}
+.posCartItems::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+}
+
+.posCartItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  background: #f4f9fd;
+  border-radius: 0.5rem;
+  font-size: 0.78rem;
+  border: 1px solid rgba(0, 68, 129, 0.02);
+}
+
+.posCartItem strong {
+  color: #1e293b;
+  display: block;
+}
+
+.posCartItem span {
+  color: #64748b;
+}
+
+.itemPrice {
+  font-weight: 700;
+  color: #072146;
+}
+
+.posTotalRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: #64748b;
+  margin-bottom: 0.5rem;
+}
+
+.posTotalRowPrimary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #072146;
+  border-top: 1px dashed rgba(0, 0, 0, 0.1);
+  padding-top: 0.75rem;
+}
+
+.totalValue {
+  color: #004481;
+  font-size: 1.1rem;
+}
+
+.paneHelp {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-bottom: 0.75rem;
+}
+
+.paymentMethodButtons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.payMethodBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: #f4f9fd;
+  border: 1px solid rgba(0, 68, 129, 0.05);
+  color: #475569;
+  padding: 0.6rem 1rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.payMethodBtnActive {
+  background: rgba(2, 165, 224, 0.08);
+  border-color: #02A5E0;
+  color: #004481;
+}
+
+.cashCalculator {
+  background: #f4f9fd;
+  padding: 0.85rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1.25rem;
+  border: 1px solid rgba(0, 0, 0, 0.03);
+}
+
+.cashCalculator label {
+  font-size: 0.75rem;
+  color: #64748b;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.cashInputRow {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.quickCashBtn {
+  flex: 1;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  padding: 0.3rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.quickCashBtn:hover {
+  background: #e2e8f0;
+}
+
+.calcResults {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  padding-top: 0.5rem;
+}
+
+.calcField {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.calcField strong {
+  color: #072146;
+}
+
+.changeGreen strong {
+  color: #10b981;
+  font-size: 0.85rem;
+}
+
+.changeRed strong {
+  color: #ef4444;
+}
+
+.methodDetails {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: #f4f9fd;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.78rem;
+  color: #475569;
+  margin-bottom: 1.25rem;
+  border: 1px solid rgba(0, 0, 0, 0.03);
+}
+
+.registerSaleBtn {
+  width: 100%;
+  background: #10b981;
   color: white;
+  border: none;
+  padding: 0.8rem;
+  border-radius: 0.5rem;
+  font-weight: 700;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+  transition: all 0.2s;
+}
+
+.registerSaleBtn:hover {
+  background: #059669;
+  transform: translateY(-1px);
+}
+
+/* Dynamic TAB 2: INVENTORY interactive styles */
+.invInteractivePane {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.invToolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.searchSimulator {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.searchIcon {
+  font-size: 0.9rem;
+  color: #94a3b8;
+}
+
+.searchSimulator input {
+  background: none;
+  border: none;
+  color: #1e293b;
+  font-size: 0.85rem;
+  width: 100%;
+  outline: none;
+}
+
+.searchSimulator input::placeholder {
+  color: #94a3b8;
+}
+
+.invFilters {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.filterTab {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  padding: 0.4rem 0.8rem;
+  border-radius: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filterTabActive {
+  background: rgba(2, 165, 224, 0.08);
+  border-color: #02A5E0;
+  color: #004481;
+}
+
+.tableContainer {
+  overflow-x: auto;
+  border: 1px solid rgba(0, 68, 129, 0.06);
+  border-radius: 0.75rem;
+  background: #ffffff;
+}
+
+.invTable {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.8rem;
+}
+
+.invTable th {
+  background: #f4f9fd;
+  color: #475569;
+  font-weight: 600;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(0, 68, 129, 0.06);
+}
+
+.invRow {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  transition: background 0.2s;
+}
+
+.invRow:hover {
+  background: #f4f9fd;
+}
+
+.productNameCell {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 1rem;
+}
+
+.productAvatar {
+  width: 32px;
+  height: 32px;
+  background: #e2e8f0;
+  border-radius: 0.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+}
+
+.pName {
+  display: block;
+  font-weight: 600;
+  color: #072146;
+}
+
+.pAlert {
+  display: inline-block;
+  font-size: 0.7rem;
+  color: #004481;
+  background: rgba(2, 165, 224, 0.08);
+  padding: 0.05rem 0.35rem;
+  border-radius: 0.2rem;
+  margin-top: 0.15rem;
+}
+
+.codeBadge {
+  color: #004481;
+  font-family: monospace;
+  font-size: 0.8rem;
+}
+
+.invTable td {
+  padding: 0.75rem 1rem;
+  color: #334155;
+}
+
+.statusPill {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 2rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.pillGreen {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.pillYellow {
+  background: rgba(251, 191, 36, 0.1);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.2);
+}
+
+.pillRed {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.invFooter {
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+/* Dynamic TAB 3: DASHBOARD interactive styles */
+.dashInteractivePane {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.dashHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dashHeaderRow h4 {
+  font-size: 0.95rem;
+  color: #072146;
+  font-weight: 700;
+}
+
+.dashPeriodButtons {
+  display: flex;
+  background: #ffffff;
+  padding: 0.25rem;
+  border-radius: 0.35rem;
+  border: 1px solid #cbd5e1;
+}
+
+.periodBtn {
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.3rem 0.6rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.periodBtnActive {
+  background: #e2e8f0;
+  color: #072146;
+}
+
+.dashKpiGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.kpiCard {
+  background: #ffffff;
+  border: 1px solid rgba(0, 68, 129, 0.05);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.kpiLabel {
+  display: block;
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-bottom: 0.25rem;
+  font-weight: 500;
+}
+
+.kpiValue {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #072146;
+  margin-bottom: 0.25rem;
+}
+
+.kpiChange {
+  font-size: 0.7rem;
+  color: #fbbf24;
+  font-weight: 600;
+}
+
+.kpiStatusGreen {
+  font-size: 0.7rem;
+  color: #10b981;
+  font-weight: 600;
+}
+
+.dashContentGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.dashChartCol, .dashAlertsCol {
+  background: #ffffff;
+  border: 1px solid rgba(0, 68, 129, 0.05);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.dashChartCol h5, .dashAlertsCol h5 {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-bottom: 1rem;
+  font-weight: 700;
+}
+
+.simulatedChart {
+  height: 120px;
+  display: flex;
+  align-items: flex-end;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  padding-bottom: 0.5rem;
+}
+
+.chartBars {
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  height: 100%;
+}
+
+.barItem {
+  width: 18px;
+  background: linear-gradient(180deg, #004481 0%, #02A5E0 100%);
+  border-radius: 0.25rem 0.25rem 0 0;
+  position: relative;
+  cursor: pointer;
+  transition: height 0.5s ease;
+}
+
+.barItem:hover {
+  filter: brightness(1.1);
+}
+
+.barTooltip {
+  position: absolute;
+  bottom: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.65rem;
+  color: #64748b;
+}
+
+.dashAlertList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dashAlertItem {
+  display: flex;
+  gap: 0.75rem;
+  background: #f4f9fd;
+  padding: 0.65rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(0, 0, 0, 0.02);
+}
+
+.alertIcon {
+  font-size: 1.1rem;
+}
+
+.dashAlertItem strong {
+  display: block;
+  font-size: 0.75rem;
+  color: #1e293b;
+}
+
+.dashAlertItem p {
+  font-size: 0.7rem;
+  color: #64748b;
+  line-height: 1.3;
+}
+
+/* Sidebar Showcase Details CSS */
+.showcaseDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.featureDetailItem {
+  display: flex;
+  gap: 1.25rem;
+}
+
+.numberBadge {
+  background: rgba(2, 165, 224, 0.06);
+  border: 1px solid rgba(2, 165, 224, 0.15);
+  color: #004481;
+  font-size: 1.1rem;
+  font-weight: 800;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.featureDetailItem h4 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #072146;
+  margin-bottom: 0.4rem;
+}
+
+.featureDetailItem p {
+  font-size: 0.95rem;
+  color: #475569;
   line-height: 1.5;
 }
 
 /* Benefits Section */
 .benefits {
-  padding: 6rem 0;
-  position: relative;
-  z-index: 1;
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
+  padding: 7rem 0;
+  background: #ffffff;
 }
 
 .benefitsContainer {
@@ -407,713 +1337,1265 @@
   padding: 0 2rem;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 4rem;
+  gap: 5rem;
   align-items: center;
-}
-
-.benefitsContent {
-  color: white;
 }
 
 .benefitsContent h2 {
   font-size: 2.5rem;
-  font-weight: 700;
+  font-weight: 800;
+  color: #072146;
   margin-bottom: 1.5rem;
-  color: white;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .benefitsContent p {
-  font-size: 1.2rem;
-  opacity: 0.9;
+  font-size: 1.15rem;
+  color: #475569;
   line-height: 1.6;
   margin-bottom: 2rem;
-  color: rgba(255, 255, 255, 0.95);
 }
 
 .benefitsList {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  margin-bottom: 2rem;
+  margin-bottom: 2.5rem;
 }
 
 .benefitItem {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  font-size: 1.1rem;
-  color: white;
-  padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 0.75rem;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  transition: all 0.3s ease;
-}
-
-.benefitItem:hover {
-  background: rgba(255, 255, 255, 0.15);
-  transform: translateX(5px);
+  gap: 0.75rem;
+  font-size: 1.05rem;
+  color: #334155;
 }
 
 .benefitItem svg {
-  color: #22c55e;
+  color: #10b981;
   flex-shrink: 0;
-  filter: drop-shadow(0 2px 4px rgba(34, 197, 94, 0.3));
 }
 
 .ctaButton {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  gap: 0.75rem;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: white;
   text-decoration: none;
-  padding: 1rem 2rem;
+  padding: 0.9rem 1.8rem;
   border-radius: 0.75rem;
-  font-weight: 600;
-  font-size: 1.1rem;
+  font-weight: 700;
+  font-size: 1.05rem;
+  box-shadow: 0 4px 18px rgba(16, 185, 129, 0.2);
   transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
 }
 
 .ctaButton:hover {
-  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
-  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
   transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
 }
 
 .benefitsVisual {
   display: flex;
   justify-content: center;
-  align-items: center;
 }
 
-.floatingCards {
-  position: relative;
-  width: 300px;
-  height: 300px;
+.floatingCardsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  max-width: 440px;
+  width: 100%;
 }
 
-.floatingCard {
-  position: absolute;
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(15px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+.floatGridCard {
+  background: #ffffff;
+  border: 1px solid rgba(0, 68, 129, 0.05);
   border-radius: 1rem;
   padding: 1.5rem;
-  color: white;
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 0.5rem;
-  font-weight: 600;
-  animation: float 3s ease-in-out infinite;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+  transition: all 0.3s;
 }
 
-.floatingCard:nth-child(1) {
-  top: 0;
-  left: 0;
-  animation-delay: 0s;
+.floatGridCard:hover {
+  transform: translateY(-4px);
+  border-color: rgba(2, 165, 224, 0.2);
+  box-shadow: 0 10px 20px rgba(2, 165, 224, 0.04);
 }
 
-.floatingCard:nth-child(2) {
-  top: 50%;
-  right: 0;
-  animation-delay: 1s;
+.floatGridCard strong {
+  font-size: 1.05rem;
+  color: #072146;
 }
 
-.floatingCard:nth-child(3) {
-  bottom: 0;
-  left: 50%;
-  animation-delay: 2s;
+.floatGridCard span {
+  font-size: 0.85rem;
+  color: #475569;
+  line-height: 1.4;
 }
 
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
+/* PRICING SECTION - Main focus styling */
+.pricingSection {
+  padding: 7rem 0;
+  background: rgba(255, 255, 255, 0.8);
+  border-top: 1px solid rgba(96, 163, 217, 0.2);
 }
 
-/* CTA Section */
-.cta {
-  padding: 6rem 0;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
-  position: relative;
-  z-index: 1;
-}
-
-.ctaContainer {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 0 2rem;
-}
-
-.ctaContent {
-  text-align: center;
-  color: white;
-}
-
-.ctaContent h2 {
-  font-size: 2.5rem;
-  font-weight: 700;
-  margin-bottom: 1rem;
-  color: white;
-}
-
-.ctaContent p {
-  font-size: 1.2rem;
-  opacity: 0.8;
-  margin-bottom: 2.5rem;
-}
-
-.ctaActions {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.ctaPrimary {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-  color: white;
-  text-decoration: none;
-  padding: 1rem 2rem;
-  border-radius: 0.75rem;
-  font-weight: 600;
-  font-size: 1.1rem;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(251, 191, 36, 0.3);
-}
-
-.ctaPrimary:hover {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  box-shadow: 0 6px 20px rgba(251, 191, 36, 0.4);
-  transform: translateY(-2px);
-}
-
-.ctaSecondary {
-  display: inline-flex;
-  align-items: center;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: white;
-  text-decoration: none;
-  padding: 1rem 2rem;
-  border-radius: 0.75rem;
-  font-weight: 600;
-  font-size: 1.1rem;
-  transition: all 0.3s ease;
-}
-
-.ctaSecondary:hover {
-  background: rgba(255, 255, 255, 0.2);
-  transform: translateY(-2px);
-}
-
-/* Responsive Design */
-@media (max-width: 1024px) {
-  .heroContent {
-    grid-template-columns: 1fr;
-    gap: 3rem;
-    text-align: center;
-  }
-  
-  .benefitsContainer {
-    grid-template-columns: 1fr;
-    gap: 3rem;
-    text-align: center;
-  }
-  
-  .statsContainer {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  
-  .featuresGrid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 2rem;
-  }
-}
-
-@media (max-width: 768px) {
-  .hero {
-    padding: 1.5rem 0;
-    min-height: 90vh;
-  }
-  
-  .heroContent {
-    padding: 0 1.5rem;
-    gap: 2.5rem;
-  }
-  
-  .heroTitle {
-    font-size: 2.8rem;
-    line-height: 1.2;
-  }
-  
-  .heroSubtitle {
-    font-size: 1.15rem;
-    line-height: 1.6;
-  }
-  
-  .heroActions {
-    justify-content: center;
-    gap: 1rem;
-  }
-  
-  .primaryButton,
-  .secondaryButton {
-    padding: 0.9rem 1.8rem;
-    font-size: 1rem;
-  }
-  
-  .statsContainer {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1.5rem;
-  }
-  
-  .statNumber {
-    font-size: 2.2rem;
-  }
-  
-  .sectionHeader h2 {
-    font-size: 2.2rem;
-  }
-  
-  .featuresGrid {
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
-  }
-  
-  .benefitsContent h2 {
-    font-size: 2.2rem;
-  }
-  
-  .ctaContent h2 {
-    font-size: 2.2rem;
-  }
-  
-  .floatingCards {
-    width: 280px;
-    height: 280px;
-  }
-  
-  .section {
-    padding: 3rem 1.5rem;
-  }
-}
-
-@media (max-width: 600px) {
-  .hero {
-    padding: 1rem 0;
-    min-height: 85vh;
-  }
-  
-  .heroContent {
-    padding: 0 1rem;
-    gap: 2rem;
-  }
-  
-  .heroTitle {
-    font-size: 2.2rem;
-    line-height: 1.2;
-  }
-  
-  .heroSubtitle {
-    font-size: 1.05rem;
-    line-height: 1.5;
-  }
-  
-  .heroActions {
-    flex-direction: column;
-    align-items: center;
-    gap: 0.8rem;
-  }
-  
-  .primaryButton,
-  .secondaryButton {
-    width: 100%;
-    max-width: 280px;
-    justify-content: center;
-    padding: 0.8rem 1.5rem;
-    font-size: 0.95rem;
-  }
-  
-  .statsContainer {
-    grid-template-columns: 1fr;
-    gap: 1.2rem;
-  }
-  
-  .statNumber {
-    font-size: 2rem;
-  }
-  
-  .sectionHeader h2 {
-    font-size: 1.8rem;
-  }
-  
-  .benefitsContent h2 {
-    font-size: 1.8rem;
-  }
-  
-  .ctaContent h2 {
-    font-size: 1.8rem;
-  }
-  
-  .floatingCards {
-    width: 250px;
-    height: 250px;
-  }
-  
-  .section {
-    padding: 2.5rem 1rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .hero {
-    padding: 0.8rem 0;
-    min-height: 80vh;
-  }
-  
-  .heroContent {
-    padding: 0 0.8rem;
-    gap: 1.5rem;
-  }
-  
-  .heroTitle {
-    font-size: 1.8rem;
-    line-height: 1.2;
-  }
-  
-  .heroSubtitle {
-    font-size: 0.95rem;
-    line-height: 1.5;
-  }
-  
-  .heroActions {
-    gap: 0.6rem;
-  }
-  
-  .primaryButton,
-  .secondaryButton {
-    max-width: 260px;
-    padding: 0.7rem 1.2rem;
-    font-size: 0.9rem;
-  }
-  
-  .statsContainer {
-    gap: 1rem;
-  }
-  
-  .statNumber {
-    font-size: 1.8rem;
-  }
-  
-  .sectionHeader h2 {
-    font-size: 1.6rem;
-  }
-  
-  .benefitsContent h2 {
-    font-size: 1.6rem;
-  }
-  
-  .ctaContent h2 {
-    font-size: 1.6rem;
-  }
-  
-  .floatingCards {
-    width: 220px;
-    height: 220px;
-  }
-  
-  .section {
-    padding: 2rem 0.8rem;
-  }
-  
-  .badge {
-    font-size: 0.8rem;
-    padding: 0.4rem 0.8rem;
-  }
-  
-  .sectionHeader h2 {
-    font-size: 1.75rem;
-  }
-  
-  .benefitsContent h2 {
-    font-size: 1.75rem;
-  }
-  
-  .ctaContent h2 {
-    font-size: 1.75rem;
-  }
-  
-  .ctaActions {
-    flex-direction: column;
-    align-items: center;
-  }
-  
-  .ctaPrimary,
-  .ctaSecondary {
-    width: 100%;
-    justify-content: center;
-  }
-  
-  .floatingCards {
-    width: 200px;
-    height: 200px;
-  }
-  
-  .floatingCard {
-    padding: 1rem;
-    font-size: 0.9rem;
-  }
-}
-
-/* Dashboard Section Styles */
-.dashboardSection {
-  padding: 6rem 0;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, transparent 100%);
-  position: relative;
-  z-index: 1;
-}
-
-.dashboardContainer {
+.pricingContainer {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 2rem;
 }
 
-.dashboardContent {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 3rem;
-  margin-top: 3rem;
-  align-items: start;
+.pricingBadge {
+  display: inline-block;
+  background: rgba(2, 165, 224, 0.08);
+  border: 1px solid rgba(2, 165, 224, 0.15);
+  color: #004481;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 0.3rem 0.85rem;
+  border-radius: 2rem;
+  margin-bottom: 1.25rem;
 }
 
-.dashboardPreviewLarge {
-  background: white;
-  border-radius: 1.5rem;
-  padding: 1.5rem;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-}
-
-.dashboardMockup {
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-  border-radius: 1rem;
-  overflow: hidden;
-}
-
-.dashboardHeader {
-  background: white;
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.dashboardNav {
+.billingToggleWrapper {
   display: flex;
-  gap: 1.5rem;
+  justify-content: center;
+  margin-bottom: 4rem;
 }
 
-.navItem {
+.billingToggle {
+  background: #cbd5e1;
+  padding: 0.35rem;
+  border-radius: 2rem;
+  border: 1px solid rgba(0, 68, 129, 0.05);
+  display: inline-flex;
+  align-items: center;
+}
+
+.billingOption {
+  background: none;
+  border: none;
+  color: #475569;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.5rem 1.25rem;
+  border-radius: 2rem;
+  cursor: pointer;
+  transition: all 0.2s;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: #64748b;
-  font-size: 0.9rem;
-  font-weight: 500;
-  transition: color 0.3s;
 }
 
-.navItem:first-child {
-  color: #3b82f6;
-  position: relative;
+.billingOptionActive {
+  background: white;
+  color: #004481;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
-.navItem:first-child::after {
-  content: '';
-  position: absolute;
-  bottom: -1rem;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: #3b82f6;
+.discountBadge {
+  background: #10b981;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.25rem;
 }
 
-.dashboardBody {
-  padding: 2rem 1.5rem;
-}
-
-.statsRow {
+.plansGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
+  gap: 2.25rem;
+  align-items: stretch;
+  margin-bottom: 4rem;
+}
+
+.planCard {
+  background: #ffffff;
+  border: 1px solid rgba(0, 68, 129, 0.05);
+  border-radius: 1.5rem;
+  padding: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+  transition: all 0.3s ease;
+}
+
+.planCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.04);
+}
+
+.planCardPopular {
+  background: #ffffff;
+  border: 2px solid #004481;
+  box-shadow: 0 20px 40px rgba(0, 68, 129, 0.06);
+}
+
+.popularBadge {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #004481 0%, #02A5E0 100%);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 0.35rem 1rem;
+  border-radius: 2rem;
+  white-space: nowrap;
+  letter-spacing: 0.025em;
+  box-shadow: 0 4px 10px rgba(2, 165, 224, 0.2);
+}
+
+.planHeader {
   margin-bottom: 2rem;
 }
 
-.statBox {
-  background: white;
-  padding: 1.25rem;
-  border-radius: 0.75rem;
-  display: flex;
+.planIcon {
+  display: inline-flex;
   align-items: center;
-  gap: 1rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.statInfo {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.statLabel {
-  font-size: 0.75rem;
-  color: #64748b;
-  font-weight: 500;
-}
-
-.statValue {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #1e293b;
-}
-
-.chartArea {
-  background: white;
-  border-radius: 0.75rem;
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.chartBars {
-  display: flex;
-  align-items: flex-end;
-  gap: 1rem;
-  height: 120px;
-}
-
-.bar {
-  flex: 1;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  border-radius: 0.5rem 0.5rem 0 0;
-  animation: growBar 1s ease-out;
-}
-
-@keyframes growBar {
-  from {
-    height: 0;
-  }
-}
-
-.alertsArea {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.alert {
-  background: white;
-  padding: 1rem;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: #f4f9fd;
   border-radius: 0.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: #475569;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  font-size: 1.5rem;
+  margin-bottom: 1.25rem;
 }
 
-.dashboardFeaturesGrid {
+.planCard h3 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #072146;
+  margin-bottom: 0.5rem;
+}
+
+.planDesc {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin-bottom: 1.5rem;
+}
+
+.planPriceRow {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.planPriceVal {
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: #072146;
+}
+
+.planPeriod {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.yearlySubBilling {
+  display: block;
+  font-size: 0.75rem;
+  color: #10b981;
+  font-weight: 600;
+  margin-top: 0.4rem;
+}
+
+.planCTA {
+  margin-bottom: 2rem;
+}
+
+.planCtaBtn {
+  display: block;
+  text-align: center;
+  background: #f4f9fd;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  text-decoration: none;
+  padding: 0.8rem;
+  border-radius: 0.5rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+  transition: all 0.2s;
+}
+
+.planCtaBtn:hover {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+}
+
+.planCtaBtnPopular {
+  background: linear-gradient(135deg, #004481 0%, #02A5E0 100%);
+  color: white;
+  border: none;
+  box-shadow: 0 4px 14px rgba(2, 165, 224, 0.2);
+}
+
+.planCtaBtnPopular:hover {
+  background: linear-gradient(135deg, #072146 0%, #0073C2 100%);
+  transform: translateY(-1px);
+}
+
+.planFeaturesList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.85rem;
 }
 
-.dashboardFeatureCard {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 1rem;
-  padding: 1.5rem;
+.planFeaturesList li {
   display: flex;
-  align-items: start;
-  gap: 1rem;
-  transition: all 0.3s;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.88rem;
+  color: #334155;
 }
 
-.dashboardFeatureCard:hover {
-  background: rgba(255, 255, 255, 0.15);
-  transform: translateX(5px);
+.planFeaturesList li svg {
+  flex-shrink: 0;
 }
 
-.dashboardFeatureIcon {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 0.75rem;
-  padding: 0.75rem;
+.featureDisabled {
+  opacity: 0.4;
+  text-decoration: line-through;
+  color: #94a3b8;
+}
+
+.pricingFooterNotice {
+  text-align: center;
+  background: #ffffff;
+  border: 1px solid rgba(0, 68, 129, 0.05);
+  padding: 1.5rem 2rem;
+  border-radius: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.pricingFooterNotice p {
+  font-size: 0.95rem;
+  color: #475569;
+  line-height: 1.6;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.pricingFooterNotice strong {
+  color: #072146;
+}
+
+/* WhatsApp Support Banner CSS */
+.whatsappBannerSection {
+  padding: 5rem 0;
+  background: #ffffff;
+  border-top: 1px solid rgba(0, 68, 129, 0.04);
+}
+
+.whatsappBannerContainer {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.whatsappBannerContent {
+  background: linear-gradient(135deg, rgba(37, 211, 102, 0.06) 0%, rgba(18, 140, 126, 0.01) 100%);
+  border: 1px solid rgba(37, 211, 102, 0.2);
+  border-radius: 1.5rem;
+  padding: 3rem;
+  display: flex;
+  align-items: center;
+  gap: 3rem;
+}
+
+.whatsappIconBig {
+  color: #25D366;
+  background: rgba(37, 211, 102, 0.1);
+  padding: 1.25rem;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  flex-shrink: 0;
+  animation: pulseIcon 2s infinite;
 }
 
-.dashboardFeatureCard h4 {
-  color: white;
+@keyframes pulseIcon {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.whatsappBannerText {
+  flex: 1;
+}
+
+.whatsappBannerText h3 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #072146;
+  margin-bottom: 0.75rem;
+}
+
+.whatsappBannerText p {
   font-size: 1rem;
-  font-weight: 600;
-  margin-bottom: 0.25rem;
+  color: #475569;
+  line-height: 1.6;
+  margin-bottom: 1.25rem;
 }
 
-.dashboardFeatureCard p {
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 0.9rem;
-  line-height: 1.5;
-}
-
-.floatingCard {
+.whatsappNumberRow {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
+  font-size: 1rem;
 }
 
-.floatingCard strong {
-  display: block;
-  font-size: 0.9rem;
-  margin-bottom: 0.25rem;
+.whatsappNumberRow span {
+  color: #64748b;
 }
 
-.floatingCard span {
-  font-size: 0.8rem;
-  opacity: 0.8;
+.whatsappNumberRow strong a {
+  color: #128c7e;
+  text-decoration: none;
+  font-size: 1.25rem;
+  font-weight: 800;
 }
 
-@media (max-width: 968px) {
-  .dashboardContent {
+.whatsappNumberRow strong a:hover {
+  text-decoration: underline;
+}
+
+.whatsappCtaBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: #25D366;
+  color: white;
+  text-decoration: none;
+  padding: 0.9rem 1.8rem;
+  border-radius: 0.75rem;
+  font-weight: 800;
+  font-size: 1.05rem;
+  box-shadow: 0 4px 15px rgba(37, 211, 102, 0.2);
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+
+.whatsappCtaBtn:hover {
+  background: #20ba5a;
+  box-shadow: 0 6px 20px rgba(37, 211, 102, 0.3);
+}
+
+/* Footer Section */
+.footer {
+  background: rgba(255, 255, 255, 0.9);
+  border-top: 1px solid rgba(96, 163, 217, 0.25);
+  padding: 5rem 0 2rem 0;
+}
+
+.footerContainer {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr 1fr;
+  gap: 4rem;
+  margin-bottom: 4rem;
+}
+
+.footerInfoCol {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.footerLogo {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #072146;
+}
+
+.footerBrandDesc {
+  font-size: 0.88rem;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+.footerLinksCol {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.footerLinksCol h4, .footerContactCol h4 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #072146;
+  margin-bottom: 0.5rem;
+}
+
+.footerLinksCol a {
+  color: #64748b;
+  text-decoration: none;
+  font-size: 0.88rem;
+  transition: color 0.2s;
+}
+
+.footerLinksCol a:hover {
+  color: #004481;
+}
+
+.footerContactCol {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.contactItem {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.88rem;
+  color: #334155;
+}
+
+.footerPhoneLink {
+  color: #128c7e;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.footerPhoneLink:hover {
+  text-decoration: underline;
+}
+
+.footerBottom {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 2rem 0 2rem;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: center;
+  text-align: center;
+}
+
+.footerBottom p {
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+/* ==========================================================================
+   RESPONSIVE LAYOUTS (Media Queries)
+   ========================================================================== */
+
+@media (max-width: 1024px) {
+  .heroContent {
     grid-template-columns: 1fr;
+    gap: 4rem;
+    text-align: center;
+  }
+  
+  .heroText {
+    align-items: center;
+  }
+  
+  .heroActions {
+    justify-content: center;
+  }
+  
+  .showcaseContent {
+    grid-template-columns: 1fr;
+    gap: 3rem;
+  }
+  
+  .benefitsContainer {
+    grid-template-columns: 1fr;
+    gap: 4rem;
+    text-align: center;
+  }
+  
+  .benefitsContent {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .benefitItem {
+    justify-content: center;
+  }
+  
+  .plansGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .planCardPopular {
+    grid-column: span 2;
+    order: -1;
+  }
+  
+  .whatsappBannerContent {
+    flex-direction: column;
+    text-align: center;
     gap: 2rem;
   }
   
-  .statsRow {
+  .whatsappNumberRow {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .mobileMenuToggle {
+    display: block;
+  }
+  
+  .navLinks {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    flex-direction: column;
+    padding: 2rem;
+    gap: 1.5rem;
+    align-items: stretch;
+    text-align: center;
+  }
+  
+  .navLinksMobileActive {
+    display: flex;
+  }
+  
+  .mobileNavActions {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    padding-top: 1.5rem;
+  }
+  
+  .navLoginMobile {
+    color: #072146;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 1rem;
+  }
+  
+  .navRegisterMobile {
+    background: linear-gradient(135deg, #004481 0%, #02A5E0 100%);
+    color: white;
+    text-decoration: none;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    font-weight: 700;
+    font-size: 1rem;
+  }
+  
+  .navActions {
+    display: none;
+  }
+  
+  .heroTitle {
+    font-size: 2.75rem;
+  }
+  
+  .statsContainer {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2rem;
+  }
+  
+  .featuresGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .plansGrid {
     grid-template-columns: 1fr;
   }
   
-  .dashboardNav {
-    overflow-x: auto;
-    padding-bottom: 0.5rem;
+  .planCardPopular {
+    grid-column: span 1;
   }
   
-  .navItem {
-    white-space: nowrap;
+  .footerContainer {
+    grid-template-columns: 1fr;
+    gap: 3rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .heroTitle {
+    font-size: 2.25rem;
+  }
+  
+  .featuresGrid {
+    grid-template-columns: 1fr;
+  }
+  
+  .tabsRow {
+    flex-direction: column;
+    padding: 0.35rem;
+  }
+  
+  .tabBtn {
+    padding: 0.6rem;
+    font-size: 0.85rem;
+  }
+  
+  .posInteractiveGrid {
+    grid-template-columns: 1fr;
+  }
+  
+  .dashContentGrid {
+    grid-template-columns: 1fr;
+  }
+  
+  .statsContainer {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  
+  .statNumber {
+    font-size: 2.25rem;
+  }
+  
+  .whatsappFloat {
+    bottom: 1rem;
+    right: 1rem;
+  }
+  
+  .whatsappTooltip {
+    display: none;
+  }
+  
+  .whatsappBannerContent {
+    padding: 2rem 1.5rem;
+  }
+  
+  .whatsappBannerText h3 {
+    font-size: 1.25rem;
+  }
+}
+
+/* ==========================================================================
+   SUPPORT FOR DEVICE SYSTEM DARK MODE (prefers-color-scheme: dark)
+   ========================================================================== */
+
+@media (prefers-color-scheme: dark) {
+  .container {
+    background-color: #0b0f19;
+    background-image: 
+      radial-gradient(circle at 10% 20%, rgba(2, 165, 224, 0.15) 0%, transparent 40%),
+      radial-gradient(circle at 90% 80%, rgba(0, 68, 129, 0.25) 0%, transparent 50%),
+      radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.95) 0%, #0b0f19 100%);
+    color: #f8fafc;
+  }
+
+  .navbar {
+    background: rgba(11, 15, 25, 0.4);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  }
+
+  .navbarScrolled {
+    background: rgba(11, 15, 25, 0.85);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  }
+
+  .logoText {
+    color: white;
+  }
+
+  .navLinks a {
+    color: #94a3b8;
+  }
+
+  .navLogin {
+    color: white;
+  }
+
+  .mobileMenuToggle {
+    color: white;
+  }
+
+  .heroTitle {
+    color: white;
+  }
+
+  .heroSubtitle {
+    color: #94a3b8;
+  }
+
+  .secondaryButton {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: white;
+  }
+
+  .secondaryButton:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .heroWhatsAppCallout {
+    color: #e2e8f0;
+    background: rgba(37, 211, 102, 0.07);
+    border-color: rgba(37, 211, 102, 0.15);
+  }
+
+  .phoneLink {
+    color: #22c55e;
+  }
+
+  .stars span {
+    color: #94a3b8;
+  }
+
+  .mockupBody {
+    background: #0f172a;
+  }
+
+  .simulatedHeroPos {
+    background: rgba(30, 41, 59, 0.7);
+    border-color: rgba(255, 255, 255, 0.05);
+  }
+
+  .simulatedHeroPosHeader {
+    border-bottom-color: rgba(255, 255, 255, 0.05);
+  }
+
+  .simulatedHeroPosTitle {
+    color: white;
+  }
+
+  .simulatedHeroPosBadge {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.3);
+  }
+
+  .simulatedHeroPosItem {
+    color: #94a3b8;
+  }
+
+  .simulatedHeroItemVal {
+    color: white;
+  }
+
+  .simulatedHeroPosFooter {
+    border-top-color: rgba(255, 255, 255, 0.05);
+  }
+
+  .stats {
+    background: rgba(15, 23, 42, 0.6);
+    border-color: rgba(255, 255, 255, 0.05);
+  }
+
+  .statNumber {
+    background: linear-gradient(135deg, #ffffff 0%, #94a3b8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .features {
+    background: #090d16;
+  }
+
+  .sectionHeader h2 {
+    color: white;
+  }
+
+  .sectionHeader p {
+    color: #94a3b8;
+  }
+
+  .featureCard {
+    background: rgba(30, 41, 59, 0.3);
+    border-color: rgba(255, 255, 255, 0.05);
+  }
+
+  .featureCard:hover {
+    box-shadow: 0 12px 30px rgba(2, 165, 224, 0.1);
+    border-color: rgba(2, 165, 224, 0.3);
+  }
+
+  .featureCard h3 {
+    color: white;
+  }
+
+  .featureCard p {
+    color: #94a3b8;
+  }
+
+  .showcaseSection {
+    background: linear-gradient(180deg, #090d16 0%, #0c1220 100%);
+    border-top-color: rgba(255, 255, 255, 0.03);
+  }
+
+  .tabsRow {
+    background: rgba(30, 41, 59, 0.4);
+    border-color: rgba(255, 255, 255, 0.05);
+  }
+
+  .tabBtn {
+    color: #94a3b8;
+  }
+
+  .tabBtn:hover {
+    color: white;
+  }
+
+  .tabBtnActive {
+    background: #004481;
+    color: white;
+    border-color: transparent;
+  }
+
+  .mockupMainFrame {
+    background: #0f172a;
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .appHeader {
+    background: #0b0f19;
+    border-bottom-color: rgba(255, 255, 255, 0.05);
+  }
+
+  .appBreadcrumb {
+    color: #475569;
+  }
+
+  .activeBreadcrumb {
+    color: #94a3b8;
+  }
+
+  .appBody {
+    background: #0f172a;
+  }
+
+  .posCartPane, .posPaymentPane {
+    background: rgba(30, 41, 59, 0.4);
+    border-color: rgba(255, 255, 255, 0.04);
+  }
+
+  .posCartPane h4, .posPaymentPane h4 {
+    color: white;
+    border-bottom-color: rgba(255, 255, 255, 0.05);
+  }
+
+  .posCartItem {
+    background: rgba(15, 23, 42, 0.4);
+    border-color: transparent;
+  }
+
+  .posCartItem strong {
+    color: #e2e8f0;
+  }
+
+  .itemPrice {
+    color: white;
+  }
+
+  .posTotalRow {
+    color: #94a3b8;
+  }
+
+  .posTotalRowPrimary {
+    color: white;
+    border-top-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .payMethodBtn {
+    background: rgba(15, 23, 42, 0.6);
+    border-color: rgba(255, 255, 255, 0.05);
+    color: #94a3b8;
+  }
+
+  .cashCalculator {
+    background: rgba(15, 23, 42, 0.4);
+    border-color: transparent;
+  }
+
+  .quickCashBtn {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.08);
+    color: white;
+  }
+
+  .quickCashBtn:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .calcResults {
+    border-top-color: rgba(255, 255, 255, 0.05);
+  }
+
+  .calcField strong {
+    color: white;
+  }
+
+  .methodDetails {
+    background: rgba(15, 23, 42, 0.5);
+    border-color: transparent;
+  }
+
+  .searchSimulator {
+    background: rgba(15, 23, 42, 0.6);
+    border-color: rgba(255, 255, 255, 0.05);
+  }
+
+  .searchSimulator input {
+    color: white;
+  }
+
+  .filterTab {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.05);
+    color: #94a3b8;
+  }
+
+  .tableContainer {
+    border-color: rgba(255, 255, 255, 0.05);
+    background: #0f172a;
+  }
+
+  .invTable th {
+    background: rgba(15, 23, 42, 0.8);
+    color: #94a3b8;
+    border-bottom-color: rgba(255, 255, 255, 0.05);
+  }
+
+  .invRow {
+    border-bottom-color: rgba(255, 255, 255, 0.03);
+  }
+
+  .invRow:hover {
+    background: rgba(255, 255, 255, 0.01);
+  }
+
+  .productAvatar {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .pName {
+    color: white;
+  }
+
+  .invTable td {
+    color: #e2e8f0;
+    border-bottom-color: transparent;
+  }
+
+  .dashHeaderRow h4 {
+    color: white;
+  }
+
+  .dashPeriodButtons {
+    background: rgba(15, 23, 42, 0.6);
+    border-color: rgba(255, 255, 255, 0.05);
+  }
+
+  .periodBtnActive {
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
+  }
+
+  .kpiCard {
+    background: rgba(30, 41, 59, 0.3);
+    border-color: rgba(255, 255, 255, 0.04);
+  }
+
+  .kpiValue {
+    color: white;
+  }
+
+  .dashChartCol, .dashAlertsCol {
+    background: rgba(30, 41, 59, 0.2);
+    border-color: rgba(255, 255, 255, 0.03);
+  }
+
+  .dashAlertItem {
+    background: rgba(15, 23, 42, 0.4);
+    border-color: transparent;
+  }
+
+  .dashAlertItem strong {
+    color: white;
+  }
+
+  .featureDetailItem h4 {
+    color: white;
+  }
+
+  .featureDetailItem p {
+    color: #94a3b8;
+  }
+
+  .benefits {
+    background: #090d16;
+  }
+
+  .benefitsContent h2 {
+    color: white;
+  }
+
+  .benefitsContent p {
+    color: #94a3b8;
+  }
+
+  .benefitItem {
+    color: #cbd5e1;
+  }
+
+  .floatGridCard {
+    background: rgba(30, 41, 59, 0.4);
+    border-color: rgba(255, 255, 255, 0.05);
+  }
+
+  .floatGridCard:hover {
+    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(30, 41, 59, 0.6);
+    box-shadow: none;
+  }
+
+  .floatGridCard strong {
+    color: white;
+  }
+
+  .floatGridCard span {
+    color: #94a3b8;
+  }
+
+  .pricingSection {
+    background: #090d16;
+    border-top-color: rgba(255, 255, 255, 0.03);
+  }
+
+  .pricingBadge {
+    background: rgba(2, 165, 224, 0.1);
+    border-color: rgba(2, 165, 224, 0.2);
+  }
+
+  .billingToggle {
+    background: rgba(30, 41, 59, 0.5);
+    border-color: rgba(255, 255, 255, 0.05);
+  }
+
+  .billingOptionActive {
+    background: white;
+    color: #0b0f19;
+  }
+
+  .planCard {
+    background: rgba(30, 41, 59, 0.25);
+    border-color: rgba(255, 255, 255, 0.04);
+  }
+
+  .planCard:hover {
+    border-color: rgba(0, 0, 0, 0.1);
+  }
+
+  .planCardPopular {
+    background: rgba(30, 41, 59, 0.45);
+    border-color: #004481;
+    box-shadow: 0 20px 50px rgba(0, 68, 129, 0.08);
+  }
+
+  .planCard h3 {
+    color: white;
+  }
+
+  .planPriceVal {
+    color: white;
+  }
+
+  .planCtaBtn {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: white;
+  }
+
+  .planCtaBtn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .planFeaturesList li {
+    color: #cbd5e1;
+  }
+
+  .pricingFooterNotice {
+    background: rgba(30, 41, 59, 0.2);
+    border-color: rgba(255, 255, 255, 0.03);
+  }
+
+  .pricingFooterNotice p {
+    color: #94a3b8;
+  }
+
+  .pricingFooterNotice strong {
+    color: white;
+  }
+
+  .whatsappBannerSection {
+    background: linear-gradient(180deg, #0c1220 0%, #090d16 100%);
+    border-top-color: rgba(255, 255, 255, 0.03);
+  }
+
+  .whatsappBannerText h3 {
+    color: white;
+  }
+
+  .whatsappBannerText p {
+    color: #94a3b8;
+  }
+
+  .whatsappNumberRow strong a {
+    color: #25D366;
+  }
+
+  .footer {
+    background: #06090e;
+    border-top-color: rgba(255, 255, 255, 0.05);
+  }
+
+  .footerLogo {
+    color: white;
+  }
+
+  .footerBrandDesc {
+    color: #64748b;
+  }
+
+  .footerLinksCol h4, .footerContactCol h4 {
+    color: white;
+  }
+
+  .footerLinksCol a {
+    color: #64748b;
+  }
+
+  .contactItem {
+    color: #cbd5e1;
+  }
+
+  .footerPhoneLink {
+    color: #22c55e;
+  }
+
+  .footerBottom {
+    border-top-color: rgba(255, 255, 255, 0.05);
   }
 }
