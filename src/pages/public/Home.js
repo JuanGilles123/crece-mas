@@ -995,21 +995,6 @@ const Home = () => {
           >
             <h2>¿Listo para organizar tu negocio y empezar a crecer?</h2>
             <p>Regístrate en menos de 1 minuto y obtén 14 días gratis en nuestro Plan Estándar. Sin contratos forzosos. Cancela o cambia de plan cuando quieras.</p>
-
-            <div className={styles.ctaActions}>
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Link to="/registro" className={styles.ctaPrimary}>
-                  Crear Mi Cuenta Gratis
-                  <ArrowRight size={20} />
-                </Link>
-              </motion.div>
-
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Link to="/login" className={styles.ctaSecondary}>
-                  Ya tengo una cuenta
-                </Link>
-              </motion.div>
-            </div>
           </motion.div>
         </div>
       </section>
