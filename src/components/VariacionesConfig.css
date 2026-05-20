@@ -292,7 +292,7 @@
   cursor: pointer;
   width: 18px;
   height: 18px;
-  accent-color: #3b82f6;
+  accent-color: #02A5E0;
 }
 
 .variacion-config-field .required {
@@ -318,7 +318,7 @@
 .variacion-config-field input[type="number"]:focus,
 .variacion-config-field select:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: #02A5E0;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
@@ -415,7 +415,7 @@
 
 .variacion-config-opcion input[type="text"]:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: #02A5E0;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 

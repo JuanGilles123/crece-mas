@@ -24,7 +24,7 @@ serve(async (req) => {
     const email = String(body?.email || '').trim()
     const name = body?.name || 'Hola'
     const invoiceNumber = body?.invoiceNumber || '—'
-    const invoiceUrl = body?.invoiceUrl || 'https://creceplus.app/dashboard'
+    const invoiceUrl = body?.invoiceUrl || 'https://crecemas.co/dashboard'
 
     if (!email) {
       return new Response(JSON.stringify({ error: 'Email requerido' }), {

@@ -23,7 +23,11 @@ import {
   Store,
   FileBarChart,
   ClipboardList,
-  ArrowRightLeft
+  ArrowRightLeft,
+  HelpCircle,
+  X,
+  MessageCircle,
+  Mail
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSubscription } from '../../hooks/useSubscription';
@@ -39,6 +43,7 @@ const DashboardLayout = () => {
   const { hasFeature } = useSubscription();
   const [isLoading, setIsLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const closeSidebarOnMobile = () => {
     // Función para cerrar menús en móvil si es necesario
@@ -353,6 +358,48 @@ const DashboardLayout = () => {
           />
         )}
       </motion.main>
+
+      {/* Floating Help Button */}
+      <div className="help-float-wrapper">
+        {helpOpen && (
+          <div className="help-popover">
+            <div className="help-popover-header">
+              <span>¿Necesitas ayuda?</span>
+            </div>
+            <div className="help-popover-body">
+              <a
+                href="https://wa.me/573046422366?text=Hola!%20Necesito%20ayuda%20con%20Crece%2B"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="help-popover-btn help-popover-btn-wa"
+                onClick={() => setHelpOpen(false)}
+              >
+                <MessageCircle size={16} />
+                WhatsApp Soporte
+              </a>
+              <a
+                href="mailto:soporte@crecemas.co"
+                className="help-popover-btn help-popover-btn-email"
+                onClick={() => setHelpOpen(false)}
+              >
+                <Mail size={16} />
+                soporte@crecemas.co
+              </a>
+            </div>
+            <div className="help-popover-footer">
+              Respondemos en menos de 24h
+            </div>
+          </div>
+        )}
+        <button
+          className={`help-float-btn ${helpOpen ? 'help-float-btn-active' : ''}`}
+          onClick={() => setHelpOpen(o => !o)}
+          title="Ayuda y Soporte"
+          id="dashboard-help-btn"
+        >
+          {helpOpen ? <X size={22} /> : <HelpCircle size={22} />}
+        </button>
+      </div>
     </div>
   );
 };

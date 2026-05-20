@@ -448,7 +448,7 @@ const MonitorCajas = () => {
                 <div className="detalle-seccion">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem', marginBottom: '1.5rem' }}>
                     <h3 style={{ fontSize: '1.2rem', color: '#1e293b', margin: 0 }}>Historial de Ventas</h3>
-                    <span style={{ fontSize: '0.9rem', color: '#3b82f6', background: '#eff6ff', padding: '4px 12px', borderRadius: '20px', fontWeight: '600' }}>
+                    <span style={{ fontSize: '0.9rem', color: '#02A5E0', background: '#FFFFFF', padding: '4px 12px', borderRadius: '20px', fontWeight: '600' }}>
                       {sesionDetalle.ventasRecientes?.length || 0} registros
                     </span>
                   </div>

@@ -43,7 +43,7 @@
 }
 
 .pv-add-main-btn:hover {
-  background: #2563eb;
+  background: #02A5E0;
   transform: translateY(-1px);
   box-shadow: 0 6px 15px rgba(59, 130, 246, 0.4);
 }
@@ -145,7 +145,7 @@
 }
 
 .pv-price-tag.cost { color: #64748b; }
-.pv-price-tag.sale { color: #2563eb; }
+.pv-price-tag.sale { color: #02A5E0; }
 
 .pv-qty-controls {
   display: flex;
@@ -163,7 +163,7 @@
   align-items: center !important;
   justify-content: center !important;
   border: none !important;
-  background: #3b82f6 !important;
+  background: #02A5E0 !important;
   border-radius: 4px !important;
   color: white !important;
   cursor: pointer !important;
@@ -178,7 +178,7 @@
 }
 
 .pv-qty-controls button:hover:not(:disabled) {
-  background: #1d4ed8 !important;
+  background: #004481 !important;
   transform: scale(1.1) !important;
 }
 
@@ -311,8 +311,8 @@
 }
 
 .pv-search-icon {
-  color: #3b82f6;
-  background: #eff6ff;
+  color: #02A5E0;
+  background: #FFFFFF;
   padding: 0.6rem;
   border-radius: 12px;
   flex-shrink: 0;
@@ -330,7 +330,7 @@
 
 .pv-search-container input:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: #02A5E0;
   background: white;
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
 }
@@ -377,22 +377,22 @@
 }
 
 .pv-product-card:hover {
-  border-color: #3b82f6;
+  border-color: #02A5E0;
   background: #f8fafc;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .pv-product-card.is-selected {
-  border-color: #3b82f6;
-  background: #eff6ff;
-  box-shadow: 0 0 0 1px #3b82f6;
+  border-color: #02A5E0;
+  background: #FFFFFF;
+  box-shadow: 0 0 0 1px #02A5E0;
 }
 
 .pv-card-badge {
   position: absolute;
   top: -6px;
   left: -6px;
-  background: #3b82f6;
+  background: #02A5E0;
   color: white;
   min-width: 22px;
   height: 22px;
@@ -478,7 +478,7 @@
 }
 
 .pv-card-add {
-  background: #3b82f6;
+  background: #02A5E0;
   color: white;
   width: 26px;
   height: 26px;

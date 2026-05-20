@@ -1654,8 +1654,8 @@ const Inventario = () => {
 
                             {prod.metadata?.jewelry_material_type && prod.metadata.jewelry_material_type !== 'na' && (
                               <span style={{
-                                backgroundColor: prod.metadata.jewelry_material_type === 'local' ? '#eff6ff' : '#fff7ed',
-                                color: prod.metadata.jewelry_material_type === 'local' ? '#2563eb' : '#ea580c',
+                                backgroundColor: prod.metadata.jewelry_material_type === 'local' ? '#FFFFFF' : '#fff7ed',
+                                color: prod.metadata.jewelry_material_type === 'local' ? '#02A5E0' : '#ea580c',
                                 padding: '1px 4px',
                                 borderRadius: '3px',
                                 border: `1px solid ${prod.metadata.jewelry_material_type === 'local' ? '#bfdbfe' : '#ffedd5'}`,

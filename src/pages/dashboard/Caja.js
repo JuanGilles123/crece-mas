@@ -4457,7 +4457,7 @@ export default function Caja({
                           <UserCircle
                             size={16}
                             strokeWidth={2.5}
-                            color="#3b82f6"
+                            color="#02A5E0"
                             style={{
                               display: 'block',
                               position: 'relative',
@@ -4477,7 +4477,7 @@ export default function Caja({
                         <UserCircle
                           size={20}
                           strokeWidth={2.5}
-                          color="#3b82f6"
+                          color="#02A5E0"
                           style={{
                             display: 'block',
                             position: 'relative',
@@ -4938,7 +4938,7 @@ export default function Caja({
                     <UserCircle
                       size={18}
                       strokeWidth={2.5}
-                      color={clienteSeleccionado ? "#3b82f6" : "#6b7280"}
+                      color={clienteSeleccionado ? "#02A5E0" : "#6b7280"}
                     />
                     {clienteSeleccionado && (
                       <span className="caja-mobile-header-icon-badge"></span>
@@ -5008,7 +5008,7 @@ export default function Caja({
               <div className="caja-mobile-cart-info-bar">
                 {clienteSeleccionado && (
                   <div className="caja-mobile-cart-info-item">
-                    <UserCircle size={16} color="#3b82f6" />
+                    <UserCircle size={16} color="#02A5E0" />
                     <span className="caja-mobile-cart-info-text">
                       {clienteSeleccionado.nombre.length > 30
                         ? `${clienteSeleccionado.nombre.substring(0, 30)}...`
@@ -5760,13 +5760,13 @@ export default function Caja({
               {/* Resumen del crédito */}
               {clienteSeleccionado && (
                 <div style={{
-                  background: 'linear-gradient(135deg, #eff6ff, #dbeafe)',
+                  background: 'linear-gradient(135deg, #FFFFFF, #E6F0FF)',
                   padding: '1rem',
                   borderRadius: '10px',
                   marginBottom: '1.25rem',
                   border: '1px solid #bae6fd'
                 }}>
-                  <p style={{ margin: 0, fontWeight: 600, color: '#1d4ed8', fontSize: '0.95rem' }}>
+                  <p style={{ margin: 0, fontWeight: 600, color: '#004481', fontSize: '0.95rem' }}>
                     👤 Cliente: {clienteSeleccionado.nombre}
                   </p>
                   <p style={{ margin: '0.4rem 0 0 0', color: '#1e40af', fontSize: '0.9rem' }}>
@@ -5827,9 +5827,9 @@ export default function Caja({
                           style={{
                             padding: '0.4rem 0.9rem',
                             borderRadius: '20px',
-                            border: metodoAbonoModalCredito === m ? '2px solid #2563eb' : '1.5px solid #d1d5db',
-                            background: metodoAbonoModalCredito === m ? '#eff6ff' : '#f9fafb',
-                            color: metodoAbonoModalCredito === m ? '#1d4ed8' : '#374151',
+                            border: metodoAbonoModalCredito === m ? '2px solid #02A5E0' : '1.5px solid #d1d5db',
+                            background: metodoAbonoModalCredito === m ? '#FFFFFF' : '#f9fafb',
+                            color: metodoAbonoModalCredito === m ? '#004481' : '#374151',
                             fontWeight: metodoAbonoModalCredito === m ? 600 : 400,
                             cursor: 'pointer',
                             fontSize: '0.85rem'
@@ -5877,7 +5877,7 @@ export default function Caja({
                   padding: '0.65rem 1.75rem',
                   borderRadius: '8px',
                   border: 'none',
-                  background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                  background: 'linear-gradient(135deg, #004481, #02A5E0)',
                   color: '#fff',
                   fontWeight: 600,
                   fontSize: '0.95rem',

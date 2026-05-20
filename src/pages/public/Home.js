@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../services/api/supabaseClient';
 import {
   TrendingUp,
   BarChart3,
   Users,
-  Shield,
   CheckCircle,
   ArrowRight,
-  Star,
   Zap,
   Target,
   Globe,
@@ -17,15 +17,26 @@ import {
   CreditCard,
   Calculator,
   ShoppingCart,
-  Building2,
   Phone,
   Menu,
   X,
-  MessageCircle
+  MessageCircle,
+  Mail,
+  Send
 } from 'lucide-react';
 import styles from './Home.module.css';
 
 const Home = () => {
+  const navigate = useNavigate();
+  const { user, loading } = useAuth();
+
+  // Redirect to dashboard if logged in
+  useEffect(() => {
+    if (!loading && user) {
+      navigate('/dashboard');
+    }
+  }, [user, loading, navigate]);
+
   // States for interactive mockup simulations
   const [activeMockup, setActiveMockup] = useState('pos');
   const [posPaymentMethod, setPosPaymentMethod] = useState('efectivo');
@@ -34,11 +45,24 @@ const Home = () => {
   const [invFilter, setInvFilter] = useState('all');
   const [dashPeriod, setDashPeriod] = useState('hoy');
 
-  // Pricing toggle state
+  const [catalogTheme, setCatalogTheme] = useState('rosa');
+  const catalogThemes = {
+    rosa: { bg: '#fdf2f8', header: '#fce7f3', accent: '#fbcfe8', text: '#831843', btnText: '#000000' },
+    azul: { bg: '#FFFFFF', header: '#E6F0FF', accent: '#bfdbfe', text: '#2E2E2E', btnText: '#000000' },
+    verde: { bg: '#f0fdf4', header: '#dcfce7', accent: '#bbf7d0', text: '#14532d', btnText: '#000000' },
+    oscuro: { bg: '#1f2937', header: '#111827', accent: '#374151', text: '#f9fafb', btnText: '#ffffff' }
+  };
+  const activeThemeObj = catalogThemes[catalogTheme];
   const [billingPeriod, setBillingPeriod] = useState('monthly');
 
   // Mobile Nav menu toggle state
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Contact form state
+  const [contactForm, setContactForm] = useState({ name: '', email: '', department: 'soporte', message: '' });
+  const [contactLoading, setContactLoading] = useState(false);
+  const [contactSuccess, setContactSuccess] = useState('');
+  const [contactError, setContactError] = useState('');
 
   // Scroll effect to shrink navbar
   const [scrolled, setScrolled] = useState(false);
@@ -81,9 +105,9 @@ const Home = () => {
       description: "Invita a tus cajeros, administradores o socios por correo electrónico. Asigna roles específicos y limita accesos para máxima seguridad."
     },
     {
-      icon: <Building2 size={28} />,
-      title: "Multi-Negocios",
-      description: "Maneja múltiples marcas o sucursales desde un único panel centralizado, con cambio inmediato entre organizaciones."
+      icon: <Globe size={28} />,
+      title: "Tienda Online Integrada",
+      description: "Vende por internet sin esfuerzo. Tu inventario físico se sincroniza en tiempo real con tu propia página web o tienda online para recibir pedidos por WhatsApp."
     }
   ];
 
@@ -99,7 +123,7 @@ const Home = () => {
   const stats = [
     { number: "10,000+", label: "Ventas Registradas" },
     { number: "99.9%", label: "Tiempo de Actividad" },
-    { number: "14 Días", label: "Prueba Gratis Estándar" },
+    { number: "Ilimitado", label: "Versión Gratuita Base" },
     { number: "24/7", label: "Acceso Seguro Nube" }
   ];
 
@@ -126,6 +150,23 @@ const Home = () => {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(price);
+  };
+
+  const handleContactSubmit = async (e) => {
+    e.preventDefault();
+    setContactLoading(true);
+    setContactError('');
+    setContactSuccess('');
+    try {
+      const { error: fnError } = await supabase.functions.invoke('send-contact', { body: contactForm });
+      if (fnError) throw fnError;
+      setContactSuccess('¡Mensaje enviado! Te responderemos en menos de 24 horas.');
+      setContactForm({ name: '', email: '', department: 'soporte', message: '' });
+    } catch (err) {
+      setContactError('Error al enviar. Intenta de nuevo o escríbenos por WhatsApp.');
+    } finally {
+      setContactLoading(false);
+    }
   };
 
   return (
@@ -190,14 +231,20 @@ const Home = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <div className={styles.badge}>
-              <Zap size={16} />
-              <span>Planes pensados para Emprendimientos</span>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
+              <div className={styles.badge}>
+                <Zap size={16} />
+                <span>Para Emprendimientos</span>
+              </div>
+              <div className={styles.badge} style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', color: '#02A5E0', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                <Globe size={16} />
+                <span>¡Nuevo! Tu Página Web Integrada</span>
+              </div>
             </div>
 
             <h1 className={styles.heroTitle}>
-              Toma el control y haz{' '}
-              <span className={styles.gradientText}>Crecer tu Negocio</span>
+              Software POS y Sistema de Ventas en la Nube{' '}
+              <span className={styles.gradientText}>para Colombia</span>
             </h1>
 
             <p className={styles.heroSubtitle}>
@@ -205,12 +252,15 @@ const Home = () => {
             </p>
 
             <div className={styles.heroActions}>
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Link to="/registro" className={styles.primaryButton}>
-                  Probar Gratis Ahora
-                  <ArrowRight size={20} />
-                </Link>
-              </motion.div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Link to="/registro" className={styles.primaryButton}>
+                    Probar Gratis Ahora
+                    <ArrowRight size={20} />
+                  </Link>
+                </motion.div>
+                <span style={{ fontSize: '0.85rem', color: '#9ca3af', fontWeight: '500' }}>Sin tarjeta de crédito requerida</span>
+              </div>
 
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <a href="#precios" className={styles.secondaryButton}>
@@ -225,11 +275,11 @@ const Home = () => {
             </div>
 
             <div className={styles.trustIndicators}>
-              <div className={styles.stars}>
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} size={16} fill="#fbbf24" color="#fbbf24" />
-                ))}
-                <span>4.9/5 de usuarios en Colombia</span>
+              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                <span style={{ fontSize: '0.9rem', color: '#4b5563' }}>Funciona ideal con:</span>
+                <span style={{ fontWeight: '500', color: '#1f2937', backgroundColor: 'rgba(0, 0, 0, 0.04)', border: '1px solid rgba(0, 0, 0, 0.1)', padding: '3px 12px', borderRadius: '20px', fontSize: '0.85rem', letterSpacing: '0.5px' }}>Bancolombia</span>
+                <span style={{ fontWeight: '500', color: '#1f2937', backgroundColor: 'rgba(0, 0, 0, 0.04)', border: '1px solid rgba(0, 0, 0, 0.1)', padding: '3px 12px', borderRadius: '20px', fontSize: '0.85rem', letterSpacing: '0.5px' }}>Nequi</span>
+                <span style={{ fontWeight: '500', color: '#1f2937', backgroundColor: 'rgba(0, 0, 0, 0.04)', border: '1px solid rgba(0, 0, 0, 0.1)', padding: '3px 12px', borderRadius: '20px', fontSize: '0.85rem', letterSpacing: '0.5px' }}>Daviplata</span>
               </div>
             </div>
           </motion.div>
@@ -365,6 +415,13 @@ const Home = () => {
               <BarChart3 size={18} />
               Dashboard y Analítica
             </button>
+            <button
+              className={`${styles.tabBtn} ${activeMockup === 'catalog' ? styles.tabBtnActive : ''}`}
+              onClick={() => setActiveMockup('catalog')}
+            >
+              <Globe size={18} />
+              Mi Tienda Online
+            </button>
           </div>
 
           <div className={styles.showcaseContent}>
@@ -384,7 +441,7 @@ const Home = () => {
                   <div className={styles.dot}></div>
                 </div>
                 <div className={styles.appBreadcrumb}>
-                  Crece+ SaaS / <span className={styles.activeBreadcrumb}>{activeMockup === 'pos' ? 'Caja Registradora' : activeMockup === 'inventory' ? 'Inventario de Productos' : 'Resumen Financiero'}</span>
+                  Crece+ SaaS / <span className={styles.activeBreadcrumb}>{activeMockup === 'pos' ? 'Caja Registradora' : activeMockup === 'inventory' ? 'Inventario de Productos' : activeMockup === 'catalog' ? 'Configurar Tienda Online' : 'Resumen Financiero'}</span>
                 </div>
               </div>
 
@@ -495,7 +552,7 @@ const Home = () => {
 
                         {posPaymentMethod === 'tarjeta' && (
                           <div className={styles.methodDetails}>
-                            <CheckCircle size={20} color="#3b82f6" />
+                            <CheckCircle size={20} color="#02A5E0" />
                             <span>Integrado con datáfonos inalámbricos. Sin cobros ocultos por transacción.</span>
                           </div>
                         )}
@@ -697,6 +754,135 @@ const Home = () => {
                       </div>
                     </motion.div>
                   )}
+
+                  {/* TAB 4: TIENDA ONLINE */}
+                  {activeMockup === 'catalog' && (
+                    <motion.div
+                      key="catalog-tab"
+                      className={styles.dashInteractivePane}
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -15 }}
+                      transition={{ duration: 0.3 }}
+                      style={{ display: 'flex', gap: '20px', alignItems: 'stretch' }}
+                    >
+                      {/* Left: Configuration Panel */}
+                      <div style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <h4 style={{ marginBottom: '15px' }}>⚙️ Personaliza tu Tienda Online</h4>
+
+                        <div style={{ marginBottom: '20px' }}>
+                          <label style={{ fontSize: '0.85rem', color: '#9ca3af', display: 'block', marginBottom: '8px' }}>Color Principal de tu Marca</label>
+                          <div style={{ display: 'flex', gap: '10px' }}>
+                            <div onClick={() => setCatalogTheme('rosa')} style={{ width: '30px', height: '30px', borderRadius: '50%', backgroundColor: '#fce7f3', border: catalogTheme === 'rosa' ? '2px solid white' : '2px solid transparent', cursor: 'pointer' }}></div>
+                            <div onClick={() => setCatalogTheme('azul')} style={{ width: '30px', height: '30px', borderRadius: '50%', backgroundColor: '#E6F0FF', border: catalogTheme === 'azul' ? '2px solid white' : '2px solid transparent', cursor: 'pointer' }}></div>
+                            <div onClick={() => setCatalogTheme('verde')} style={{ width: '30px', height: '30px', borderRadius: '50%', backgroundColor: '#dcfce7', border: catalogTheme === 'verde' ? '2px solid white' : '2px solid transparent', cursor: 'pointer' }}></div>
+                            <div onClick={() => setCatalogTheme('oscuro')} style={{ width: '30px', height: '30px', borderRadius: '50%', backgroundColor: '#111827', border: catalogTheme === 'oscuro' ? '2px solid white' : '2px solid rgba(255,255,255,0.2)', cursor: 'pointer' }}></div>
+                          </div>
+                        </div>
+
+                        <div style={{ marginBottom: '20px' }}>
+                          <label style={{ fontSize: '0.85rem', color: '#9ca3af', display: 'block', marginBottom: '8px' }}>Link de WhatsApp para recibir pedidos</label>
+                          <input type="text" value="+57 300 000 0000" readOnly style={{ width: '100%', padding: '10px', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', outline: 'none' }} />
+                        </div>
+
+                        <div style={{ marginBottom: '20px' }}>
+                          <label style={{ fontSize: '0.85rem', color: '#9ca3af', display: 'block', marginBottom: '8px' }}>Productos Sincronizados</label>
+                          <div style={{ padding: '10px', borderRadius: '6px', backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <CheckCircle size={16} />
+                            Inventario en línea. ¡Listo para vender!
+                          </div>
+                        </div>
+
+                        <button style={{ width: '100%', padding: '10px', backgroundColor: '#02A5E0', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
+                          <Globe size={16} style={{ display: 'inline', marginRight: '8px', verticalAlign: 'text-bottom' }} />
+                          Copiar Enlace de mi Tienda
+                        </button>
+                      </div>
+
+                      {/* Right: Mobile Preview */}
+                      <div style={{ width: '280px', backgroundColor: '#ffffff', borderRadius: '24px', padding: '10px', border: '6px solid #374151', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
+
+                        {/* Mobile Body completely restyled */}
+                        <div style={{ flex: 1, backgroundColor: activeThemeObj.bg, borderRadius: '12px', overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingBottom: '70px', transition: 'background-color 0.3s ease' }}>
+
+                          {/* Top Header */}
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 10px', backgroundColor: activeThemeObj.bg, transition: 'background-color 0.3s ease' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#ddd', backgroundImage: 'url(https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&w=50&q=80)', backgroundSize: 'cover' }}></div>
+                              <strong style={{ fontSize: '0.85rem', color: activeThemeObj.text, transition: 'color 0.3s ease' }}>Luxury Cosmetic</strong>
+                            </div>
+                            <div style={{ display: 'flex', gap: '5px' }}>
+                              <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: activeThemeObj.header, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background-color 0.3s ease' }}>
+                                <Phone size={14} color={activeThemeObj.text} />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Search */}
+                          <div style={{ padding: '0 10px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', backgroundColor: activeThemeObj.header, padding: '8px 12px', borderRadius: '10px', transition: 'background-color 0.3s ease' }}>
+                              <span style={{ marginRight: '8px', opacity: 0.5 }}>🔍</span>
+                              <span style={{ fontSize: '0.75rem', color: activeThemeObj.text, opacity: 0.7 }}>Buscar productos...</span>
+                            </div>
+                          </div>
+
+                          {/* Categories */}
+                          <div style={{ display: 'flex', gap: '10px', padding: '12px 10px', overflowX: 'auto', whiteSpace: 'nowrap' }}>
+                            <span style={{ backgroundColor: activeThemeObj.accent, padding: '4px 12px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 'bold', color: activeThemeObj.text, transition: 'all 0.3s ease' }}>Todas</span>
+                            <span style={{ color: activeThemeObj.text, opacity: 0.7, padding: '4px 8px', fontSize: '0.75rem', fontWeight: 'bold' }}>Cuidado Facial</span>
+                            <span style={{ color: activeThemeObj.text, opacity: 0.7, padding: '4px 8px', fontSize: '0.75rem', fontWeight: 'bold' }}>Aceites</span>
+                          </div>
+
+                          {/* Promotional Banner */}
+                          <div style={{ height: '100px', backgroundColor: '#333', backgroundImage: 'url(https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?auto=format&fit=crop&w=300&q=80)', backgroundSize: 'cover', backgroundPosition: 'center', position: 'relative' }}>
+                            <div style={{ position: 'absolute', bottom: '15px', left: '15px' }}>
+                              <span style={{ backgroundColor: activeThemeObj.accent, color: activeThemeObj.text, fontSize: '0.55rem', fontWeight: 'bold', padding: '2px 6px', borderRadius: '10px', textTransform: 'uppercase', transition: 'all 0.3s ease' }}>Destacado</span>
+                              <div style={{ color: 'white', fontWeight: 'bold', fontSize: '1rem', marginTop: '2px', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>Solo por hoy</div>
+                            </div>
+                          </div>
+
+                          {/* Promo Text */}
+                          <div style={{ margin: '15px 10px', backgroundColor: activeThemeObj.header, padding: '10px', borderRadius: '10px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 'bold', color: activeThemeObj.text, transition: 'all 0.3s ease' }}>
+                            ✨ ¡UN MUNDO DE BELLEZA!
+                          </div>
+
+                          {/* Products Grid */}
+                          <div style={{ display: 'flex', padding: '0 10px', gap: '10px' }}>
+                            {/* Card 1 */}
+                            <div style={{ flex: 1, backgroundColor: activeThemeObj.bg === '#1f2937' ? '#111827' : 'white', borderRadius: '10px', overflow: 'hidden', paddingBottom: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', transition: 'background-color 0.3s ease' }}>
+                              <div style={{ height: '110px', backgroundImage: 'url(https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&w=200&q=80)', backgroundSize: 'cover', backgroundPosition: 'center' }}></div>
+                              <div style={{ padding: '8px' }}>
+                                <div style={{ fontSize: '0.55rem', color: activeThemeObj.text, opacity: 0.6, fontWeight: 'bold', textTransform: 'uppercase' }}>Luxury</div>
+                                <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: activeThemeObj.text, lineHeight: '1.2', marginTop: '2px', height: '28px', overflow: 'hidden' }}>Aceite Almendras 120ml</div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: activeThemeObj.text, opacity: 0.5, marginTop: '5px' }}>$ 8.500</div>
+                                <button style={{ width: '100%', marginTop: '8px', backgroundColor: activeThemeObj.header, border: '1px solid ' + activeThemeObj.accent, padding: '6px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 'bold', color: activeThemeObj.text, cursor: 'pointer', transition: 'all 0.3s ease' }}>Agregar</button>
+                              </div>
+                            </div>
+                            {/* Card 2 */}
+                            <div style={{ flex: 1, backgroundColor: activeThemeObj.bg === '#1f2937' ? '#111827' : 'white', borderRadius: '10px', overflow: 'hidden', paddingBottom: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', transition: 'background-color 0.3s ease' }}>
+                              <div style={{ height: '110px', backgroundImage: 'url(https://images.unsplash.com/photo-1615397323214-e5657788b776?auto=format&fit=crop&w=200&q=80)', backgroundSize: 'cover', backgroundPosition: 'center' }}></div>
+                              <div style={{ padding: '8px' }}>
+                                <div style={{ fontSize: '0.55rem', color: activeThemeObj.text, opacity: 0.6, fontWeight: 'bold', textTransform: 'uppercase' }}>Luxury</div>
+                                <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: activeThemeObj.text, lineHeight: '1.2', marginTop: '2px', height: '28px', overflow: 'hidden' }}>Aceite Naranja 120ml</div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: activeThemeObj.text, opacity: 0.5, marginTop: '5px' }}>$ 8.500</div>
+                                <button style={{ width: '100%', marginTop: '8px', backgroundColor: activeThemeObj.header, border: '1px solid ' + activeThemeObj.accent, padding: '6px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 'bold', color: activeThemeObj.text, opacity: 0.5, transition: 'all 0.3s ease' }}>Agotado</button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Floating Cart Bar */}
+                        <div style={{ position: 'absolute', bottom: '20px', left: '20px', right: '20px', backgroundColor: activeThemeObj.accent, padding: '12px 15px', borderRadius: '15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', transition: 'background-color 0.3s ease' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <ShoppingCart size={18} color={activeThemeObj.btnText} />
+                            <div style={{ backgroundColor: activeThemeObj.btnText === '#000000' ? '#111' : '#fff', color: activeThemeObj.btnText === '#000000' ? '#fff' : '#000', width: '20px', height: '20px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 'bold' }}>1</div>
+                            <strong style={{ fontSize: '0.85rem', color: activeThemeObj.btnText }}>$ 8.500</strong>
+                          </div>
+                          <strong style={{ fontSize: '0.75rem', color: activeThemeObj.btnText, textTransform: 'uppercase' }}>Ver Pedido</strong>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
                 </AnimatePresence>
               </div>
             </motion.div>
@@ -763,7 +949,7 @@ const Home = () => {
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Link to="/registro" className={styles.ctaButton}>
                 <Target size={20} />
-                Comenzar Gratis por 14 Días
+                Comenzar Gratis Ahora
               </Link>
             </motion.div>
           </motion.div>
@@ -782,7 +968,7 @@ const Home = () => {
                 <span>Cobra rápido y sin enredos</span>
               </div>
               <div className={styles.floatGridCard}>
-                <Package size={24} color="#3b82f6" />
+                <Package size={24} color="#02A5E0" />
                 <strong>Inventarios</strong>
                 <span>Alertas y stock en la nube</span>
               </div>
@@ -877,7 +1063,7 @@ const Home = () => {
             >
               <div className={styles.popularBadge}>👑 MÁS POPULAR PARA EMPRENDEDORES</div>
               <div className={styles.planHeader}>
-                <span className={styles.planIcon} style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6' }}>⚡</span>
+                <span className={styles.planIcon} style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#02A5E0' }}>⚡</span>
                 <h3>Plan Estándar</h3>
                 <p className={styles.planDesc}>Ideal para digitalizar y escalar tu tienda</p>
                 <div className={styles.planPriceRow}>
@@ -891,20 +1077,20 @@ const Home = () => {
                 )}
               </div>
               <div className={styles.planCTA}>
-                <Link to="/registro" className={`${styles.planCtaBtn} ${styles.planCtaBtnPopular}`}>Probar Gratis por 14 Días</Link>
+                <Link to="/registro" className={`${styles.planCtaBtn} ${styles.planCtaBtnPopular}`}>Probar Versión Gratuita</Link>
               </div>
               <ul className={styles.planFeaturesList}>
-                <li><CheckCircle size={16} color="#3b82f6" /> 1 Organización</li>
-                <li><CheckCircle size={16} color="#3b82f6" /> Hasta <strong>3 usuarios cajeros</strong></li>
-                <li><CheckCircle size={16} color="#3b82f6" /> <strong>PRODUCTOS ILIMITADOS</strong></li>
-                <li><CheckCircle size={16} color="#3b82f6" /> <strong>VENTAS ILIMITADAS</strong></li>
-                <li><CheckCircle size={16} color="#3b82f6" /> Historial de ventas de por vida</li>
-                <li><CheckCircle size={16} color="#3b82f6" /> Carga de imágenes para productos</li>
-                <li><CheckCircle size={16} color="#3b82f6" /> Importar / Exportar Excel masivo</li>
-                <li><CheckCircle size={16} color="#3b82f6" /> Múltiples métodos de pago y caja</li>
-                <li><CheckCircle size={16} color="#3b82f6" /> Reportes de cierres y finanzas</li>
-                <li><CheckCircle size={16} color="#3b82f6" /> Gestión de roles y permisos</li>
-                <li><CheckCircle size={16} color="#3b82f6" /> Soporte prioritario por Correo</li>
+                <li><CheckCircle size={16} color="#02A5E0" /> 1 Organización</li>
+                <li><CheckCircle size={16} color="#02A5E0" /> Hasta <strong>3 usuarios cajeros</strong></li>
+                <li><CheckCircle size={16} color="#02A5E0" /> <strong>PRODUCTOS ILIMITADOS</strong></li>
+                <li><CheckCircle size={16} color="#02A5E0" /> <strong>VENTAS ILIMITADAS</strong></li>
+                <li><CheckCircle size={16} color="#02A5E0" /> Historial de ventas de por vida</li>
+                <li><CheckCircle size={16} color="#02A5E0" /> Carga de imágenes para productos</li>
+                <li><CheckCircle size={16} color="#02A5E0" /> Importar / Exportar Excel masivo</li>
+                <li><CheckCircle size={16} color="#02A5E0" /> Múltiples métodos de pago y caja</li>
+                <li><CheckCircle size={16} color="#02A5E0" /> Reportes de cierres y finanzas</li>
+                <li><CheckCircle size={16} color="#02A5E0" /> Gestión de roles y permisos</li>
+                <li><CheckCircle size={16} color="#02A5E0" /> Soporte prioritario por Correo</li>
               </ul>
             </motion.div>
 
@@ -950,35 +1136,156 @@ const Home = () => {
         </div>
       </section>
 
-      {/* WHATSAPP SUPPORT CONVERSION BANNER */}
-      <section id="contacto" className={styles.whatsappBannerSection}>
-        <div className={styles.whatsappBannerContainer}>
-          <div className={styles.whatsappBannerContent}>
-            <div className={styles.whatsappIconBig}>
-              <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor">
-                <path d="M12.004 2C6.48 2 2 6.48 2 12.004c0 1.908.533 3.69 1.458 5.214L2 22l4.928-1.428A9.957 9.957 0 0012.004 22c5.52 0 10-4.48 10-10S17.524 2 12.004 2zm5.795 14.197c-.244.686-1.233 1.258-1.795 1.343-.54.085-1.218.157-3.415-.744-2.825-1.157-4.607-4.047-4.75-4.232-.143-.186-1.157-1.545-1.157-2.946 0-1.4.729-2.087.986-2.373.257-.286.558-.358.744-.358.186 0 .372.014.53.028.172.014.386-.057.6-.057.215 0 .415.086.63.586.23.53.772 1.902.844 2.045.072.143.115.315.015.515-.1.2-.15.315-.3.486-.15.172-.315.386-.45.515-.15.143-.308.301-.129.615.18.3.794 1.31 1.702 2.116.78.694 1.442.909 1.758 1.052.315.143.5.122.687-.086.186-.208.787-.915.994-1.23.208-.315.415-.258.701-.15.286.1.18.1.18.1s1.825.9 2.14 1.058c.315.158.53.23.6.358.072.13.072.744-.172 1.43z" />
-              </svg>
-            </div>
-            <div className={styles.whatsappBannerText}>
-              <h3>¿Tienes dudas sobre los planes o necesitas asistencia para empezar?</h3>
-              <p>Hablemos directamente por WhatsApp. Te ayudamos a resolver cualquier duda sobre facturación, límites, o cómo configurar tu negocio sin costo adicional.</p>
-              <div className={styles.whatsappNumberRow}>
-                <span>Línea Directa de Atención:</span>
-                <strong><a href="https://wa.me/573046422366?text=Hola!%20Vengo%20de%20la%20landing%20page%20de%20Crece%2B%20y%20me%20gustar%C3%ADa%20recibir%20m%C3%A1s%20informaci%C3%B3n" target="_blank" rel="noopener noreferrer">+57 304 642 2366</a></strong>
-              </div>
-            </div>
-            <div className={styles.whatsappBannerCTA}>
-              <motion.a
-                href="https://wa.me/573046422366?text=Hola!%20Vengo%20de%20la%20landing%20page%20de%20Crece%2B%20y%20me%20gustar%C3%ADa%20recibir%20m%C3%A1s%20informaci%C3%B3n%20sobre%20el%20sistema%20de%20gesti%C3%B3n."
-                target="_blank"
-                rel="noopener noreferrer"
-                className={styles.whatsappCtaBtn}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+      {/* CONTACT SECTION */}
+      <section id="contacto" className={styles.contactSection}>
+        <div className={styles.contactContainer}>
+          <motion.div
+            className={styles.sectionHeader}
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
+          >
+            <h2>¿Cómo podemos ayudarte?</h2>
+            <p>Estamos aquí para apoyarte en cada etapa de tu crecimiento. Elige el canal que prefieras.</p>
+          </motion.div>
+
+          {/* Department Cards */}
+          <div className={styles.contactDeptGrid}>
+            {[
+              { icon: '🛒', title: 'Ventas', desc: 'Planes, precios y facturación', email: 'ventas@crecemas.co', dept: 'ventas' },
+              { icon: '🛠️', title: 'Soporte Técnico', desc: 'Ayuda con la plataforma', email: 'soporte@crecemas.co', dept: 'soporte' },
+              { icon: '⚖️', title: 'Legal', desc: 'Términos y privacidad', email: 'legal@crecemas.co', dept: 'legal' },
+              { icon: '💬', title: 'Contacto General', desc: 'Cualquier otra consulta', email: 'hola@crecemas.co', dept: 'general' },
+            ].map((dept, i) => (
+              <motion.div
+                key={i}
+                className={styles.contactDeptCard}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: i * 0.1 }}
+                viewport={{ once: true }}
+                whileHover={{ y: -5, borderColor: 'rgba(2, 165, 224, 0.5)' }}
+                onClick={() => setContactForm(f => ({ ...f, department: dept.dept }))}
               >
-                💬 Chatear con Soporte Ventas
-              </motion.a>
-            </div>
+                <span className={styles.deptCardIcon}>{dept.icon}</span>
+                <h4>{dept.title}</h4>
+                <p>{dept.desc}</p>
+                <a href={`mailto:${dept.email}`} className={styles.deptCardEmail} onClick={e => e.stopPropagation()}>{dept.email}</a>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Form + WhatsApp row */}
+          <div className={styles.contactMainRow}>
+            {/* Contact Form */}
+            <motion.div
+              className={styles.contactFormBox}
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6 }}
+              viewport={{ once: true }}
+            >
+              <h3 className={styles.contactFormTitle}><Mail size={20} /> Envíanos un mensaje</h3>
+              <form onSubmit={handleContactSubmit} className={styles.contactForm}>
+                <div className={styles.contactInputsRow}>
+                  <input
+                    type="text"
+                    placeholder="Tu nombre"
+                    value={contactForm.name}
+                    onChange={e => setContactForm(f => ({ ...f, name: e.target.value }))}
+                    required
+                    className={styles.contactInput}
+                    id="contact-name"
+                  />
+                  <input
+                    type="email"
+                    placeholder="Tu correo electrónico"
+                    value={contactForm.email}
+                    onChange={e => setContactForm(f => ({ ...f, email: e.target.value }))}
+                    required
+                    className={styles.contactInput}
+                    id="contact-email"
+                  />
+                </div>
+                <select
+                  value={contactForm.department}
+                  onChange={e => setContactForm(f => ({ ...f, department: e.target.value }))}
+                  className={styles.contactSelect}
+                  id="contact-department"
+                >
+                  <option value="soporte">🛠️ Soporte Técnico</option>
+                  <option value="ventas">🛒 Ventas y Planes</option>
+                  <option value="legal">⚖️ Legal</option>
+                  <option value="general">💬 Consulta General</option>
+                </select>
+                <textarea
+                  placeholder="¿En qué podemos ayudarte? Cuéntanos con detalle..."
+                  value={contactForm.message}
+                  onChange={e => setContactForm(f => ({ ...f, message: e.target.value }))}
+                  required
+                  rows={4}
+                  className={styles.contactTextarea}
+                  id="contact-message"
+                />
+                {contactSuccess && (
+                  <div className={styles.contactSuccess}>
+                    <CheckCircle size={16} /> {contactSuccess}
+                  </div>
+                )}
+                {contactError && (
+                  <div className={styles.contactErrorMsg}>{contactError}</div>
+                )}
+                <motion.button
+                  type="submit"
+                  className={styles.contactSubmitBtn}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  disabled={contactLoading}
+                  id="contact-submit"
+                >
+                  {contactLoading ? 'Enviando...' : <><Send size={16} /> Enviar mensaje</>}
+                </motion.button>
+              </form>
+            </motion.div>
+
+            {/* WhatsApp CTA */}
+            <motion.div
+              className={styles.contactWaBox}
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6 }}
+              viewport={{ once: true }}
+            >
+              <div className={styles.waBoxInner}>
+                <div className={styles.waIconBig}>
+                  <svg viewBox="0 0 24 24" width="52" height="52" fill="currentColor">
+                    <path d="M12.004 2C6.48 2 2 6.48 2 12.004c0 1.908.533 3.69 1.458 5.214L2 22l4.928-1.428A9.957 9.957 0 0012.004 22c5.52 0 10-4.48 10-10S17.524 2 12.004 2zm5.795 14.197c-.244.686-1.233 1.258-1.795 1.343-.54.085-1.218.157-3.415-.744-2.825-1.157-4.607-4.047-4.75-4.232-.143-.186-1.157-1.545-1.157-2.946 0-1.4.729-2.087.986-2.373.257-.286.558-.358.744-.358.186 0 .372.014.53.028.172.014.386-.057.6-.057.215 0 .415.086.63.586.23.53.772 1.902.844 2.045.072.143.115.315.015.515-.1.2-.15.315-.3.486-.15.172-.315.386-.45.515-.15.143-.308.301-.129.615.18.3.794 1.31 1.702 2.116.78.694 1.442.909 1.758 1.052.315.143.5.122.687-.086.186-.208.787-.915.994-1.23.208-.315.415-.258.701-.15.286.1.18.1.18.1s1.825.9 2.14 1.058c.315.158.53.23.6.358.072.13.072.744-.172 1.43z" />
+                  </svg>
+                </div>
+                <h3>¿Prefieres WhatsApp?</h3>
+                <p>Habla con nuestro equipo en tiempo real. Respondemos en minutos durante horario hábil.</p>
+                <div className={styles.waNumberRow}>
+                  <Phone size={18} color="#22c55e" />
+                  <strong>+57 304 642 2366</strong>
+                </div>
+                <motion.a
+                  href="https://wa.me/573046422366?text=Hola!%20Vengo%20de%20la%20landing%20page%20de%20Crece%2B%20y%20me%20gustar%C3%ADa%20recibir%20m%C3%A1s%20informaci%C3%B3n%20sobre%20el%20sistema%20de%20gesti%C3%B3n."
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.waCtaBtn}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  💬 Chatear por WhatsApp
+                </motion.a>
+                <div className={styles.waOrSeparator}><span>o escríbenos directamente</span></div>
+                <div className={styles.waEmailLinks}>
+                  <a href="mailto:hola@crecemas.co"><Mail size={14} /> hola@crecemas.co</a>
+                  <a href="mailto:soporte@crecemas.co"><Mail size={14} /> soporte@crecemas.co</a>
+                </div>
+              </div>
+            </motion.div>
           </div>
         </div>
       </section>
@@ -994,7 +1301,7 @@ const Home = () => {
             viewport={{ once: true }}
           >
             <h2>¿Listo para organizar tu negocio y empezar a crecer?</h2>
-            <p>Regístrate en menos de 1 minuto y obtén 14 días gratis en nuestro Plan Estándar. Sin contratos forzosos. Cancela o cambia de plan cuando quieras.</p>
+            <p>Regístrate en menos de 1 minuto y obtén acceso inmediato a nuestra Versión Gratuita. Pásate a un plan Premium cuando tu negocio lo necesite.</p>
           </motion.div>
         </div>
       </section>
@@ -1015,22 +1322,26 @@ const Home = () => {
             <a href="#funcionalidades">Funcionalidades</a>
             <a href="#visuales">Ejemplos</a>
             <a href="#precios">Precios y Planes</a>
-            <a href="#contacto">Soporte por WhatsApp</a>
+            <a href="#contacto">Contacto y Soporte</a>
           </div>
 
           <div className={styles.footerContactCol}>
             <h4>Contacto Oficial</h4>
             <div className={styles.contactItem}>
               <MessageCircle size={16} color="#22c55e" />
-              <span>WhatsApp Ventas: <a href="https://wa.me/573046422366?text=Hola!%20Vengo%20de%20la%20landing%20page%20de%20Crece%2B%20y%20me%20gustar%C3%ADa%20recibir%20m%C3%A1s%20informaci%C3%B3n" target="_blank" rel="noopener noreferrer" className={styles.footerPhoneLink}>304 642 2366</a></span>
+              <span>WhatsApp: <a href="https://wa.me/573046422366" target="_blank" rel="noopener noreferrer" className={styles.footerPhoneLink}>304 642 2366</a></span>
             </div>
             <div className={styles.contactItem}>
-              <Shield size={16} />
-              <span>Datos 100% Protegidos</span>
+              <Mail size={16} color="#02A5E0" />
+              <a href="mailto:soporte@crecemas.co" className={styles.footerPhoneLink}>soporte@crecemas.co</a>
+            </div>
+            <div className={styles.contactItem}>
+              <Mail size={16} color="#fbbf24" />
+              <a href="mailto:ventas@crecemas.co" className={styles.footerPhoneLink}>ventas@crecemas.co</a>
             </div>
             <div className={styles.contactItem}>
               <Globe size={16} />
-              <span>Sede: Colombia</span>
+              <span>crecemas.co — Colombia</span>
             </div>
           </div>
         </div>

@@ -47,7 +47,7 @@ const styles = {
   },
   header: {
     padding: '32px',
-    background: 'linear-gradient(135deg, #eff6ff 0%, #e0e7ff 100%)',
+    background: 'linear-gradient(135deg, #FFFFFF 0%, #e0e7ff 100%)',
     borderBottom: '1px solid #e5e7eb'
   },
   headerContent: {
@@ -57,7 +57,7 @@ const styles = {
   },
   headerIcon: {
     padding: '16px',
-    backgroundColor: '#2563eb',
+    backgroundColor: '#02A5E0',
     borderRadius: '50%',
     display: 'flex',
     alignItems: 'center',
@@ -168,7 +168,7 @@ const styles = {
   checkbox: {
     width: '24px',
     height: '24px',
-    accentColor: '#2563eb',
+    accentColor: '#02A5E0',
     cursor: 'pointer'
   },
   checkboxLabel: {
@@ -184,7 +184,7 @@ const styles = {
   },
   confirmationBox: {
     padding: '16px',
-    backgroundColor: '#eff6ff',
+    backgroundColor: '#FFFFFF',
     border: '1px solid #bfdbfe',
     borderRadius: '12px',
     marginBottom: '24px',
@@ -201,7 +201,7 @@ const styles = {
   },
   confirmationSubtext: {
     fontSize: '14px',
-    color: '#1d4ed8',
+    color: '#004481',
     margin: 0
   },
   footerActions: {
@@ -217,7 +217,7 @@ const styles = {
   },
   submitButton: {
     padding: '16px 32px',
-    backgroundColor: '#2563eb',
+    backgroundColor: '#02A5E0',
     color: '#ffffff',
     borderRadius: '12px',
     border: 'none',
@@ -240,7 +240,7 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     padding: '10px 14px',
-    backgroundColor: '#eff6ff',
+    backgroundColor: '#FFFFFF',
     border: '1px solid #bfdbfe',
     borderRadius: '10px',
     marginBottom: 0,
@@ -333,10 +333,10 @@ const styles = {
   },
   infoMessage: {
     marginTop: '10px',
-    color: '#2563eb',
+    color: '#02A5E0',
     fontSize: '14px',
     textAlign: 'center',
-    background: '#eff6ff',
+    background: '#FFFFFF',
     borderRadius: '8px',
     padding: '8px 12px',
     border: '1px solid #bfdbfe',
@@ -438,7 +438,7 @@ const LegalAcceptanceModal = ({ missingDocuments, open, onAcceptAll, onRefresh }
       return <CheckCircle size={28} color="#16a34a" />;
     }
     switch (type) {
-      case 'TERMS': return <FileText size={28} color="#2563eb" />;
+      case 'TERMS': return <FileText size={28} color="#02A5E0" />;
       case 'PRIVACY': return <Shield size={28} color="#16a34a" />;
       case 'DATA_POLICY': return <Database size={28} color="#7c3aed" />;
       case 'SUBSCRIPTION': return <Bookmark size={28} color="#ea580c" />;
@@ -490,7 +490,7 @@ const LegalAcceptanceModal = ({ missingDocuments, open, onAcceptAll, onRefresh }
           
           <div style={styles.checkboxContainer}>
             {isAccepted && (
-              <CheckCircle size={24} color="#2563eb" />
+              <CheckCircle size={24} color="#02A5E0" />
             )}
           </div>
         </div>

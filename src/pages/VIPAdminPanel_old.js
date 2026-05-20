@@ -51,7 +51,7 @@ const PLANES_DISPONIBLES = [
   { 
     slug: 'enterprise', 
     name: 'Empresarial', 
-    color: '#3b82f6',
+    color: '#02A5E0',
     icon: Building2,
     price: 99000,
     description: 'Solución empresarial completa'

@@ -38,7 +38,7 @@ const LoadingFallback = () => (
     justifyContent: 'center',
     alignItems: 'center',
     height: '100vh',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    background: 'linear-gradient(135deg, #004481 0%, #02A5E0 100%)',
     color: 'white',
     fontSize: '1.5rem',
     fontWeight: '600'

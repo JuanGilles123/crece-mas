@@ -162,7 +162,7 @@
 .orden-compra-form-group select:focus,
 .orden-compra-form-group textarea:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: #02A5E0;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
@@ -233,7 +233,7 @@
 .items-table input:focus,
 .items-table select:focus {
   outline: 1px solid #93c5fd;
-  border-color: #3b82f6;
+  border-color: #02A5E0;
 }
 
 .items-table input.readonly {
@@ -337,8 +337,8 @@
 }
 
 .total-item.total-final {
-  background: #eff6ff;
-  border: 2px solid #3b82f6;
+  background: #FFFFFF;
+  border: 2px solid #02A5E0;
 }
 
 .total-item.total-final label,
@@ -355,7 +355,7 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.625rem 1rem;
-  background: #3b82f6;
+  background: #02A5E0;
   color: white;
   border: none;
   border-radius: 6px;
@@ -367,7 +367,7 @@
 
 .btn-buscar-productos:hover,
 .btn-add-item:hover {
-  background: #2563eb;
+  background: #02A5E0;
 }
 
 /* Productos búsqueda modal */
@@ -460,8 +460,8 @@
 }
 
 .producto-busqueda-item.seleccionado {
-  background: #eff6ff;
-  border-color: #3b82f6;
+  background: #FFFFFF;
+  border-color: #02A5E0;
 }
 
 .productos-busqueda-checkbox {
@@ -476,8 +476,8 @@
 }
 
 .producto-busqueda-item.seleccionado .productos-busqueda-checkbox {
-  background: #3b82f6;
-  border-color: #3b82f6;
+  background: #02A5E0;
+  border-color: #02A5E0;
   color: white;
 }
 
@@ -512,7 +512,7 @@
 
 .btn-agregar-seleccionados {
   padding: 0.625rem 1.25rem;
-  background: #3b82f6;
+  background: #02A5E0;
   color: white;
   border: none;
   border-radius: 6px;
@@ -576,12 +576,12 @@
 }
 
 .btn-primary {
-  background: #3b82f6;
+  background: #02A5E0;
   color: white;
 }
 
 .btn-primary:hover {
-  background: #2563eb;
+  background: #02A5E0;
 }
 
 .btn-primary:disabled {
@@ -906,5 +906,5 @@
 .validacion-table input[type="number"]:focus,
 .validacion-table input[type="text"]:focus {
   outline: 1px solid #93c5fd;
-  border-color: #3b82f6;
+  border-color: #02A5E0;
 }

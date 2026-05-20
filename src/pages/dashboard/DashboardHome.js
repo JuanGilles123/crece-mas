@@ -365,7 +365,7 @@ const DashboardHome = () => {
 
   const accesosRapidos = [
     { icon: ShoppingCart, label: 'Caja', path: '/dashboard/caja', color: '#8B5CF6' },
-    { icon: Package, label: 'Inventario', path: '/dashboard/inventario', color: '#3B82F6' },
+    { icon: Package, label: 'Inventario', path: '/dashboard/inventario', color: '#02A5E0' },
     ...(pedidosHabilitados
       ? [{ icon: ClipboardList, label: 'Pedidos', path: '/dashboard/tomar-pedido', color: '#06B6D4' }]
       : [{ icon: TrendingUp, label: 'Resumen Ventas', path: '/dashboard/resumen-ventas', color: '#10B981' }]

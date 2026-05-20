@@ -717,8 +717,8 @@
 }
 
 .btn-cantidad:hover {
-  background: #2563eb;
-  border-color: #2563eb;
+  background: #02A5E0;
+  border-color: #02A5E0;
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
@@ -1507,8 +1507,8 @@
 }
 
 .dark .btn-cantidad:hover {
-  background: #2563eb;
-  border-color: #2563eb;
+  background: #02A5E0;
+  border-color: #02A5E0;
 }
 
 .dark .btn-eliminar {

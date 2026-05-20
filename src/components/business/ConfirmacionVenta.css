@@ -113,7 +113,7 @@
 }
 
 .spinner-icon {
-  color: #3b82f6;
+  color: #02A5E0;
   animation: spin 1s linear infinite;
 }
 
@@ -194,7 +194,7 @@
 
 /* Botón continuar */
 .confirmacion-venta-continue {
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, #004481 0%, #02A5E0 100%);
   color: var(--text-inverse);
   border: none;
   border-radius: 0.75rem;
@@ -208,7 +208,7 @@
 }
 
 .confirmacion-venta-continue:hover {
-  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+  background: linear-gradient(135deg, #02A5E0 0%, #1e40af 100%);
   box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
 }
 
@@ -220,7 +220,7 @@
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, #3b82f6, #10b981, #f59e0b, #ef4444);
+  background: linear-gradient(90deg, #02A5E0, #10b981, #f59e0b, #ef4444);
   background-size: 300% 100%;
   animation: gradientShift 3s ease-in-out infinite;
 }

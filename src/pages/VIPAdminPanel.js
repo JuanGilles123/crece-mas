@@ -347,7 +347,7 @@ const VIPAdminPanel = () => {
     const colors = {
       free: '#8b5cf6',
       professional: '#10b981',
-      enterprise: '#3b82f6',
+      enterprise: '#02A5E0',
       custom: '#f59e0b'
     };
     return colors[slug] || '#6b7280';
@@ -429,7 +429,7 @@ const VIPAdminPanel = () => {
 
           <motion.div className="stat-card" whileHover={{ scale: 1.02 }}>
             <div className="stat-icon" style={{ background: 'rgba(59, 130, 246, 0.2)' }}>
-              <Sparkles size={24} color="#3b82f6" />
+              <Sparkles size={24} color="#02A5E0" />
             </div>
             <div className="stat-content">
               <span className="stat-value">{stats.premiumOrgs}</span>

@@ -322,8 +322,8 @@
 }
 
 .venta-badge.modificada {
-  background: #dbeafe;
-  color: #2563eb;
+  background: #E6F0FF;
+  color: #02A5E0;
 }
 
 .venta-badge.historial {
@@ -407,12 +407,12 @@
 }
 
 .btn-view {
-  color: #3b82f6;
-  border-color: #3b82f6;
+  color: #02A5E0;
+  border-color: #02A5E0;
 }
 
 .btn-view:hover {
-  background: #eff6ff;
+  background: #FFFFFF;
 }
 
 .btn-print {
@@ -612,7 +612,7 @@
   flex-shrink: 0;
   margin: 0;
   padding: 0;
-  accent-color: #3b82f6;
+  accent-color: #02A5E0;
   pointer-events: auto;
   position: relative;
   z-index: 10;
@@ -774,7 +774,7 @@ input.qty-input::-webkit-outer-spin-button {
 
 .qty-input:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: #02A5E0;
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
 }
 

@@ -255,7 +255,7 @@ serve(async (req) => {
         const updateData: any = {
           status: 'approved', // Cambiado de 'completed' a 'approved' para cumplir con la constraint
           wompi_transaction_id: transactionId,
-          completed_at: new Date().toISOString(),
+          payment_date: new Date().toISOString(),
         }
         
         // Actualizar reference si no estaba guardado o es diferente
@@ -290,12 +290,13 @@ serve(async (req) => {
           periodEnd.setMonth(periodEnd.getMonth() + 1)
         }
 
-        // Verificar si ya existe una suscripción activa
+        // Verificar si ya existe una suscripción (de cualquier estado)
         const { data: existingSub, error: existingSubError } = await supabaseClient
           .from('subscriptions')
           .select('id, plan_id')
           .eq('organization_id', payment.organization_id)
-          .eq('status', 'active')
+          .order('created_at', { ascending: false })
+          .limit(1)
           .maybeSingle()
 
         if (existingSubError && existingSubError.code !== 'PGRST116') {
@@ -311,8 +312,11 @@ serve(async (req) => {
             .from('subscriptions')
             .update({
               plan_id: payment.plan_id,
+              status: 'active', // Reactivar
               current_period_start: now.toISOString(),
               current_period_end: periodEnd.toISOString(),
+              cancel_at_period_end: false,
+              wompi_subscription_id: transactionId,
               updated_at: new Date().toISOString(),
             })
             .eq('id', existingSub.id)
@@ -405,7 +409,7 @@ serve(async (req) => {
                 startDate,
                 endDate,
                 status: 'activa',
-                dashboardUrl: 'https://creceplus.app/dashboard',
+                dashboardUrl: 'https://crecemas.co/dashboard',
               })
 
               await sendEmail({
@@ -428,7 +432,7 @@ serve(async (req) => {
           .from('payments')
           .update({
             status: 'failed',
-            completed_at: new Date().toISOString(),
+            payment_date: new Date().toISOString(),
           })
           .eq('id', payment.id)
 
@@ -439,7 +443,7 @@ serve(async (req) => {
             if (ownerEmail) {
               const html = renderSubscriptionPaymentFailed({
                 name: orgName,
-                supportUrl: 'https://creceplus.app/soporte',
+                supportUrl: 'https://crecemas.co/soporte',
               })
 
               await sendEmail({
@@ -462,7 +466,7 @@ serve(async (req) => {
           .from('payments')
           .update({
             status: 'cancelled',
-            completed_at: new Date().toISOString(),
+            payment_date: new Date().toISOString(),
           })
           .eq('id', payment.id)
       }

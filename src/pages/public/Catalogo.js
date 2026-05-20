@@ -864,13 +864,13 @@ const Catalogo = () => {
         <div className="footer-creceplus-promo">
           <div className="promo-divider" />
           <p className="promo-subtitle">¿Quieres controlar tu inventario, registrar ventas y tener un catálogo como este?</p>
-          <a href="https://creceplus.app" target="_blank" rel="noreferrer" className="promo-button">
+          <a href="https://crecemas.co" target="_blank" rel="noreferrer" className="promo-button">
             <Sparkles size={14} className="sparkle-icon" />
-            <span>Potencia tu negocio gratis con <strong>creceplus.app</strong></span>
+            <span>Potencia tu negocio gratis con <strong>crecemas.co</strong></span>
             <ArrowRight size={14} className="arrow-icon" />
           </a>
           <p className="footer-credits">
-            Desarrollado y Potenciado por <a href="https://creceplus.app" target="_blank" rel="noreferrer"><strong>CrecePlus.app</strong></a>
+            Desarrollado y Potenciado por <a href="https://crecemas.co" target="_blank" rel="noreferrer"><strong>CreceMás.co</strong></a>
           </p>
         </div>
       </footer>

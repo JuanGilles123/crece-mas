@@ -121,8 +121,8 @@
 }
 
 .variacion-option.selected {
-  border-color: #3b82f6;
-  background: #eff6ff;
+  border-color: #02A5E0;
+  background: #FFFFFF;
 }
 
 .variacion-option input[type="radio"],
@@ -131,7 +131,7 @@
   cursor: pointer;
   width: 18px;
   height: 18px;
-  accent-color: #3b82f6;
+  accent-color: #02A5E0;
   flex-shrink: 0;
 }
 
@@ -225,7 +225,7 @@
 
 .variacion-selecciones-count {
   font-weight: 600;
-  color: #3b82f6;
+  color: #02A5E0;
 }
 
 .variacion-checkbox-group {
@@ -253,8 +253,8 @@
 }
 
 .variacion-checkbox-option:has(input:checked) {
-  border-color: #3b82f6;
-  background: #eff6ff;
+  border-color: #02A5E0;
+  background: #FFFFFF;
 }
 
 .variacion-checkbox-option input[type="checkbox"] {
@@ -262,7 +262,7 @@
   cursor: pointer;
   width: 18px;
   height: 18px;
-  accent-color: #3b82f6;
+  accent-color: #02A5E0;
   flex-shrink: 0;
 }
 

@@ -61,17 +61,7 @@ const LoginEmpleado = () => {
 
   return (
     <div className={styles.container}>
-      <motion.div 
-        className={styles.backButton}
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 0.2 }}
-      >
-        <Link to="/" className={styles.backLink}>
-          <ArrowLeft size={20} />
-          Volver al inicio
-        </Link>
-      </motion.div>
+
 
       <div className={styles.content}>
         {/* Panel izquierdo con información para empleados */}
@@ -81,6 +71,19 @@ const LoginEmpleado = () => {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.6 }}
         >
+          {/* Botón de regreso */}
+          <motion.div 
+            className={styles.backButton}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <Link to="/" className={styles.backLink}>
+              <ArrowLeft size={20} />
+              Volver al inicio
+            </Link>
+          </motion.div>
+
           <div className={styles.logo}>
             <img
               src="/logo-crece.svg"
@@ -96,22 +99,22 @@ const LoginEmpleado = () => {
           </p>
           
           <div className={styles.features}>
-            <div className={styles.feature} style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.08)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.15)', transition: 'all 0.3s ease' }}>
-              <ShoppingBag size={28} style={{ flexShrink: 0, marginTop: '0.2rem' }} />
+            <div className={styles.feature} style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.4)', borderRadius: '1rem', border: '1px solid rgba(6,47,135,0.1)', transition: 'all 0.3s ease' }}>
+              <ShoppingBag size={28} style={{ flexShrink: 0, marginTop: '0.2rem', color: '#111827' }} />
               <div>
                 <strong style={{ display: 'block', fontSize: '1.05rem', marginBottom: '0.25rem' }}>Atención al Cliente POS</strong>
                 <span style={{ fontSize: '0.9rem', opacity: 0.85, lineHeight: '1.4' }}>Registra productos en segundos, aplica descuentos y completa transacciones al instante.</span>
               </div>
             </div>
-            <div className={styles.feature} style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.08)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.15)', transition: 'all 0.3s ease' }}>
-              <Clock size={28} style={{ flexShrink: 0, marginTop: '0.2rem' }} />
+            <div className={styles.feature} style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.4)', borderRadius: '1rem', border: '1px solid rgba(6,47,135,0.1)', transition: 'all 0.3s ease' }}>
+              <Clock size={28} style={{ flexShrink: 0, marginTop: '0.2rem', color: '#111827' }} />
               <div>
                 <strong style={{ display: 'block', fontSize: '1.05rem', marginBottom: '0.25rem' }}>Cierre y Control del Turno</strong>
                 <span style={{ fontSize: '0.9rem', opacity: 0.85, lineHeight: '1.4' }}>Haz tus entregas de turno de manera impecable y sin dolores de cabeza por descuadres.</span>
               </div>
             </div>
-            <div className={styles.feature} style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.08)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.15)', transition: 'all 0.3s ease' }}>
-              <Smartphone size={28} style={{ flexShrink: 0, marginTop: '0.2rem' }} />
+            <div className={styles.feature} style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.4)', borderRadius: '1rem', border: '1px solid rgba(6,47,135,0.1)', transition: 'all 0.3s ease' }}>
+              <Smartphone size={28} style={{ flexShrink: 0, marginTop: '0.2rem', color: '#111827' }} />
               <div>
                 <strong style={{ display: 'block', fontSize: '1.05rem', marginBottom: '0.25rem' }}>Sincronización en la Nube</strong>
                 <span style={{ fontSize: '0.9rem', opacity: 0.85, lineHeight: '1.4' }}>Tus ventas se actualizan automáticamente para que el administrador las vea en tiempo real.</span>
@@ -119,9 +122,9 @@ const LoginEmpleado = () => {
             </div>
           </div>
 
-          <div style={{ marginTop: '2.5rem', padding: '1.25rem', background: 'rgba(255,255,255,0.12)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.22)', fontSize: '0.95rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+          <div style={{ marginTop: '2.5rem', padding: '1.25rem', background: 'rgba(255,255,255,0.5)', borderRadius: '1rem', border: '1px solid rgba(6,47,135,0.15)', fontSize: '0.95rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', color: '#111827' }}>
             <span>💬 ¿Tienes dudas sobre tu usuario o código de acceso?</span>
-            <strong>Consulta a tu administrador o escríbenos al WhatsApp: <a href="https://wa.me/573046422366" target="_blank" rel="noopener noreferrer" style={{ color: '#ffffff', textDecoration: 'underline', fontWeight: 'bold' }}>304 642 2366</a></strong>
+            <strong>Consulta a tu administrador o escríbenos al WhatsApp: <a href="https://wa.me/573046422366" target="_blank" rel="noopener noreferrer" style={{ color: '#111827', textDecoration: 'underline', fontWeight: 'bold' }}>304 642 2366</a></strong>
           </div>
         </motion.div>
 

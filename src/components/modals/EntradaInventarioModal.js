@@ -1919,7 +1919,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
                               justifyContent: 'center',
                               borderRadius: '4px',
                               marginLeft: '4px',
-                              color: producto.precios_vinculados !== false ? 'var(--accent-primary, #3b82f6)' : '#94a3b8',
+                              color: producto.precios_vinculados !== false ? 'var(--accent-primary, #02A5E0)' : '#94a3b8',
                               transition: 'all 0.2s'
                             }}
                           >
@@ -2082,12 +2082,12 @@ const EntradaInventarioModal = ({ open, onClose }) => {
                         flex: 1,
                         padding: '0.75rem',
                         border: '2px solid',
-                        borderColor: tipoPago === 'credito' ? '#3b82f6' : '#e5e7eb',
-                        background: tipoPago === 'credito' ? '#eff6ff' : '#fff',
+                        borderColor: tipoPago === 'credito' ? '#02A5E0' : '#e5e7eb',
+                        background: tipoPago === 'credito' ? '#FFFFFF' : '#fff',
                         borderRadius: '8px',
                         cursor: proveedorSeleccionado ? 'pointer' : 'not-allowed',
                         fontWeight: tipoPago === 'credito' ? 600 : 400,
-                        color: tipoPago === 'credito' ? '#3b82f6' : '#374151',
+                        color: tipoPago === 'credito' ? '#02A5E0' : '#374151',
                         transition: 'all 0.2s',
                         opacity: proveedorSeleccionado ? 1 : 0.5
                       }}
@@ -2170,7 +2170,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
                       gap: '0.75rem', 
                       padding: '1rem', 
                       background: afectaCaja ? '#fff7ed' : '#f0f9ff',
-                      border: `2px solid ${afectaCaja ? '#fb923c' : '#3b82f6'}`,
+                      border: `2px solid ${afectaCaja ? '#fb923c' : '#02A5E0'}`,
                       borderRadius: '12px',
                       cursor: 'pointer',
                       userSelect: 'none',
@@ -2184,7 +2184,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
                       width: '24px',
                       height: '24px',
                       borderRadius: '6px',
-                      border: `2px solid ${afectaCaja ? '#fb923c' : '#3b82f6'}`,
+                      border: `2px solid ${afectaCaja ? '#fb923c' : '#02A5E0'}`,
                       background: afectaCaja ? '#fb923c' : 'white',
                       display: 'flex',
                       alignItems: 'center',
@@ -2206,7 +2206,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
                         )}
                       </div>
 
-                      <div style={{ fontSize: '0.8rem', color: afectaCaja ? '#c2410c' : '#1e3a8a', lineHeight: '1.3', fontWeight: 500 }}>
+                      <div style={{ fontSize: '0.8rem', color: afectaCaja ? '#c2410c' : '#2E2E2E', lineHeight: '1.3', fontWeight: 500 }}>
                         {afectaCaja 
                           ? 'El valor se restará del saldo final en el cierre de caja de hoy.' 
                           : 'Para que este gasto reste dinero de tu caja hoy, debes marcar esta casilla.'}

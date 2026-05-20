@@ -73,7 +73,7 @@ const ROLES = {
   admin: {
     label: 'Administrador',
     icon: <Shield size={16} />,
-    color: '#3B82F6',
+    color: '#02A5E0',
     description: 'Gestión completa excepto facturación'
   },
   inventory_manager: {

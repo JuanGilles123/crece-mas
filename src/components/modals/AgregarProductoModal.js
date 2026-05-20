@@ -350,7 +350,7 @@ const AgregarProductoModal = ({ open, onClose, onProductoAgregado, moneda }) => 
                 disabled={!puedeSubirImagenes}
                 style={!puedeSubirImagenes ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
               >
-                <svg width="22" height="22" fill="none" viewBox="0 0 24 24"><path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /><rect x="4" y="16" width="16" height="4" rx="2" fill="#2563eb" fillOpacity=".08" /></svg>
+                <svg width="22" height="22" fill="none" viewBox="0 0 24 24"><path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke="#02A5E0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /><rect x="4" y="16" width="16" height="4" rx="2" fill="#02A5E0" fillOpacity=".08" /></svg>
                 {imagen ? imagen.name : puedeSubirImagenes ? 'Seleccionar imagen' : '🔒 Bloqueado'}
               </button>
               <input type="file" accept="image/*" onChange={handleImagenChange} ref={fileInputRef} style={{ display: 'none' }} disabled={!puedeSubirImagenes} />

@@ -49,7 +49,7 @@ serve(async (req) => {
 
     const html = renderWelcome({
       name: resolvedName || 'Hola',
-      dashboardUrl: 'https://creceplus.app/dashboard',
+      dashboardUrl: 'https://crecemas.co/dashboard',
     })
 
     const result = await sendEmail({

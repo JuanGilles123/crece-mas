@@ -742,7 +742,7 @@ ${esCotizacion ? '\n📋 COTIZACIÓN — Pendiente de pago' : `\n💳 Método: $
                                   )}
                                   {item.metadata.jewelry_material_type && item.metadata.jewelry_material_type !== 'na' && (
                                     <span style={{
-                                      backgroundColor: item.metadata.jewelry_material_type === 'local' ? '#fef3c7' : '#dbeafe',
+                                      backgroundColor: item.metadata.jewelry_material_type === 'local' ? '#fef3c7' : '#E6F0FF',
                                       color: item.metadata.jewelry_material_type === 'local' ? '#92400e' : '#1e40af',
                                       padding: '0.1rem 0.3rem',
                                       borderRadius: '3px',

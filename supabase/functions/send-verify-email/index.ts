@@ -32,7 +32,7 @@ serve(async (req) => {
     const email = String(body?.email || '').trim()
     const userId = body?.userId ? String(body.userId) : null
     const redirectTo = String(body?.redirectTo || '').trim()
-    const appBaseUrl = Deno.env.get('APP_BASE_URL') || 'https://creceplus.app'
+    const appBaseUrl = Deno.env.get('APP_BASE_URL') || 'https://crecemas.co'
     const safeRedirect = redirectTo || appBaseUrl
 
     if (!email && !userId) {

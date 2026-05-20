@@ -295,7 +295,7 @@ const GastoVariableModal = ({ open, onClose, gasto = null, aperturaActiva = null
                 gap: '0.75rem', 
                 padding: '1rem', 
                 background: watch('afecta_caja') ? '#fff7ed' : '#f0f9ff',
-                border: `2px solid ${watch('afecta_caja') ? '#fb923c' : '#3b82f6'}`,
+                border: `2px solid ${watch('afecta_caja') ? '#fb923c' : '#02A5E0'}`,
                 borderRadius: '10px',
                 cursor: 'pointer',
                 transition: 'all 0.2s'
@@ -309,7 +309,7 @@ const GastoVariableModal = ({ open, onClose, gasto = null, aperturaActiva = null
                   <span style={{ fontSize: '0.875rem', fontWeight: 800, color: watch('afecta_caja') ? '#9a3412' : '#1e40af' }}>
                     {watch('afecta_caja') ? '✅ SE DESCONTARÁ DE LA CAJA' : '⬜ NO DESCONTAR DE CAJA (Marcar para incluir)'}
                   </span>
-                  <span style={{ fontSize: '0.75rem', color: watch('afecta_caja') ? '#c2410c' : '#1e3a8a', fontWeight: 500 }}>
+                  <span style={{ fontSize: '0.75rem', color: watch('afecta_caja') ? '#c2410c' : '#2E2E2E', fontWeight: 500 }}>
                     {watch('afecta_caja') 
                       ? 'El dinero se restará del saldo en el cierre de caja de hoy.' 
                       : 'Para que este gasto reste dinero de tu caja hoy, debes marcar esta casilla.'}

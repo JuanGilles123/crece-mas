@@ -346,7 +346,7 @@ const PagoProveedorModal = ({ open, onClose, creditoId = null, aperturaActiva = 
                   gap: '0.75rem', 
                   padding: '1rem', 
                   background: afectaCaja ? '#fff7ed' : '#f0f9ff',
-                  border: `2px solid ${afectaCaja ? '#fb923c' : '#3b82f6'}`,
+                  border: `2px solid ${afectaCaja ? '#fb923c' : '#02A5E0'}`,
                   borderRadius: '10px',
                   cursor: 'pointer',
                   transition: 'all 0.2s'
@@ -355,7 +355,7 @@ const PagoProveedorModal = ({ open, onClose, creditoId = null, aperturaActiva = 
                     width: '24px',
                     height: '24px',
                     borderRadius: '6px',
-                    border: `2px solid ${afectaCaja ? '#fb923c' : '#3b82f6'}`,
+                    border: `2px solid ${afectaCaja ? '#fb923c' : '#02A5E0'}`,
                     background: afectaCaja ? '#fb923c' : 'white',
                     display: 'flex',
                     alignItems: 'center',
@@ -368,7 +368,7 @@ const PagoProveedorModal = ({ open, onClose, creditoId = null, aperturaActiva = 
                     <span style={{ fontSize: '0.875rem', fontWeight: 800, color: afectaCaja ? '#9a3412' : '#1e40af' }}>
                       {afectaCaja ? '✅ SE DESCONTARÁ DE LA CAJA' : '⬜ NO DESCONTAR DE CAJA (Marcar para incluir)'}
                     </span>
-                    <span style={{ fontSize: '0.75rem', color: afectaCaja ? '#c2410c' : '#1e3a8a', fontWeight: 500 }}>
+                    <span style={{ fontSize: '0.75rem', color: afectaCaja ? '#c2410c' : '#2E2E2E', fontWeight: 500 }}>
                       {afectaCaja 
                         ? 'El valor se restará del saldo final en el cierre de caja de hoy.' 
                         : 'Para que este gasto reste dinero de tu caja hoy, debes marcar esta casilla.'}

@@ -216,7 +216,7 @@ export default function Egresos() {
             </div>
           </div>
           <div className="egreso-stat-card">
-            <div className="egreso-stat-icon" style={{ background: '#dbeafe' }}>
+            <div className="egreso-stat-icon" style={{ background: '#E6F0FF' }}>
               <Calendar size={24} color="#1e40af" />
             </div>
             <div className="egreso-stat-content">

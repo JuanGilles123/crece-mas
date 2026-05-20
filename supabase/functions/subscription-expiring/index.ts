@@ -61,7 +61,7 @@ serve(async (req) => {
       const html = renderSubscriptionExpiring({
         name: org?.name || 'Hola',
         endDate: toDateOnly(new Date(sub.current_period_end)),
-        dashboardUrl: 'https://creceplus.app/dashboard',
+        dashboardUrl: 'https://crecemas.co/dashboard',
       })
 
       await sendEmail({

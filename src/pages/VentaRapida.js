@@ -225,9 +225,9 @@ export default function VentaRapida() {
       {isOnline && isSyncing && (
         <div
           style={{
-            background: '#eff6ff',
+            background: '#FFFFFF',
             border: '1px solid #93c5fd',
-            color: '#1d4ed8',
+            color: '#004481',
             padding: '0.6rem 0.9rem',
             borderRadius: '10px',
             fontSize: '0.9rem',

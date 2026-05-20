@@ -109,11 +109,11 @@
 }
 
 .dashboard-welcome-header {
-  background: linear-gradient(135deg, var(--accent-primary) 0%, #7C3AED 100%);
+  background: linear-gradient(135deg, var(--accent-primary) 0%, #02A5E0 100%);
   border-radius: 16px;
   padding: 1.5rem 2rem;
   border: 1px solid var(--accent-primary);
-  box-shadow: 0 8px 32px rgba(139, 92, 246, 0.2);
+  box-shadow: 0 8px 32px rgba(59, 130, 246, 0.2);
   position: relative;
   overflow: visible;
   min-width: 0;
@@ -231,8 +231,8 @@
 }
 
 .metricas-principales {
-  background: linear-gradient(135deg, var(--bg-card) 0%, rgba(139, 92, 246, 0.05) 100%);
-  border: 2px solid rgba(139, 92, 246, 0.1);
+  background: linear-gradient(135deg, var(--bg-card) 0%, rgba(59, 130, 246, 0.05) 100%);
+  border: 2px solid rgba(59, 130, 246, 0.1);
 }
 
 .metricas-grid {
@@ -282,7 +282,7 @@
   margin-bottom: 0.75rem;
   padding: 0.65rem;
   border-radius: 12px;
-  background-color: var(--bg-icon, rgba(139, 92, 246, 0.1));
+  background-color: var(--bg-icon, rgba(59, 130, 246, 0.1));
   color: var(--text-icon, var(--accent-primary));
   flex-shrink: 0;
   width: 48px !important;
@@ -292,7 +292,7 @@
 
 .metrica-card:hover svg {
   transform: scale(1.1) rotate(5deg);
-  background-color: var(--bg-icon-hover, rgba(139, 92, 246, 0.2));
+  background-color: var(--bg-icon-hover, rgba(59, 130, 246, 0.2));
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
@@ -306,7 +306,7 @@
 .metricas-grid .metrica-card.clientes,
 .metricas-grid .metrica-card.ordenes {
   --bg-icon: rgba(59, 130, 246, 0.1);
-  --text-icon: #3B82F6;
+  --text-icon: #02A5E0;
   --bg-icon-hover: rgba(59, 130, 246, 0.25);
   background: linear-gradient(180deg, rgba(59, 130, 246, 0.02) 0%, rgba(59, 130, 246, 0.08) 100%) !important;
   border-color: rgba(59, 130, 246, 0.2) !important;
@@ -494,8 +494,8 @@
 }
 
 .plan-banner {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
-  border: 2px solid rgba(139, 92, 246, 0.2);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(59, 130, 246, 0.15) 100%);
+  border: 2px solid rgba(59, 130, 246, 0.2);
   border-radius: 12px;
   padding: 0.45rem 0.75rem;
   position: relative;
@@ -509,7 +509,7 @@
   right: -10%;
   width: 200px;
   height: 200px;
-  background: rgba(139, 92, 246, 0.1);
+  background: rgba(59, 130, 246, 0.1);
   border-radius: 50%;
   z-index: 0;
 }
@@ -538,7 +538,7 @@
   width: 26px;
   height: 26px;
   border-radius: 8px;
-  background: linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%);
+  background: linear-gradient(135deg, #60A5FA 0%, #02A5E0 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -594,7 +594,7 @@
   justify-content: flex-start;
   gap: 1.5rem;
   padding-top: 1rem;
-  border-top: 1px solid rgba(139, 92, 246, 0.2);
+  border-top: 1px solid rgba(59, 130, 246, 0.2);
   text-align: center;
 }
 
@@ -647,7 +647,7 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%);
+  background: linear-gradient(135deg, #60A5FA 0%, #02A5E0 100%);
   color: white;
   border: none;
   border-radius: 10px;
@@ -662,7 +662,7 @@
 
 .upgrade-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(139, 92, 246, 0.4);
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
 }
 
 .upgrade-button:active {

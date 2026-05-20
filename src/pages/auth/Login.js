@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../../services/api/supabaseClient';
 import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, ArrowLeft, TrendingUp, Users, BarChart3 } from 'lucide-react';
 import styles from './Login.module.css';
@@ -10,8 +11,17 @@ const TerminosModal = ({ open, onClose }) => (
     <div className={styles['modal-bg']}>
       <div className={styles['modal-content']}>
         <h3>Términos y Condiciones</h3>
-        <div style={{maxHeight:'40vh',overflowY:'auto',margin:'1rem 0'}}>
-          <p>Aquí van los términos y condiciones de uso de la plataforma. Puedes personalizarlos según tu negocio.</p>
+        <div style={{ maxHeight: '40vh', overflowY: 'auto', margin: '1rem 0', fontSize: '0.98rem', lineHeight: '1.6' }}>
+          <ul style={{ paddingLeft: '1.2em' }}>
+            <li><b>1. Aceptación de los términos:</b> Al crear una cuenta y utilizar esta plataforma, aceptas estos términos y condiciones. Si no estás de acuerdo, no debes usar la aplicación.</li>
+            <li><b>2. Uso del servicio:</b> Esta aplicación SaaS se proporciona "tal cual". Nos reservamos el derecho de modificar, suspendier o discontinuar el servicio en cualquier momento sin previo aviso.</li>
+            <li><b>3. Responsabilidad del usuario:</b> Eres responsable de la veracidad de los datos que ingresas y del uso que hagas de la plataforma. No uses la app para actividades ilegales o no autorizadas.</li>
+            <li><b>4. Privacidad:</b> Tus datos serán tratados conforme a nuestra política de privacidad. No compartiremos tu información personal con terceros sin tu consentimiento, salvo requerimiento legal.</li>
+            <li><b>5. Propiedad intelectual:</b> Todo el contenido, marcas y código fuente de la plataforma son propiedad de la empresa o sus licenciantes. No puedes copiar, modificar ni distribuir sin autorización.</li>
+            <li><b>6. Cancelación y eliminación de cuenta:</b> Puedes cancelar tu cuenta en cualquier momento. Nos reservamos el derecho de suspender cuentas que incumplan estos términos.</li>
+            <li><b>7. Modificaciones:</b> Podemos actualizar estos términos en cualquier momento. Te notificaremos de cambios importantes por correo o en la app.</li>
+            <li><b>8. Contacto:</b> Para dudas o consultas, contáctanos a <a href="mailto:legal@crecemas.co" style={{ color: 'var(--accent-primary)' }}>legal@crecemas.co</a>.</li>
+          </ul>
         </div>
         <button className={styles['auth-btn']} onClick={onClose}>Cerrar</button>
       </div>
@@ -26,8 +36,14 @@ const Login = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const [showTerms, setShowTerms] = useState(false);
-  
   const [loading, setLoading] = useState(false);
+  const { user, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate('/dashboard');
+    }
+  }, [user, authLoading, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -96,18 +112,7 @@ const Login = () => {
     <div className={styles.container}>
       <TerminosModal open={showTerms} onClose={()=>setShowTerms(false)} />
       
-      {/* Botón de regreso */}
-      <motion.div 
-        className={styles.backButton}
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 0.2 }}
-      >
-        <Link to="/" className={styles.backLink}>
-          <ArrowLeft size={20} />
-          Volver al inicio
-        </Link>
-      </motion.div>
+
 
       <div className={styles.content}>
         {/* Panel izquierdo con información */}
@@ -117,6 +122,19 @@ const Login = () => {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.6 }}
         >
+          {/* Botón de regreso */}
+          <motion.div 
+            className={styles.backButton}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <Link to="/" className={styles.backLink}>
+              <ArrowLeft size={20} />
+              Volver al inicio
+            </Link>
+          </motion.div>
+
           <div className={styles.logo}>
             <img
               src="/logo-crece.svg"
@@ -132,22 +150,22 @@ const Login = () => {
           </p>
           
           <div className={styles.features}>
-            <div className={styles.feature} style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.08)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.15)', transition: 'all 0.3s ease' }}>
-              <BarChart3 size={28} style={{ flexShrink: 0, marginTop: '0.2rem' }} />
+            <div className={styles.feature} style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.4)', borderRadius: '1rem', border: '1px solid rgba(6,47,135,0.1)', transition: 'all 0.3s ease' }}>
+              <BarChart3 size={28} style={{ flexShrink: 0, marginTop: '0.2rem', color: '#111827' }} />
               <div>
                 <strong style={{ display: 'block', fontSize: '1.05rem', marginBottom: '0.25rem' }}>Caja Registradora POS</strong>
                 <span style={{ fontSize: '0.9rem', opacity: 0.85, lineHeight: '1.4' }}>Registra ventas en segundos con pago mixto, facturas y tickets en cualquier dispositivo.</span>
               </div>
             </div>
-            <div className={styles.feature} style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.08)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.15)', transition: 'all 0.3s ease' }}>
-              <Users size={28} style={{ flexShrink: 0, marginTop: '0.2rem' }} />
+            <div className={styles.feature} style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.4)', borderRadius: '1rem', border: '1px solid rgba(6,47,135,0.1)', transition: 'all 0.3s ease' }}>
+              <Users size={28} style={{ flexShrink: 0, marginTop: '0.2rem', color: '#111827' }} />
               <div>
                 <strong style={{ display: 'block', fontSize: '1.05rem', marginBottom: '0.25rem' }}>Control de Stock Inteligente</strong>
                 <span style={{ fontSize: '0.9rem', opacity: 0.85, lineHeight: '1.4' }}>Evita pérdidas por descuadres de stock, recibe alertas de productos bajos y organiza tus categorías.</span>
               </div>
             </div>
-            <div className={styles.feature} style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.08)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.15)', transition: 'all 0.3s ease' }}>
-              <TrendingUp size={28} style={{ flexShrink: 0, marginTop: '0.2rem' }} />
+            <div className={styles.feature} style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.4)', borderRadius: '1rem', border: '1px solid rgba(6,47,135,0.1)', transition: 'all 0.3s ease' }}>
+              <TrendingUp size={28} style={{ flexShrink: 0, marginTop: '0.2rem', color: '#111827' }} />
               <div>
                 <strong style={{ display: 'block', fontSize: '1.05rem', marginBottom: '0.25rem' }}>Utilidades y Caja Diaria</strong>
                 <span style={{ fontSize: '0.9rem', opacity: 0.85, lineHeight: '1.4' }}>Visualiza tus ganancias netas, saldos e ingresos al instante desde cualquier lugar.</span>
@@ -155,9 +173,9 @@ const Login = () => {
             </div>
           </div>
 
-          <div style={{ marginTop: '2.5rem', padding: '1.25rem', background: 'rgba(255,255,255,0.12)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.22)', fontSize: '0.95rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+          <div style={{ marginTop: '2.5rem', padding: '1.25rem', background: 'rgba(255,255,255,0.5)', borderRadius: '1rem', border: '1px solid rgba(6,47,135,0.15)', fontSize: '0.95rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', color: '#111827' }}>
             <span>💬 ¿Tienes problemas de acceso o necesitas ayuda?</span>
-            <strong>Soporte rápido por WhatsApp: <a href="https://wa.me/573046422366" target="_blank" rel="noopener noreferrer" style={{ color: '#ffffff', textDecoration: 'underline', fontWeight: 'bold' }}>304 642 2366</a></strong>
+            <strong>Soporte rápido por WhatsApp: <a href="https://wa.me/573046422366" target="_blank" rel="noopener noreferrer" style={{ color: '#111827', textDecoration: 'underline', fontWeight: 'bold' }}>304 642 2366</a></strong>
           </div>
         </motion.div>
 

@@ -409,8 +409,8 @@
 
 .diferencia-box.sobrante {
   background: rgba(59, 130, 246, 0.1);
-  border-color: #3B82F6;
-  color: #3B82F6;
+  border-color: #02A5E0;
+  color: #02A5E0;
 }
 
 .diferencia-box.faltante {
@@ -474,7 +474,7 @@
 }
 
 .comparacion-row .contado {
-  color: #3B82F6;
+  color: #02A5E0;
 }
 
 .comparacion-row .positivo {
@@ -537,12 +537,12 @@
 }
 
 .btn-accion.compartir {
-  color: #3B82F6;
-  border-color: #3B82F6;
+  color: #02A5E0;
+  border-color: #02A5E0;
 }
 
 .btn-accion.compartir:hover:not(:disabled) {
-  background: #3B82F6;
+  background: #02A5E0;
   color: white;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);

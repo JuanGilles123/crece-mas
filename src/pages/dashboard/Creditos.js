@@ -253,7 +253,7 @@ export default function Creditos() {
       {estadisticas && (
         <div className="creditos-estadisticas">
           <div className="credito-stat-card">
-            <div className="credito-stat-icon" style={{ background: '#dbeafe' }}>
+            <div className="credito-stat-icon" style={{ background: '#E6F0FF' }}>
               <FileText size={24} color="#1e40af" />
             </div>
             <div className="credito-stat-content">
@@ -701,7 +701,7 @@ function DetalleCredito({ credito, onClose, onEliminarPago }) {
                       <div style={{ 
                         width: `${porcentajePagado}%`, 
                         height: '100%', 
-                        background: 'linear-gradient(90deg, #3b82f6, #2563eb)',
+                        background: 'linear-gradient(90deg, #02A5E0, #02A5E0)',
                         transition: 'width 0.3s'
                       }} />
                     </div>

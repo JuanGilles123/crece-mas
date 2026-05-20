@@ -37,7 +37,7 @@
 .adv-clear-btn {
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--accent-primary, #3b82f6);
+  color: var(--accent-primary, #02A5E0);
   background: transparent;
   border: none;
   cursor: pointer;
@@ -114,7 +114,7 @@
 }
 
 .adv-field-item.active .adv-field-dot {
-  background: var(--accent-primary, #3b82f6);
+  background: var(--accent-primary, #02A5E0);
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
@@ -232,7 +232,7 @@
   width: 100%;
   padding: 0.625rem;
   border-radius: 10px;
-  background: var(--accent-primary, #3b82f6);
+  background: var(--accent-primary, #02A5E0);
   color: white;
   font-weight: 700;
   border: none;

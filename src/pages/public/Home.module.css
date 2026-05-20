@@ -2599,3 +2599,393 @@
     border-top-color: rgba(255, 255, 255, 0.05);
   }
 }
+
+/* =============================================
+   CONTACT SECTION
+   ============================================= */
+.contactSection {
+  padding: 7rem 0;
+  background: linear-gradient(180deg, #f0f7ff 0%, #ffffff 100%);
+  border-top: 1px solid rgba(0, 68, 129, 0.08);
+}
+
+.contactContainer {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+/* Department Cards Grid */
+.contactDeptGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+  margin-bottom: 3.5rem;
+}
+
+.contactDeptCard {
+  background: #ffffff;
+  border: 1px solid rgba(0, 68, 129, 0.08);
+  border-radius: 1.25rem;
+  padding: 1.75rem 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 12px rgba(0, 68, 129, 0.04);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.contactDeptCard:hover {
+  box-shadow: 0 8px 24px rgba(2, 165, 224, 0.12);
+  transform: translateY(-5px);
+}
+
+.deptCardIcon {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.contactDeptCard h4 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #072146;
+  margin: 0;
+}
+
+.contactDeptCard p {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.deptCardEmail {
+  font-size: 0.78rem;
+  color: #004481;
+  text-decoration: none;
+  font-weight: 600;
+  background: rgba(2, 165, 224, 0.07);
+  padding: 0.2rem 0.6rem;
+  border-radius: 2rem;
+  transition: background 0.2s;
+  margin-top: 0.25rem;
+}
+
+.deptCardEmail:hover {
+  background: rgba(2, 165, 224, 0.15);
+}
+
+/* Main Form + WhatsApp Row */
+.contactMainRow {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 2rem;
+  align-items: start;
+}
+
+/* Contact Form Box */
+.contactFormBox {
+  background: #ffffff;
+  border: 1px solid rgba(0, 68, 129, 0.08);
+  border-radius: 1.5rem;
+  padding: 2.5rem;
+  box-shadow: 0 4px 20px rgba(0, 68, 129, 0.04);
+}
+
+.contactFormTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #072146;
+  margin-bottom: 1.75rem;
+}
+
+.contactForm {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.contactInputsRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.contactInput {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border: 1.5px solid rgba(0, 68, 129, 0.1);
+  border-radius: 0.75rem;
+  font-size: 0.95rem;
+  color: #1f2937;
+  background: #f8fafc;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.contactInput:focus {
+  border-color: #02A5E0;
+  box-shadow: 0 0 0 3px rgba(2, 165, 224, 0.1);
+  background: #ffffff;
+}
+
+.contactSelect {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border: 1.5px solid rgba(0, 68, 129, 0.1);
+  border-radius: 0.75rem;
+  font-size: 0.95rem;
+  color: #1f2937;
+  background: #f8fafc;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  padding-right: 2.5rem;
+}
+
+.contactSelect:focus {
+  border-color: #02A5E0;
+}
+
+.contactTextarea {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border: 1.5px solid rgba(0, 68, 129, 0.1);
+  border-radius: 0.75rem;
+  font-size: 0.95rem;
+  color: #1f2937;
+  background: #f8fafc;
+  outline: none;
+  resize: vertical;
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+  min-height: 120px;
+}
+
+.contactTextarea:focus {
+  border-color: #02A5E0;
+  box-shadow: 0 0 0 3px rgba(2, 165, 224, 0.1);
+  background: #ffffff;
+}
+
+.contactSuccess {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(16, 185, 129, 0.08);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.contactErrorMsg {
+  background: rgba(239, 68, 68, 0.07);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.15);
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.contactSubmitBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  background: linear-gradient(135deg, #004481 0%, #02A5E0 100%);
+  color: white;
+  border: none;
+  padding: 0.9rem 1.5rem;
+  border-radius: 0.75rem;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 14px rgba(0, 68, 129, 0.25);
+}
+
+.contactSubmitBtn:hover {
+  box-shadow: 0 6px 20px rgba(0, 68, 129, 0.35);
+}
+
+.contactSubmitBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* WhatsApp Box */
+.contactWaBox {
+  position: sticky;
+  top: 100px;
+}
+
+.waBoxInner {
+  background: linear-gradient(135deg, #004481 0%, #0369a1 100%);
+  border-radius: 1.5rem;
+  padding: 2.5rem 2rem;
+  color: white;
+  text-align: center;
+  box-shadow: 0 8px 30px rgba(0, 68, 129, 0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.waIconBig {
+  color: #22c55e;
+  filter: drop-shadow(0 2px 8px rgba(34, 197, 94, 0.4));
+}
+
+.waBoxInner h3 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: white;
+  margin: 0;
+}
+
+.waBoxInner p {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.75);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.waNumberRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0.6rem 1.2rem;
+  border-radius: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.waNumberRow strong {
+  font-size: 1rem;
+  color: white;
+}
+
+.waCtaBtn {
+  display: block;
+  width: 100%;
+  background: #22c55e;
+  color: white;
+  text-decoration: none;
+  padding: 0.9rem;
+  border-radius: 0.75rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+  transition: all 0.2s;
+}
+
+.waCtaBtn:hover {
+  background: #16a34a;
+  box-shadow: 0 6px 18px rgba(34, 197, 94, 0.4);
+}
+
+.waOrSeparator {
+  width: 100%;
+  position: relative;
+  text-align: center;
+}
+
+.waOrSeparator::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.waOrSeparator span {
+  position: relative;
+  background: #004481;
+  padding: 0 0.75rem;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.waEmailLinks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  width: 100%;
+}
+
+.waEmailLinks a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  color: rgba(255, 255, 255, 0.75);
+  text-decoration: none;
+  font-size: 0.82rem;
+  transition: color 0.2s;
+}
+
+.waEmailLinks a:hover {
+  color: white;
+}
+
+/* Responsive Contact Section */
+@media (max-width: 1024px) {
+  .contactDeptGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .contactMainRow {
+    grid-template-columns: 1fr;
+  }
+
+  .contactWaBox {
+    position: static;
+  }
+
+  .waBoxInner {
+    flex-direction: row;
+    flex-wrap: wrap;
+    text-align: left;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  .contactDeptGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .contactInputsRow {
+    grid-template-columns: 1fr;
+  }
+
+  .contactFormBox {
+    padding: 1.5rem;
+  }
+
+  .waBoxInner {
+    flex-direction: column;
+    text-align: center;
+  }
+}

@@ -2453,7 +2453,7 @@ const ResumenVentas = () => {
                           labels: obtenerVentasPorMetodoPago.map(m => m.metodo),
                           datasets: [{
                             data: obtenerVentasPorMetodoPago.map(m => m.total),
-                            backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'],
+                            backgroundColor: ['#02A5E0', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'],
                             borderWidth: 0,
                             cutout: '70%'
                           }]
@@ -2505,7 +2505,7 @@ const ResumenVentas = () => {
                       {obtenerVentasPorMetodoPago.map((m, i) => (
                         <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', padding: '4px 0', borderBottom: '1px solid var(--cp-border)' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'][i % 6] }}></div>
+                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: ['#02A5E0', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'][i % 6] }}></div>
                             <span style={{ fontWeight: 500, color: 'var(--cp-text-secondary)' }}>{m.metodo}</span>
                           </div>
                           <span style={{ fontWeight: 700, color: 'var(--cp-text-primary)' }}>{formatCOP(m.total).split(',')[0]}</span>

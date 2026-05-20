@@ -14,8 +14,8 @@ const TerminosModal = ({ open, onClose }) => (
     <div className={styles['modal-bg']}>
       <div className={styles['modal-content']}>
         <h3>Términos y Condiciones</h3>
-        <div style={{maxHeight:'40vh',overflowY:'auto',margin:'1rem 0',fontSize:'0.98rem',lineHeight:'1.6'}}>
-          <ul style={{paddingLeft: '1.2em'}}>
+        <div style={{ maxHeight: '40vh', overflowY: 'auto', margin: '1rem 0', fontSize: '0.98rem', lineHeight: '1.6' }}>
+          <ul style={{ paddingLeft: '1.2em' }}>
             <li><b>1. Aceptación de los términos:</b> Al crear una cuenta y utilizar esta plataforma, aceptas estos términos y condiciones. Si no estás de acuerdo, no debes usar la aplicación.</li>
             <li><b>2. Uso del servicio:</b> Esta aplicación SaaS se proporciona "tal cual". Nos reservamos el derecho de modificar, suspender o discontinuar el servicio en cualquier momento sin previo aviso.</li>
             <li><b>3. Responsabilidad del usuario:</b> Eres responsable de la veracidad de los datos que ingresas y del uso que hagas de la plataforma. No uses la app para actividades ilegales o no autorizadas.</li>
@@ -23,7 +23,7 @@ const TerminosModal = ({ open, onClose }) => (
             <li><b>5. Propiedad intelectual:</b> Todo el contenido, marcas y código fuente de la plataforma son propiedad de la empresa o sus licenciantes. No puedes copiar, modificar ni distribuir sin autorización.</li>
             <li><b>6. Cancelación y eliminación de cuenta:</b> Puedes cancelar tu cuenta en cualquier momento. Nos reservamos el derecho de suspender cuentas que incumplan estos términos.</li>
             <li><b>7. Modificaciones:</b> Podemos actualizar estos términos en cualquier momento. Te notificaremos de cambios importantes por correo o en la app.</li>
-            <li><b>8. Contacto:</b> Para dudas o consultas, contáctanos a <a href="mailto:soporte@tudominio.com" style={{color:'var(--accent-primary)'}}>soporte@tudominio.com</a>.</li>
+            <li><b>8. Contacto:</b> Para dudas o consultas, contáctanos a <a href="mailto:legal@crecemas.co" style={{ color: 'var(--accent-primary)' }}>legal@crecemas.co</a>.</li>
           </ul>
         </div>
         <button className={styles['auth-btn']} onClick={onClose}>Cerrar</button>
@@ -72,6 +72,7 @@ const Registro = () => {
         email,
         password,
         options: {
+          emailRedirectTo: `${window.location.origin}/dashboard`,
           data: {
             full_name: email.split('@')[0],
             phone: '+' + phone,
@@ -79,9 +80,11 @@ const Registro = () => {
           }
         }
       });
-      
+
       if (signUpError) {
-        if (signUpError.message.includes('Password should be at least')) {
+        if (signUpError.status === 429 || signUpError.message.toLowerCase().includes('rate limit') || signUpError.message.toLowerCase().includes('too many')) {
+          setError('Demasiados intentos de registro. Por favor espera unos minutos antes de intentarlo de nuevo.');
+        } else if (signUpError.message.includes('Password should be at least')) {
           setError('La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número.');
         } else if (signUpError.message.toLowerCase().includes('email')) {
           setError('El correo no es válido o ya está registrado.');
@@ -105,30 +108,8 @@ const Registro = () => {
         console.warn('No se pudo enviar correo de bienvenida:', welcomeError);
       }
 
-      try {
-        const { data: verifyData, error: verifyError } = await supabase.functions.invoke(
-          'send-verify-email',
-          {
-            body: {
-              userId: data.user.id,
-              email: data.user.email,
-              redirectTo: window.location.origin,
-            },
-          }
-        );
-
-        if (verifyError || verifyData?.skipped || verifyData?.success === false) {
-          const { error: resendError } = await supabase.auth.resend({
-            type: 'signup',
-            email: data.user.email,
-          });
-          if (resendError) {
-            console.warn('No se pudo reenviar correo con Supabase:', resendError);
-          }
-        }
-      } catch (verifyError) {
-        console.warn('No se pudo enviar correo de verificación:', verifyError);
-      }
+      // El correo de confirmación es enviado automáticamente por supabase.auth.signUp()
+      // Se removió el envío redundante para evitar invalidar el primer token.
 
       setShowConfirmation(true);
     } catch (error) {
@@ -144,53 +125,56 @@ const Registro = () => {
   return (
     <div className={styles.container}>
       <TerminosModal open={showTerms} onClose={() => setShowTerms(false)} />
-      
-      {/* Botón de regreso */}
-      <motion.div 
-        className={styles.backButton}
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 0.2 }}
-      >
-        <Link to="/" className={styles.backLink}>
-          <ArrowLeft size={20} />
-          Volver al inicio
-        </Link>
-      </motion.div>
+
+
 
       <div className={styles.content}>
         {/* Panel izquierdo con información */}
-        <motion.div 
+        <motion.div
           className={styles.infoPanel}
           initial={{ opacity: 0, x: -50 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.6 }}
         >
+          {/* Botón de regreso */}
+          <motion.div
+            className={styles.backButton}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <Link to="/" className={styles.backLink}>
+              <ArrowLeft size={20} />
+              Volver al inicio
+            </Link>
+          </motion.div>
+
+
           <div className={styles.logo}>
-            <TrendingUp size={40} />
+            <TrendingUp size={40} color="#111827" />
             <h1>Crece+</h1>
           </div>
           <h2>¡Únete a Crece+!</h2>
           <p>Comienza a gestionar tu negocio de manera profesional y eficiente. Regístrate y descubre todas las herramientas que necesitas.</p>
-          
+
           <div className={styles.features}>
             <div className={styles.feature}>
-              <BarChart3 size={20} />
+              <BarChart3 size={20} color="#111827" />
               <span>Dashboard completo</span>
             </div>
             <div className={styles.feature}>
-              <Users size={20} />
+              <Users size={20} color="#111827" />
               <span>Gestión de inventario</span>
             </div>
             <div className={styles.feature}>
-              <TrendingUp size={20} />
+              <TrendingUp size={20} color="#111827" />
               <span>Reportes en tiempo real</span>
             </div>
           </div>
         </motion.div>
 
         {/* Panel derecho con formulario */}
-        <motion.div 
+        <motion.div
           className={styles.formPanel}
           initial={{ opacity: 0, x: 50 }}
           animate={{ opacity: 1, x: 0 }}
@@ -208,12 +192,12 @@ const Registro = () => {
                   <Mail size={20} className={styles.inputIconLeft} />
                   <div className={styles.inputWrapper}>
                     <input
-                    type="email"
-                    placeholder="Correo electrónico"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    required
-                    className={styles.input}
+                      type="email"
+                      placeholder="Correo electrónico"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      required
+                      className={styles.input}
                     />
                   </div>
                 </div>
@@ -224,16 +208,16 @@ const Registro = () => {
                   <Lock size={20} className={styles.inputIconLeft} />
                   <div className={styles.inputWrapper}>
                     <input
-                    type={showPass ? 'text' : 'password'}
-                    placeholder="Contraseña (mín. 8 caracteres)"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    required
-                    className={`${styles.input} ${styles.inputWithIcon}`}
+                      type={showPass ? 'text' : 'password'}
+                      placeholder="Contraseña (mín. 8 caracteres)"
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      required
+                      className={`${styles.input} ${styles.inputWithIcon}`}
                     />
                     {password?.length > 0 && (
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         className={styles.eyeButton}
                         onClick={() => setShowPass(v => !v)}
                       >
@@ -266,77 +250,77 @@ const Registro = () => {
                 <div className={styles.inputRow}>
                   <Globe size={20} className={styles.inputIconLeft} />
                   <div className={`${styles.inputWrapper} ${styles.currencySelect}`}>
-                    <select 
-                      value={currency} 
-                      onChange={e => setCurrency(e.target.value)} 
+                    <select
+                      value={currency}
+                      onChange={e => setCurrency(e.target.value)}
                       className={styles.select}
                       required
                     >
-                    <option value="">Selecciona tu moneda</option>
-                    <option value="USD">USD - Dólar Estadounidense</option>
-                    <option value="EUR">EUR - Euro</option>
-                    <option value="COP">COP - Peso Colombiano</option>
-                    <option value="MXN">MXN - Peso Mexicano</option>
-                    <option value="ARS">ARS - Peso Argentino</option>
-                    <option value="BRL">BRL - Real Brasileño</option>
-                    <option value="CLP">CLP - Peso Chileno</option>
-                    <option value="PEN">PEN - Sol Peruano</option>
-                    <option value="UYU">UYU - Peso Uruguayo</option>
-                    <option value="VES">VES - Bolívar Venezolano</option>
-                    <option value="GBP">GBP - Libra Esterlina</option>
-                    <option value="JPY">JPY - Yen Japonés</option>
-                    <option value="CAD">CAD - Dólar Canadiense</option>
-                    <option value="AUD">AUD - Dólar Australiano</option>
-                    <option value="CHF">CHF - Franco Suizo</option>
-                    <option value="CNY">CNY - Yuan Chino</option>
-                    <option value="INR">INR - Rupia India</option>
-                    <option value="KRW">KRW - Won Surcoreano</option>
-                    <option value="SGD">SGD - Dólar de Singapur</option>
-                    <option value="HKD">HKD - Dólar de Hong Kong</option>
-                    <option value="NZD">NZD - Dólar Neozelandés</option>
-                    <option value="SEK">SEK - Corona Sueca</option>
-                    <option value="NOK">NOK - Corona Noruega</option>
-                    <option value="DKK">DKK - Corona Danesa</option>
-                    <option value="PLN">PLN - Złoty Polaco</option>
-                    <option value="CZK">CZK - Corona Checa</option>
-                    <option value="HUF">HUF - Forinto Húngaro</option>
-                    <option value="RUB">RUB - Rublo Ruso</option>
-                    <option value="TRY">TRY - Lira Turca</option>
-                    <option value="ZAR">ZAR - Rand Sudafricano</option>
-                    <option value="EGP">EGP - Libra Egipcia</option>
-                    <option value="MAD">MAD - Dirham Marroquí</option>
-                    <option value="NGN">NGN - Naira Nigeriana</option>
-                    <option value="KES">KES - Chelín Keniano</option>
-                    <option value="GHS">GHS - Cedi Ghanés</option>
-                    <option value="TND">TND - Dinar Tunecino</option>
-                    <option value="DZD">DZD - Dinar Argelino</option>
-                    <option value="LYD">LYD - Dinar Libio</option>
-                    <option value="ETB">ETB - Birr Etíope</option>
-                    <option value="UGX">UGX - Chelín Ugandés</option>
-                    <option value="TZS">TZS - Chelín Tanzano</option>
-                    <option value="MWK">MWK - Kwacha Malauí</option>
-                    <option value="ZMW">ZMW - Kwacha Zambiano</option>
-                    <option value="BWP">BWP - Pula Botsuano</option>
-                    <option value="SZL">SZL - Lilangeni Suazi</option>
-                    <option value="LSL">LSL - Loti Lesotense</option>
-                    <option value="NAD">NAD - Dólar Namibio</option>
-                    <option value="MUR">MUR - Rupia Mauriciana</option>
-                    <option value="SCR">SCR - Rupia Seychellense</option>
-                    <option value="KMF">KMF - Franco Comorense</option>
-                    <option value="DJF">DJF - Franco Yibutiano</option>
-                    <option value="ERN">ERN - Nakfa Eritreo</option>
-                    <option value="SOS">SOS - Chelín Somalí</option>
-                    <option value="SLL">SLL - Leone Sierraleonés</option>
-                    <option value="GMD">GMD - Dalasi Gambiano</option>
-                    <option value="GNF">GNF - Franco Guineano</option>
-                    <option value="LRD">LRD - Dólar Liberiano</option>
-                    <option value="CDF">CDF - Franco Congoleño</option>
-                    <option value="AOA">AOA - Kwanza Angoleño</option>
-                    <option value="MZN">MZN - Metical Mozambiqueño</option>
-                    <option value="BIF">BIF - Franco Burundés</option>
-                    <option value="RWF">RWF - Franco Ruandés</option>
-                    <option value="XOF">XOF - Franco CFA BCEAO</option>
-                    <option value="XAF">XAF - Franco CFA BEAC</option>
+                      <option value="">Selecciona tu moneda</option>
+                      <option value="USD">USD - Dólar Estadounidense</option>
+                      <option value="EUR">EUR - Euro</option>
+                      <option value="COP">COP - Peso Colombiano</option>
+                      <option value="MXN">MXN - Peso Mexicano</option>
+                      <option value="ARS">ARS - Peso Argentino</option>
+                      <option value="BRL">BRL - Real Brasileño</option>
+                      <option value="CLP">CLP - Peso Chileno</option>
+                      <option value="PEN">PEN - Sol Peruano</option>
+                      <option value="UYU">UYU - Peso Uruguayo</option>
+                      <option value="VES">VES - Bolívar Venezolano</option>
+                      <option value="GBP">GBP - Libra Esterlina</option>
+                      <option value="JPY">JPY - Yen Japonés</option>
+                      <option value="CAD">CAD - Dólar Canadiense</option>
+                      <option value="AUD">AUD - Dólar Australiano</option>
+                      <option value="CHF">CHF - Franco Suizo</option>
+                      <option value="CNY">CNY - Yuan Chino</option>
+                      <option value="INR">INR - Rupia India</option>
+                      <option value="KRW">KRW - Won Surcoreano</option>
+                      <option value="SGD">SGD - Dólar de Singapur</option>
+                      <option value="HKD">HKD - Dólar de Hong Kong</option>
+                      <option value="NZD">NZD - Dólar Neozelandés</option>
+                      <option value="SEK">SEK - Corona Sueca</option>
+                      <option value="NOK">NOK - Corona Noruega</option>
+                      <option value="DKK">DKK - Corona Danesa</option>
+                      <option value="PLN">PLN - Złoty Polaco</option>
+                      <option value="CZK">CZK - Corona Checa</option>
+                      <option value="HUF">HUF - Forinto Húngaro</option>
+                      <option value="RUB">RUB - Rublo Ruso</option>
+                      <option value="TRY">TRY - Lira Turca</option>
+                      <option value="ZAR">ZAR - Rand Sudafricano</option>
+                      <option value="EGP">EGP - Libra Egipcia</option>
+                      <option value="MAD">MAD - Dirham Marroquí</option>
+                      <option value="NGN">NGN - Naira Nigeriana</option>
+                      <option value="KES">KES - Chelín Keniano</option>
+                      <option value="GHS">GHS - Cedi Ghanés</option>
+                      <option value="TND">TND - Dinar Tunecino</option>
+                      <option value="DZD">DZD - Dinar Argelino</option>
+                      <option value="LYD">LYD - Dinar Libio</option>
+                      <option value="ETB">ETB - Birr Etíope</option>
+                      <option value="UGX">UGX - Chelín Ugandés</option>
+                      <option value="TZS">TZS - Chelín Tanzano</option>
+                      <option value="MWK">MWK - Kwacha Malauí</option>
+                      <option value="ZMW">ZMW - Kwacha Zambiano</option>
+                      <option value="BWP">BWP - Pula Botsuano</option>
+                      <option value="SZL">SZL - Lilangeni Suazi</option>
+                      <option value="LSL">LSL - Loti Lesotense</option>
+                      <option value="NAD">NAD - Dólar Namibio</option>
+                      <option value="MUR">MUR - Rupia Mauriciana</option>
+                      <option value="SCR">SCR - Rupia Seychellense</option>
+                      <option value="KMF">KMF - Franco Comorense</option>
+                      <option value="DJF">DJF - Franco Yibutiano</option>
+                      <option value="ERN">ERN - Nakfa Eritreo</option>
+                      <option value="SOS">SOS - Chelín Somalí</option>
+                      <option value="SLL">SLL - Leone Sierraleonés</option>
+                      <option value="GMD">GMD - Dalasi Gambiano</option>
+                      <option value="GNF">GNF - Franco Guineano</option>
+                      <option value="LRD">LRD - Dólar Liberiano</option>
+                      <option value="CDF">CDF - Franco Congoleño</option>
+                      <option value="AOA">AOA - Kwanza Angoleño</option>
+                      <option value="MZN">MZN - Metical Mozambiqueño</option>
+                      <option value="BIF">BIF - Franco Burundés</option>
+                      <option value="RWF">RWF - Franco Ruandés</option>
+                      <option value="XOF">XOF - Franco CFA BCEAO</option>
+                      <option value="XAF">XAF - Franco CFA BEAC</option>
                       <option value="XPF">XPF - Franco CFP</option>
                     </select>
                   </div>
@@ -345,12 +329,12 @@ const Registro = () => {
 
 
               <div className={styles.checkboxGroup}>
-                <input 
-                  type="checkbox" 
-                  id="terms" 
-                  checked={acceptTerms} 
-                  onChange={e => setAcceptTerms(e.target.checked)} 
-                  required 
+                <input
+                  type="checkbox"
+                  id="terms"
+                  checked={acceptTerms}
+                  onChange={e => setAcceptTerms(e.target.checked)}
+                  required
                   className={styles.checkbox}
                 />
                 <label htmlFor="terms" className={styles.checkboxLabel}>
@@ -358,8 +342,8 @@ const Registro = () => {
                 </label>
               </div>
 
-              <motion.button 
-                className={styles.submitButton} 
+              <motion.button
+                className={styles.submitButton}
                 type="submit"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -368,7 +352,7 @@ const Registro = () => {
               </motion.button>
 
               {error && (
-                <motion.div 
+                <motion.div
                   className={styles.error}
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -378,7 +362,7 @@ const Registro = () => {
               )}
 
               {success && (
-                <motion.div 
+                <motion.div
                   className={styles.success}
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}

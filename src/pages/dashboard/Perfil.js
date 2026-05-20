@@ -917,7 +917,7 @@ const Perfil = () => {
                   {organization?.slug && (
                     <button
                       className="btn-action"
-                      style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '0.6rem 1.2rem', borderRadius: '8px', fontSize: '0.9rem', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}
+                      style={{ background: '#02A5E0', color: 'white', border: 'none', padding: '0.6rem 1.2rem', borderRadius: '8px', fontSize: '0.9rem', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}
                       onClick={() => window.open(`/tienda/${organization.slug}`, '_blank')}
                     >
                       <ExternalLink size={16} /> Ver Catálogo
@@ -964,7 +964,7 @@ const Perfil = () => {
                               className="perfil-edit-btn perfil-edit-save"
                               onClick={handleGuardarSlug}
                               disabled={guardandoSlug}
-                              style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                              style={{ background: '#02A5E0', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
                             >
                               <Save size={16} />
                               {guardandoSlug ? 'Guardando...' : 'Guardar Enlace'}
@@ -985,7 +985,7 @@ const Perfil = () => {
                           {organization?.slug ? (
                             <>
                               <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                <div style={{ flex: 1, background: '#ffffff', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '1rem', color: '#3b82f6', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                <div style={{ flex: 1, background: '#ffffff', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '1rem', color: '#02A5E0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                   {window.location.origin}/tienda/{organization.slug}
                                 </div>
                                 <button
@@ -1009,7 +1009,7 @@ const Perfil = () => {
                               <button
                                 className="perfil-edit-btn perfil-edit-start"
                                 onClick={handleEditarSlug}
-                                style={{ alignSelf: 'flex-start', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem', background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600 }}
+                                style={{ alignSelf: 'flex-start', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem', background: 'none', border: 'none', color: '#02A5E0', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600 }}
                               >
                                 <Edit3 size={16} />
                                 Cambiar nombre del enlace
@@ -1023,7 +1023,7 @@ const Perfil = () => {
                               <button
                                 className="perfil-edit-btn perfil-edit-start"
                                 onClick={handleEditarSlug}
-                                style={{ background: '#3b82f6', color: 'white', border: 'none', alignSelf: 'flex-start', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.9rem', fontWeight: 600 }}
+                                style={{ background: '#02A5E0', color: 'white', border: 'none', alignSelf: 'flex-start', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.9rem', fontWeight: 600 }}
                               >
                                 <Link size={16} />
                                 Crear Enlace Ahora
@@ -1132,7 +1132,7 @@ const Perfil = () => {
                         <label style={{ fontSize: '0.9rem', fontWeight: '500', color: '#475569' }}>Color Principal de Marca</label>
                         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                           {[
-                            { name: 'Azul Cobalto', value: '#2563eb' },
+                            { name: 'Azul Cobalto', value: '#02A5E0' },
                             { name: 'Esmeralda Premium', value: '#059669' },
                             { name: 'Púrpura Imperial', value: '#7c3aed' },
                             { name: 'Rosa Coral', value: '#db2777' },
@@ -2184,7 +2184,7 @@ const Perfil = () => {
                               </div>
                             )}
                             {facebook && (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.15rem', color: '#2563eb', cursor: 'default' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.15rem', color: '#02A5E0', cursor: 'default' }}>
                                 <Facebook size={11} />
                                 <span style={{ fontSize: '0.58rem', fontWeight: 'bold' }}>Facebook</span>
                               </div>
@@ -2210,7 +2210,7 @@ const Perfil = () => {
                               borderRadius: '4px',
                               border: '1px solid rgba(79, 70, 229, 0.1)'
                             }}>
-                              <span style={{ fontSize: '0.55rem', fontWeight: 'bold', color: '#4f46e5' }}>creceplus.app</span>
+                              <span style={{ fontSize: '0.55rem', fontWeight: 'bold', color: '#4f46e5' }}>crecemas.co</span>
                               <ExternalLink size={7} style={{ color: '#4f46e5' }} />
                             </div>
                           </div>

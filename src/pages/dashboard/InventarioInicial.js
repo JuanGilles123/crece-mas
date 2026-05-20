@@ -667,7 +667,7 @@ const InventarioInicial = () => {
                       onClick={() => handleEditBatch(batch)}
                       title="Editar lote"
                     >
-                      <Edit3 size={16} style={{ color: '#2563eb', stroke: '#2563eb' }} />
+                      <Edit3 size={16} style={{ color: '#02A5E0', stroke: '#02A5E0' }} />
                     </button>
                     <button
                       className="inventario-btn inventario-btn-secondary"
@@ -923,12 +923,12 @@ const InventarioInicial = () => {
                           <td style={{ padding: '0.5rem 0.75rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                             <button
                               className="inventario-btn inventario-btn-secondary"
-                              style={{ padding: '0.35rem 0.55rem', color: '#2563eb' }}
+                              style={{ padding: '0.35rem 0.55rem', color: '#02A5E0' }}
                               onClick={() => handleEditItem(item)}
                               title="Editar"
                               disabled={item.review_state === 'approved'}
                             >
-                              <Pencil size={16} style={{ color: '#2563eb', stroke: '#2563eb' }} />
+                              <Pencil size={16} style={{ color: '#02A5E0', stroke: '#02A5E0' }} />
                             </button>
                             <button
                               className="inventario-btn inventario-btn-secondary"

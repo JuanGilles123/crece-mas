@@ -1113,7 +1113,7 @@ Generado por Crece+ 🚀
                   style={{
                     padding: '1rem',
                     borderRadius: '12px',
-                    background: '#3b82f6',
+                    background: '#02A5E0',
                     color: 'white',
                     border: 'none',
                     display: 'flex',
@@ -1188,9 +1188,9 @@ Generado por Crece+ 🚀
       {isOnline && isSyncing && (
         <div
           style={{
-            background: '#eff6ff',
+            background: '#FFFFFF',
             border: '1px solid #93c5fd',
-            color: '#1d4ed8',
+            color: '#004481',
             padding: '0.6rem 0.9rem',
             borderRadius: '10px',
             fontSize: '0.9rem',

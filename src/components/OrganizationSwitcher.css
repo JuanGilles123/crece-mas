@@ -19,12 +19,12 @@
 }
 
 .org-switcher-button:hover {
-  border-color: #667eea;
+  border-color: #02A5E0;
   box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
 }
 
 .org-switcher-button svg:first-child {
-  color: #667eea;
+  color: #02A5E0;
   flex-shrink: 0;
 }
 
@@ -209,14 +209,14 @@
 
 .org-option:hover {
   background: #f7fafc;
-  border-color: #667eea;
+  border-color: #02A5E0;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
 }
 
 .org-option.active {
   background: linear-gradient(135deg, #f0f4ff 0%, #e8edff 100%);
-  border-color: #667eea;
+  border-color: #02A5E0;
   border-width: 3px;
   box-shadow: 0 4px 16px rgba(102, 126, 234, 0.2);
 }
@@ -245,7 +245,7 @@
 }
 
 .org-option-content svg {
-  color: #667eea;
+  color: #02A5E0;
   margin-top: 2px;
   flex-shrink: 0;
   min-width: 18px;
@@ -269,7 +269,7 @@
 .badge-primary {
   display: inline-block;
   padding: 0.15rem 0.6rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #004481 0%, #02A5E0 100%);
   color: white;
   font-size: 0.7rem;
   border-radius: 12px;
