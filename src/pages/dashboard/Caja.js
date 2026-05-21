@@ -32,8 +32,10 @@ import ConsultarPrecioModal from '../../components/modals/ConsultarPrecioModal';
 import ToppingsSelector from '../../components/ToppingsSelector';
 import VariacionesSelector from '../../components/VariacionesSelector';
 import LottieLoader from '../../components/ui/LottieLoader';
+import DegradedPlanOverlay from '../../components/DegradedPlanOverlay';
+import CameraScanner from '../../components/CameraScanner';
 
-import { ShoppingCart, Trash2, CheckCircle, CreditCard, Banknote, Smartphone, Wallet, ArrowLeft, Save, Plus, X, UserCircle, Lock, Percent, List, ArrowRight, Package, Receipt, Search, DollarSign, Info, History } from 'lucide-react';
+import { ShoppingCart, Trash2, CheckCircle, CreditCard, Banknote, Smartphone, Wallet, ArrowLeft, Save, Plus, X, UserCircle, Lock, Percent, List, ArrowRight, Package, Receipt, Search, DollarSign, Info, History, Camera } from 'lucide-react';
 import toast from 'react-hot-toast';
 import './Caja.css';
 
@@ -848,12 +850,27 @@ export default function Caja({
   onCancelar = null // Callback para cancelar
 }) {
   const { user, organization, hasPermission, userProfile, isEmployeeMode } = useAuth();
-  const { hasFeature, canPerformAction } = useSubscription();
+  const { hasFeature, canPerformAction, isDegraded, isFreePlan } = useSubscription();
   const navigate = useNavigate();
   const { isOnline } = useNetworkStatus();
 
+  // Limite de ventas para plan degradado
+  const [limiteAlcanzado, setLimiteAlcanzado] = useState(false);
+
+  // Verificar límite de ventas para plan free o degradado
+  useEffect(() => {
+    if (isDegraded || isFreePlan) {
+      canPerformAction('createSale').then(res => {
+        if (!res.allowed) {
+          setLimiteAlcanzado(true);
+        }
+      });
+    }
+  }, [isDegraded, isFreePlan, canPerformAction]);
+
   const esModoPedido = mode === 'pedido';
   const [query, setQuery] = useState("");
+  const [cameraScannerOpen, setCameraScannerOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const isJewelryBusiness = organization?.business_type === 'jewelry_metals';
   const [goldPriceGlobal, setGoldPriceGlobal] = useState(0);
@@ -3941,7 +3958,12 @@ export default function Caja({
   // No bloquear toda la página, solo la funcionalidad de ventas
 
   return (
-    <div className="caja-container">
+    <DegradedPlanOverlay 
+      moduleName="Caja / Ventas"
+      forceBlock={limiteAlcanzado}
+      description="Has alcanzado el límite de 50 ventas mensuales de tu plan gratuito. Para seguir vendiendo, actualiza tu plan."
+    >
+      <div className="caja-container">
       {/* Overlay de bloqueo si no hay apertura activa (solo en modo venta) */}
       {!esModoPedido && !aperturaActivaFinal && organization?.id && !cargandoApertura && (
         <div className="caja-bloqueo-overlay">
@@ -4371,6 +4393,15 @@ export default function Caja({
                     e.target.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
                   }}
                 />
+
+                <button
+                  type="button"
+                  className="camera-scan-btn"
+                  onClick={() => setCameraScannerOpen(true)}
+                  title="Escanear con cámara"
+                >
+                  <Camera size={18} />
+                </button>
 
                 <button
                   type="button"
@@ -6186,5 +6217,20 @@ export default function Caja({
         />
       )}
     </div>
+
+    {/* Escáner de cámara */}
+    {cameraScannerOpen && (
+      <CameraScanner
+        title="Escanear producto"
+        onScan={(codigo) => {
+          setQuery(codigo);
+          setCameraScannerOpen(false);
+          // Disparar el scanner handler para buscar el producto automáticamente
+          handleBarcodeScanned(codigo);
+        }}
+        onClose={() => setCameraScannerOpen(false)}
+      />
+    )}
+    </DegradedPlanOverlay>
   );
 }

@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { supabase } from '../../services/api/supabaseClient';
 import { Search, Store, PackageX, Image as ImageIcon, ShoppingCart, ShoppingBag, Plus, Minus, MessageCircle, X, Instagram, Facebook, Phone, ArrowLeft, ArrowRight, Sparkles, LayoutGrid, Rows } from 'lucide-react';
 import toast from 'react-hot-toast';
+// Import eliminado
 import './Catalogo.css';
 
 const Catalogo = () => {
@@ -18,7 +19,7 @@ const Catalogo = () => {
   const [categoriaActiva, setCategoriaActiva] = useState('todas');
   const [busqueda, setBusqueda] = useState('');
   const [vistaLayout, setVistaLayout] = useState('grid');
-  
+
   // Estados del carrito
   const [cart, setCart] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
@@ -45,7 +46,7 @@ const Catalogo = () => {
           try {
             setOrganizacion(JSON.parse(cachedOrg));
             const parsedProd = JSON.parse(cachedProd);
-            
+
             // Re-procesar categorías del caché
             const categoriasMap = new Map();
             parsedProd.forEach(p => {
@@ -57,7 +58,7 @@ const Catalogo = () => {
             });
             setCategorias(Array.from(categoriasMap.values()).sort((a, b) => a.nombre.localeCompare(b.nombre)));
             setProductos(parsedProd);
-            
+
             // Decir que ya no está cargando para visualización inmediata
             setCargando(false);
           } catch (e) {
@@ -77,6 +78,40 @@ const Catalogo = () => {
 
         if (orgError || !orgData) {
           throw new Error('Tienda no encontrada. Verifica el enlace.');
+        }
+
+        // Verificar suscripción para tiendas
+        try {
+          const { data: subData } = await supabase
+            .from('subscriptions')
+            .select('status, current_period_end, plan_id')
+            .eq('organization_id', orgData.id)
+            .eq('status', 'active')
+            .maybeSingle();
+
+          let blockStore = false;
+          if (subData) {
+            if (subData.plan_id === 'free') {
+              blockStore = true; // El plan gratis no tiene tienda virtual
+            } else if (subData.current_period_end) {
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const endDate = new Date(subData.current_period_end);
+              endDate.setHours(0, 0, 0, 0);
+              const diffDays = Math.round((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+              if (diffDays < -3) blockStore = true;
+            }
+          } else {
+            // Si no hay subcripción activa, se bloquea (salvo que en el futuro haya un caso especial)
+            blockStore = true;
+          }
+
+          if (blockStore) {
+            throw new Error('Tienda temporalmente no disponible');
+          }
+        } catch (err) {
+          if (err.message === 'Tienda temporalmente no disponible') throw err;
+          console.error('Error al verificar suscripción:', err);
         }
 
         setOrganizacion(orgData);
@@ -121,7 +156,7 @@ const Catalogo = () => {
             .filter(p => {
               let meta = {};
               if (typeof p.metadata === 'string') {
-                try { meta = JSON.parse(p.metadata); } catch(e) {}
+                try { meta = JSON.parse(p.metadata); } catch (e) { }
               } else if (p.metadata) {
                 meta = p.metadata;
               }
@@ -130,7 +165,7 @@ const Catalogo = () => {
             .map(p => {
               let meta = {};
               if (typeof p.metadata === 'string') {
-                try { meta = JSON.parse(p.metadata); } catch(e) {}
+                try { meta = JSON.parse(p.metadata); } catch (e) { }
               } else if (p.metadata) {
                 meta = p.metadata;
               }
@@ -153,9 +188,16 @@ const Catalogo = () => {
         }
       } catch (err) {
         console.error('Error cargando catálogo:', err);
-        // Si hay error pero tenemos caché, no mostramos error al usuario
-        if (!localStorage.getItem(`crecemas_org_${slug}`)) {
+        const isBlockError = err.message === 'Tienda temporalmente no disponible';
+        // Si hay error pero tenemos caché, no mostramos error al usuario, 
+        // a menos que sea el error de tienda bloqueada
+        if (isBlockError || !localStorage.getItem(`crecemas_org_${slug}`)) {
           setError(err.message || 'Error al cargar el catálogo');
+        }
+        
+        if (isBlockError) {
+          localStorage.removeItem(`crecemas_org_${slug}`);
+          localStorage.removeItem(`crecemas_prod_${slug}`);
         }
       } finally {
         setCargando(false);
@@ -204,7 +246,7 @@ const Catalogo = () => {
         const g = parseInt(hex.substring(2, 4), 16);
         const b = parseInt(hex.substring(4, 6), 16);
         document.documentElement.style.setProperty('--catalogo-theme-rgb', `${r}, ${g}, ${b}`);
-      } catch(e) {}
+      } catch (e) { }
     }
   }, [organizacion]);
 
@@ -269,7 +311,7 @@ const Catalogo = () => {
     }
 
     let text = `¡Hola! Me gustaría realizar un pedido de la tienda *${organizacion.name}*:\n\n`;
-    
+
     text += `*📦 DATOS DE ENVÍO:*\n`;
     text += `• *Nombre:* ${shippingNombre.trim()}\n`;
     text += `• *Teléfono:* ${shippingTelefono.trim()}\n`;
@@ -278,21 +320,21 @@ const Catalogo = () => {
     if (shippingIndicaciones.trim() !== '') {
       text += `• *Indicaciones:* ${shippingIndicaciones.trim()}\n`;
     }
-    
+
     text += `\n*🛒 DETALLE DEL PEDIDO:*\n`;
     cart.forEach(item => {
       text += `• *${item.cantidad}x* ${item.nombre} - ${formatCOP(item.precio_venta * item.cantidad)}\n`;
     });
-    
+
     if (notaPedido.trim() !== '') {
       text += `\n*Nota adicional:* ${notaPedido}\n`;
     }
-    
+
     text += `\n*Total a pagar: ${formatCOP(totalCart)}*\n\nMuchas gracias.`;
 
     const encoded = encodeURIComponent(text);
     window.open(`https://wa.me/${whatsappNum}?text=${encoded}`, '_blank');
-    
+
     // Resetear carrito y formulario
     clearCart();
     setCartOpen(false);
@@ -315,8 +357,8 @@ const Catalogo = () => {
 
     if (busqueda.trim() !== '') {
       const termino = busqueda.toLowerCase().trim();
-      filtrados = filtrados.filter(p => 
-        p.nombre?.toLowerCase().includes(termino) || 
+      filtrados = filtrados.filter(p =>
+        p.nombre?.toLowerCase().includes(termino) ||
         p.descripcion?.toLowerCase().includes(termino)
       );
     }
@@ -361,95 +403,95 @@ const Catalogo = () => {
   return (
     <div className="catalogo-container">
 
-    {/* ===== ENCABEZADO STICKY HORIZONTAL ===== */}
-    <header className="catalogo-header" style={{ borderBottom: `3px solid var(--catalogo-theme-color, #4f46e5)`, backgroundColor: 'var(--catalogo-header-bg, #ffffff)' }}>
-      {/* Fila 1: Logo + Nombre  |  Buscador */}
-      <div className="catalogo-header-row1">
-        {/* Identidad */}
-        <div className="catalogo-header-identity">
-          <div className="catalogo-logo-container" style={{ border: `2px solid var(--catalogo-theme-color, #4f46e5)` }}>
-            {organizacion?.logo_url && !logoError ? (
-              <img
-                src={organizacion.logo_url}
-                alt={`Logo de ${organizacion.name}`}
-                className="catalogo-logo"
-                onError={() => setLogoError(true)}
+      {/* ===== ENCABEZADO STICKY HORIZONTAL ===== */}
+      <header className="catalogo-header" style={{ borderBottom: `3px solid var(--catalogo-theme-color, #4f46e5)`, backgroundColor: 'var(--catalogo-header-bg, #ffffff)' }}>
+        {/* Fila 1: Logo + Nombre  |  Buscador */}
+        <div className="catalogo-header-row1">
+          {/* Identidad */}
+          <div className="catalogo-header-identity">
+            <div className="catalogo-logo-container" style={{ border: `2px solid var(--catalogo-theme-color, #4f46e5)` }}>
+              {organizacion?.logo_url && !logoError ? (
+                <img
+                  src={organizacion.logo_url}
+                  alt={`Logo de ${organizacion.name}`}
+                  className="catalogo-logo"
+                  onError={() => setLogoError(true)}
+                />
+              ) : (
+                <Store size={28} color="var(--catalogo-theme-color, #4f46e5)" />
+              )}
+            </div>
+            <h1 className="catalogo-title" style={{ color: 'var(--catalogo-header-text, #111827)' }}>{organizacion?.name || 'Tienda'}</h1>
+          </div>
+
+          {/* Redes Sociales en el Encabezado Sticky */}
+          {(organizacion?.catalogo_config?.instagram || organizacion?.catalogo_config?.facebook || organizacion?.catalogo_config?.whatsapp) && (
+            <div className="catalogo-header-socials">
+              {organizacion.catalogo_config?.whatsapp && (
+                <a href={`https://wa.me/${organizacion.catalogo_config.whatsapp}`} target="_blank" rel="noreferrer" className="header-social-icon whatsapp" title="WhatsApp">
+                  <Phone size={15} />
+                </a>
+              )}
+              {organizacion.catalogo_config?.instagram && (
+                <a href={`https://instagram.com/${organizacion.catalogo_config.instagram}`} target="_blank" rel="noreferrer" className="header-social-icon instagram" title="Instagram">
+                  <Instagram size={15} />
+                </a>
+              )}
+              {organizacion.catalogo_config?.facebook && (
+                <a href={organizacion.catalogo_config.facebook} target="_blank" rel="noreferrer" className="header-social-icon facebook" title="Facebook">
+                  <Facebook size={15} />
+                </a>
+              )}
+            </div>
+          )}
+
+          {/* Buscador */}
+          <div className="catalogo-header-search">
+            <div className="catalogo-search">
+              <Search size={18} />
+              <input
+                type="text"
+                placeholder="Buscar productos..."
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
               />
-            ) : (
-              <Store size={28} color="var(--catalogo-theme-color, #4f46e5)" />
-            )}
-          </div>
-          <h1 className="catalogo-title" style={{ color: 'var(--catalogo-header-text, #111827)' }}>{organizacion?.name || 'Tienda'}</h1>
-        </div>
-
-        {/* Redes Sociales en el Encabezado Sticky */}
-        {(organizacion?.catalogo_config?.instagram || organizacion?.catalogo_config?.facebook || organizacion?.catalogo_config?.whatsapp) && (
-          <div className="catalogo-header-socials">
-            {organizacion.catalogo_config?.whatsapp && (
-              <a href={`https://wa.me/${organizacion.catalogo_config.whatsapp}`} target="_blank" rel="noreferrer" className="header-social-icon whatsapp" title="WhatsApp">
-                <Phone size={15} />
-              </a>
-            )}
-            {organizacion.catalogo_config?.instagram && (
-              <a href={`https://instagram.com/${organizacion.catalogo_config.instagram}`} target="_blank" rel="noreferrer" className="header-social-icon instagram" title="Instagram">
-                <Instagram size={15} />
-              </a>
-            )}
-            {organizacion.catalogo_config?.facebook && (
-              <a href={organizacion.catalogo_config.facebook} target="_blank" rel="noreferrer" className="header-social-icon facebook" title="Facebook">
-                <Facebook size={15} />
-              </a>
-            )}
-          </div>
-        )}
-
-        {/* Buscador */}
-        <div className="catalogo-header-search">
-          <div className="catalogo-search">
-            <Search size={18} />
-            <input
-              type="text"
-              placeholder="Buscar productos..."
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-            />
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Fila 2: Categorías (scroll horizontal) */}
-      {categorias.length > 0 && layoutCategorias !== 'side' && (
-        <div className="catalogo-header-cats">
-          <div className="catalogo-categorias">
-            <button
-              className={`categoria-pill ${categoriaActiva === 'todas' ? 'active' : ''}`}
-              onClick={() => setCategoriaActiva('todas')}
-              style={{
-                backgroundColor: categoriaActiva === 'todas' ? 'var(--catalogo-theme-color, #4f46e5)' : 'transparent',
-                borderColor: categoriaActiva === 'todas' ? 'var(--catalogo-theme-color, #4f46e5)' : 'rgba(0,0,0,0.15)',
-                color: categoriaActiva === 'todas' ? 'var(--catalogo-text-btn-color, #ffffff)' : '#475569'
-              }}
-            >
-              Todas
-            </button>
-            {categorias.map(cat => (
+        {/* Fila 2: Categorías (scroll horizontal) */}
+        {categorias.length > 0 && layoutCategorias !== 'side' && (
+          <div className="catalogo-header-cats">
+            <div className="catalogo-categorias">
               <button
-                key={cat.id}
-                className={`categoria-pill ${categoriaActiva === cat.id ? 'active' : ''}`}
-                onClick={() => setCategoriaActiva(cat.id)}
+                className={`categoria-pill ${categoriaActiva === 'todas' ? 'active' : ''}`}
+                onClick={() => setCategoriaActiva('todas')}
                 style={{
-                  backgroundColor: categoriaActiva === cat.id ? 'var(--catalogo-theme-color, #4f46e5)' : 'transparent',
-                  borderColor: categoriaActiva === cat.id ? 'var(--catalogo-theme-color, #4f46e5)' : 'rgba(0,0,0,0.15)',
-                  color: categoriaActiva === cat.id ? 'var(--catalogo-text-btn-color, #ffffff)' : '#475569'
+                  backgroundColor: categoriaActiva === 'todas' ? 'var(--catalogo-theme-color, #4f46e5)' : 'transparent',
+                  borderColor: categoriaActiva === 'todas' ? 'var(--catalogo-theme-color, #4f46e5)' : 'rgba(0,0,0,0.15)',
+                  color: categoriaActiva === 'todas' ? 'var(--catalogo-text-btn-color, #ffffff)' : '#475569'
                 }}
               >
-                {cat.nombre}
+                Todas
               </button>
-            ))}
+              {categorias.map(cat => (
+                <button
+                  key={cat.id}
+                  className={`categoria-pill ${categoriaActiva === cat.id ? 'active' : ''}`}
+                  onClick={() => setCategoriaActiva(cat.id)}
+                  style={{
+                    backgroundColor: categoriaActiva === cat.id ? 'var(--catalogo-theme-color, #4f46e5)' : 'transparent',
+                    borderColor: categoriaActiva === cat.id ? 'var(--catalogo-theme-color, #4f46e5)' : 'rgba(0,0,0,0.15)',
+                    color: categoriaActiva === cat.id ? 'var(--catalogo-text-btn-color, #ffffff)' : '#475569'
+                  }}
+                >
+                  {cat.nombre}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
-    </header>
+        )}
+      </header>
 
 
       {/* Carrete de Promociones */}
@@ -557,112 +599,112 @@ const Catalogo = () => {
         )}
 
         <main className="catalogo-content">
-        {productosFiltrados.length === 0 ? (
-          <div className="catalogo-empty">
-            <PackageX size={64} />
-            <h3>No se encontraron productos</h3>
-            <p>Intenta con otra búsqueda o categoría.</p>
-          </div>
-        ) : (
-          <>
-            <div className="catalogo-products-header">
-            <span className="products-count">{productosFiltrados.length} productos</span>
-            <div className="vista-toggle-container">
-              <button 
-                type="button"
-                className={`vista-toggle-btn ${vistaLayout === 'grid' ? 'active' : ''}`}
-                onClick={() => setVistaLayout('grid')}
-                title="Vista cuadrícula"
-              >
-                <LayoutGrid size={16} />
-              </button>
-              <button 
-                type="button"
-                className={`vista-toggle-btn ${vistaLayout === 'list' ? 'active' : ''}`}
-                onClick={() => setVistaLayout('list')}
-                title="Vista lista"
-              >
-                <Rows size={16} />
-              </button>
+          {productosFiltrados.length === 0 ? (
+            <div className="catalogo-empty">
+              <PackageX size={64} />
+              <h3>No se encontraron productos</h3>
+              <p>Intenta con otra búsqueda o categoría.</p>
             </div>
-          </div>
+          ) : (
+            <>
+              <div className="catalogo-products-header">
+                <span className="products-count">{productosFiltrados.length} productos</span>
+                <div className="vista-toggle-container">
+                  <button
+                    type="button"
+                    className={`vista-toggle-btn ${vistaLayout === 'grid' ? 'active' : ''}`}
+                    onClick={() => setVistaLayout('grid')}
+                    title="Vista cuadrícula"
+                  >
+                    <LayoutGrid size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    className={`vista-toggle-btn ${vistaLayout === 'list' ? 'active' : ''}`}
+                    onClick={() => setVistaLayout('list')}
+                    title="Vista lista"
+                  >
+                    <Rows size={16} />
+                  </button>
+                </div>
+              </div>
 
-          <div className={`productos-grid vista-${vistaLayout}`}>
-            {productosFiltrados.map((producto) => {
-              const hasStock = producto.es_servicio || (producto.stock_disponible || 0) > 0;
-              return (
-                <div key={producto.id} className="producto-card">
-                  <div className="producto-img-container">
-                    {producto.url_imagen ? (
-                      <img src={producto.url_imagen} alt={producto.nombre} className="producto-img" loading="lazy" />
-                    ) : (
-                      <ImageIcon size={48} className="producto-img-placeholder" />
-                    )}
-                  </div>
-                  <div className="producto-info">
-                    <div className="producto-categoria">{getCategoriaNombre(producto.categoria_id)}</div>
-                    <h3 className="producto-nombre">{producto.nombre}</h3>
-                    {producto.descripcion && (
-                      <p className="producto-descripcion" style={{ fontSize: '0.75rem', color: '#6b7280', margin: '0 0 0.5rem 0', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', height: '32px' }}>
-                        {producto.descripcion}
-                      </p>
-                    )}
-                    <div className="producto-footer">
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span className="producto-precio" style={{ color: 'var(--catalogo-theme-color, #4f46e5)' }}>{formatCOP(producto.precio_venta)}</span>
-                        {!producto.es_servicio && (
-                          <span className={`producto-stock ${hasStock ? 'disponible' : ''}`} style={{ alignSelf: 'flex-start', marginTop: '0.2rem' }}>
-                            {hasStock ? 'Disponible' : 'Agotado'}
-                          </span>
+              <div className={`productos-grid vista-${vistaLayout}`}>
+                {productosFiltrados.map((producto) => {
+                  const hasStock = producto.es_servicio || (producto.stock_disponible || 0) > 0;
+                  return (
+                    <div key={producto.id} className="producto-card">
+                      <div className="producto-img-container">
+                        {producto.url_imagen ? (
+                          <img src={producto.url_imagen} alt={producto.nombre} className="producto-img" loading="lazy" />
+                        ) : (
+                          <ImageIcon size={48} className="producto-img-placeholder" />
                         )}
                       </div>
-                      
-                      {hasStock ? (
-                        <button
-                          className="btn-agregar-pedido"
-                          onClick={() => addToCart(producto)}
-                          style={{
-                            background: 'var(--catalogo-theme-color, #4f46e5)',
-                            color: '#ffffff',
-                            border: 'none',
-                            borderRadius: '8px',
-                            padding: '0.5rem 0.8rem',
-                            fontSize: '0.85rem',
-                            fontWeight: '600',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s'
-                          }}
-                        >
-                          Agregar
-                        </button>
-                      ) : (
-                        <button
-                          className="btn-agregar-pedido agotado"
-                          disabled
-                          style={{
-                            background: '#e2e8f0',
-                            color: '#94a3b8',
-                            border: 'none',
-                            borderRadius: '8px',
-                            padding: '0.5rem 0.8rem',
-                            fontSize: '0.85rem',
-                            fontWeight: '600',
-                            cursor: 'not-allowed'
-                          }}
-                        >
-                          Agotado
-                        </button>
-                      )}
+                      <div className="producto-info">
+                        <div className="producto-categoria">{getCategoriaNombre(producto.categoria_id)}</div>
+                        <h3 className="producto-nombre">{producto.nombre}</h3>
+                        {producto.descripcion && (
+                          <p className="producto-descripcion" style={{ fontSize: '0.75rem', color: '#6b7280', margin: '0 0 0.5rem 0', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', height: '32px' }}>
+                            {producto.descripcion}
+                          </p>
+                        )}
+                        <div className="producto-footer">
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span className="producto-precio" style={{ color: 'var(--catalogo-theme-color, #4f46e5)' }}>{formatCOP(producto.precio_venta)}</span>
+                            {!producto.es_servicio && (
+                              <span className={`producto-stock ${hasStock ? 'disponible' : ''}`} style={{ alignSelf: 'flex-start', marginTop: '0.2rem' }}>
+                                {hasStock ? 'Disponible' : 'Agotado'}
+                              </span>
+                            )}
+                          </div>
+
+                          {hasStock ? (
+                            <button
+                              className="btn-agregar-pedido"
+                              onClick={() => addToCart(producto)}
+                              style={{
+                                background: 'var(--catalogo-theme-color, #4f46e5)',
+                                color: '#ffffff',
+                                border: 'none',
+                                borderRadius: '8px',
+                                padding: '0.5rem 0.8rem',
+                                fontSize: '0.85rem',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              Agregar
+                            </button>
+                          ) : (
+                            <button
+                              className="btn-agregar-pedido agotado"
+                              disabled
+                              style={{
+                                background: '#e2e8f0',
+                                color: '#94a3b8',
+                                border: 'none',
+                                borderRadius: '8px',
+                                padding: '0.5rem 0.8rem',
+                                fontSize: '0.85rem',
+                                fontWeight: '600',
+                                cursor: 'not-allowed'
+                              }}
+                            >
+                              Agotado
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          </>
-        )}
-      </main>
-    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </main>
+      </div>
 
       {/* Botón flotante del carrito */}
       {totalItems > 0 && (
@@ -684,8 +726,8 @@ const Catalogo = () => {
           <div className="cart-drawer" onClick={(e) => e.stopPropagation()}>
             <div className="cart-drawer-header">
               {checkoutStep === 'checkout' && (
-                <button 
-                  className="cart-drawer-back" 
+                <button
+                  className="cart-drawer-back"
                   onClick={() => setCheckoutStep('cart')}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem', color: '#4b5563', marginRight: '0.5rem', display: 'flex', alignItems: 'center' }}
                 >
@@ -702,8 +744,8 @@ const Catalogo = () => {
               <div className="cart-drawer-empty">
                 <ShoppingBag size={48} />
                 <p>Tu pedido está vacío</p>
-                <button 
-                  className="btn-keep-shopping" 
+                <button
+                  className="btn-keep-shopping"
                   onClick={() => { setCartOpen(false); setCheckoutStep('cart'); }}
                   style={{ maxWidth: '220px', fontSize: '0.85rem', padding: '0.65rem', marginTop: '0.75rem' }}
                 >
@@ -738,8 +780,8 @@ const Catalogo = () => {
                     Siguiente: Datos de Envío
                   </button>
 
-                  <button 
-                    className="btn-keep-shopping" 
+                  <button
+                    className="btn-keep-shopping"
                     onClick={() => setCartOpen(false)}
                   >
                     Volver y seguir comprando
@@ -751,23 +793,23 @@ const Catalogo = () => {
                 <div className="cart-drawer-items" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                     <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151' }}>Nombre Completo *</label>
-                    <input 
-                      type="text" 
-                      value={shippingNombre} 
-                      onChange={(e) => setShippingNombre(e.target.value)} 
-                      placeholder="Ej. Juan Pérez" 
+                    <input
+                      type="text"
+                      value={shippingNombre}
+                      onChange={(e) => setShippingNombre(e.target.value)}
+                      placeholder="Ej. Juan Pérez"
                       style={{ padding: '0.6rem 0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem' }}
                       required
                     />
                   </div>
-                  
+
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                     <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151' }}>Celular / Teléfono *</label>
-                    <input 
-                      type="tel" 
-                      value={shippingTelefono} 
-                      onChange={(e) => setShippingTelefono(e.target.value)} 
-                      placeholder="Ej. 3001234567" 
+                    <input
+                      type="tel"
+                      value={shippingTelefono}
+                      onChange={(e) => setShippingTelefono(e.target.value)}
+                      placeholder="Ej. 3001234567"
                       style={{ padding: '0.6rem 0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem' }}
                       required
                     />
@@ -775,11 +817,11 @@ const Catalogo = () => {
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                     <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151' }}>Dirección de Envío *</label>
-                    <input 
-                      type="text" 
-                      value={shippingDireccion} 
-                      onChange={(e) => setShippingDireccion(e.target.value)} 
-                      placeholder="Ej. Calle 45 # 12 - 34" 
+                    <input
+                      type="text"
+                      value={shippingDireccion}
+                      onChange={(e) => setShippingDireccion(e.target.value)}
+                      placeholder="Ej. Calle 45 # 12 - 34"
                       style={{ padding: '0.6rem 0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem' }}
                       required
                     />
@@ -787,11 +829,11 @@ const Catalogo = () => {
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                     <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151' }}>Ciudad / Municipio *</label>
-                    <input 
-                      type="text" 
-                      value={shippingCiudad} 
-                      onChange={(e) => setShippingCiudad(e.target.value)} 
-                      placeholder="Ej. Bogotá" 
+                    <input
+                      type="text"
+                      value={shippingCiudad}
+                      onChange={(e) => setShippingCiudad(e.target.value)}
+                      placeholder="Ej. Bogotá"
                       style={{ padding: '0.6rem 0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem' }}
                       required
                     />
@@ -799,22 +841,22 @@ const Catalogo = () => {
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                     <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151' }}>Indicaciones de Entrega (Opcional)</label>
-                    <input 
-                      type="text" 
-                      value={shippingIndicaciones} 
-                      onChange={(e) => setShippingIndicaciones(e.target.value)} 
-                      placeholder="Ej. Portería, casa blanca reja negra" 
+                    <input
+                      type="text"
+                      value={shippingIndicaciones}
+                      onChange={(e) => setShippingIndicaciones(e.target.value)}
+                      placeholder="Ej. Portería, casa blanca reja negra"
                       style={{ padding: '0.6rem 0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem' }}
                     />
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                     <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151' }}>Nota o comentarios para el negocio (Opcional)</label>
-                    <textarea 
+                    <textarea
                       rows={2}
-                      value={notaPedido} 
-                      onChange={(e) => setNotaPedido(e.target.value)} 
-                      placeholder="Ej. Sin cebolla, empacar por separado, etc." 
+                      value={notaPedido}
+                      onChange={(e) => setNotaPedido(e.target.value)}
+                      placeholder="Ej. Sin cebolla, empacar por separado, etc."
                       style={{ padding: '0.6rem 0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem', resize: 'none', fontFamily: 'inherit' }}
                     />
                   </div>
@@ -860,7 +902,7 @@ const Catalogo = () => {
             </div>
           </>
         )}
-        
+
         <div className="footer-creceplus-promo">
           <div className="promo-divider" />
           <p className="promo-subtitle">¿Quieres controlar tu inventario, registrar ventas y tener un catálogo como este?</p>

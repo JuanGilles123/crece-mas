@@ -14,9 +14,13 @@ const UsageBanner = () => {
 
   const loadLimits = async () => {
     try {
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      startOfMonth.setHours(0, 0, 0, 0);
+
       const [products, sales, users] = await Promise.all([
         checkLimit('maxProducts'),
-        checkLimit('maxSalesPerMonth'),
+        checkLimit('maxSalesPerMonth', 'sales', { created_at: startOfMonth.toISOString() }),
         checkLimit('maxUsers')
       ]);
       

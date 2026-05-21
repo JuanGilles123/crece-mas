@@ -3,8 +3,9 @@ import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { useProductos } from '../../hooks/useProductos';
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
-import { Search, X, Package, DollarSign, TrendingUp, AlertCircle } from 'lucide-react';
+import { Search, X, Package, DollarSign, TrendingUp, AlertCircle, Camera } from 'lucide-react';
 import OptimizedProductImage from '../../components/business/OptimizedProductImage';
+import CameraScanner from '../../components/CameraScanner';
 import './ConsultarPrecio.css';
 
 const ConsultarPrecio = () => {
@@ -14,6 +15,7 @@ const ConsultarPrecio = () => {
   const [productoEncontrado, setProductoEncontrado] = useState(null);
   const [varianteEncontrada, setVarianteEncontrada] = useState(null);
   const [resultados, setResultados] = useState([]);
+  const [cameraScannerOpen, setCameraScannerOpen] = useState(false);
 
   // Función para buscar producto
   const buscarProducto = useCallback((termino) => {
@@ -250,6 +252,15 @@ const ConsultarPrecio = () => {
               <X size={18} />
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => setCameraScannerOpen(true)}
+            className="camera-scan-btn"
+            style={{ padding: '0 10px', height: '36px', marginLeft: query ? '0' : 'auto' }}
+            title="Escanear con cámara"
+          >
+            <Camera size={18} />
+          </button>
         </div>
       </div>
 
@@ -399,6 +410,19 @@ const ConsultarPrecio = () => {
           </div>
         )}
       </div>
+
+      {/* Escáner de cámara */}
+      {cameraScannerOpen && (
+        <CameraScanner
+          title="Escanear producto"
+          onScan={(codigo) => {
+            setQuery(codigo);
+            setCameraScannerOpen(false);
+            handleBarcodeScanned(codigo);
+          }}
+          onClose={() => setCameraScannerOpen(false)}
+        />
+      )}
     </div>
   );
 };

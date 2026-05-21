@@ -15,8 +15,9 @@ import LottieLoader from '../../components/ui/LottieLoader';
 import InventarioStats from '../../components/inventario/InventarioStats';
 import InventarioFilters from '../../components/inventario/InventarioFilters';
 import { useAuth } from '../../context/AuthContext';
+import { useSubscription } from '../../hooks/useSubscription';
 import { supabase } from '../../services/api/supabaseClient';
-import { List, Grid3X3, PackagePlus, Search, RefreshCw, Download, CheckSquare, X, Edit3, Trash2, ChevronDown, SlidersHorizontal, ArrowUpDown, Tag, Layers, Check, Package, Upload } from 'lucide-react';
+import { List, Grid3X3, PackagePlus, Search, RefreshCw, Download, CheckSquare, X, Edit3, Trash2, ChevronDown, SlidersHorizontal, ArrowUpDown, Tag, Layers, Check, Package, Upload, Camera } from 'lucide-react';
 import { useProductos, useEliminarProducto } from '../../hooks/useProductos';
 import EntradaInventarioModal from '../../components/modals/EntradaInventarioModal';
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
@@ -24,6 +25,7 @@ import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import MovimientosStockModal from '../../components/modals/MovimientosStockModal';
 import { History } from 'lucide-react';
+import CameraScanner from '../../components/CameraScanner';
 
 
 // Función para eliminar imagen del storage
@@ -181,6 +183,7 @@ const SingleSelectFilter = ({ label, options, value, onChange, icon: IconCompone
 
 const Inventario = () => {
   const { user, organization, userProfile, hasPermission } = useAuth();
+  const { isDegraded, isFreePlan, getLimit } = useSubscription();
   const location = useLocation();
   const [modalOpen, setModalOpen] = useState(false);
   const [editarModalOpen, setEditarModalOpen] = useState(false);
@@ -206,6 +209,7 @@ const Inventario = () => {
   const [movimientosVarianteId, setMovimientosVarianteId] = useState(null);
   const [guardandoMasivo, setGuardandoMasivo] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [cameraScannerOpen, setCameraScannerOpen] = useState(false);
   const advancedFiltersRef = useRef(null);
 
   // Cerrar filtros avanzados al hacer clic fuera
@@ -754,7 +758,7 @@ const Inventario = () => {
 
   // Filtrar productos basado en búsqueda y filtros dinámicos
   const filteredProducts = useMemo(() => {
-    return productos.filter((producto) => {
+    const result = productos.filter((producto) => {
       if (productoIdFiltro && String(producto.id) !== String(productoIdFiltro)) {
         return false;
       }
@@ -874,7 +878,17 @@ const Inventario = () => {
 
       return true;
     });
-  }, [productos, query, productosSearchIndex, filters, getUmbralProducto, productoIdFiltro]);
+    
+    // Si el plan tiene límite de productos (free o degradado), mostrar solo hasta el límite
+    if (isDegraded || isFreePlan) {
+      const maxProducts = getLimit('maxProducts');
+      if (maxProducts !== null && maxProducts !== undefined) {
+        return result.slice(0, maxProducts);
+      }
+    }
+    
+    return result;
+  }, [productos, query, filters, productoIdFiltro, productosSearchIndex, isDegraded, isFreePlan, getLimit, getUmbralProducto]);
 
   const sortedProducts = useMemo(() => {
     const lista = [...filteredProducts];
@@ -1323,6 +1337,65 @@ const Inventario = () => {
         </div>
       ) : (
         <>
+          {/* Banner de límite de plan */}
+          {(isDegraded || isFreePlan) && (() => {
+            const maxProducts = getLimit('maxProducts');
+            if (maxProducts !== null && maxProducts !== undefined && productos.length > maxProducts) {
+              return (
+                <div style={{
+                  background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
+                  border: '1px solid #f59e0b',
+                  borderRadius: '10px',
+                  padding: '12px 16px',
+                  marginBottom: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  fontSize: '0.875rem',
+                  color: '#92400e'
+                }}>
+                  <span style={{ fontSize: '1.2rem' }}>⚠️</span>
+                  <span>
+                    Tu plan <strong>Gratis</strong> permite hasta <strong>{maxProducts} productos</strong>. 
+                    Tienes <strong>{productos.length} productos</strong> en total, pero solo se muestran los primeros <strong>{maxProducts}</strong>.
+                    {' '}<button
+                      onClick={() => window.location.href = '/pricing'}
+                      style={{ background: 'none', border: 'none', color: '#d97706', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+                    >Actualiza tu plan</button> para verlos todos.
+                  </span>
+                </div>
+              );
+            }
+            // Si NO supera el límite pero está cerca, mostrar advertencia suave
+            if (maxProducts !== null && maxProducts !== undefined && productos.length >= maxProducts) {
+              return (
+                <div style={{
+                  background: 'linear-gradient(135deg, #fee2e2, #fecaca)',
+                  border: '1px solid #ef4444',
+                  borderRadius: '10px',
+                  padding: '12px 16px',
+                  marginBottom: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  fontSize: '0.875rem',
+                  color: '#991b1b'
+                }}>
+                  <span style={{ fontSize: '1.2rem' }}>🔒</span>
+                  <span>
+                    Has alcanzado el límite de <strong>{maxProducts} productos</strong> del plan Gratis. 
+                    No puedes agregar más productos.{' '}
+                    <button
+                      onClick={() => window.location.href = '/pricing'}
+                      style={{ background: 'none', border: 'none', color: '#dc2626', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+                    >Actualiza tu plan</button> para continuar creciendo.
+                  </span>
+                </div>
+              );
+            }
+            return null;
+          })()}
+
           {/* Métricas del inventario - se actualizan dinámicamente según filtros */}
           {productos.length > 0 && (
             <InventarioStats
@@ -1337,14 +1410,43 @@ const Inventario = () => {
               <div className="inventario-actions-left">
                 {(hasPermission('inventario.create') || ['owner', 'admin'].includes(userProfile?.role)) && (
                   <>
-                    <button className="inventario-btn inventario-btn-primary" onClick={() => setModalOpen(true)}>Nuevo producto</button>
-                    <button
-                      className="inventario-btn inventario-btn-masivo"
-                      onClick={() => setCreacionMasivaOpen(true)}
-                      title="Crea múltiples productos a la vez tipo Excel"
+                    <FeatureGuard
+                      action="createProduct"
+                      fallback={
+                        <button 
+                          className="inventario-btn inventario-btn-primary" 
+                          onClick={() => toast.error('Has alcanzado el límite de productos de tu plan. Actualiza tu cuenta para seguir creciendo.')}
+                          style={{ opacity: 0.7, cursor: 'not-allowed' }}
+                          title="🔒 Límite de productos alcanzado"
+                        >
+                          Nuevo producto
+                        </button>
+                      }
                     >
-                      Creación Masiva
-                    </button>
+                      <button className="inventario-btn inventario-btn-primary" onClick={() => setModalOpen(true)}>Nuevo producto</button>
+                    </FeatureGuard>
+                    
+                    <FeatureGuard
+                      action="createProduct"
+                      fallback={
+                        <button
+                          className="inventario-btn inventario-btn-masivo"
+                          onClick={() => toast.error('Has alcanzado el límite de productos de tu plan. Actualiza tu cuenta.')}
+                          style={{ opacity: 0.7, cursor: 'not-allowed' }}
+                          title="🔒 Límite de productos alcanzado"
+                        >
+                          Creación Masiva
+                        </button>
+                      }
+                    >
+                      <button
+                        className="inventario-btn inventario-btn-masivo"
+                        onClick={() => setCreacionMasivaOpen(true)}
+                        title="Crea múltiples productos a la vez tipo Excel"
+                      >
+                        Creación Masiva
+                      </button>
+                    </FeatureGuard>
                   </>
                 )}
                 {(hasPermission('inventario.edit') || ['owner', 'admin'].includes(userProfile?.role)) && (
@@ -1465,7 +1567,7 @@ const Inventario = () => {
               </div>
             </div>
             <div className="inventario-search-row">
-              <div className="search-input-wrapper compact">
+              <div className="search-input-wrapper compact" style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1 }}>
                 <Search size={16} className="inventario-search-icon-outside" />
                 <input
                   ref={combinedSearchInputRef}
@@ -1483,6 +1585,14 @@ const Inventario = () => {
                     <X size={14} />
                   </button>
                 )}
+                <button
+                  className="camera-scan-btn"
+                  onClick={() => setCameraScannerOpen(true)}
+                  title="Escanear con cámara"
+                  type="button"
+                >
+                  <Camera size={16} />
+                </button>
               </div>
 
 
@@ -1878,6 +1988,20 @@ const Inventario = () => {
         producto={movimientosProducto}
         varianteId={movimientosVarianteId}
       />
+
+      {/* Escáner de cámara */}
+      {cameraScannerOpen && (
+        <CameraScanner
+          title="Escanear código de barras"
+          onScan={(codigo) => {
+            setQuery(codigo);
+            setCameraScannerOpen(false);
+            // También disparar búsqueda por código directo
+            handleBarcodeScanned(codigo);
+          }}
+          onClose={() => setCameraScannerOpen(false)}
+        />
+      )}
     </div>
   );
 };

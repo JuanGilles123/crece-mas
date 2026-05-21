@@ -24,6 +24,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import UpgradePrompt from '../components/UpgradePrompt';
+import DegradedPlanOverlay from '../components/DegradedPlanOverlay';
 import { useNavigate } from 'react-router-dom';
 import {
   useTeamMembers,
@@ -471,7 +472,7 @@ const GestionEquipo = () => {
   const navigate = useNavigate();
   
   // Hook de suscripción para verificar acceso
-  const { hasFeature, planSlug, loading: subscriptionLoading, isVIP, getLimit } = useSubscription();
+  const { hasFeature, planSlug, loading: subscriptionLoading, isVIP, getLimit, isDegraded } = useSubscription();
   
   const [invitarModalOpen, setInvitarModalOpen] = useState(false);
   const [agregarEmpleadoModalOpen, setAgregarEmpleadoModalOpen] = useState(false);
@@ -501,8 +502,8 @@ const GestionEquipo = () => {
   const isOwner = hasRole('owner', 'admin');
 
   
-  // Si no tiene acceso, mostrar prompt de upgrade
-  if (!subscriptionLoading && !tieneAccesoEquipo) {
+  // Si no tiene acceso, mostrar prompt de upgrade (solo si no está degradado)
+  if (!subscriptionLoading && !tieneAccesoEquipo && !isDegraded) {
     return (
       <div className="equipo-container">
         <UpgradePrompt 
@@ -652,7 +653,7 @@ const GestionEquipo = () => {
     ? activeMembersForLimit.length >= maxTeamMembers
     : false;
 
-  return (
+  const content = (
     <div className="gestion-equipo-container">
       <div className="gestion-equipo-header">
         <div className="header-content">
@@ -883,6 +884,20 @@ const GestionEquipo = () => {
       </AnimatePresence>
     </div>
   );
+
+  if (isDegraded && !tieneAccesoEquipo) {
+    return (
+      <DegradedPlanOverlay 
+        moduleName="Gestión de Equipo" 
+        forceBlock={true} 
+        description="La gestión de tu equipo fue suspendida porque tu plan está vencido."
+      >
+        {content}
+      </DegradedPlanOverlay>
+    );
+  }
+
+  return content;
 };
 
 export default GestionEquipo;

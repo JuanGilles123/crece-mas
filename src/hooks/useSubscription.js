@@ -396,6 +396,10 @@ export const useSubscription = () => {
     hasBypassAccess({ email: organization.owner_email }, organization) : false;
   const isVIPValue = userIsVIP || orgIsVIP;
 
+  // Flag para saber si el negocio fue degradado por no pago (vs. siempre gratis)
+  const isDegraded = !!(subscription?.isGracePeriodExpired && subscription?.degradedFromPlan);
+  const degradedFromPlan = subscription?.degradedFromPlan || null;
+
   return {
     // Estado
     subscription,
@@ -418,6 +422,8 @@ export const useSubscription = () => {
     isProfessional: getPlanSlug() === 'professional',
     isEnterprise: getPlanSlug() === 'enterprise' || getPlanSlug() === 'custom',
     isVIP: isVIPValue, // Usar el valor calculado
+    isDegraded,           // true si fue degradado por no pago
+    degradedFromPlan,     // info del plan anterior al degradado
     
     // Acciones
     refreshSubscription,

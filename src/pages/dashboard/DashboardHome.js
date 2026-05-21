@@ -71,13 +71,19 @@ const DashboardHome = () => {
     if (!organization.business_type) {
       const done = localStorage.getItem(storageKey);
       if (!done) {
-        setTipoNegocioSeleccionado('');
-        setMostrarTipoNegocio(true);
+        // Primera vez: redirigir a Preferencias de Aplicación completas
+        navigate('/dashboard/perfil', { 
+          state: { 
+            activeTab: 'configuracion',
+            firstTimeSetup: true 
+          } 
+        });
+        return;
       }
       return;
     }
     localStorage.setItem(storageKey, 'true');
-  }, [organization?.id, organization?.business_type]);
+  }, [organization?.id, organization?.business_type, navigate]);
 
   const guardarTipoNegocio = async () => {
     if (!organization?.id || !tipoNegocioSeleccionado) {

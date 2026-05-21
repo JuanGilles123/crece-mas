@@ -1939,7 +1939,7 @@ const ResumenVentas = () => {
 
   return (
     <FeatureGuard
-      featureId="salesAnalytics"
+      feature="advancedReports"
       recommendedPlan="professional"
       showInline={false}
     >
