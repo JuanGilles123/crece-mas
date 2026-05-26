@@ -944,9 +944,7 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
         precio_compra: typeFields.required.includes('precio_compra') || data.precioCompra
           ? precioCompraReal
           : 0,
-        stock: typeFields.required.includes('stock') || data.stock
-          ? (Number(data.stock?.replace(/\D/g, '') || '0') || null)
-          : null,
+        stock: data.stock != null && String(data.stock).trim() !== '' ? Number(String(data.stock).replace(/\D/g, '')) : 0,
         fecha_vencimiento: data.fecha_vencimiento || null,
         imagen: imagenPath,
         tipo: selectedType
@@ -1108,7 +1106,13 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
 
     } catch (err) {
       console.error('Error:', err);
-      toast.error(err?.message || 'Error al actualizar el producto.');
+      const errorMsg = err?.message || '';
+      
+      if (errorMsg.includes('duplicate key') || errorMsg.includes('unique constraint') || err?.code === '23505') {
+        toast.error('Ya existe un producto con este código de barras. Usa un código diferente.');
+      } else {
+        toast.error(errorMsg || 'Error al actualizar el producto.');
+      }
     } finally {
       setSubiendo(false);
       setComprimiendo(false);
@@ -2014,9 +2018,14 @@ const EditarProductoModalV2 = ({ open, onClose, producto, onProductoEditado, var
                       );
                     } else {
                       return (
-                        <button type="button" className="inventario-btn inventario-btn-primary" onClick={handleNext} style={{ flex: 1, padding: '0.75rem' }}>
-                          Siguiente
-                        </button>
+                        <>
+                          <button type="button" className="inventario-btn inventario-btn-outline" onClick={handleNext} style={{ flex: 1, padding: '0.75rem' }}>
+                            Siguiente
+                          </button>
+                          <button type="submit" className="inventario-btn inventario-btn-primary" disabled={subiendo || isSubmitting} style={{ flex: 1, padding: '0.75rem', backgroundColor: '#10b981', color: 'white', borderColor: '#10b981' }}>
+                            {subiendo ? (comprimiendo ? '🗜️ Comprimiendo...' : 'Actualizando...') : 'Guardar y Salir'}
+                          </button>
+                        </>
                       );
                     }
                   })()}

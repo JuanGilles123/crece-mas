@@ -37,11 +37,11 @@ const HistorialCierresCaja = ({ employeeId: propEmployeeId = null }) => {
 
   const getResponsableLabel = useCallback((cierre) => {
     if (cierre?.employee_id) {
-      const employeeName = cierre?.employee?.team_member?.employee_name;
+      const employeeName = cierre?.employee?.employee_name;
       return employeeName ? `Empleado: ${employeeName}` : `Empleado (${cierre.employee_id.slice(0, 8)})`;
     }
     if (cierre?.user_id) {
-      const ownerName = userProfile?.full_name || userProfile?.nombre;
+      const ownerName = cierre?.user_profile?.full_name || cierre?.user_profile?.nombre || userProfile?.full_name || userProfile?.nombre;
       return ownerName ? `Propietario: ${ownerName}` : 'Propietario';
     }
     return 'No disponible';
@@ -119,7 +119,7 @@ const HistorialCierresCaja = ({ employeeId: propEmployeeId = null }) => {
 
   const generarTextoCierre = (cierre) => {
     const fecha = formatFecha(cierre.created_at);
-    const diferencia = cierre.diferencia || 0;
+    const diferencia = cierre.diferencia !== undefined && cierre.diferencia !== null ? cierre.diferencia : (cierre.total_real || 0) - ((cierre.total_sistema || 0) + (cierre.monto_inicial || 0));
     const responsable = getResponsableLabel(cierre);
     const resumenPagos = [
       { label: 'Efectivo', sistema: cierre.sistema_efectivo, real: cierre.real_efectivo },
@@ -129,6 +129,9 @@ const HistorialCierresCaja = ({ employeeId: propEmployeeId = null }) => {
       .filter((item) => (item.sistema || 0) !== 0 || (item.real || 0) !== 0)
       .map((item) => `• ${item.label}: ${formatCOP(item.sistema || 0)} / ${formatCOP(item.real || 0)}`)
       .join('\n');
+    
+    const montoInicialTexto = cierre.monto_inicial > 0 ? `🏦 Monto Inicial: ${formatCOP(cierre.monto_inicial)}\n` : '';
+    const totalEsperadoTexto = cierre.monto_inicial > 0 ? `📈 TOTAL ESPERADO (Ventas + Inicial): ${formatCOP((cierre.total_sistema || 0) + cierre.monto_inicial)}\n` : '';
     
     return `
 🧾 CIERRE DE CAJA
@@ -144,15 +147,15 @@ Responsable: ${responsable}
 📲 Transferencias: ${formatCOP(cierre.sistema_transferencias || 0)}
 💳 Tarjeta: ${formatCOP(cierre.sistema_tarjeta || 0)}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TOTAL SISTEMA: ${formatCOP(cierre.total_sistema || 0)}
+TOTAL SISTEMA (VENTAS/MOVIMIENTOS): ${formatCOP(cierre.total_sistema || 0)}
 
 💰 CONTEO REAL:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-💵 Efectivo: ${formatCOP(cierre.real_efectivo || 0)}
+${montoInicialTexto}💵 Efectivo: ${formatCOP(cierre.real_efectivo || 0)}
 📲 Transferencias: ${formatCOP(cierre.real_transferencias || 0)}
 💳 Tarjeta: ${formatCOP(cierre.real_tarjeta || 0)}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TOTAL REAL: ${formatCOP(cierre.total_real || 0)}
+${totalEsperadoTexto}TOTAL REAL: ${formatCOP(cierre.total_real || 0)}
 
 🧾 COMPARATIVO POR MÉTODO (SISTEMA / REAL):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -226,7 +229,7 @@ Generado por Crece+ 🚀
           </div>
         ) : (
           visibleCierres.map((cierre, index) => {
-            const diferencia = cierre.diferencia || 0;
+            const diferencia = cierre.diferencia !== undefined && cierre.diferencia !== null ? cierre.diferencia : (cierre.total_real || 0) - ((cierre.total_sistema || 0) + (cierre.monto_inicial || 0));
             const cuadra = diferencia === 0;
             
             return (
@@ -268,10 +271,22 @@ Generado por Crece+ 🚀
                 </div>
 
                 <div className="cierre-resumen">
+                  {cierre.monto_inicial > 0 && (
+                    <div className="resumen-item">
+                      <span className="label">Monto Inicial</span>
+                      <span className="value">{formatCOP(cierre.monto_inicial)}</span>
+                    </div>
+                  )}
                   <div className="resumen-item">
-                    <span className="label">Total Sistema</span>
+                    <span className="label">{cierre.monto_inicial > 0 ? "Ventas/Movimientos" : "Total Sistema"}</span>
                     <span className="value">{formatCOP(cierre.total_sistema || 0)}</span>
                   </div>
+                  {cierre.monto_inicial > 0 && (
+                    <div className="resumen-item">
+                      <span className="label">Total Esperado</span>
+                      <span className="value">{formatCOP((cierre.total_sistema || 0) + cierre.monto_inicial)}</span>
+                    </div>
+                  )}
                   <div className="resumen-item">
                     <span className="label">Total Real</span>
                     <span className="value">{formatCOP(cierre.total_real || 0)}</span>

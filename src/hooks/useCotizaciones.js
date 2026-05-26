@@ -20,24 +20,58 @@ export const useCotizaciones = (organizationId) => {
       }
       
       try {
-        // Función auxiliar para cargar clientes
+        // Función auxiliar para cargar clientes, empleados y perfiles de usuario
         const cargarClientes = async (ventas) => {
           const ventasConCliente = ventas.filter(v => v.cliente_id);
-          if (ventasConCliente.length === 0) {
-            return ventas.map(v => ({ ...v, cliente: null }));
-          }
-          
           const clienteIds = [...new Set(ventasConCliente.map(v => v.cliente_id).filter(Boolean))];
-          const { data: clientesData } = await supabase
-            .from('clientes')
-            .select('id, nombre, documento, telefono, email, direccion')
-            .in('id', clienteIds);
-          
-          const clientesMap = new Map((clientesData || []).map(c => [c.id, c]));
-          return ventas.map(venta => ({
-            ...venta,
-            cliente: venta.cliente_id ? (clientesMap.get(venta.cliente_id) || null) : null
-          }));
+          const employeeIds = [...new Set(ventas.map(v => v.employee_id).filter(Boolean))];
+          const userIds = [...new Set(ventas.map(v => v.user_id).filter(Boolean))];
+
+          let clientesMap = new Map();
+          let vendedoresMap = new Map();
+          let userProfilesMap = new Map();
+
+          if (clienteIds.length > 0) {
+            const { data: clientesData } = await supabase
+              .from('clientes')
+              .select('id, nombre, documento, telefono, email, direccion')
+              .in('id', clienteIds);
+            clientesMap = new Map((clientesData || []).map(c => [c.id, c]));
+          }
+
+          if (employeeIds.length > 0) {
+            const { data: vendedoresData } = await supabase
+              .from('team_members')
+              .select('id, employee_name')
+              .in('id', employeeIds);
+            vendedoresMap = new Map((vendedoresData || []).map(v => [v.id, v]));
+          }
+
+          if (userIds.length > 0) {
+            const { data: profilesData } = await supabase
+              .from('user_profiles')
+              .select('user_id, full_name')
+              .in('user_id', userIds);
+            userProfilesMap = new Map((profilesData || []).map(p => [p.user_id, p]));
+          }
+
+          return ventas.map(venta => {
+            let vendedorObj = null;
+            if (venta.employee_id) {
+              vendedorObj = vendedoresMap.get(venta.employee_id) || null;
+            }
+            if (!vendedorObj?.employee_name && venta.user_id) {
+              const profile = userProfilesMap.get(venta.user_id);
+              if (profile?.full_name) {
+                vendedorObj = { id: venta.user_id, employee_name: profile.full_name };
+              }
+            }
+            return {
+              ...venta,
+              cliente: venta.cliente_id ? (clientesMap.get(venta.cliente_id) || null) : null,
+              vendedor: vendedorObj
+            };
+          });
         };
         
         // Intentar obtener cotizaciones por ambos criterios para mayor compatibilidad

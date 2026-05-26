@@ -101,8 +101,8 @@ const CameraScanner = ({ onScan, onClose, title = 'Escanear código de barras' }
       const constraints = {
         video: {
           ...(deviceId ? { deviceId: { exact: deviceId } } : { facingMode: { ideal: 'environment' } }),
-          width: { ideal: 1920, min: 1280 },
-          height: { ideal: 1080, min: 720 },
+          width: { ideal: 1280, min: 640 },
+          height: { ideal: 720, min: 480 },
           // Autofoco continuo — crítico para webcams
           focusMode: { ideal: 'continuous' },
           // Reducir exposición automática para imágenes más nítidas
@@ -253,16 +253,17 @@ const CameraScanner = ({ onScan, onClose, title = 'Escanear código de barras' }
       hints.set(DecodeHintType.CHARACTER_SET, 'UTF-8');
 
       const reader = new BrowserMultiFormatReader(hints);
+      reader.timeBetweenDecodingAttempts = 150; // Acelerar los intentos de decodificación
       readerRef.current = reader;
 
       const devices = await getCameras();
       const device = devices[activeCameraIndex];
 
-      // Configurar video constraints de alta resolución directamente
+      // Configurar video constraints (1280x720 es ideal, más resolución es lento en JS)
       const videoConstraints = {
         ...(device?.deviceId ? { deviceId: { exact: device.deviceId } } : { facingMode: { ideal: 'environment' } }),
-        width: { ideal: 1920, min: 1280 },
-        height: { ideal: 1080, min: 720 }
+        width: { ideal: 1280, min: 640 },
+        height: { ideal: 720, min: 480 }
       };
 
       controlsRef.current = await reader.decodeFromConstraints(
@@ -341,6 +342,18 @@ const CameraScanner = ({ onScan, onClose, title = 'Escanear código de barras' }
 
     return () => {
       mounted = false;
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+      }
+      if (controlsRef.current) {
+        try { controlsRef.current.stop(); } catch {}
+      }
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+      }
+      if (scanIntervalRef.current) {
+        clearInterval(scanIntervalRef.current);
+      }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

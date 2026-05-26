@@ -101,8 +101,11 @@ export const useVentas = (organizationId, limit = 100, historyDays = null, emplo
         // Cargar clientes y vendedores para las ventas
         const clienteIds = [...new Set(ventasData.map(v => v.cliente_id).filter(Boolean))];
         const employeeIds = [...new Set(ventasData.map(v => v.employee_id).filter(Boolean))];
+        const userIds = [...new Set(ventasData.map(v => v.user_id).filter(Boolean))];
+        
         let clientesMap = new Map();
         let vendedoresMap = new Map();
+        let userProfilesMap = new Map();
 
         if (clienteIds.length > 0) {
           const { data: clientesData } = await supabase
@@ -117,14 +120,39 @@ export const useVentas = (organizationId, limit = 100, historyDays = null, emplo
             .from('team_members')
             .select('id, employee_name')
             .in('id', employeeIds);
-          vendedoresMap = new Map((vendedoresData || []).map(v => [v.id, v]));
+          vendedoresMap = new Map(
+            (vendedoresData || []).map(v => [v.id, v])
+          );
         }
 
-        const ventasProcesadas = ventasData.map(venta => ({
-          ...venta,
-          cliente: venta.cliente_id ? (clientesMap.get(venta.cliente_id) || null) : null,
-          vendedor: venta.employee_id ? (vendedoresMap.get(venta.employee_id) || null) : null
-        }));
+        if (userIds.length > 0) {
+          const { data: profilesData } = await supabase
+            .from('user_profiles')
+            .select('user_id, full_name')
+            .in('user_id', userIds);
+          userProfilesMap = new Map(
+            (profilesData || []).map(p => [p.user_id, p])
+          );
+        }
+
+        const ventasProcesadas = ventasData.map(venta => {
+          let vendedorObj = null;
+          if (venta.employee_id) {
+            vendedorObj = vendedoresMap.get(venta.employee_id) || null;
+          }
+          if (!vendedorObj?.employee_name && venta.user_id) {
+            const profile = userProfilesMap.get(venta.user_id);
+            if (profile?.full_name) {
+              vendedorObj = { id: venta.user_id, employee_name: profile.full_name };
+            }
+          }
+          
+          return {
+            ...venta,
+            cliente: venta.cliente_id ? (clientesMap.get(venta.cliente_id) || null) : null,
+            vendedor: vendedorObj
+          };
+        });
 
         await cacheVentas(organizationId, ventasProcesadas);
         const pending = await getPendingVentas({ organizationId });

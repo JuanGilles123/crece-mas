@@ -1633,7 +1633,7 @@ const HistorialVentas = () => {
               </div>
               <div className="info-item">
                 <span className="info-label">Vendedor:</span>
-                <span className="info-value">{ventaSeleccionada.vendedor?.employee_name || ventaSeleccionada.usuario_nombre || 'N/A'}</span>
+                <span className="info-value">{ventaSeleccionada.vendedor?.employee_name || ventaSeleccionada.usuario_nombre || 'Propietario'}</span>
               </div>
             </div>
 

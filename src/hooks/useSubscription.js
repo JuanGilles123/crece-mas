@@ -82,6 +82,31 @@ export const useSubscription = () => {
             const diffDays = Math.round((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
             // Si venció hace más de 3 días, degradar al plan gratis
             isGracePeriodExpired = diffDays < -3;
+            
+            // Salvaguarda: Si parece estar degradado, verificar si hay un pago aprobado reciente
+            // Esto soluciona el caso donde el usuario paga pero el webhook falla/tarda en actualizar
+            if (isGracePeriodExpired) {
+              const thirtyDaysAgo = new Date();
+              thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+              
+              try {
+                const { data: recentPayment } = await supabase
+                  .from('payments')
+                  .select('id')
+                  .eq('organization_id', organization.id)
+                  .in('status', ['approved', 'completed'])
+                  .gte('created_at', thirtyDaysAgo.toISOString())
+                  .limit(1)
+                  .maybeSingle();
+                  
+                if (recentPayment) {
+                  // Tiene un pago reciente, el webhook debe haber fallado, no lo degradamos
+                  isGracePeriodExpired = false;
+                }
+              } catch (e) {
+                console.error("Error verificando pagos recientes:", e);
+              }
+            }
           }
 
           const effectivePlan = isGracePeriodExpired

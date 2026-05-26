@@ -828,9 +828,7 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
           : 0,
         stock: tieneVariantes
           ? 0
-          : (typeFields.required.includes('stock') || data.stock
-            ? (Number(data.stock?.replace(/\D/g, '') || '0') || null)
-            : null),
+          : (data.stock != null && String(data.stock).trim() !== '' ? Number(String(data.stock).replace(/\D/g, '')) : 0),
         fecha_vencimiento: data.fecha_vencimiento || null,
         imagen: imagenPath,
         tipo: selectedType === 'combo' ? 'fisico' : selectedType // Mapear combo a fisico para evitar restricción de DB mientras se actualiza el esquema
@@ -1010,7 +1008,13 @@ const AgregarProductoModalV2 = ({ open, onClose, onProductoAgregado, moneda }) =
       if (onProductoAgregado) onProductoAgregado();
     } catch (err) {
       console.error('Error:', err);
-      toast.error(err?.message || 'Error al guardar el producto.');
+      const errorMsg = err?.message || '';
+      
+      if (errorMsg.includes('duplicate key') || errorMsg.includes('unique constraint') || err?.code === '23505') {
+        toast.error('Ya existe un producto con este código de barras. Usa un código diferente.');
+      } else {
+        toast.error(errorMsg || 'Error al guardar el producto.');
+      }
     } finally {
       setSubiendo(false);
       setComprimiendo(false);

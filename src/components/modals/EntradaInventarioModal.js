@@ -36,6 +36,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
   const isDraftCheckedRef = useRef(false); // Ref para evitar borrado accidental en la inicialización
   const isClosingRef = useRef(false); // Ref para evitar limpieza del borrador durante el cierre del modal
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [progresoActualizacion, setProgresoActualizacion] = useState({ actual: 0, total: 0 });
   const [isRefreshing, setIsRefreshing] = useState(false); // Estado para refrescar catálogo
   const [tieneBorrador, setTieneBorrador] = useState(false); // Si existe un borrador guardado
   const [vistaLista, setVistaLista] = useState(false); // false = grid, true = lista
@@ -776,10 +777,16 @@ const EntradaInventarioModal = ({ open, onClose }) => {
       return;
     }
 
+    if (!window.confirm('¿Estás seguro de que deseas actualizar el inventario? Esta acción afectará el stock actual de los productos seleccionados.')) {
+      return;
+    }
+
     setIsSubmitting(true);
+    setProgresoActualizacion({ actual: 0, total: productosSeleccionados.length });
 
     try {
       // Actualizar cada producto
+      let productosProcesados = 0;
       for (const producto of productosSeleccionados) {
         const updates = {};
 
@@ -838,6 +845,9 @@ const EntradaInventarioModal = ({ open, onClose }) => {
             notas: `Entrada de inventario masiva${proveedorSeleccionado ? ` - Proveedor: ${proveedores.find(p => p.id === proveedorSeleccionado)?.nombre}` : ''}`
           }]);
         }
+        
+        productosProcesados++;
+        setProgresoActualizacion({ actual: productosProcesados, total: productosSeleccionados.length });
       }
 
       // Si hay tipo de pago, registrar en egresos (incluso sin proveedor para gastos pagados)
@@ -2275,7 +2285,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
                 onClick={handleGuardar}
                 disabled={isSubmitting || productosSeleccionados.length === 0 || (proveedorSeleccionado && !tipoPago)}
               >
-                {isSubmitting ? 'Guardando...' : 'Actualizar Inventario'}
+                {isSubmitting ? (progresoActualizacion.total > 0 ? `Guardando (${progresoActualizacion.actual}/${progresoActualizacion.total})...` : 'Guardando...') : 'Actualizar Inventario'}
               </button>
             </>
           ) : (

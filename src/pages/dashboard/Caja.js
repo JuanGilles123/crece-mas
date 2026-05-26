@@ -859,13 +859,19 @@ export default function Caja({
 
   // Verificar límite de ventas para plan free o degradado
   useEffect(() => {
+    let isMounted = true;
     if (isDegraded || isFreePlan) {
       canPerformAction('createSale').then(res => {
-        if (!res.allowed) {
-          setLimiteAlcanzado(true);
+        if (isMounted) {
+          setLimiteAlcanzado(!res.allowed);
         }
       });
+    } else {
+      setLimiteAlcanzado(false);
     }
+    return () => {
+      isMounted = false;
+    };
   }, [isDegraded, isFreePlan, canPerformAction]);
 
   const esModoPedido = mode === 'pedido';
