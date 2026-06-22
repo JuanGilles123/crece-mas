@@ -491,16 +491,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
   };
 
 
-  // Toggle selección de producto en búsqueda
-  const toggleProductoSeleccion = (itemKey) => {
-    setProductosParaAgregar(prev => {
-      if (prev.includes(itemKey)) {
-        return prev.filter(id => id !== itemKey);
-      } else {
-        return [...prev, itemKey];
-      }
-    });
-  };
+
 
   // Agregar múltiples productos seleccionados
   const agregarProductosSeleccionados = () => {

@@ -25,7 +25,6 @@ import {
   Mail,
   Phone,
   User,
-  ChevronRight,
   Copy,
   ExternalLink,
   CreditCard,

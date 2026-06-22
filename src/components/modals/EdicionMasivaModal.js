@@ -9,7 +9,7 @@ import toast from 'react-hot-toast';
 import './EdicionMasivaModal.css';
 
 const EdicionMasivaModal = ({ open, onClose, productosSeleccionados, categoriasDisponibles = [], onProductosActualizados }) => {
-  const { organization, user } = useAuth();
+  const { organization } = useAuth();
   const actualizarProductoMutation = useActualizarProducto();
 
   const isJewelry = organization?.business_type === 'jewelry_metals';
@@ -219,9 +219,9 @@ const EdicionMasivaModal = ({ open, onClose, productosSeleccionados, categoriasD
         for (const res of results) {
           if (res.success) successCount++;
           else errorCount++;
-          processedCount++;
-          setProgresoActualizacion(prev => ({ ...prev, actual: processedCount }));
         }
+        processedCount += batch.length;
+        setProgresoActualizacion(prev => ({ ...prev, actual: processedCount }));
       }
 
       if (successCount > 0) {
