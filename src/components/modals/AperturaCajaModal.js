@@ -62,13 +62,13 @@ const AperturaCajaModal = ({ isOpen, onClose, onAperturaExitosa }) => {
   };
 
   const handleAbrirCaja = async () => {
-    if (!user || !organization) {
-      setError('Error: No hay usuario u organización activa');
+    if (!user && !organization) {
+      setError('Error: No hay organización activa');
       return;
     }
 
-    if (!hasPermission('caja.open') && !hasPermission('cierre.create') && !['owner', 'admin'].includes(userProfile?.role)) {
-      setError('No tienes permisos para abrir la caja.');
+    if (!organization) {
+      setError('Error: No hay organización activa');
       return;
     }
 
@@ -84,7 +84,7 @@ const AperturaCajaModal = ({ isOpen, onClose, onAperturaExitosa }) => {
     try {
       const apertura = await crearApertura.mutateAsync({
         organizationId: organization.id,
-        userId: user.id,
+        userId: user?.id || null,
         montoInicial: montoInicial
       });
 

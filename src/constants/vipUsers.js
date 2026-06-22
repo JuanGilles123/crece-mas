@@ -10,6 +10,9 @@ export const VIP_USERS = [
   'juanjosegilarbelaez@gmail.com',
   'jonathan-9411@hotmail.com',
   
+  // Clientes VIP
+  'juliancc50@gmail.com',
+  
   
   // Testers
   // 'tester1@ejemplo.com',
@@ -27,8 +30,7 @@ export const VIP_USERS = [
  */
 export const VIP_ORGANIZATIONS = [
   // IDs de organizaciones VIP
-  // Se pueden agregar organizaciones de testing, desarrollo, o clientes especiales
-  // Ejemplo: '123e4567-e89b-12d3-a456-426614174000'
+  '8e7f3f1f-2b8c-44e8-942c-8f97ab8cd30b', // PAPELERIA LUNA C (juliancc50@gmail.com)
 ];
 
 /**
