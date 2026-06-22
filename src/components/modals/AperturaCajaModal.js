@@ -96,19 +96,10 @@ const AperturaCajaModal = ({ isOpen, onClose, onAperturaExitosa }) => {
         montoInicial: montoInicial
       });
 
-<<<<<<<< < Temporary merge branch 1
       const apertura = result?.apertura || result;
       onClose();
       if (apertura && onAperturaExitosa) {
         setTimeout(() => onAperturaExitosa(apertura), 50);
-=========
-      onClose();
-
-      if (apertura && onAperturaExitosa) {
-        setTimeout(() => {
-          onAperturaExitosa(apertura);
-        }, 50);
->>>>>>>>> Temporary merge branch 2
       }
     } catch (err) {
       setError(err.message || 'Error al abrir la caja');
