@@ -204,6 +204,7 @@ const CreacionMasivaModal = ({ open, onClose, onProductosCreados }) => {
               marca: row.marca || null,
               modelo: row.modelo || null,
               creado_masivamente: true,
+              permite_toppings: organization?.business_type === 'food',
               ...(isJewelry ? {
                 peso: parseFloat(row.peso) || 0,
                 pureza: row.pureza || null

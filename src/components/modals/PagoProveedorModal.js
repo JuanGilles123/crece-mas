@@ -120,8 +120,7 @@ const PagoProveedorModal = ({ open, onClose, creditoId = null, aperturaActiva = 
         numero_comprobante: data.numero_comprobante || null,
         comprobante_url: data.comprobante_url || null,
         notas: data.notas || null,
-        user_id: aperturaActiva?.user_id || user.id,
-        employee_id: aperturaActiva?.employee_id || null
+        user_id: aperturaActiva?.user_id || user.id
       };
 
       await crearPagoProveedor.mutateAsync(pagoData);

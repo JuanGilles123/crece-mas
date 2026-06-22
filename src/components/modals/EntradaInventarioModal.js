@@ -30,6 +30,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
   const [mostrarBusqueda, setMostrarBusqueda] = useState(false);
   const [busqueda, setBusqueda] = useState('');
   const [busquedaDebounced, setBusquedaDebounced] = useState('');
+  const [filtroCategoria, setFiltroCategoria] = useState('');
   const [visibleCount, setVisibleCount] = useState(60); // Carga inicial
   const busquedaDebounceRef = useRef(null);
   const gridScrollRef = useRef(null);
@@ -50,6 +51,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
   const [fechaPago, setFechaPago] = useState(new Date().toISOString().split('T')[0]);
   const [modalEditar, setModalEditar] = useState({ open: false, producto: null });
   const [afectaCaja, setAfectaCaja] = useState(false); // Nuevo estado para saber si el dinero salió de caja
+  const [productoEnEdicionRapida, setProductoEnEdicionRapida] = useState(null);
   
   // Estados para el Historial de Entradas de Inventario y Borradores en Base de Datos
   const [activeSubTab, setActiveSubTab] = useState('entrada'); // 'entrada' | 'historial'
@@ -414,13 +416,34 @@ const EntradaInventarioModal = ({ open, onClose }) => {
     return () => clearTimeout(busquedaDebounceRef.current);
   }, [busqueda]);
 
+  // Extraer categorías únicas
+  const categoriasDisponibles = useMemo(() => {
+    const categorias = new Set();
+    catalogoProductos.forEach(p => {
+      const cat = p.metadata?.categoria;
+      if (cat && typeof cat === 'string' && cat.trim() !== '') {
+        categorias.add(cat.trim());
+      }
+    });
+    return Array.from(categorias).sort();
+  }, [catalogoProductos]);
+
   // Filtrar productos para búsqueda (usa debounced para no bloquear el input)
   const productosFiltradosTodos = useMemo(() => {
+    let filtrados = catalogoProductos;
+
+    if (filtroCategoria) {
+      filtrados = filtrados.filter(item => {
+        const cat = item.metadata?.categoria;
+        return cat && typeof cat === 'string' && cat.trim() === filtroCategoria;
+      });
+    }
+
     if (!busquedaDebounced || busquedaDebounced.trim() === '') {
-      return catalogoProductos;
+      return filtrados;
     }
     const termino = busquedaDebounced.toLowerCase();
-    return catalogoProductos.filter(item => {
+    return filtrados.filter(item => {
       const nombre = (item.nombre || '').toLowerCase();
       const codigo = (item.codigo || '').toLowerCase();
       const descripcion = (item.descripcion || '').toLowerCase();
@@ -434,7 +457,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
         (metadata.categoria && metadata.categoria.toLowerCase().includes(termino))
       );
     });
-  }, [catalogoProductos, busquedaDebounced]);
+  }, [catalogoProductos, busquedaDebounced, filtroCategoria]);
 
   // Limitar items visibles para no renderizar todo a la vez
   const productosFiltrados = useMemo(
@@ -678,6 +701,70 @@ const EntradaInventarioModal = ({ open, onClose }) => {
     if (compra === 0) return 0;
     const res = ((venta - compra) / compra) * 100;
     return Math.round(res * 10) / 10;
+  };
+
+  const handleSeleccionRapida = (producto) => {
+    const precioCompra = producto.precio_compra || 0;
+    const precioVenta = producto.precio_venta || 0;
+    const porcentajeInicial = precioCompra > 0
+        ? Math.round(((precioVenta - precioCompra) / precioCompra) * 100 * 10) / 10
+        : 0;
+
+    setProductoEnEdicionRapida({
+      ...producto,
+      cantidad_agregar: '',
+      precio_compra_nuevo: precioCompra,
+      precio_venta_nuevo: precioVenta,
+      porcentaje_ganancia: porcentajeInicial,
+      precios_vinculados: true
+    });
+  };
+
+  const confirmarEdicionRapida = (e) => {
+    if (e) e.preventDefault();
+    if (!productoEnEdicionRapida) return;
+    
+    if (!productoEnEdicionRapida.cantidad_agregar || productoEnEdicionRapida.cantidad_agregar <= 0) {
+      toast.error('Ingresa una cantidad válida');
+      return;
+    }
+
+    const item = productoEnEdicionRapida;
+    const nuevoProducto = {
+      key: item.key,
+      producto_id: item.producto_id,
+      variante_id: item.variante_id || null,
+      tipo_item: item.tipo_item,
+      nombre: item.nombre,
+      nombre_original: item.nombre,
+      codigo: item.codigo || '',
+      variante_nombre: item.variante_nombre || '',
+      precio_compra_actual: item.precio_compra || 0,
+      precio_compra_nuevo: item.precio_compra_nuevo,
+      precio_venta_actual: item.precio_venta || 0,
+      precio_venta_nuevo: item.precio_venta_nuevo,
+      porcentaje_ganancia: item.porcentaje_ganancia,
+      stock_actual: item.stock || 0,
+      cantidad_agregar: parseFloat(item.cantidad_agregar) || 0,
+      stock_nuevo: (item.stock || 0) + (parseFloat(item.cantidad_agregar) || 0),
+      imagen_url: item.imagen,
+      categoria: item.categoria || item.metadata?.categoria || '',
+      precios_vinculados: item.precios_vinculados
+    };
+
+    setProductosSeleccionados(prev => {
+      // Si el producto ya existe en la lista, lo filtramos o simplemente no lo añadimos.
+      // Pero como el click previene si 'yaAgregado', es seguro hacer append
+      return [...prev, nuevoProducto];
+    });
+    setProductoEnEdicionRapida(null);
+    toast.success(`${item.nombre} agregado`);
+    
+    setTimeout(() => {
+      if (busquedaInputRef.current) {
+        busquedaInputRef.current.focus();
+      }
+    }, 100);
   };
 
 
@@ -2517,6 +2604,31 @@ const EntradaInventarioModal = ({ open, onClose }) => {
                       </button>
                     </div>
 
+                    {categoriasDisponibles.length > 0 && (
+                      <div style={{ flexShrink: 0 }}>
+                        <select
+                          value={filtroCategoria}
+                          onChange={(e) => setFiltroCategoria(e.target.value)}
+                          style={{
+                            padding: '0.65rem 1rem',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '8px',
+                            fontSize: '0.9rem',
+                            outline: 'none',
+                            backgroundColor: 'white',
+                            color: '#334155',
+                            boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.05)',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <option value="">Todas las categorías</option>
+                          {categoriasDisponibles.map(cat => (
+                            <option key={cat} value={cat}>{cat}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
                     <div style={{ flex: 1, position: 'relative' }}>
                       <Search size={18} style={{ 
                         position: 'absolute', 
@@ -2569,7 +2681,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
                               <div
                                 key={producto.key}
                                 className={`productos-busqueda-card ${yaAgregado ? 'agregado' : ''} ${estaSeleccionado ? 'seleccionado' : ''}`}
-                                onClick={() => !yaAgregado && toggleProductoSeleccion(producto.key)}
+                                onClick={() => !yaAgregado && handleSeleccionRapida(producto)}
                               >
                                 {!yaAgregado && estaSeleccionado && (
                                   <div className="productos-busqueda-check-badge">
@@ -2630,7 +2742,7 @@ const EntradaInventarioModal = ({ open, onClose }) => {
                                   <tr
                                     key={producto.key}
                                     className={`pbl-row ${yaAgregado ? 'pbl-row-agregado' : ''} ${estaSeleccionado ? 'pbl-row-seleccionado' : ''}`}
-                                    onClick={() => !yaAgregado && toggleProductoSeleccion(producto.key)}
+                                    onClick={() => !yaAgregado && handleSeleccionRapida(producto)}
                                   >
                                     <td className="pbl-td-check">
                                       <div className={`pbl-checkbox ${estaSeleccionado || yaAgregado ? 'checked' : ''}`}>
@@ -2698,6 +2810,83 @@ const EntradaInventarioModal = ({ open, onClose }) => {
                   )}
                 </>
               )}
+            </div>
+          )}
+
+          {/* Modal de Edición Rápida (sobre el buscador) */}
+          {productoEnEdicionRapida && (
+            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 1000000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setProductoEnEdicionRapida(null)}>
+              <div className="modal-content" style={{ width: '100%', maxWidth: '400px', padding: '1.5rem', background: 'white', borderRadius: '12px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)', position: 'relative', zIndex: 1000001 }} onClick={e => e.stopPropagation()}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#1e293b' }}>Agregar Producto</h3>
+                  <button onClick={() => setProductoEnEdicionRapida(null)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+                    <X size={20} color="#64748b" />
+                  </button>
+                </div>
+                <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#f8fafc', borderRadius: '8px' }}>
+                  <strong style={{ display: 'block', color: '#0f172a' }}>{productoEnEdicionRapida.nombre}</strong>
+                  {productoEnEdicionRapida.codigo && <span style={{ fontSize: '0.85rem', color: '#64748b' }}>{productoEnEdicionRapida.codigo}</span>}
+                  <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: '#475569' }}>
+                    Stock actual: <strong>{productoEnEdicionRapida.stock || 0}</strong>
+                  </div>
+                </div>
+                
+                <form onSubmit={confirmarEdicionRapida}>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', fontWeight: 600 }}>Cantidad a ingresar *</label>
+                    <input 
+                      type="number" 
+                      autoFocus
+                      required
+                      min="0.01"
+                      step="any"
+                      value={productoEnEdicionRapida.cantidad_agregar} 
+                      onChange={e => setProductoEnEdicionRapida({...productoEnEdicionRapida, cantidad_agregar: e.target.value})}
+                      style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '1rem' }}
+                    />
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', fontWeight: 600 }}>Precio Compra</label>
+                      <input 
+                        type="text" 
+                        value={formatearMoneda(productoEnEdicionRapida.precio_compra_nuevo)} 
+                        onChange={e => {
+                          const val = parsearMoneda(e.target.value);
+                          let ganancia = productoEnEdicionRapida.porcentaje_ganancia;
+                          let venta = productoEnEdicionRapida.precio_venta_nuevo;
+                          if (productoEnEdicionRapida.precios_vinculados !== false) {
+                             venta = calcularPrecioVenta(val, ganancia);
+                          } else {
+                             ganancia = calcularPorcentaje(val, venta);
+                          }
+                          setProductoEnEdicionRapida({...productoEnEdicionRapida, precio_compra_nuevo: val, precio_venta_nuevo: venta, porcentaje_ganancia: ganancia});
+                        }}
+                        style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '1rem' }}
+                      />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', fontWeight: 600 }}>Precio Venta</label>
+                      <input 
+                        type="text" 
+                        value={formatearMoneda(productoEnEdicionRapida.precio_venta_nuevo)} 
+                        onChange={e => {
+                          const val = parsearMoneda(e.target.value);
+                          const ganancia = calcularPorcentaje(productoEnEdicionRapida.precio_compra_nuevo, val);
+                          setProductoEnEdicionRapida({...productoEnEdicionRapida, precio_venta_nuevo: val, porcentaje_ganancia: ganancia});
+                        }}
+                        style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '1rem' }}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1.5rem' }}>
+                    <button type="button" onClick={() => setProductoEnEdicionRapida(null)} className="btn-secondary" style={{ padding: '0.5rem 1rem' }}>Cancelar</button>
+                    <button type="submit" className="btn-primary" style={{ padding: '0.5rem 1rem' }}>Agregar</button>
+                  </div>
+                </form>
+              </div>
             </div>
           )}
         </>,
