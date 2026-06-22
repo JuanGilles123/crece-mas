@@ -26,7 +26,7 @@ const AperturaCajaModal = ({ isOpen, onClose, onAperturaExitosa }) => {
     if (isOpen) {
       setError('');
       montoInicialInput.reset();
-      
+
       // Si todavía está cargando las otras cajas, no decidir paso aún
       if (loadingOtras) return;
 
@@ -47,12 +47,12 @@ const AperturaCajaModal = ({ isOpen, onClose, onAperturaExitosa }) => {
     if (modo === 'sincronizar') {
       // Sincronizar: usar la apertura seleccionada o la primera por defecto
       const aperturaExistente = aperturaParaSincronizar || otrasCajas[0];
-      
+
       if (!aperturaExistente) return;
 
       // Guardar en localStorage que estamos sincronizados a esta apertura
       localStorage.setItem(`synced_apertura_${organization.id}`, aperturaExistente.id);
-      
+
       onClose();
       setTimeout(() => {
         if (onAperturaExitosa) onAperturaExitosa(aperturaExistente);
@@ -75,14 +75,14 @@ const AperturaCajaModal = ({ isOpen, onClose, onAperturaExitosa }) => {
     }
 
     const montoInicial = montoInicialInput.numericValue || 0;
-    
+
     if (montoInicial < 0) {
       setError('El monto inicial no puede ser negativo');
       return;
     }
 
     setError('');
-    
+
     try {
       // No existe caja → crear una nueva (solo si tiene permiso)
       if (!hasPermission('caja.open') && !hasPermission('cierre.create') && !['owner', 'admin'].includes(userProfile?.role)) {
@@ -96,10 +96,19 @@ const AperturaCajaModal = ({ isOpen, onClose, onAperturaExitosa }) => {
         montoInicial: montoInicial
       });
 
+<<<<<<<< < Temporary merge branch 1
       const apertura = result?.apertura || result;
       onClose();
       if (apertura && onAperturaExitosa) {
         setTimeout(() => onAperturaExitosa(apertura), 50);
+=========
+      onClose();
+
+      if (apertura && onAperturaExitosa) {
+        setTimeout(() => {
+          onAperturaExitosa(apertura);
+        }, 50);
+>>>>>>>>> Temporary merge branch 2
       }
     } catch (err) {
       setError(err.message || 'Error al abrir la caja');
