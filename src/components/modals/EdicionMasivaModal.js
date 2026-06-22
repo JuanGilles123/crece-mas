@@ -221,7 +221,7 @@ const EdicionMasivaModal = ({ open, onClose, productosSeleccionados, categoriasD
           else errorCount++;
         }
         processedCount += batch.length;
-        setProgresoActualizacion(prev => ({ ...prev, actual: processedCount }));
+        setProgresoActualizacion({ actual: processedCount, total: changedRows.length });
       }
 
       if (successCount > 0) {
