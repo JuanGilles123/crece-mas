@@ -9,9 +9,9 @@
   --bg-input: #FFFFFF;
   --bg-modal: #FFFFFF;
   
-  --text-primary: #000000;
-  --text-secondary: #8E8E93;
-  --text-tertiary: #C7C7CC;
+  --text-primary: #2E2E2E;
+  --text-secondary: #4b5563;
+  --text-tertiary: #6b7280;
   --text-inverse: #FFFFFF;
   --text-placeholder: #C7C7CC;
   
@@ -24,14 +24,14 @@
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
   --shadow-xl: 0 12px 32px rgba(0, 0, 0, 0.16);
   
-  --accent-primary: #007AFF;
-  --accent-secondary: #5856D6;
-  --accent-success: #34C759;
+  --accent-primary: #02A5E0;
+  --accent-secondary: #004481;
+  --accent-success: #2ECC71;
   --accent-warning: #FF9500;
   --accent-error: #FF3B30;
   
-  --gradient-primary: linear-gradient(135deg, #007AFF, #5856D6);
-  --gradient-secondary: linear-gradient(135deg, #F2F2F7, #E5E5EA);
+  --gradient-primary: linear-gradient(135deg, #004481, #02A5E0);
+  --gradient-secondary: linear-gradient(135deg, #E6F0FF, #FFFFFF);
   --gradient-accent: linear-gradient(135deg, #FF9500, #FF3B30);
 }
 
@@ -61,13 +61,13 @@
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.7);
   --shadow-xl: 0 12px 32px rgba(0, 0, 0, 0.8);
   
-  --accent-primary: #0A84FF;
-  --accent-secondary: #5E5CE6;
-  --accent-success: #32D74B;
+  --accent-primary: #02A5E0;
+  --accent-secondary: #AFCBFF;
+  --accent-success: #2ECC71;
   --accent-warning: #FF9F0A;
   --accent-error: #FF453A;
   
-  --gradient-primary: linear-gradient(135deg, #0A84FF, #5E5CE6);
+  --gradient-primary: linear-gradient(135deg, #02A5E0, #AFCBFF);
   --gradient-secondary: linear-gradient(135deg, #2C2C2E, #3A3A3C);
   --gradient-accent: linear-gradient(135deg, #FF9F0A, #FF453A);
 }
@@ -171,8 +171,9 @@ body {
   --input-placeholder: #8E8E93;
   
   /* Botones iOS dark */
-  --btn-primary-bg: #0A84FF;
-  --btn-primary-hover: #0066CC;
+  /* Botones iOS dark sincronizados con Landing */
+  --btn-primary-bg: #02A5E0;
+  --btn-primary-hover: #004481;
   --btn-secondary-bg: #2C2C2E;
   --btn-secondary-hover: #3A3A3C;
   

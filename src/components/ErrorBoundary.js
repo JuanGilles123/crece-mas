@@ -30,7 +30,7 @@ class ErrorBoundary extends React.Component {
           alignItems: 'center',
           minHeight: '100vh',
           padding: '20px',
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          background: 'linear-gradient(135deg, #004481 0%, #02A5E0 100%)',
           color: 'white',
           fontFamily: 'Arial, sans-serif'
         }}>

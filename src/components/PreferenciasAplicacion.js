@@ -1,15 +1,25 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Globe, Calendar, DollarSign, Save, Receipt, Settings } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Globe, Calendar, DollarSign, Save, Receipt, Settings, Store, Check, Plus } from 'lucide-react';
 import { supabase } from '../services/api/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { useCurrencyInput, getNumericValue } from '../hooks/useCurrencyInput';
+import { BUSINESS_TYPES } from '../constants/businessTypes';
+import { BUSINESS_FEATURES, getCompatibleFeatures, getDefaultFeatures, checkFeatureDependencies } from '../constants/businessFeatures';
+import { useSubscription } from '../hooks/useSubscription';
+import { hasBypassAccess } from '../constants/vipUsers';
 import toast from 'react-hot-toast';
 import './PreferenciasAplicacion.css';
 
 const PreferenciasAplicacion = () => {
-  const { user, organization } = useAuth();
+  const { user, organization, hasRoleOwner, hasPermission } = useAuth();
+  const { hasFeature } = useSubscription();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  const [businessType, setBusinessType] = useState('other');
+  const [enabledFeatures, setEnabledFeatures] = useState([]);
+  
   const [preferencias, setPreferencias] = useState({
     moneda: 'COP',
     formatoFecha: 'DD/MM/YYYY',
@@ -26,7 +36,12 @@ const PreferenciasAplicacion = () => {
   });
   const jewelryMinLocalInput = useCurrencyInput();
   const jewelryMinIntlInput = useCurrencyInput();
-  const isJewelryBusiness = organization?.business_type === 'jewelry_metals';
+  
+  const canEditOrgSettings = hasRoleOwner || 
+                             hasPermission('config.edit_billing') || 
+                             (user && hasBypassAccess(user, organization));
+                             
+  const isJewelryBusiness = businessType === 'jewelry_metals';
 
   const cargarPreferencias = useCallback(async () => {
     if (!user) return;
@@ -56,6 +71,23 @@ const PreferenciasAplicacion = () => {
   }, [cargarPreferencias]);
 
   useEffect(() => {
+    if (!organization) return;
+    
+    const currentType = organization.business_type || 'other';
+    setBusinessType(currentType);
+    
+    // Si no hay funciones habilitadas pero hay mesas/pedidos, migrar a nuevo sistema
+    if ((organization.mesas_habilitadas || organization.pedidos_habilitados) && !organization.enabled_features) {
+      const features = [];
+      if (organization.mesas_habilitadas) features.push('mesas');
+      if (organization.pedidos_habilitados) features.push('pedidos');
+      setEnabledFeatures(features);
+    } else {
+      setEnabledFeatures(organization.enabled_features || []);
+    }
+  }, [organization]);
+
+  useEffect(() => {
     if (!organization || !isJewelryBusiness) return;
     const nextPrefs = {
       weightUnit: organization.jewelry_weight_unit || 'g',
@@ -82,6 +114,57 @@ const PreferenciasAplicacion = () => {
     setJewelryPrefs(prev => ({ ...prev, [campo]: valor }));
   };
 
+  const handleFeatureToggle = (featureId) => {
+    if (!canEditOrgSettings) return;
+    
+    const feature = BUSINESS_FEATURES[featureId];
+    if (!feature) return;
+    
+    // Verificar compatibilidad con tipo de negocio
+    if (!feature.compatibleWith.includes(businessType)) {
+      toast.error(`Esta función no es compatible con el tipo de negocio seleccionado`);
+      return;
+    }
+    
+    // Verificar si requiere premium
+    if (feature.requiresPremium) {
+      if (featureId === 'mesas' && !hasFeature('mesas')) {
+        toast.error(`Esta función requiere el plan Estándar o superior`);
+        return;
+      }
+      if (featureId === 'pedidos' && !hasFeature('pedidos')) {
+        toast.error(`Esta función requiere el plan Estándar o superior`);
+        return;
+      }
+    }
+    
+    const currentFeatures = enabledFeatures || [];
+    const isEnabled = currentFeatures.includes(featureId);
+    
+    if (isEnabled) {
+      // Desactivar función
+      let newFeatures = currentFeatures.filter(id => id !== featureId);
+      
+      // Si se desactiva una función requerida, desactivar dependientes
+      Object.values(BUSINESS_FEATURES).forEach(f => {
+        if (f.requires && f.requires.includes(featureId) && newFeatures.includes(f.id)) {
+          newFeatures = newFeatures.filter(id => id !== f.id);
+        }
+      });
+      
+      setEnabledFeatures(newFeatures);
+    } else {
+      // Activar función - verificar dependencias
+      const dependencyCheck = checkFeatureDependencies(featureId, currentFeatures);
+      if (!dependencyCheck.valid) {
+        toast.error(dependencyCheck.message);
+        return;
+      }
+      
+      setEnabledFeatures([...currentFeatures, featureId]);
+    }
+  };
+
   const handleGuardar = async () => {
     setGuardando(true);
     const umbralStockBajoSeguro = Number.isFinite(Number(preferencias.umbralStockBajo))
@@ -95,6 +178,7 @@ const PreferenciasAplicacion = () => {
     };
 
     try {
+      // 1. Guardar preferencias de usuario en metadata
       const { error } = await supabase.auth.updateUser({
         data: {
           ...user.user_metadata,
@@ -105,25 +189,46 @@ const PreferenciasAplicacion = () => {
 
       if (error) throw error;
 
-      if (isJewelryBusiness && organization?.id) {
+      // 2. Guardar tipo de negocio, características e información de joyería en la organización
+      if (organization?.id && canEditOrgSettings) {
+        const defaultFeaturesForNewType = getDefaultFeatures(businessType);
+        const featuresToSave = (enabledFeatures && enabledFeatures.length > 0)
+          ? enabledFeatures
+          : defaultFeaturesForNewType;
+
+        const updateData = {
+          business_type: businessType,
+          enabled_features: featuresToSave,
+          mesas_habilitadas: featuresToSave.includes('mesas'),
+          pedidos_habilitados: featuresToSave.includes('pedidos')
+        };
+
+        // Si es joyería, incluir los campos de joyería
+        if (isJewelryBusiness) {
+          updateData.jewelry_weight_unit = jewelryPrefs.weightUnit;
+          updateData.jewelry_min_margin_local = jewelryPrefs.minMarginLocal
+            ? getNumericValue(jewelryPrefs.minMarginLocal)
+            : null;
+          updateData.jewelry_min_margin_international = jewelryPrefs.minMarginInternational
+            ? getNumericValue(jewelryPrefs.minMarginInternational)
+            : null;
+          updateData.jewelry_national_adjust_pct = parseNullableNumber(jewelryPrefs.nationalAdjustPct);
+        }
+
         const { error: orgError } = await supabase
           .from('organizations')
-          .update({
-            jewelry_weight_unit: jewelryPrefs.weightUnit,
-            jewelry_min_margin_local: jewelryPrefs.minMarginLocal
-              ? getNumericValue(jewelryPrefs.minMarginLocal)
-              : null,
-            jewelry_min_margin_international: jewelryPrefs.minMarginInternational
-              ? getNumericValue(jewelryPrefs.minMarginInternational)
-              : null,
-            jewelry_national_adjust_pct: parseNullableNumber(jewelryPrefs.nationalAdjustPct)
-          })
+          .update(updateData)
           .eq('id', organization.id);
 
         if (orgError) throw orgError;
       }
 
       toast.success('✅ Preferencias guardadas exitosamente');
+      
+      // Recargar para aplicar los cambios de tipo de negocio a toda la aplicación
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
     } catch (error) {
       console.error('Error:', error);
       toast.error('Error al guardar las preferencias');
@@ -139,6 +244,145 @@ const PreferenciasAplicacion = () => {
   return (
     <div className="preferencias-aplicacion">
       <div className="preferencias-grid">
+        {/* Tipo de Negocio */}
+        <div className="preferencia-item full-width" style={{ gridColumn: '1 / -1' }}>
+          <div className="preferencia-header">
+            <Store size={20} />
+            <div>
+              <h3>Tipo de Negocio</h3>
+              <p>Define las funcionalidades principales de tu negocio (mesas, pedidos, toppings)</p>
+            </div>
+          </div>
+          
+          <div className="business-type-selector">
+            {Object.values(BUSINESS_TYPES).map((type) => {
+              const IconComponent = type.Icon;
+              return (
+                <button
+                  key={type.id}
+                  type="button"
+                  className={`business-type-option ${businessType === type.id ? 'selected' : ''}`}
+                  onClick={() => {
+                    if (!canEditOrgSettings) {
+                      toast.error('No tienes permisos para cambiar el tipo de negocio');
+                      return;
+                    }
+                    setBusinessType(type.id);
+                    const defaultFeatures = getDefaultFeatures(type.id);
+                    setEnabledFeatures(defaultFeatures);
+                  }}
+                  disabled={!canEditOrgSettings}
+                >
+                  <span className="business-type-icon">
+                    <IconComponent size={24} />
+                  </span>
+                  <div className="business-type-info">
+                    <span className="business-type-label">{type.label}</span>
+                    <span className="business-type-desc">{type.description}</span>
+                    {type.features.length > 0 && (
+                      <span className="business-type-features">
+                        {type.features.join(' • ')}
+                      </span>
+                    )}
+                  </div>
+                  {businessType === type.id && (
+                    <div className="business-type-check">
+                      <Check size={20} />
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Funciones Personalizables */}
+          {getCompatibleFeatures(businessType).length > 0 && (
+            <div style={{ marginTop: '24px' }}>
+              <div className="preferencia-header" style={{ marginBottom: '12px' }}>
+                <Settings size={18} />
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '600' }}>Funciones Personalizables</h4>
+                  <p style={{ margin: 0, fontSize: '13px' }}>Activa o desactiva funciones adicionales según las necesidades de tu negocio</p>
+                </div>
+              </div>
+              
+              <div className="business-features-grid">
+                {getCompatibleFeatures(businessType).map((feature) => {
+                  const IconComponent = feature.Icon;
+                  const isEnabled = enabledFeatures.includes(feature.id);
+                  
+                  // Verificar acceso premium
+                  let hasPremiumAccess = true;
+                  if (feature.requiresPremium) {
+                    if (feature.id === 'mesas') {
+                      hasPremiumAccess = hasFeature('mesas');
+                    } else if (feature.id === 'pedidos') {
+                      hasPremiumAccess = hasFeature('pedidos');
+                    }
+                  }
+                  
+                  const dependencyCheck = checkFeatureDependencies(feature.id, enabledFeatures);
+                  const canToggle = canEditOrgSettings && hasPremiumAccess && dependencyCheck.valid;
+                  
+                  return (
+                    <div
+                      key={feature.id}
+                      className={`business-feature-card ${isEnabled ? 'enabled' : ''} ${!canToggle ? 'disabled' : ''}`}
+                      onClick={() => canToggle && handleFeatureToggle(feature.id)}
+                      style={{ cursor: canToggle ? 'pointer' : 'not-allowed' }}
+                    >
+                      <div className="business-feature-header">
+                        <div className="business-feature-icon">
+                          <IconComponent size={20} />
+                        </div>
+                        {feature.id === 'mesas' && isEnabled ? (
+                          <button
+                            className="business-feature-add-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate('/dashboard/mesas');
+                            }}
+                            title="Ir a Gestión de Mesas"
+                            type="button"
+                          >
+                            <Plus size={18} />
+                          </button>
+                        ) : (
+                          <div className="business-feature-checkbox">
+                            <input
+                              type="checkbox"
+                              checked={isEnabled}
+                              onChange={() => {}}
+                              disabled={!canToggle}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </div>
+                        )}
+                      </div>
+                      <div className="business-feature-content">
+                        <h4 style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: '600' }}>{feature.label}</h4>
+                        <p style={{ margin: 0, fontSize: '12px', color: '#8E8E93', lineHeight: '1.4' }}>{feature.description}</p>
+                        {feature.requiresPremium && !hasFeature(feature.id) && (
+                          <span className="feature-premium-badge">Requiere Estándar+</span>
+                        )}
+                        {!dependencyCheck.valid && (
+                          <span className="feature-dependency-warning">{dependencyCheck.message}</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          
+          {!canEditOrgSettings && (
+            <small style={{ color: '#E53E3E', display: 'block', marginTop: '12px', fontStyle: 'italic' }}>
+              * Solo el propietario o usuarios con permisos de edición de facturación pueden cambiar el tipo de negocio o sus funciones.
+            </small>
+          )}
+        </div>
+
         {/* Moneda */}
         <div className="preferencia-item">
           <div className="preferencia-header">

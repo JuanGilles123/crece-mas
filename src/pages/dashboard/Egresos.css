@@ -110,13 +110,13 @@
 }
 
 .egreso-tab:hover:not(:disabled) {
-  color: #3b82f6;
+  color: #02A5E0;
   background: rgba(59, 130, 246, 0.05);
 }
 
 .egreso-tab.active {
-  color: #2563eb;
-  border-bottom-color: #2563eb;
+  color: #02A5E0;
+  border-bottom-color: #02A5E0;
   background: transparent;
   font-weight: 600;
 }
@@ -128,7 +128,7 @@
   left: 0;
   right: 0;
   height: 3px;
-  background: #2563eb;
+  background: #02A5E0;
   border-radius: 2px 2px 0 0;
 }
 
@@ -183,7 +183,7 @@
 
 .egresos-search-input:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: #02A5E0;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
@@ -199,7 +199,7 @@
 
 .egresos-select-filtro:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: #02A5E0;
 }
 
 /* Lista */
@@ -283,7 +283,7 @@
 }
 
 .egreso-badge-enviada {
-  background: #dbeafe;
+  background: #E6F0FF;
   color: #1e40af;
 }
 
@@ -298,8 +298,8 @@
 }
 
 .egreso-badge-facturada {
-  background: #dbeafe;
-  color: #2563eb;
+  background: #E6F0FF;
+  color: #02A5E0;
 }
 
 .egreso-badge-pendiente {
@@ -374,12 +374,12 @@
 }
 
 .egreso-btn-primary {
-  background: #3b82f6;
+  background: #02A5E0;
   color: white;
 }
 
 .egreso-btn-primary:hover {
-  background: #2563eb;
+  background: #02A5E0;
 }
 
 .egreso-btn-secondary {
@@ -454,14 +454,14 @@
 
 /* Estilo específico para el botón azul de continuar orden */
 .egreso-btn-icon-blue {
-  background: #3b82f6 !important;
-  border-color: #3b82f6 !important;
+  background: #02A5E0 !important;
+  border-color: #02A5E0 !important;
   color: white !important;
 }
 
 .egreso-btn-icon-blue:hover {
-  background: #2563eb !important;
-  border-color: #2563eb !important;
+  background: #02A5E0 !important;
+  border-color: #02A5E0 !important;
   color: white !important;
 }
 
@@ -542,14 +542,14 @@
 
   .egreso-tab:hover:not(:disabled) {
     background: rgba(59, 130, 246, 0.05) !important;
-    border-color: #3b82f6 !important;
+    border-color: #02A5E0 !important;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
   }
 
   .egreso-tab.active {
     background: rgba(37, 99, 235, 0.1) !important;
-    border: 2px solid #2563eb !important;
-    color: #2563eb !important;
+    border: 2px solid #02A5E0 !important;
+    color: #02A5E0 !important;
     font-weight: 600 !important;
     box-shadow: 0 2px 6px rgba(37, 99, 235, 0.2) !important;
   }

@@ -141,12 +141,12 @@
 }
 
 .config-impresora-btn-primary {
-  background: #3b82f6;
+  background: #02A5E0;
   color: white;
 }
 
 .config-impresora-btn-primary:hover:not(:disabled) {
-  background: #2563eb;
+  background: #02A5E0;
 }
 
 .config-impresora-btn-secondary {
@@ -242,13 +242,13 @@
 }
 
 .config-impresora-tipo-btn:hover:not(:disabled) {
-  border-color: #3b82f6;
+  border-color: #02A5E0;
   background: #f0f9ff;
 }
 
 .config-impresora-tipo-btn.active {
-  border-color: #3b82f6;
-  background: #3b82f6;
+  border-color: #02A5E0;
+  background: #02A5E0;
   color: white;
 }
 

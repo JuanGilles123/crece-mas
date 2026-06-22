@@ -71,10 +71,55 @@ export const useSubscription = () => {
             status: 'active'
           });
         } else {
+          // Verificar si el período ya venció y superó los 3 días de gracia
+          const periodEnd = subscriptionData.current_period_end;
+          let isGracePeriodExpired = false;
+          if (periodEnd) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const endDate = new Date(periodEnd);
+            endDate.setHours(0, 0, 0, 0);
+            const diffDays = Math.round((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            // Si venció hace más de 3 días, degradar al plan gratis
+            isGracePeriodExpired = diffDays < -3;
+            
+            // Salvaguarda: Si parece estar degradado, verificar si hay un pago aprobado reciente
+            // Esto soluciona el caso donde el usuario paga pero el webhook falla/tarda en actualizar
+            if (isGracePeriodExpired) {
+              const thirtyDaysAgo = new Date();
+              thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+              
+              try {
+                const { data: recentPayment } = await supabase
+                  .from('payments')
+                  .select('id')
+                  .eq('organization_id', organization.id)
+                  .in('status', ['approved', 'completed'])
+                  .gte('created_at', thirtyDaysAgo.toISOString())
+                  .limit(1)
+                  .maybeSingle();
+                  
+                if (recentPayment) {
+                  // Tiene un pago reciente, el webhook debe haber fallado, no lo degradamos
+                  isGracePeriodExpired = false;
+                }
+              } catch (e) {
+                console.error("Error verificando pagos recientes:", e);
+              }
+            }
+          }
+
+          const effectivePlan = isGracePeriodExpired
+            ? { slug: 'free', name: 'Gratis' }
+            : planData;
+
           // Combinar los datos
           const mappedData = {
             ...subscriptionData,
-            plan: planData
+            plan: effectivePlan,
+            originalPlan: planData, // siempre guardar el plan original
+            isGracePeriodExpired,
+            degradedFromPlan: isGracePeriodExpired ? planData : null,
           };
           
           setSubscription(mappedData);
@@ -376,6 +421,10 @@ export const useSubscription = () => {
     hasBypassAccess({ email: organization.owner_email }, organization) : false;
   const isVIPValue = userIsVIP || orgIsVIP;
 
+  // Flag para saber si el negocio fue degradado por no pago (vs. siempre gratis)
+  const isDegraded = !!(subscription?.isGracePeriodExpired && subscription?.degradedFromPlan);
+  const degradedFromPlan = subscription?.degradedFromPlan || null;
+
   return {
     // Estado
     subscription,
@@ -398,6 +447,8 @@ export const useSubscription = () => {
     isProfessional: getPlanSlug() === 'professional',
     isEnterprise: getPlanSlug() === 'enterprise' || getPlanSlug() === 'custom',
     isVIP: isVIPValue, // Usar el valor calculado
+    isDegraded,           // true si fue degradado por no pago
+    degradedFromPlan,     // info del plan anterior al degradado
     
     // Acciones
     refreshSubscription,

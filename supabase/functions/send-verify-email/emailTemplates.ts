@@ -37,7 +37,7 @@ const renderBaseTemplate = ({
       <div style="max-width:600px;margin:0 auto;padding:32px 20px;">
         <div style="background:#ffffff;border-radius:16px;padding:28px;border:1px solid #e5e7eb;">
           <div style="text-align:center;margin-bottom:20px;">
-            <img src="https://creceplus.app/logo-crece.svg" alt="Crece+" width="72" height="72" style="display:inline-block;" />
+            <img src="https://crecemas.co/logo-crece.svg" alt="Crece Más" width="72" height="72" style="display:inline-block;" />
           </div>
           <h1 style="font-size:22px;color:#111827;margin:0 0 16px 0;text-align:center;">${title}</h1>
           <div style="color:#374151;font-size:15px;line-height:1.6;">
@@ -47,7 +47,7 @@ const renderBaseTemplate = ({
           ${footer}
         </div>
         <p style="color:#9ca3af;font-size:12px;text-align:center;margin-top:16px;">
-          Crece+ · creceplus.app
+          Crece Más · crecemas.co
         </p>
       </div>
     </body>
@@ -68,7 +68,7 @@ export const renderSubscriptionActive = (data: {
   const startDate = data?.startDate || '—'
   const endDate = data?.endDate || '—'
   const status = data?.status || 'activa'
-  const dashboardUrl = data?.dashboardUrl || 'https://creceplus.app/dashboard'
+  const dashboardUrl = data?.dashboardUrl || 'https://crecemas.co/dashboard'
 
   return renderBaseTemplate({
     title: 'Tu suscripción Crece+ está activa',
@@ -86,7 +86,7 @@ export const renderSubscriptionActive = (data: {
 
 export const renderSubscriptionPaymentFailed = (data: { name?: string; supportUrl?: string }) => {
   const name = data?.name || 'Hola'
-  const supportUrl = data?.supportUrl || 'https://creceplus.app/soporte'
+  const supportUrl = data?.supportUrl || 'https://crecemas.co/soporte'
 
   return renderBaseTemplate({
     title: 'Problema con tu pago en Crece+',
@@ -103,7 +103,7 @@ export const renderSubscriptionPaymentFailed = (data: { name?: string; supportUr
 export const renderSubscriptionExpiring = (data: { name?: string; endDate?: string; dashboardUrl?: string }) => {
   const name = data?.name || 'Hola'
   const endDate = data?.endDate || '—'
-  const dashboardUrl = data?.dashboardUrl || 'https://creceplus.app/dashboard'
+  const dashboardUrl = data?.dashboardUrl || 'https://crecemas.co/dashboard'
 
   return renderBaseTemplate({
     title: 'Tu suscripción está por vencer',
@@ -119,7 +119,7 @@ export const renderSubscriptionExpiring = (data: { name?: string; endDate?: stri
 
 export const renderWelcome = (data: { name?: string; dashboardUrl?: string }) => {
   const name = data?.name || 'Hola'
-  const dashboardUrl = data?.dashboardUrl || 'https://creceplus.app/dashboard'
+  const dashboardUrl = data?.dashboardUrl || 'https://crecemas.co/dashboard'
   return renderBaseTemplate({
     title: '¡Bienvenido a Crece+!',
     bodyHtml: `
@@ -133,7 +133,7 @@ export const renderWelcome = (data: { name?: string; dashboardUrl?: string }) =>
 
 export const renderResetPassword = (data: { name?: string; resetUrl?: string }) => {
   const name = data?.name || 'Hola'
-  const resetUrl = data?.resetUrl || 'https://creceplus.app/restablecer-contraseña'
+  const resetUrl = data?.resetUrl || 'https://crecemas.co/restablecer-contraseña'
   return renderBaseTemplate({
     title: 'Restablece tu contraseña',
     bodyHtml: `
@@ -147,7 +147,7 @@ export const renderResetPassword = (data: { name?: string; resetUrl?: string }) 
 
 export const renderVerifyEmail = (data: { name?: string; verifyUrl?: string }) => {
   const name = data?.name || 'Hola'
-  const verifyUrl = data?.verifyUrl || 'https://creceplus.app'
+  const verifyUrl = data?.verifyUrl || 'https://crecemas.co'
   return renderBaseTemplate({
     title: 'Confirma tu correo en Crece+',
     bodyHtml: `
@@ -162,7 +162,7 @@ export const renderVerifyEmail = (data: { name?: string; verifyUrl?: string }) =
 export const renderInvoiceGenerated = (data: { name?: string; invoiceNumber?: string; invoiceUrl?: string }) => {
   const name = data?.name || 'Hola'
   const invoiceNumber = data?.invoiceNumber || '—'
-  const invoiceUrl = data?.invoiceUrl || 'https://creceplus.app/dashboard'
+  const invoiceUrl = data?.invoiceUrl || 'https://crecemas.co/dashboard'
   return renderBaseTemplate({
     title: 'Factura disponible – Crece+',
     bodyHtml: `

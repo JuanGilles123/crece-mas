@@ -40,6 +40,16 @@ export const PRODUCT_TYPES = {
       required: ['nombre', 'precio_venta', 'precio_compra'],
       optional: ['imagen', 'peso', 'unidad_peso', 'stock', 'dimensiones', 'color', 'material', 'talla', 'variaciones', 'categoria']
     }
+  },
+  combo: {
+    id: 'combo',
+    label: 'Combo / Ancheta',
+    icon: '🎁',
+    description: 'Pack de productos vinculados con precio calculado',
+    fields: {
+      required: ['nombre', 'precio_venta', 'precio_compra'],
+      optional: ['imagen', 'categoria', 'descripcion', 'variaciones']
+    }
   }
 };
 
@@ -47,8 +57,9 @@ export const PRODUCT_TYPES = {
 export const ADDITIONAL_FIELDS = {
   peso: {
     id: 'peso',
-    label: 'Peso',
-    type: 'number',
+    label: 'Peso (gramos/decimales)',
+    type: 'text',
+    inputMode: 'decimal',
     unit: 'kg',
     placeholder: 'Ej: 0.5'
   },
@@ -133,7 +144,8 @@ export const ADDITIONAL_FIELDS = {
   calorias: {
     id: 'calorias',
     label: 'Calorías',
-    type: 'number',
+    type: 'text',
+    inputMode: 'decimal',
     placeholder: 'Ej: 250'
   },
   porcion: {

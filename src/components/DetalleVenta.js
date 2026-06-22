@@ -14,7 +14,6 @@ function formatCOP(value) {
 }
 
 export default function DetalleVenta({ venta, onCerrar, organization }) {
-  if (!venta) return null;
 
   // Formatear fecha
   const fechaVenta = venta.created_at 
@@ -76,7 +75,9 @@ export default function DetalleVenta({ venta, onCerrar, organization }) {
     return () => {
       document.body.classList.remove('detalle-venta-open');
     };
-  }, []);
+  }, [venta]);
+
+  if (!venta) return null;
 
   return (
     <AnimatePresence>

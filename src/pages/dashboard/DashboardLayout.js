@@ -22,7 +22,12 @@ import {
   ShoppingCart,
   Store,
   FileBarChart,
-  ClipboardList
+  ClipboardList,
+  ArrowRightLeft,
+  HelpCircle,
+  X,
+  MessageCircle,
+  Mail
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSubscription } from '../../hooks/useSubscription';
@@ -38,6 +43,7 @@ const DashboardLayout = () => {
   const { hasFeature } = useSubscription();
   const [isLoading, setIsLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const closeSidebarOnMobile = () => {
     // Función para cerrar menús en móvil si es necesario
@@ -89,6 +95,13 @@ const DashboardLayout = () => {
             label: "Historial de Cierres",
             title: "Historial de Cierres de Caja",
             visible: (hasPermission('sales') || true) && hasFeature('closingHistory')
+          },
+          {
+            to: "/dashboard/monitor-cajas",
+            icon: Activity,
+            label: "Monitor Cajas",
+            title: "Ver Cajas Abiertas en Tiempo Real",
+            visible: ['owner', 'admin'].includes(userProfile?.role)
           }
         ].filter(item => item.visible),
         visible: hasPermission('sales') || true
@@ -144,6 +157,13 @@ const DashboardLayout = () => {
             icon: Package,
             label: "Inventario inicial",
             title: "Registro inicial colaborativo",
+            visible: hasPermission('inventory') || true
+          },
+          {
+            to: "/dashboard/inventario/movimientos",
+            icon: ArrowRightLeft,
+            label: "Movimiento Stock",
+            title: "Historial de entradas y salidas",
             visible: hasPermission('inventory') || true
           },
           {
@@ -253,7 +273,7 @@ const DashboardLayout = () => {
       }
       return group.visible && group.items.length > 0;
     });
-  }, [user?.email, hasPermission, hasFeature, organization]);
+  }, [user?.email, hasPermission, hasFeature, organization, userProfile?.role]);
 
   // Memoizar variantes de animación (solo se crean una vez) - ANTES de cualquier return
   const mainVariants = useMemo(() => ({
@@ -338,6 +358,48 @@ const DashboardLayout = () => {
           />
         )}
       </motion.main>
+
+      {/* Floating Help Button */}
+      <div className="help-float-wrapper">
+        {helpOpen && (
+          <div className="help-popover">
+            <div className="help-popover-header">
+              <span>¿Necesitas ayuda?</span>
+            </div>
+            <div className="help-popover-body">
+              <a
+                href="https://wa.me/573046422366?text=Hola!%20Necesito%20ayuda%20con%20Crece%2B"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="help-popover-btn help-popover-btn-wa"
+                onClick={() => setHelpOpen(false)}
+              >
+                <MessageCircle size={16} />
+                WhatsApp Soporte
+              </a>
+              <a
+                href="mailto:soporte@crecemas.co"
+                className="help-popover-btn help-popover-btn-email"
+                onClick={() => setHelpOpen(false)}
+              >
+                <Mail size={16} />
+                soporte@crecemas.co
+              </a>
+            </div>
+            <div className="help-popover-footer">
+              Respondemos en menos de 24h
+            </div>
+          </div>
+        )}
+        <button
+          className={`help-float-btn ${helpOpen ? 'help-float-btn-active' : ''}`}
+          onClick={() => setHelpOpen(o => !o)}
+          title="Ayuda y Soporte"
+          id="dashboard-help-btn"
+        >
+          {helpOpen ? <X size={22} /> : <HelpCircle size={22} />}
+        </button>
+      </div>
     </div>
   );
 };

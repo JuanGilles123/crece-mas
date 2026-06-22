@@ -20,76 +20,89 @@ export const useCotizaciones = (organizationId) => {
       }
       
       try {
-        // Función auxiliar para cargar clientes
+        // Función auxiliar para cargar clientes, empleados y perfiles de usuario
         const cargarClientes = async (ventas) => {
           const ventasConCliente = ventas.filter(v => v.cliente_id);
-          if (ventasConCliente.length === 0) {
-            return ventas.map(v => ({ ...v, cliente: null }));
-          }
-          
           const clienteIds = [...new Set(ventasConCliente.map(v => v.cliente_id).filter(Boolean))];
-          const { data: clientesData } = await supabase
-            .from('clientes')
-            .select('id, nombre, documento, telefono, email, direccion')
-            .in('id', clienteIds);
-          
-          const clientesMap = new Map((clientesData || []).map(c => [c.id, c]));
-          return ventas.map(venta => ({
-            ...venta,
-            cliente: venta.cliente_id ? (clientesMap.get(venta.cliente_id) || null) : null
-          }));
+          const employeeIds = [...new Set(ventas.map(v => v.employee_id).filter(Boolean))];
+          const userIds = [...new Set(ventas.map(v => v.user_id).filter(Boolean))];
+
+          let clientesMap = new Map();
+          let vendedoresMap = new Map();
+          let userProfilesMap = new Map();
+
+          if (clienteIds.length > 0) {
+            const { data: clientesData } = await supabase
+              .from('clientes')
+              .select('id, nombre, documento, telefono, email, direccion')
+              .in('id', clienteIds);
+            clientesMap = new Map((clientesData || []).map(c => [c.id, c]));
+          }
+
+          if (employeeIds.length > 0) {
+            const { data: vendedoresData } = await supabase
+              .from('team_members')
+              .select('id, employee_name')
+              .in('id', employeeIds);
+            vendedoresMap = new Map((vendedoresData || []).map(v => [v.id, v]));
+          }
+
+          if (userIds.length > 0) {
+            const { data: profilesData } = await supabase
+              .from('user_profiles')
+              .select('user_id, full_name')
+              .in('user_id', userIds);
+            userProfilesMap = new Map((profilesData || []).map(p => [p.user_id, p]));
+          }
+
+          return ventas.map(venta => {
+            let vendedorObj = null;
+            if (venta.employee_id) {
+              vendedorObj = vendedoresMap.get(venta.employee_id) || null;
+            }
+            if (!vendedorObj?.employee_name && venta.user_id) {
+              const profile = userProfilesMap.get(venta.user_id);
+              if (profile?.full_name) {
+                vendedorObj = { id: venta.user_id, employee_name: profile.full_name };
+              }
+            }
+            return {
+              ...venta,
+              cliente: venta.cliente_id ? (clientesMap.get(venta.cliente_id) || null) : null,
+              vendedor: vendedorObj
+            };
+          });
         };
         
-        // Intentar primero con el campo 'estado' si existe
-        try {
-          const { data, error } = await supabase
+        // Intentar obtener cotizaciones por ambos criterios para mayor compatibilidad
+        const [resEstado, resMetodo] = await Promise.all([
+          supabase
             .from('ventas')
             .select('*')
             .eq('organization_id', organizationId)
             .eq('estado', 'cotizacion')
-            .order('created_at', { ascending: false });
-          
-          if (!error) {
-            return await cargarClientes(data || []);
-          }
-          
-          // Si el error es porque no existe la columna, usar método alternativo
-          if (error.code === 'PGRST204' || error.message?.includes('estado')) {
-            console.warn('Campo estado no existe, usando método alternativo para identificar cotizaciones');
-            // Usar metodo_pago = 'COTIZACION' como indicador de cotización
-            const { data: altData, error: altError } = await supabase
-              .from('ventas')
-              .select('*')
-              .eq('organization_id', organizationId)
-              .eq('metodo_pago', 'COTIZACION')
-              .order('created_at', { ascending: false });
-            
-            if (altError) {
-              console.error('Error fetching cotizaciones (alternativo):', altError);
-              return [];
-            }
-            return await cargarClientes(altData || []);
-          }
-          throw error;
-        } catch (err) {
-          // Si el error es porque no existe la columna, usar método alternativo
-          if (err.code === 'PGRST204' || err.message?.includes('estado')) {
-            console.warn('Campo estado no existe, usando método alternativo para identificar cotizaciones');
-            const { data: altData, error: altError } = await supabase
-              .from('ventas')
-              .select('*')
-              .eq('organization_id', organizationId)
-              .eq('metodo_pago', 'COTIZACION')
-              .order('created_at', { ascending: false });
-            
-            if (altError) {
-              console.error('Error fetching cotizaciones (alternativo):', altError);
-              return [];
-            }
-            return await cargarClientes(altData || []);
-          }
-          throw err;
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('ventas')
+            .select('*')
+            .eq('organization_id', organizationId)
+            .eq('metodo_pago', 'COTIZACION')
+            .order('created_at', { ascending: false })
+        ]);
+
+        // Combinar resultados y eliminar duplicados por ID
+        const ventasCombinadas = [...(resEstado.data || []), ...(resMetodo.data || [])];
+        const uniqueVentas = Array.from(new Map(ventasCombinadas.map(v => [v.id, v])).values());
+
+        // Si ambas fallaron por falta de columna, el error se manejará en el catch o aquí
+        if (resEstado.error && resMetodo.error) {
+          console.error('Error fetching cotizaciones:', resEstado.error, resMetodo.error);
+          return [];
         }
+
+        return await cargarClientes(uniqueVentas.sort((a, b) => 
+          new Date(b.created_at) - new Date(a.created_at)
+        ));
       } catch (error) {
         console.error('Error en useCotizaciones:', error);
         return [];
@@ -108,14 +121,16 @@ export const useGuardarCotizacion = () => {
   return useMutation({
     mutationFn: async (cotizacionData) => {
       // Determinar IDs de actor (usuario o empleado)
+      // Priorizar los que vienen en cotizacionData, si no, buscar sesión
       const employeeSession = getEmployeeSession();
-      const isEmployee = employeeSession?.employee?.id;
+      const finalEmployeeId = cotizacionData.employee_id || (cotizacionData.user_id ? null : (employeeSession?.employee?.id || null));
+      const finalUserId = cotizacionData.user_id || (finalEmployeeId ? null : null); // Si hay empleado, user_id suele ser null en ventas
       
       // Construir objeto con solo campos básicos que sabemos que existen
       const dataToInsert = {
         organization_id: cotizacionData.organization_id,
-        user_id: isEmployee ? null : (cotizacionData.user_id || null),
-        employee_id: isEmployee ? employeeSession.employee.id : null,
+        user_id: finalUserId,
+        employee_id: finalEmployeeId,
         total: cotizacionData.total,
         metodo_pago: cotizacionData.metodo_pago || 'COTIZACION', // Valor especial para cotizaciones (metodo_pago tiene NOT NULL)
         items: cotizacionData.items,
@@ -153,13 +168,16 @@ export const useGuardarCotizacion = () => {
         throw new Error(`Error al guardar cotización: ${error.message}`);
       }
 
-      return data[0];
+      return data && data.length > 0 ? data[0] : cotizacionData;
     },
-    onSuccess: (newCotizacion) => {
+    onSuccess: (newCotizacion, variables) => {
       // Invalidar y refetch cotizaciones
-      queryClient.invalidateQueries(['cotizaciones', newCotizacion.organization_id]);
-      // También invalidar ventas para que aparezca en el historial
-      queryClient.invalidateQueries(['ventas', newCotizacion.organization_id]);
+      const orgId = newCotizacion?.organization_id || variables?.organization_id;
+      if (orgId) {
+        queryClient.invalidateQueries(['cotizaciones', orgId]);
+        // También invalidar ventas para que aparezca en el historial
+        queryClient.invalidateQueries(['ventas', orgId]);
+      }
       toast.success('Cotización guardada exitosamente');
     },
     onError: (error) => {
@@ -186,12 +204,15 @@ export const useActualizarCotizacion = () => {
         throw new Error('Error al actualizar cotización');
       }
 
-      return data[0];
+      return data ? data[0] : null;
     },
-    onSuccess: (updatedCotizacion) => {
+    onSuccess: (updatedCotizacion, variables) => {
       // Invalidar queries
-      queryClient.invalidateQueries(['cotizaciones', updatedCotizacion.organization_id]);
-      queryClient.invalidateQueries(['ventas', updatedCotizacion.organization_id]);
+      const orgId = updatedCotizacion?.organization_id || variables.updates?.organization_id;
+      if (orgId) {
+        queryClient.invalidateQueries(['cotizaciones', orgId]);
+        queryClient.invalidateQueries(['ventas', orgId]);
+      }
     },
     onError: (error) => {
       console.error('Error updating cotizacion:', error);
@@ -206,29 +227,40 @@ export const useEliminarCotizacion = () => {
 
   return useMutation({
     mutationFn: async ({ id, organizationId }) => {
-      // Intentar eliminar usando estado, si falla usar metodo_pago = null
-      let { error } = await supabase
+      // Intentar eliminar la cotización. 
+      // Usamos el ID directamente ya que es la forma más segura si ya sabemos que es una cotización.
+      // Pero para mayor seguridad, intentamos verificar que sea una cotización.
+      
+      const { error: deleteError } = await supabase
         .from('ventas')
         .delete()
         .eq('id', id)
-        .eq('estado', 'cotizacion');
+        .or('metodo_pago.eq.COTIZACION,estado.eq.cotizacion');
 
-      // Si el error es porque no existe la columna 'estado', usar método alternativo
-      if (error && (error.code === 'PGRST204' || error.message?.includes('estado'))) {
-        const result = await supabase
-          .from('ventas')
-          .delete()
-          .eq('id', id)
-          .eq('metodo_pago', 'COTIZACION');
+      if (deleteError) {
+        console.error('Error deleting cotizacion (attempt 1):', deleteError);
         
-        if (result.error) {
-          console.error('Error deleting cotizacion:', result.error);
-          throw new Error('Error al eliminar cotización');
+        // Si falla por la columna 'estado', intentar solo con 'metodo_pago'
+        if (deleteError.message?.includes('estado')) {
+          const { error: retryError } = await supabase
+            .from('ventas')
+            .delete()
+            .eq('id', id)
+            .eq('metodo_pago', 'COTIZACION');
+          
+          if (retryError) {
+            console.error('Error deleting cotizacion (retry):', retryError);
+            throw new Error('Error al eliminar cotización');
+          }
+        } else {
+          // Si es otro error, intentar borrar por ID sin filtros adicionales (último recurso)
+          const { error: finalError } = await supabase
+            .from('ventas')
+            .delete()
+            .eq('id', id);
+            
+          if (finalError) throw new Error('Error al eliminar cotización');
         }
-        error = result.error;
-      } else if (error) {
-        console.error('Error deleting cotizacion:', error);
-        throw new Error('Error al eliminar cotización');
       }
 
       return { id, organizationId };

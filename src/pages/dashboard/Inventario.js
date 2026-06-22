@@ -1,11 +1,13 @@
 
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import './Inventario.css';
 import AgregarProductoModalV2 from '../../components/modals/AgregarProductoModalV2';
 import EditarProductoModalV2 from '../../components/modals/EditarProductoModalV2';
+import CreacionMasivaModal from '../../components/modals/CreacionMasivaModal';
 import ImportarProductosCSV from '../../components/forms/ImportarProductosCSV';
 import FeatureGuard from '../../components/FeatureGuard';
 import OptimizedProductImage from '../../components/business/OptimizedProductImage';
@@ -13,13 +15,18 @@ import LottieLoader from '../../components/ui/LottieLoader';
 import InventarioStats from '../../components/inventario/InventarioStats';
 import InventarioFilters from '../../components/inventario/InventarioFilters';
 import { useAuth } from '../../context/AuthContext';
+import { useSubscription } from '../../hooks/useSubscription';
 import { supabase } from '../../services/api/supabaseClient';
-import { List, Grid3X3, PackagePlus, Search, RefreshCw, Download, CheckSquare, X } from 'lucide-react';
+import { List, Grid3X3, PackagePlus, Search, RefreshCw, Download, CheckSquare, X, Edit3, Trash2, ChevronDown, SlidersHorizontal, ArrowUpDown, Tag, Layers, Check, Package, Upload, Camera } from 'lucide-react';
 import { useProductos, useEliminarProducto } from '../../hooks/useProductos';
 import EntradaInventarioModal from '../../components/modals/EntradaInventarioModal';
+import EdicionMasivaModal from '../../components/modals/EdicionMasivaModal';
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
+import MovimientosStockModal from '../../components/modals/MovimientosStockModal';
+import { History } from 'lucide-react';
+import CameraScanner from '../../components/CameraScanner';
 
 
 // Función para eliminar imagen del storage
@@ -40,16 +47,154 @@ const deleteImageFromStorage = async (imagePath) => {
   }
 };
 
+// Componente para filtros de multiselección (Diseño Resumen de Ventas)
+const MultiSelectFilter = ({ label, options, selectedValues, onToggle, icon: Icon }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div className="cp-dropdown-filter" ref={containerRef}>
+      <button
+        className={`cp-select-minimal ${selectedValues.length > 0 ? 'active' : ''}`}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        {Icon && <Icon size={16} />}
+        <span className="ms-label">
+          {selectedValues.length === 0
+            ? label
+            : selectedValues.length === 1
+              ? (options.find(o => (o.value !== undefined ? o.value : o) === selectedValues[0])?.label || selectedValues[0])
+              : `${label}: ${selectedValues.length}`}
+        </span>
+        <ChevronDown size={14} className={`ms-chevron ${isOpen ? 'open' : ''}`} />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 5 }}
+            className="cp-dropdown-menu"
+          >
+            <div className="cp-dropdown-items">
+              {options.map(option => {
+                const val = option.value !== undefined ? option.value : option;
+                const labelText = option.label !== undefined ? option.label : option;
+                const isSelected = selectedValues.includes(val);
+
+                return (
+                  <div
+                    key={val}
+                    className={`cp-dropdown-item ${isSelected ? 'selected' : ''}`}
+                    onClick={() => onToggle(val)}
+                  >
+                    <div className={`cp-checkbox ${isSelected ? 'checked' : ''}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {isSelected && <Check size={12} strokeWidth={3} color="white" />}
+                    </div>
+                    <span>{labelText}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+// Componente para filtros de selección única
+const SingleSelectFilter = ({ label, options, value, onChange, icon: IconComponent, compact = false }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedOption = options.find(o => (o.value !== undefined ? o.value : o) === value);
+  const displayLabel = selectedOption?.label || selectedOption || label;
+
+  return (
+    <div className={`cp-dropdown-filter ${compact ? 'compact' : ''}`} ref={containerRef}>
+      <button
+        className={`cp-select-minimal ${compact ? 'compact' : ''} ${isOpen ? 'active' : ''}`}
+        onClick={() => setIsOpen(!isOpen)}
+        title={compact ? `Ordenar: ${displayLabel}` : ''}
+        type="button"
+      >
+        {IconComponent ? <IconComponent size={20} strokeWidth={2.5} /> : <ArrowUpDown size={20} strokeWidth={2.5} />}
+        {!compact && <span className="ms-label">{displayLabel}</span>}
+        {!compact && <ChevronDown size={14} className={`ms-chevron ${isOpen ? 'open' : ''}`} />}
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 5 }}
+            className="cp-dropdown-menu"
+            style={compact ? { left: 'auto', right: 0 } : {}}
+          >
+            <div className="cp-dropdown-items">
+              {options.map(option => {
+                const val = option.value !== undefined ? option.value : option;
+                const labelText = option.label !== undefined ? option.label : option;
+                const isSelected = val === value;
+
+                return (
+                  <div
+                    key={val}
+                    className={`cp-dropdown-item ${isSelected ? 'selected' : ''}`}
+                    onClick={() => {
+                      onChange(val);
+                      setIsOpen(false);
+                    }}
+                  >
+                    <span>{labelText}</span>
+                    {isSelected && <Check size={14} strokeWidth={3} style={{ color: 'var(--accent-primary)', marginLeft: 'auto' }} />}
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 const Inventario = () => {
-  const { user, organization } = useAuth();
+  const { user, organization, userProfile, hasPermission } = useAuth();
+  const { isDegraded, isFreePlan, getLimit } = useSubscription();
   const location = useLocation();
   const [modalOpen, setModalOpen] = useState(false);
   const [editarModalOpen, setEditarModalOpen] = useState(false);
+  const [creacionMasivaOpen, setCreacionMasivaOpen] = useState(false);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
   const [entradaInventarioOpen, setEntradaInventarioOpen] = useState(false);
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
   const [varianteSeleccionadaId, setVarianteSeleccionadaId] = useState(null);
   const [modoLista, setModoLista] = useState(false);
+  const [manualSpin, setManualSpin] = useState(false);
   const [ordenProductos, setOrdenProductos] = useState('created_desc');
   const [query, setQuery] = useState('');
   const [productoIdFiltro, setProductoIdFiltro] = useState(null);
@@ -57,6 +202,26 @@ const Inventario = () => {
   const [filters, setFilters] = useState({});
   const [seleccionados, setSeleccionados] = useState([]);
   const [eliminandoSeleccionados, setEliminandoSeleccionados] = useState(false);
+  const [edicionMasivaOpen, setEdicionMasivaOpen] = useState(false);
+  const [movimientosModalOpen, setMovimientosModalOpen] = useState(false);
+  const [movimientosProducto, setMovimientosProducto] = useState(null);
+  const [movimientosVarianteId, setMovimientosVarianteId] = useState(null);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [cameraScannerOpen, setCameraScannerOpen] = useState(false);
+  const advancedFiltersRef = useRef(null);
+
+  // Cerrar filtros avanzados al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (advancedFiltersRef.current && !advancedFiltersRef.current.contains(event.target)) {
+        setShowAdvancedFilters(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const [lastModifiedId, setLastModifiedId] = useState(null);
 
   // Suponiendo que el usuario tiene moneda en user.user_metadata.moneda
   const moneda = user?.user_metadata?.moneda || 'COP';
@@ -163,8 +328,10 @@ const Inventario = () => {
     if (!peso || !precioBaseGramo) return 0;
     return Math.round(peso * precioBaseGramo * purityFactor * 100) / 100;
   }, [getGoldPriceLocal, getGoldPriceGlobal, getPurityFactor, organization?.jewelry_min_margin_local, organization?.jewelry_min_margin_international, parseNumber]);
+
   const umbralStockBajo = Number(user?.user_metadata?.umbralStockBajo ?? 10);
   const umbralStockBajoSeguro = Number.isFinite(umbralStockBajo) && umbralStockBajo > 0 ? umbralStockBajo : 10;
+
   const getUmbralProducto = useCallback((producto) => {
     const umbralProducto = Number(producto?.metadata?.umbral_stock_bajo);
     if (Number.isFinite(umbralProducto) && umbralProducto > 0) {
@@ -175,9 +342,49 @@ const Inventario = () => {
 
   const isJewelryBusiness = organization?.business_type === 'jewelry_metals';
 
-  // React Query hooks - usar organization?.id en lugar de user?.id
   const { data: productos = [], isLoading: cargandoLocal, error, refetch, isFetching } = useProductos(organization?.id);
   const eliminarProductoMutation = useEliminarProducto();
+  const queryClient = useQueryClient(); // Necesario para invalidar queries
+
+  // Suscripción en tiempo real para productos y variantes (sincronización instantánea)
+  useEffect(() => {
+    if (!organization?.id) return;
+
+    // Suscribirse a cambios en la tabla productos para esta organización
+    const channel = supabase
+      .channel(`inventario-realtime-${organization.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Escuchar INSERT, UPDATE y DELETE
+          schema: 'public',
+          table: 'productos',
+          filter: `organization_id=eq.${organization.id}`
+        },
+        (payload) => {
+          console.log('📦 Cambio en productos detectado en Inventario:', payload.eventType);
+          // Invalidar query para refrescar los datos inmediatamente
+          queryClient.invalidateQueries(['productos', organization.id]);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'product_variants',
+          filter: `organization_id=eq.${organization.id}`
+        },
+        () => {
+          queryClient.invalidateQueries(['productos', organization.id]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [organization?.id, queryClient]);
 
   const cargando = cargandoLocal;
 
@@ -549,7 +756,7 @@ const Inventario = () => {
 
   // Filtrar productos basado en búsqueda y filtros dinámicos
   const filteredProducts = useMemo(() => {
-    return productos.filter((producto) => {
+    const result = productos.filter((producto) => {
       if (productoIdFiltro && String(producto.id) !== String(productoIdFiltro)) {
         return false;
       }
@@ -601,7 +808,12 @@ const Inventario = () => {
         if (filterType === 'multi') {
           // Selección múltiple - el producto debe estar en la lista
           if (!Array.isArray(filterValue) || filterValue.length === 0) continue;
-          if (!filterValue.includes(productValue)) return false;
+          const incluyeSinCat = filterValue.includes('__sin_categoria__');
+          const estaVacio = productValue === null || productValue === undefined || productValue === '';
+          const valoresCat = filterValue.filter(v => v !== '__sin_categoria__');
+          const coincidenCat = valoresCat.includes(productValue);
+          if (!incluyeSinCat && !coincidenCat) return false;
+          if (incluyeSinCat && !estaVacio && !coincidenCat) return false;
         } else if (filterType === 'value') {
           if (fieldId === 'created_at' || fieldId === 'fecha_vencimiento') {
             // Filtros de fecha con opciones rápidas
@@ -664,7 +876,17 @@ const Inventario = () => {
 
       return true;
     });
-  }, [productos, query, productosSearchIndex, filters, getUmbralProducto, productoIdFiltro]);
+    
+    // Si el plan tiene límite de productos (free o degradado), mostrar solo hasta el límite
+    if (isDegraded || isFreePlan) {
+      const maxProducts = getLimit('maxProducts');
+      if (maxProducts !== null && maxProducts !== undefined) {
+        return result.slice(0, maxProducts);
+      }
+    }
+    
+    return result;
+  }, [productos, query, filters, productoIdFiltro, productosSearchIndex, isDegraded, isFreePlan, getLimit, getUmbralProducto]);
 
   const sortedProducts = useMemo(() => {
     const lista = [...filteredProducts];
@@ -710,14 +932,14 @@ const Inventario = () => {
   const handleObserver = useCallback((entries) => {
     const target = entries[0];
     if (target.isIntersecting && visibleCount < sortedProducts.length) {
-      setVisibleCount((prev) => Math.min(prev + 50, sortedProducts.length));
+      setVisibleCount((prev) => Math.min(prev + 100, sortedProducts.length)); // Bloques de 100
     }
   }, [visibleCount, sortedProducts.length]);
 
   useEffect(() => {
     const option = {
       root: null,
-      rootMargin: "200px", // Cargar un poco antes de llegar al final
+      rootMargin: "800px", // Precarga agresiva
       threshold: 0
     };
     const observer = new IntersectionObserver(handleObserver, option);
@@ -728,25 +950,35 @@ const Inventario = () => {
 
   // Tomar solo la rebanada (slice) visible de los productos ordenados
   const visibleProducts = useMemo(() => {
+    // Si hay un producto recién modificado, asegurarnos de que esté en la lista visible
+    // o al menos que la lista sea coherente
     return sortedProducts.slice(0, visibleCount);
   }, [sortedProducts, visibleCount]);
 
-  const shouldAnimateProducts = visibleProducts.length <= 200;
-  const ItemWrapper = shouldAnimateProducts ? motion.div : 'div';
+  // Efecto para limpiar el resaltado después de unos segundos
+  useEffect(() => {
+    if (lastModifiedId) {
+      const timer = setTimeout(() => {
+        setLastModifiedId(null);
+      }, 5000); // 5 segundos de resaltado
+      return () => clearTimeout(timer);
+    }
+  }, [lastModifiedId]);
+
+  // El Wrapper ahora es un div estándar para máximo rendimiento
+  const ItemWrapper = 'div';
   const getItemAnimationProps = (index) => {
-    if (!shouldAnimateProducts) return {};
-    return {
-      initial: { opacity: 0, y: 20 },
-      animate: { opacity: 1, y: 0 },
-      transition: { duration: 0.3, delay: index * 0.05 },
-      whileHover: { scale: 1.01, transition: { duration: 0.2 } }
-    };
+    return {}; // Quitar animaciones de delay que pesan en tablets
   };
 
   // Guardar producto en Supabase (ahora manejado por React Query en AgregarProductoModal)
-  const handleAgregarProducto = async (nuevo) => {
-    // Forzar refetch para asegurar que la lista se actualice inmediatamente
-    await refetch();
+  const handleAgregarProducto = (nuevo) => {
+    if (nuevo?.id) {
+      setLastModifiedId(nuevo.id);
+      // Opcionalmente mover al inicio si no está ya por el orden created_desc
+      setOrdenProductos('created_desc');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   // Editar producto
@@ -757,10 +989,13 @@ const Inventario = () => {
 
   // Actualizar producto editado (ahora manejado por React Query)
   const handleProductoEditado = (productoEditado) => {
-    // React Query invalidará automáticamente la cache y recargará los productos
+    // React Query invalidará automáticamente la cache, pero forzamos un refetch para que sea inmediato
+    refetch();
     setEditarModalOpen(false);
     setProductoSeleccionado(null);
-    refetch();
+    if (productoEditado?.id) {
+      setLastModifiedId(productoEditado.id);
+    }
   };
 
   const idsFiltrados = useMemo(() => filteredProducts.map(p => p.id), [filteredProducts]);
@@ -837,6 +1072,10 @@ const Inventario = () => {
     } finally {
       setEliminandoSeleccionados(false);
     }
+  };
+
+  const abrirEdicionMasiva = () => {
+    setEdicionMasivaOpen(true);
   };
 
   // Eliminar producto
@@ -996,6 +1235,65 @@ const Inventario = () => {
         </div>
       ) : (
         <>
+          {/* Banner de límite de plan */}
+          {(isDegraded || isFreePlan) && (() => {
+            const maxProducts = getLimit('maxProducts');
+            if (maxProducts !== null && maxProducts !== undefined && productos.length > maxProducts) {
+              return (
+                <div style={{
+                  background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
+                  border: '1px solid #f59e0b',
+                  borderRadius: '10px',
+                  padding: '12px 16px',
+                  marginBottom: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  fontSize: '0.875rem',
+                  color: '#92400e'
+                }}>
+                  <span style={{ fontSize: '1.2rem' }}>⚠️</span>
+                  <span>
+                    Tu plan <strong>Gratis</strong> permite hasta <strong>{maxProducts} productos</strong>. 
+                    Tienes <strong>{productos.length} productos</strong> en total, pero solo se muestran los primeros <strong>{maxProducts}</strong>.
+                    {' '}<button
+                      onClick={() => window.location.href = '/pricing'}
+                      style={{ background: 'none', border: 'none', color: '#d97706', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+                    >Actualiza tu plan</button> para verlos todos.
+                  </span>
+                </div>
+              );
+            }
+            // Si NO supera el límite pero está cerca, mostrar advertencia suave
+            if (maxProducts !== null && maxProducts !== undefined && productos.length >= maxProducts) {
+              return (
+                <div style={{
+                  background: 'linear-gradient(135deg, #fee2e2, #fecaca)',
+                  border: '1px solid #ef4444',
+                  borderRadius: '10px',
+                  padding: '12px 16px',
+                  marginBottom: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  fontSize: '0.875rem',
+                  color: '#991b1b'
+                }}>
+                  <span style={{ fontSize: '1.2rem' }}>🔒</span>
+                  <span>
+                    Has alcanzado el límite de <strong>{maxProducts} productos</strong> del plan Gratis. 
+                    No puedes agregar más productos.{' '}
+                    <button
+                      onClick={() => window.location.href = '/pricing'}
+                      style={{ background: 'none', border: 'none', color: '#dc2626', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+                    >Actualiza tu plan</button> para continuar creciendo.
+                  </span>
+                </div>
+              );
+            }
+            return null;
+          })()}
+
           {/* Métricas del inventario - se actualizan dinámicamente según filtros */}
           {productos.length > 0 && (
             <InventarioStats
@@ -1007,143 +1305,311 @@ const Inventario = () => {
           {/* Header con búsqueda y acciones - Separados para mejor control responsive */}
           <div className="inventario-header-wrapper">
             <div className="inventario-actions">
-              <button className="inventario-btn inventario-btn-primary" onClick={() => setModalOpen(true)}>Nuevo producto</button>
-              <button
-                className="inventario-btn inventario-btn-secondary"
-                onClick={() => refetch()}
-                disabled={isFetching}
-                title="Actualizar inventario"
-              >
-                <RefreshCw size={18} className={isFetching ? 'spin' : ''} />
-              </button>
-              <button
-                className="inventario-btn inventario-btn-secondary"
-                onClick={() => setEntradaInventarioOpen(true)}
-                title="Registrar entrada de inventario"
-              >
-                <PackagePlus size={18} />
-                Entrada Inventario
-              </button>
-              <FeatureGuard
-                feature="importCSV"
-                recommendedPlan="professional"
-                showInline={false}
-                fallback={
+              <div className="inventario-actions-left">
+                {(hasPermission('inventario.create') || ['owner', 'admin'].includes(userProfile?.role)) && (
+                  <>
+                    <FeatureGuard
+                      action="createProduct"
+                      fallback={
+                        <button 
+                          className="inventario-btn inventario-btn-primary" 
+                          onClick={() => toast.error('Has alcanzado el límite de productos de tu plan. Actualiza tu cuenta para seguir creciendo.')}
+                          style={{ opacity: 0.7, cursor: 'not-allowed' }}
+                          title="🔒 Límite de productos alcanzado"
+                        >
+                          Nuevo producto
+                        </button>
+                      }
+                    >
+                      <button className="inventario-btn inventario-btn-primary" onClick={() => setModalOpen(true)}>Nuevo producto</button>
+                    </FeatureGuard>
+                    
+                    <FeatureGuard
+                      action="createProduct"
+                      fallback={
+                        <button
+                          className="inventario-btn inventario-btn-masivo"
+                          onClick={() => toast.error('Has alcanzado el límite de productos de tu plan. Actualiza tu cuenta.')}
+                          style={{ opacity: 0.7, cursor: 'not-allowed' }}
+                          title="🔒 Límite de productos alcanzado"
+                        >
+                          Creación Masiva
+                        </button>
+                      }
+                    >
+                      <button
+                        className="inventario-btn inventario-btn-masivo"
+                        onClick={() => setCreacionMasivaOpen(true)}
+                        title="Crea múltiples productos a la vez tipo Excel"
+                      >
+                        Creación Masiva
+                      </button>
+                    </FeatureGuard>
+                  </>
+                )}
+                {(hasPermission('inventario.edit') || ['owner', 'admin'].includes(userProfile?.role)) && (
                   <button
-                    className="inventario-btn inventario-btn-secondary"
-                    onClick={() => toast.error('La importación CSV está disponible en el plan Estándar')}
-                    style={{ opacity: 0.5, cursor: 'not-allowed' }}
-                    title="🔒 Plan Estándar"
+                    className="inventario-btn inventario-btn-action"
+                    onClick={() => setEntradaInventarioOpen(true)}
+                    title="Registrar entrada de inventario"
                   >
-                    Importar CSV
+                    <PackagePlus size={18} />
+                    Entrada Inventario
                   </button>
-                }
-              >
-                <button className="inventario-btn inventario-btn-secondary" onClick={() => setCsvModalOpen(true)}>Importar CSV</button>
-              </FeatureGuard>
-              <FeatureGuard
-                feature="exportData"
-                recommendedPlan="professional"
-                showInline={false}
-                fallback={
+                )}
+                <button
+                  className="inventario-btn inventario-btn-action inventario-btn-square"
+                  onClick={async () => {
+                    setManualSpin(true);
+                    await refetch();
+                    toast.success('Inventario actualizado');
+                    setTimeout(() => setManualSpin(false), 500);
+                  }}
+                  disabled={isFetching}
+                  title="Actualizar inventario"
+                >
+                  <RefreshCw size={18} className={manualSpin ? 'spin' : ''} />
+                </button>
+                <button
+                  className="inventario-btn inventario-btn-action inventario-btn-square"
+                  onClick={() => setModoLista(m => !m)}
+                  title="Cambiar vista"
+                >
+                  {modoLista ? <Grid3X3 size={18} /> : <List size={18} />}
+                </button>
+
+                <div className="inventario-btn-icon-wrapper">
+                  {seleccionados.length > 0 && <span className="inventario-counter">{seleccionados.length}</span>}
                   <button
-                    className="inventario-btn inventario-btn-secondary"
-                    onClick={() => toast.error('La exportación de datos está disponible en el plan Estándar')}
-                    style={{ opacity: 0.5, cursor: 'not-allowed' }}
-                    title="🔒 Plan Estándar"
+                    type="button"
+                    className={`inventario-btn inventario-btn-action inventario-btn-square ${todosSeleccionados ? 'active' : ''}`}
+                    onClick={toggleSeleccionarTodos}
+                    title={todosSeleccionados ? 'Quitar selección' : 'Seleccionar todo'}
                   >
+                    <CheckSquare size={18} />
+                  </button>
+                </div>
+
+                {seleccionados.length > 0 && (hasPermission('inventario.edit') || ['owner', 'admin'].includes(userProfile?.role)) && (
+                  <div className="inventario-btn-icon-wrapper">
+                    <span className="inventario-counter">{seleccionados.length}</span>
+                    <button
+                      className="inventario-btn inventario-btn-action inventario-btn-square"
+                      onClick={abrirEdicionMasiva}
+                      title="Editar en masa los productos seleccionados"
+                    >
+                      <Edit3 size={18} />
+                    </button>
+                  </div>
+                )}
+
+                {seleccionados.length > 0 && (hasPermission('inventario.delete') || ['owner', 'admin'].includes(userProfile?.role)) && (
+                  <div className="inventario-btn-icon-wrapper">
+                    <span className="inventario-counter">{seleccionados.length}</span>
+                    <button
+                      className="inventario-btn inventario-btn-action inventario-btn-danger inventario-btn-square"
+                      onClick={handleEliminarSeleccionados}
+                      disabled={eliminandoSeleccionados}
+                      title="Eliminar productos seleccionados"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="inventario-actions-right">
+                <FeatureGuard
+                  feature="importCSV"
+                  recommendedPlan="professional"
+                  showInline={false}
+                  fallback={
+                    <button
+                      className="inventario-btn inventario-btn-action"
+                      onClick={() => toast.error('La importación CSV está disponible en el plan Estándar')}
+                      style={{ opacity: 0.5, cursor: 'not-allowed' }}
+                      title="🔒 Plan Estándar"
+                    >
+                      <Upload size={18} />
+                      <span>Importar</span>
+                    </button>
+                  }
+                >
+                  <button className="inventario-btn inventario-btn-action" onClick={() => setCsvModalOpen(true)}>
+                    <Upload size={18} />
+                    <span>Importar</span>
+                  </button>
+                </FeatureGuard>
+
+                <FeatureGuard
+                  feature="exportData"
+                  recommendedPlan="professional"
+                  showInline={false}
+                  fallback={
+                    <button
+                      className="inventario-btn inventario-btn-action"
+                      onClick={() => toast.error('La exportación de datos está disponible en el plan Estándar')}
+                      style={{ opacity: 0.5, cursor: 'not-allowed' }}
+                      title="🔒 Plan Estándar"
+                    >
+                      <Download size={18} />
+                      Exportar
+                    </button>
+                  }
+                >
+                  <button className="inventario-btn inventario-btn-action" onClick={exportarInventarioExcel}>
                     <Download size={18} />
                     Exportar
                   </button>
-                }
-              >
-                <button className="inventario-btn inventario-btn-secondary" onClick={exportarInventarioExcel}>
-                  <Download size={18} />
-                  Exportar
-                </button>
-              </FeatureGuard>
-              <button
-                type="button"
-                className="inventario-btn inventario-btn-secondary"
-                onClick={toggleSeleccionarTodos}
-              >
-                <CheckSquare size={18} />
-                {todosSeleccionados ? 'Quitar selección' : 'Seleccionar todo'}
-              </button>
-              {seleccionados.length > 0 && (
-                <button
-                  className="inventario-btn inventario-btn-outline eliminar"
-                  onClick={handleEliminarSeleccionados}
-                  disabled={eliminandoSeleccionados}
-                >
-                  {eliminandoSeleccionados ? 'Eliminando...' : `Eliminar seleccionados (${seleccionados.length})`}
-                </button>
-              )}
-              <button className="inventario-btn inventario-btn-secondary inventario-btn-view-toggle" onClick={() => setModoLista(m => !m)}>
-                {modoLista ? <Grid3X3 size={18} /> : <List size={18} />}
-              </button>
-            </div>
-            <div className="inventario-search-container">
-              <div className="inventario-sort">
-                <select
-                  className="inventario-sort-select"
-                  value={ordenProductos}
-                  onChange={(e) => setOrdenProductos(e.target.value)}
-                  aria-label="Ordenar productos"
-                >
-                  <option value="created_desc">Más recientes</option>
-                  <option value="created_asc">Más antiguos</option>
-                  <option value="name_asc">Nombre A-Z</option>
-                  <option value="name_desc">Nombre Z-A</option>
-                  <option value="stock_desc">Stock mayor</option>
-                  <option value="stock_asc">Stock menor</option>
-                </select>
+                </FeatureGuard>
               </div>
-              <div className="search-input-wrapper">
-                <Search size={18} className="inventario-search-icon-outside" />
+            </div>
+            <div className="inventario-search-row">
+              <div className="search-input-wrapper compact" style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1 }}>
+                <Search size={16} className="inventario-search-icon-outside" />
                 <input
                   ref={combinedSearchInputRef}
                   className="inventario-search"
-                  placeholder="Buscar por nombre, código, marca, modelo, categoría..."
+                  placeholder="Buscar..."
                   value={query}
                   onChange={(e) => {
                     setQuery(e.target.value);
                     handleBarcodeInputChange(e);
                   }}
                   onKeyDown={handleBarcodeKeyDown}
-                  autoFocus={false}
                 />
                 {query && (
-                  <button 
-                    className="clear-search-btn"
-                    onClick={() => {
-                      setQuery('');
-                      if (searchInputRef.current) searchInputRef.current.focus();
-                    }}
-                    type="button"
-                    title="Limpiar búsqueda"
+                  <button className="clear-search-btn" onClick={() => setQuery('')}>
+                    <X size={14} />
+                  </button>
+                )}
+                <button
+                  className="camera-scan-btn"
+                  onClick={() => setCameraScannerOpen(true)}
+                  title="Escanear con cámara"
+                  type="button"
+                >
+                  <Camera size={16} />
+                </button>
+              </div>
+
+
+
+              <div className="inventario-quick-filters">
+                <SingleSelectFilter
+                  compact={true}
+                  label="Ordenar"
+                  icon={ArrowUpDown}
+                  options={[
+                    { value: 'created_desc', label: 'Más recientes' },
+                    { value: 'created_asc', label: 'Más antiguos' },
+                    { value: 'name_asc', label: 'Nombre A-Z' },
+                    { value: 'name_desc', label: 'Nombre Z-A' },
+                    { value: 'stock_desc', label: 'Stock mayor' },
+                    { value: 'stock_asc', label: 'Stock menor' }
+                  ]}
+                  value={ordenProductos}
+                  onChange={setOrdenProductos}
+                />
+                <MultiSelectFilter
+                  label="Categoría"
+                  icon={Layers}
+                  options={[
+                    { value: '__sin_categoria__', label: 'Sin categoría' },
+                    ...[...new Set(productos.map(p => p.metadata?.categoria).filter(Boolean))].sort()
+                  ]}
+                  selectedValues={filters.categoria_multi || []}
+                  onToggle={(val) => {
+                    setFilters(prev => {
+                      const current = prev.categoria_multi || [];
+                      const next = current.includes(val)
+                        ? current.filter(v => v !== val)
+                        : [...current, val];
+                      return { ...prev, categoria_multi: next.length > 0 ? next : undefined };
+                    });
+                  }}
+                />
+
+                <MultiSelectFilter
+                  label="Stock"
+                  icon={Package}
+                  options={[
+                    { value: 'bajo', label: 'Stock Bajo' },
+                    { value: 'sin', label: 'Sin Stock' },
+                    { value: 'con', label: 'Con Stock' }
+                  ]}
+                  selectedValues={filters.stock_condition ? [filters.stock_condition] : []}
+                  onToggle={(val) => {
+                    setFilters(prev => {
+                      const next = { ...prev };
+                      if (next.stock_condition === val) delete next.stock_condition;
+                      else next.stock_condition = val;
+                      return next;
+                    });
+                  }}
+                />
+
+                <MultiSelectFilter
+                  label="Tipo"
+                  icon={Tag}
+                  options={[
+                    { value: 'fisico', label: 'Físico' },
+                    { value: 'servicio', label: 'Servicio' },
+                    { value: 'comida', label: 'Comida' },
+                    { value: 'accesorio', label: 'Accesorio' }
+                  ]}
+                  selectedValues={filters.tipo_multi || []}
+                  onToggle={(val) => {
+                    setFilters(prev => {
+                      const current = prev.tipo_multi || [];
+                      const next = current.includes(val)
+                        ? current.filter(v => v !== val)
+                        : [...current, val];
+                      return { ...prev, tipo_multi: next.length > 0 ? next : undefined };
+                    });
+                  }}
+                />
+
+                <div className="inventario-advanced-filters-wrapper" ref={advancedFiltersRef}>
+                  <button
+                    className={`inventario-btn-more-filters ${showAdvancedFilters ? 'active' : ''} ${Object.keys(filters).length > 0 ? 'has-active' : ''}`}
+                    onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                    title="Más filtros"
+                    style={{ width: 'auto', padding: '0 12px', gap: '8px', position: 'relative' }}
                   >
-                    <X size={16} />
+                    <SlidersHorizontal size={20} strokeWidth={2.5} />
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Más Filtros</span>
+                    {Object.keys(filters).length > 0 && <span className="filter-active-indicator" />}
+                  </button>
+
+                  <AnimatePresence>
+                    {showAdvancedFilters && (
+                      <InventarioFilters
+                        productos={productos}
+                        onFilterChange={setFilters}
+                        filters={filters}
+                        onClose={() => setShowAdvancedFilters(false)}
+                      />
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {(query || Object.keys(filters).length > 0) && (
+                  <button
+                    className="inventario-clear-btn-final-fix"
+                    onClick={() => { setQuery(''); setFilters({}); }}
+                    title="Limpiar todos los filtros"
+                  >
+                    &times;
                   </button>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Filtros - Debajo del buscador y antes de los productos */}
-          <InventarioFilters
-            productos={productos}
-            filters={filters}
-            onFilterChange={setFilters}
-          />
-
           {/* Contenido de productos */}
           <div className="inventario-content">
-            {cargando ? (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}>
-                <LottieLoader size="medium" message="Cargando productos..." />
-              </div>
-            ) : sortedProducts.length === 0 ? (
+            {sortedProducts.length === 0 ? (
               <div className="sin-resultados-busqueda">
                 <Search size={48} />
                 <h3>No se encontraron productos</h3>
@@ -1159,10 +1625,10 @@ const Inventario = () => {
                     <ItemWrapper
                       key={prod.id}
                       {...getItemAnimationProps(index)}
-                      {...(shouldAnimateProducts ? { layout: true } : {})}
-                      className={modoLista ? "inventario-lista-item" : "inventario-card"}
+                      className={`${modoLista ? "inventario-lista-item" : "inventario-card"} ${lastModifiedId === prod.id ? 'highlight-new' : ''}`}
+                      onClick={() => handleEditarProducto(prod)}
                     >
-                      <div className="inventario-select-checkbox">
+                      <div className="inventario-select-checkbox" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           checked={seleccionados.includes(prod.id)}
@@ -1179,11 +1645,10 @@ const Inventario = () => {
                       <div className={modoLista ? "inventario-lista-info" : "inventario-info"}>
 
                         <div className="inventario-nombre" title={prod.nombre}>{prod.nombre}</div>
-                        {isJewelryBusiness && (
+                        {(isJewelryBusiness || prod.metadata?.jewelry_price_mode) && (
                           <div style={{ display: 'flex', gap: '0.2rem', marginBottom: '0.2rem', flexWrap: 'wrap', justifyContent: modoLista ? 'flex-start' : 'center' }}>
                             {prod.metadata?.peso && (
                               <span style={{
-                                fontSize: '0.65rem',
                                 backgroundColor: '#f3f4f6',
                                 padding: '1px 4px',
                                 borderRadius: '3px',
@@ -1197,9 +1662,8 @@ const Inventario = () => {
 
                             {prod.metadata?.jewelry_material_type && prod.metadata.jewelry_material_type !== 'na' && (
                               <span style={{
-                                fontSize: '0.65rem',
-                                backgroundColor: prod.metadata.jewelry_material_type === 'local' ? '#eff6ff' : '#fff7ed',
-                                color: prod.metadata.jewelry_material_type === 'local' ? '#2563eb' : '#ea580c',
+                                backgroundColor: prod.metadata.jewelry_material_type === 'local' ? '#FFFFFF' : '#fff7ed',
+                                color: prod.metadata.jewelry_material_type === 'local' ? '#02A5E0' : '#ea580c',
                                 padding: '1px 4px',
                                 borderRadius: '3px',
                                 border: `1px solid ${prod.metadata.jewelry_material_type === 'local' ? '#bfdbfe' : '#ffedd5'}`,
@@ -1211,24 +1675,44 @@ const Inventario = () => {
                           </div>
                         )}
                         <div className={modoLista ? "inventario-lista-precios" : ""} style={!modoLista ? { display: 'flex', gap: '0.8rem', justifyContent: 'center', marginBottom: 2 } : {}}>
-                          <span style={{ color: 'var(--accent-primary)', fontWeight: 700, fontSize: modoLista ? 'inherit' : '0.85rem' }}>Compra: {prod.precio_compra?.toLocaleString('es-CO')}</span>
-                          <span style={{ color: 'var(--accent-success)', fontWeight: 700, fontSize: modoLista ? 'inherit' : '0.85rem' }}>Venta: {getCurrentVentaPrice(prod).toLocaleString('es-CO')}</span>
+                          <span style={{ color: 'var(--accent-primary)', fontWeight: 700 }}>Compra: {prod.precio_compra?.toLocaleString('es-CO')}</span>
+                          <span style={{ color: 'var(--accent-success)', fontWeight: 700 }}>Venta: {getCurrentVentaPrice(prod).toLocaleString('es-CO')}</span>
                         </div>
                         <div className="inventario-stock">Stock: {prod.stock !== null && prod.stock !== undefined ? parseFloat(prod.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 4 }) : '0'}</div>
                       </div>
-                      <div className={modoLista ? "inventario-lista-actions" : "inventario-card-actions"}>
+                      <div className={modoLista ? "inventario-lista-actions" : "inventario-card-actions"} onClick={(e) => e.stopPropagation()}>
                         <button
-                          className="inventario-btn inventario-btn-outline"
-                          onClick={() => handleEditarProducto(prod)}
+                          className="inventario-btn inventario-btn-outline historial"
+                          onClick={() => {
+                            setMovimientosProducto(prod);
+                            setMovimientosVarianteId(null);
+                            setMovimientosModalOpen(true);
+                          }}
+                          title="Ver historial de movimientos"
                         >
-                          Editar
+                          <History size={16} />
+                          {modoLista && <span>Historial</span>}
                         </button>
-                        <button
-                          className="inventario-btn inventario-btn-outline eliminar"
-                          onClick={() => handleEliminarProducto(prod)}
-                        >
-                          Eliminar
-                        </button>
+                        {(hasPermission('inventario.edit') || ['owner', 'admin'].includes(userProfile?.role)) && (
+                          <button
+                            className="inventario-btn inventario-btn-outline editar"
+                            onClick={() => handleEditarProducto(prod)}
+                            title="Editar producto"
+                          >
+                            <Edit3 size={16} />
+                            {modoLista && <span>Editar</span>}
+                          </button>
+                        )}
+                        {(hasPermission('inventario.delete') || ['owner', 'admin'].includes(userProfile?.role)) && (
+                          <button
+                            className="inventario-btn inventario-btn-outline eliminar"
+                            onClick={() => handleEliminarProducto(prod)}
+                            title="Eliminar producto"
+                          >
+                            <Trash2 size={16} />
+                            {modoLista && <span>Eliminar</span>}
+                          </button>
+                        )}
                       </div>
                     </ItemWrapper>
                   ))}
@@ -1257,6 +1741,14 @@ const Inventario = () => {
         </>
       )}
       <AgregarProductoModalV2 open={modalOpen} onClose={() => setModalOpen(false)} onProductoAgregado={handleAgregarProducto} moneda={moneda} />
+      <CreacionMasivaModal
+        open={creacionMasivaOpen}
+        onClose={() => setCreacionMasivaOpen(false)}
+        onProductosCreados={() => {
+          refetch();
+          setCreacionMasivaOpen(false);
+        }}
+      />
       <EditarProductoModalV2
         open={editarModalOpen}
         onClose={() => {
@@ -1284,6 +1776,39 @@ const Inventario = () => {
           }
         }}
       />
+
+      {/* MODAL DE EDICIÓN MASIVA */}
+      <EdicionMasivaModal
+        open={edicionMasivaOpen}
+        onClose={() => setEdicionMasivaOpen(false)}
+        productosSeleccionados={productos.filter(p => seleccionados.includes(p.id))}
+        categoriasDisponibles={[...new Set(productos.map(p => p.metadata?.categoria).filter(Boolean))].sort()}
+        onProductosActualizados={() => {
+          setSeleccionados([]);
+          refetch();
+        }}
+      />
+
+      <MovimientosStockModal 
+        open={movimientosModalOpen}
+        onClose={() => setMovimientosModalOpen(false)}
+        producto={movimientosProducto}
+        varianteId={movimientosVarianteId}
+      />
+
+      {/* Escáner de cámara */}
+      {cameraScannerOpen && (
+        <CameraScanner
+          title="Escanear código de barras"
+          onScan={(codigo) => {
+            setQuery(codigo);
+            setCameraScannerOpen(false);
+            // También disparar búsqueda por código directo
+            handleBarcodeScanned(codigo);
+          }}
+          onClose={() => setCameraScannerOpen(false)}
+        />
+      )}
     </div>
   );
 };

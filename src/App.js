@@ -29,6 +29,7 @@ const InvitePublic = lazy(() => import('./pages/InvitePublic'));
 const Pricing = lazy(() => import('./pages/Pricing'));
 const VIPAdminPanel = lazy(() => import('./pages/VIPAdminPanel'));
 const SubscriptionCallback = lazy(() => import('./pages/SubscriptionCallback'));
+const Catalogo = lazy(() => import('./pages/public/Catalogo'));
 
 // Componente de carga
 const LoadingFallback = () => (
@@ -37,7 +38,7 @@ const LoadingFallback = () => (
     justifyContent: 'center',
     alignItems: 'center',
     height: '100vh',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    background: 'linear-gradient(135deg, #004481 0%, #02A5E0 100%)',
     color: 'white',
     fontSize: '1.5rem',
     fontWeight: '600'
@@ -85,6 +86,7 @@ function App() {
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/home" element={<Home />} />
+                <Route path="/tienda/:slug" element={<Catalogo />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/login-empleado" element={<LoginEmpleado />} />
                 <Route path="/registro" element={<Registro />} />

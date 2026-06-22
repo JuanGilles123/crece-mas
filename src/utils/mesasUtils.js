@@ -114,7 +114,7 @@ export const getPedidoEstadoColor = (estado) => {
     case 'pendiente':
       return '#F59E0B'; // Amarillo/Naranja
     case 'en_preparacion':
-      return '#3B82F6'; // Azul
+      return '#02A5E0'; // Azul
     case 'listo':
       return '#10B981'; // Verde
     case 'completado':

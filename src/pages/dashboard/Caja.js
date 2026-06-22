@@ -11,9 +11,10 @@ import { useSubscription } from '../../hooks/useSubscription';
 import { useProductos } from '../../hooks/useProductos';
 import { useVentas } from '../../hooks/useVentas';
 import { useToppings } from '../../hooks/useToppings';
-import { useGuardarCotizacion, useActualizarCotizacion } from '../../hooks/useCotizaciones';
+import { useGuardarCotizacion, useActualizarCotizacion, useCotizaciones, useEliminarCotizacion } from '../../hooks/useCotizaciones';
 import { generarCodigoVenta, generarCodigoVentaLocal } from '../../utils/generarCodigoVenta';
 import { enqueueVenta } from '../../utils/offlineQueue';
+import { actualizarStockVenta } from '../../utils/ventas/actualizarStockVenta';
 import { getEmployeeSession } from '../../utils/employeeSession';
 import { useCurrencyInput } from '../../hooks/useCurrencyInput';
 import { useClientes, useCrearCliente } from '../../hooks/useClientes';
@@ -31,8 +32,10 @@ import ConsultarPrecioModal from '../../components/modals/ConsultarPrecioModal';
 import ToppingsSelector from '../../components/ToppingsSelector';
 import VariacionesSelector from '../../components/VariacionesSelector';
 import LottieLoader from '../../components/ui/LottieLoader';
+import DegradedPlanOverlay from '../../components/DegradedPlanOverlay';
+import CameraScanner from '../../components/CameraScanner';
 
-import { ShoppingCart, Trash2, CheckCircle, CreditCard, Banknote, Smartphone, Wallet, ArrowLeft, Save, Plus, X, UserCircle, Lock, Percent, List, ArrowRight, Package, Receipt, Search, DollarSign, Info, History } from 'lucide-react';
+import { ShoppingCart, Trash2, CheckCircle, CreditCard, Banknote, Smartphone, Wallet, ArrowLeft, Save, Plus, X, UserCircle, Lock, Percent, List, ArrowRight, Package, Receipt, Search, DollarSign, Info, History, Camera } from 'lucide-react';
 import toast from 'react-hot-toast';
 import './Caja.css';
 
@@ -50,6 +53,54 @@ function formatCOP(value) {
     return "$" + value.toLocaleString("es-CO");
   }
 }
+
+// Componente de tarjeta de producto (extraído y memoizado para alto rendimiento)
+const ProductCard = React.memo(({
+  producto,
+  isJewelryBusiness,
+  getJewelryUnitPrice,
+  addToCart,
+  formatCOP
+}) => (
+  <div
+    className="caja-product-card"
+    onClick={() => addToCart(producto)}
+  >
+    <div className="caja-product-content">
+      <OptimizedProductImage
+        imagePath={producto.imagen}
+        alt={producto.nombre}
+        className="caja-product-image"
+      />
+      <div className="caja-product-info">
+        <p className="caja-product-name" title={producto.nombre}>{producto.nombre}</p>
+        <p className="caja-product-stock">Stock: {producto.stock !== null && producto.stock !== undefined ? parseFloat(producto.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '0'}</p>
+        {isJewelryBusiness && producto.metadata && (
+          <div className="caja-product-jewelry-info">
+            {producto.metadata.peso && (
+              <span className="caja-product-jewelry-tag">
+                {producto.metadata.peso}g
+              </span>
+            )}
+            {producto.metadata.material && (
+              <span className="caja-product-jewelry-tag">
+                {producto.metadata.material}
+              </span>
+            )}
+            {producto.metadata.jewelry_material_type && producto.metadata.jewelry_material_type !== 'na' && (
+              <span className="caja-product-jewelry-tag caja-product-jewelry-type">
+                {producto.metadata.jewelry_material_type === 'local' ? 'Nac' : 'Int'}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+      <span className="caja-product-price">
+        {formatCOP(isJewelryBusiness ? getJewelryUnitPrice(producto) : producto.precio_venta)}
+      </span>
+    </div>
+  </div>
+));
 
 // Componente para métodos de pago (extraído y memoizado)
 const MetodosPago = React.memo(({
@@ -799,12 +850,33 @@ export default function Caja({
   onCancelar = null // Callback para cancelar
 }) {
   const { user, organization, hasPermission, userProfile, isEmployeeMode } = useAuth();
-  const { hasFeature, canPerformAction } = useSubscription();
+  const { hasFeature, canPerformAction, isDegraded, isFreePlan } = useSubscription();
   const navigate = useNavigate();
   const { isOnline } = useNetworkStatus();
 
+  // Limite de ventas para plan degradado
+  const [limiteAlcanzado, setLimiteAlcanzado] = useState(false);
+
+  // Verificar límite de ventas para plan free o degradado
+  useEffect(() => {
+    let isMounted = true;
+    if (isDegraded || isFreePlan) {
+      canPerformAction('createSale').then(res => {
+        if (isMounted) {
+          setLimiteAlcanzado(!res.allowed);
+        }
+      });
+    } else {
+      setLimiteAlcanzado(false);
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [isDegraded, isFreePlan, canPerformAction]);
+
   const esModoPedido = mode === 'pedido';
   const [query, setQuery] = useState("");
+  const [cameraScannerOpen, setCameraScannerOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const isJewelryBusiness = organization?.business_type === 'jewelry_metals';
   const [goldPriceGlobal, setGoldPriceGlobal] = useState(0);
@@ -871,23 +943,36 @@ export default function Caja({
     productosIds: [] // IDs de productos con descuento
   });
 
-  const getVentaActorIds = () => {
+  const getVentaActorIds = (apertura = null) => {
+    // Si hay una apertura activa, usamos sus IDs para asegurar que la venta quede atada al turno/caja correcto
+    if (apertura) {
+      return {
+        ventaUserId: apertura.user_id,
+        ventaEmployeeId: apertura.employee_id
+      };
+    }
+
     const employeeSession = getEmployeeSession();
     // Si hay sesión de empleado activa, usar employee_id y user_id=null
     if (employeeSession?.employee?.id) {
       const ownerId = organization?.owner_id || userProfile?.organization_owner_id;
-      return { 
-        ventaUserId: ownerId || user?.id || null, 
-        ventaEmployeeId: employeeSession.employee.id 
+      return {
+        ventaUserId: ownerId || user?.id || null,
+        ventaEmployeeId: employeeSession.employee.id
       };
     }
     // Si estamos en modo empleado (detectado por AuthContext) pero no hay sesión local,
     // también forzar user_id=null para evitar violación de FK con auth.users
     if (isEmployeeMode) {
-      return { ventaUserId: null, ventaEmployeeId: null };
+      // Si no hay sesión de empleado pero estamos en modo empleado,
+      // DEBEMOS enviar el user.id actual para no violar restricciones de DB
+      return {
+        ventaUserId: user?.id || organization?.owner_id || null,
+        ventaEmployeeId: null
+      };
     }
     // Usuario normal (dueño o admin)
-    return { ventaUserId: user?.id || null, ventaEmployeeId: null };
+    return { ventaUserId: user?.id || organization?.owner_id || null, ventaEmployeeId: null };
   };
 
 
@@ -978,7 +1063,8 @@ export default function Caja({
 
   // Verificar si hay una apertura de caja activa (solo en modo venta)
   const { data: aperturaActiva, isLoading: cargandoApertura, refetch: refetchApertura } = useAperturaCajaActiva(
-    esModoPedido ? null : organization?.id
+    esModoPedido ? null : organization?.id,
+    user?.id // Añadido user.id para filtrar correctamente
   );
 
   // En modo pedido, forzar aperturaActiva a null para evitar problemas
@@ -991,6 +1077,61 @@ export default function Caja({
   const aperturaPromptStorageKey = 'caja_apertura_prompt_day';
 
   const puedeAbrirCaja = hasPermission('caja.open') || hasPermission('cierre.create') || ['owner', 'admin'].includes(userProfile?.role);
+
+  // EFECTO CRÍTICO: Resetear la elección de sincronización si el usuario cambia
+  // Esto asegura que si el owner abre caja y luego entra el empleado, al empleado
+  // se le pregunte SIEMPRE si quiere sincronizarse o ser independiente.
+  useEffect(() => {
+    if (user?.id && organization?.id) {
+      const lastUserKey = `last_user_in_caja_${organization.id}`;
+      const lastUser = localStorage.getItem(lastUserKey);
+
+      if (lastUser && lastUser !== user.id) {
+        // El usuario cambió, olvidar la sincronización previa para obligar a elegir
+        localStorage.removeItem(`synced_apertura_${organization.id}`);
+        // Resetear estados del modal para que se dispare
+        setModalMostradoInicialmente(false);
+        setModalCerradoManualmente(false);
+      }
+
+      localStorage.setItem(lastUserKey, user.id);
+    }
+  }, [user?.id, organization?.id]);
+
+  // Efecto para detectar si la caja fue cerrada en otro lugar (otra pestaña o perfil)
+  useEffect(() => {
+    if (!organization?.id) return;
+
+    const handleStorageChange = (e) => {
+      if (e.key === `caja_cerrada_at_${organization.id}`) {
+        // Alguien cerró caja, forzar actualización y mostrar modal
+        refetchApertura();
+        setModalMostradoInicialmente(false);
+        setModalCerradoManualmente(false);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    // Intervalo de seguridad para detectar cambios en la misma ventana
+    const interval = setInterval(() => {
+      const key = `caja_cerrada_at_${organization.id}`;
+      const lastCierre = localStorage.getItem(key);
+      const lastCheck = localStorage.getItem(`${key}_checked`);
+
+      if (lastCierre && lastCierre !== lastCheck) {
+        localStorage.setItem(`${key}_checked`, lastCierre);
+        refetchApertura();
+        setModalMostradoInicialmente(false);
+        setModalCerradoManualmente(false);
+      }
+    }, 2000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, [organization?.id, refetchApertura]);
 
   useEffect(() => {
     // En modo pedido, no verificar apertura de caja
@@ -1008,25 +1149,26 @@ export default function Caja({
       // Si había una apertura antes y ahora no hay, significa que se cerró la caja
       // Resetear el estado para permitir que se muestre el modal de apertura nuevamente
       if (modalMostradoInicialmente) {
-        // Esperar un momento para evitar que se muestre inmediatamente después del cierre
-        const timer = setTimeout(() => {
-          setModalMostradoInicialmente(false);
-          setModalCerradoManualmente(false);
-        }, 1000);
-        return () => clearTimeout(timer);
+        setModalMostradoInicialmente(false);
+        setModalCerradoManualmente(false);
       }
     }
 
     // Solo mostrar el modal automáticamente si:
-    // 1. No está cargando
-    // 2. No hay apertura activa
-    // 3. Hay organización
-    // 4. No se ha mostrado inicialmente
-    // 5. El modal no está ya abierto manualmente
-    // 6. El usuario no lo cerró manualmente
-    if (!cargandoApertura && !aperturaActivaFinal && organization?.id && !modalMostradoInicialmente && !mostrarModalApertura && !modalCerradoManualmente && puedeAbrirCaja) {
-      setMostrarModalApertura(true);
-      setModalMostradoInicialmente(true);
+    // 1. No hay apertura activa en el estado final
+    // 2. Hay organización
+    // 3. No se ha mostrado inicialmente
+    // 4. El modal no está ya abierto manualmente
+    // 5. El usuario no lo cerró manualmente
+    // OPTIMIZACIÓN: Si no está cargando O si sabemos positivamente que no hay vinculación local, mostrar de inmediato
+    const sinVinculacionLocal = !localStorage.getItem(`synced_apertura_${organization?.id}`);
+    
+    if (!aperturaActivaFinal && organization?.id && !modalMostradoInicialmente && !mostrarModalApertura && !modalCerradoManualmente && puedeAbrirCaja) {
+      // Si ya terminó de cargar y no hay nada, o si aún cargando sabemos que no hay vínculo local
+      if (!cargandoApertura || sinVinculacionLocal) {
+        setMostrarModalApertura(true);
+        setModalMostradoInicialmente(true);
+      }
     }
   }, [cargandoApertura, aperturaActivaFinal, organization?.id, modalMostradoInicialmente, mostrarModalApertura, modalCerradoManualmente, esModoPedido, puedeAbrirCaja]);
 
@@ -1083,6 +1225,10 @@ export default function Caja({
   // Hook para guardar y actualizar cotización
   const guardarCotizacionMutation = useGuardarCotizacion();
   const actualizarCotizacionMutation = useActualizarCotizacion();
+  const eliminarCotizacionMutation = useEliminarCotizacion();
+
+  // Hook para obtener cotizaciones pendientes
+  const { data: cotizaciones = [] } = useCotizaciones(organization?.id);
 
   // Hook para pedidos pendientes de pago
   const { data: todosPedidos = [] } = usePedidos(organization?.id);
@@ -1134,6 +1280,8 @@ export default function Caja({
   // eslint-disable-next-line no-unused-vars
   const [pedidoIdActual, setPedidoIdActual] = useState(null);
   const [pedidosConsolidados, setPedidosConsolidados] = useState([]); // IDs de todos los pedidos consolidados
+  const [mostrandoModalCotizaciones, setMostrandoModalCotizaciones] = useState(false);
+  const [busquedaCotizacion, setBusquedaCotizacion] = useState('');
 
   // Agrupar pedidos por mesa (solo mesas con más de un pedido)
   const pedidosPorMesa = useMemo(() => {
@@ -1301,7 +1449,49 @@ export default function Caja({
 
   // Cargar productos usando React Query (optimizado con cache)
   const { data: productosData = [], isLoading: productosLoading, refetch: refetchProductos } = useProductos(organization?.id);
-  const { data: ventasData = [], isLoading: ventasLoading } = useVentas(organization?.id, 2000, 30);
+
+  // Suscripción en tiempo real para productos y variantes (sincronización instantánea)
+  useEffect(() => {
+    if (!organization?.id) return;
+
+    // Suscribirse a cambios en la tabla productos para esta organización
+    const channel = supabase
+      .channel(`caja-realtime-${organization.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Escuchar INSERT, UPDATE y DELETE
+          schema: 'public',
+          table: 'productos',
+          filter: `organization_id=eq.${organization.id}`
+        },
+        (payload) => {
+          console.log('📦 Cambio detectado en productos (Realtime):', payload.eventType);
+          // Invalidar query para refrescar los datos inmediatamente en el cache
+          queryClient.invalidateQueries(['productos', organization.id]);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'product_variants',
+          filter: `organization_id=eq.${organization.id}`
+        },
+        (payload) => {
+          console.log('📦 Cambio detectado en variantes (Realtime):', payload.eventType);
+          queryClient.invalidateQueries(['productos', organization.id]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [organization?.id, queryClient]);
+
+  const { data: ventasData = [], isLoading: ventasLoading } = useVentas(organization?.id, 500, 30);
 
   // Cargar toppings para mostrarlos como productos individuales
   const { data: toppingsData = [], isLoading: toppingsLoading, isFetched: toppingsFetched } = useToppings(organization?.id);
@@ -1448,7 +1638,7 @@ export default function Caja({
   };
 
   // Estado para trackear si estamos editando una cotización existente
-  const [cotizacionId, setCotizacionId] = useState(null);
+  const [cotizacionId, setCotizacionId] = useState(() => localStorage.getItem('cotizacionIdActivo') || null);
 
   // Estado para guardar el nombre del cliente del pedido
   const [clienteNombrePedido, setClienteNombrePedido] = useState(null);
@@ -1534,6 +1724,7 @@ export default function Caja({
           // Guardar el ID de la cotización si existe
           if (cotizacion.id) {
             setCotizacionId(cotizacion.id);
+            localStorage.setItem('cotizacionIdActivo', cotizacion.id); // persistir para sobrevivir remounts
           }
 
           // Mapear los items de la cotización al formato del carrito
@@ -1736,14 +1927,14 @@ export default function Caja({
   const handleObserver = useCallback((entries) => {
     const target = entries[0];
     if (target.isIntersecting && visibleCount < sortedProducts.length) {
-      setVisibleCount((prev) => Math.min(prev + 50, sortedProducts.length));
+      setVisibleCount((prev) => Math.min(prev + 100, sortedProducts.length)); // Bloques de 100 para menos interrupciones
     }
   }, [visibleCount, sortedProducts.length]);
 
   useEffect(() => {
     const option = {
       root: null,
-      rootMargin: "200px",
+      rootMargin: "800px", // Precarga agresiva (casi 2 pantallas de anticipación)
       threshold: 0
     };
     const observer = new IntersectionObserver(handleObserver, option);
@@ -2323,7 +2514,7 @@ export default function Caja({
     try {
       // Generar código de cotización
       const numeroVenta = await generarCodigoVenta(organization.id, 'COTIZACION');
-      const { ventaUserId, ventaEmployeeId } = getVentaActorIds();
+      const { ventaUserId, ventaEmployeeId } = getVentaActorIds(aperturaActivaFinal);
 
       // Construir objeto de cotización con solo campos básicos requeridos
       const cotizacionData = {
@@ -2367,6 +2558,7 @@ export default function Caja({
 
         toast.success('Cotización actualizada exitosamente');
         setCotizacionId(null); // Limpiar ID después de actualizar
+        localStorage.removeItem('cotizacionIdActivo');
       } else {
         // Crear nueva cotización
         await guardarCotizacionMutation.mutateAsync(cotizacionData);
@@ -2575,7 +2767,7 @@ export default function Caja({
       const numeroVenta = isOnline
         ? await generarCodigoVenta(organization.id, metodoPagoFinal, false)
         : generarCodigoVentaLocal(metodoPagoFinal);
-      const { ventaUserId, ventaEmployeeId } = getVentaActorIds();
+      const { ventaUserId, ventaEmployeeId } = getVentaActorIds(aperturaActivaFinal);
       const pedidosAActualizar = pedidosConsolidados.length > 0 ? pedidosConsolidados : [pedidoId];
       const fechaVenta = new Date().toISOString();
       // #region agent log
@@ -2626,7 +2818,8 @@ export default function Caja({
         pago_cliente: montoPagoCliente,
         detalles_pago_mixto: metodoActual === "Mixto" && detallesPago ? detallesPago : null,
         numero_venta: numeroVenta,
-        cliente_id: clienteSeleccionado?.id || null
+        cliente_id: clienteSeleccionado?.id || null,
+        notas: (cotizacionId ? `[Venta desde Cotización #${cotizacionId}] ` : '') + (notas || '')
       };
 
       if (!isOnline) {
@@ -2660,6 +2853,15 @@ export default function Caja({
         } else {
           toast.success('Pago guardado localmente. Se sincronizará al reconectar.');
         }
+
+        if (cotizacionId) {
+          // Si estamos offline, no podemos eliminar la cotización original de la BD ahora mismo de forma confiable
+          // Pero al menos limpiamos el estado local para no duplicar más.
+          setCotizacionId(null);
+          localStorage.removeItem('cotizacionOriginal');
+          localStorage.removeItem('cotizacionIdActivo');
+        }
+
         return;
       }
 
@@ -2890,6 +3092,27 @@ export default function Caja({
             }
           }
         }
+      }
+
+      // Si esta venta proviene de una cotización retomada, eliminar la cotización original
+      if (cotizacionId) {
+        try {
+          const { error: deleteCotizacionError } = await supabase
+            .from('ventas')
+            .delete()
+            .eq('id', cotizacionId);
+
+          if (deleteCotizacionError) {
+            console.error('Error eliminando la cotización original:', deleteCotizacionError);
+          } else {
+            console.log(`✅ Cotización original ${cotizacionId} eliminada al finalizar la venta.`);
+          }
+        } catch (e) {
+          console.error('Excepción al eliminar cotización:', e);
+        }
+        setCotizacionId(null);
+        localStorage.removeItem('cotizacionOriginal');
+        localStorage.removeItem('cotizacionIdActivo');
       }
 
       // Limpiar carrito y estados
@@ -3199,7 +3422,7 @@ export default function Caja({
       tieneAbono = abonoInicial > 0;
     }
 
-    const { ventaUserId, ventaEmployeeId } = getVentaActorIds();
+    const { ventaUserId, ventaEmployeeId } = getVentaActorIds(aperturaActivaFinal);
     const fechaVenta = new Date().toISOString();
 
     if (!isOnline) {
@@ -3277,356 +3500,210 @@ export default function Caja({
       return;
     }
 
-    const maxIntentos = 3;
-    let intento = 0;
-    let ventaResult = null;
-    let exito = false;
-
-    while (intento < maxIntentos && !exito) {
-      try {
-        // Generar código de venta amigable (forzar único en reintentos)
-        const numeroVenta = await generarCodigoVenta(organization.id, metodoPagoFinal, intento > 0);
-
-        // Guardar la venta en la base de datos
-        const ventaData = {
-          organization_id: organization.id,
-          user_id: ventaUserId,
-          employee_id: ventaEmployeeId,
-          total: total,
-          subtotal: subtotal,
-          descuento: montoDescuento > 0 ? {
-            tipo: descuento.tipo,
-            valor: descuento.valor,
-            monto: montoDescuento,
-            alcance: descuento.alcance,
-            productosIds: descuento.productosIds
-          } : null,
-          metodo_pago: metodoPagoFinal,
-          items: cart.map(item => {
-            const producto = productos.find(p => p.id === item.id);
-            return {
-              id: item.id,
-              nombre: item.nombre,
-              qty: item.qty,
-              cantidad: item.qty,
-              precio_venta: item.precio_venta,
-              precio_compra: item.precio_compra || 0,
-              precio: item.precio_venta,
-              precio_unitario: item.precio_venta,
-              toppings: item.toppings || [],
-              variaciones: item.variaciones || {},
-              metadata: {
-                ...item.metadata,
-                peso: item.metadata?.peso || producto?.metadata?.peso,
-                material: item.metadata?.material || producto?.metadata?.material,
-                jewelry_material_type: item.metadata?.jewelry_material_type || producto?.metadata?.jewelry_material_type,
-              },
-              variant_id: item.variant_id || null,
-              variant_nombre: item.variant_nombre || null,
-              notas: item.notas || null
-            };
-          }),
-          fecha: fechaVenta,
-          created_at: fechaVenta,
-          pago_cliente: montoPagoCliente,
-          detalles_pago_mixto: metodoActual === "Mixto" && detallesPagoMixto ? detallesPagoMixto : null,
-          numero_venta: numeroVenta,
-          cliente_id: clienteSeleccionado?.id || null,
-          es_credito: metodoActual === 'Credito'
-        };
-
-        const { data: result, error: ventaError } = await supabase
-          .from('ventas')
-          .insert([ventaData])
-          .select();
-
-        if (ventaError) {
-          // Detectar error de clave duplicada
-          const esDuplicado = ventaError.code === '23505' ||
-            ventaError.message?.includes('duplicate key') ||
-            ventaError.message?.includes('idx_ventas_numero_venta_unique');
-
-          if (esDuplicado && intento < maxIntentos - 1) {
-            intento++;
-            // Esperar un poco antes de reintentar para evitar condiciones de carrera
-            const tiempoEspera = 100 * intento;
-            await new Promise(resolve => setTimeout(resolve, tiempoEspera));
-            continue;
-          }
-
-          toast.error(`Error al guardar la venta: ${ventaError.message} `);
-          setProcesandoVenta(false);
-          return;
-        }
-
-        if (!result || result.length === 0) {
-          toast.error('Error: No se pudo obtener el ID de la venta');
-          setProcesandoVenta(false);
-          return;
-        }
-
-        ventaResult = result;
-        exito = true;
-      } catch (error) {
-        // Si no es un error de duplicado o ya agotamos los intentos, mostrar error
-        const esDuplicado = error.code === '23505' ||
-          error.message?.includes('duplicate key') ||
-          error.message?.includes('idx_ventas_numero_venta_unique');
-
-        if (!esDuplicado || intento >= maxIntentos - 1) {
-          toast.error(`Error al guardar la venta: ${error.message || 'Error desconocido'} `);
-          setProcesandoVenta(false);
-          return;
-        }
-
-        // Si es duplicado y aún hay intentos, continuar el loop
-        intento++;
-        const tiempoEsperaActual = 100 * intento;
-        await new Promise(resolve => setTimeout(resolve, tiempoEsperaActual));
-      }
-    }
-
-    if (!exito || !ventaResult) {
-      toast.error('Error: No se pudo guardar la venta después de varios intentos');
-      setProcesandoVenta(false);
-      return;
-    }
-
-    // Si es crédito, crear el registro de crédito
-    let creditoId = null;
-    if (metodoActual === 'Credito' && clienteSeleccionado) {
-      try {
-        // Calcular fecha de vencimiento (por defecto 30 días desde hoy)
-        const fechaVenc = fechaVencimientoCredito
-          ? new Date(fechaVencimientoCredito)
-          : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-
-        // Si hubo abono, montoPagoCliente tiene el valor
-        const abonoInicial = tieneAbono ? montoPagoCliente : 0;
-
-        const creditoData = {
-          organization_id: organization.id,
-          venta_id: ventaResult[0].id,
-          cliente_id: clienteSeleccionado.id,
-          monto_total: total,
-          // Iniciamos en 0 para que el trigger de Supabase actualice monto_pagado
-          // cuando se inserte el abono en pagos_creditos (evita doble conteo)
-          monto_pagado: 0,
-          monto_pendiente: total,
-          fecha_vencimiento: fechaVenc.toISOString().split('T')[0],
-          estado: 'pendiente',
-          notas: `Crédito generado automáticamente por venta ${ventaResult[0].numero_venta}${tieneAbono ? ` (Abono Inicial: ${formatCOP(abonoInicial)} en ${detallesPagoMixto.metodoAbono})` : ''}`
-        };
-
-        const creditoCreado = await crearCreditoMutation.mutateAsync(creditoData);
-        creditoId = creditoCreado.id;
-
-        // Actualizar la venta con el credito_id
-        await supabase
-          .from('ventas')
-          .update({ credito_id: creditoId })
-          .eq('id', ventaResult[0].id);
-
-        // Si hubo abono, registrar el pago del abono en pagos_creditos
-        if (tieneAbono && abonoInicial > 0) {
-          const pagoAbonoData = {
-            organization_id: organization.id,
-            credito_id: creditoId,
-            monto: abonoInicial,
-            metodo_pago: detallesPagoMixto.metodoAbono,
-            notas: 'Abono inicial al momento de la venta',
-            user_id: ventaUserId || null,
-          };
-          const { error: errorPago } = await supabase
-            .from('pagos_creditos')
-            .insert([pagoAbonoData]);
-          if (errorPago) {
-            console.error('Error registrando abono inicial en pagos_creditos:', errorPago);
-          } else {
-            // Actualizar manualmente el crédito con los montos correctos
-            // (evita doble conteo si hay un trigger en Supabase que sume pagos_creditos)
-            const deudaReal = total - abonoInicial;
-            await supabase
-              .from('creditos')
-              .update({
-                monto_pagado: abonoInicial,
-                monto_pendiente: Math.max(deudaReal, 0),
-                estado: deudaReal <= 0 ? 'pagado' : 'parcial'
-              })
-              .eq('id', creditoId);
-          }
-        }
-
-      } catch (error) {
-        console.error('Error al crear crédito:', error);
-        toast.error('La venta se guardó pero hubo un error al crear el crédito. Por favor, créalo manualmente.');
-      }
-    }
-
     try {
-      // Los pedidos ya fueron actualizados arriba en la sección principal de procesamiento
+      const maxIntentos = 3;
+      let intento = 0;
+      let ventaResult = null;
+      let exito = false;
 
-      // Actualizar stock de productos y toppings
-      for (const item of cart) {
-        // Si es un topping individual, actualizar stock en la tabla toppings
-        if (item.es_topping || (typeof item.id === 'string' && item.id.startsWith('topping_'))) {
-          const toppingId = item.topping_id || (typeof item.id === 'string' && item.id.startsWith('topping_') ? item.id.replace('topping_', '') : item.id);
+      while (intento < maxIntentos && !exito) {
+        try {
+          // Generar código de venta amigable (forzar único en reintentos)
+          const numeroVenta = await generarCodigoVenta(organization.id, metodoPagoFinal, intento > 0);
 
-          // Obtener el topping actual para verificar stock
-          const { data: topping, error: toppingError } = await supabase
-            .from('toppings')
-            .select('stock')
-            .eq('id', toppingId)
-            .single();
+          // Guardar la venta en la base de datos
+          const ventaData = {
+            organization_id: organization.id,
+            user_id: ventaUserId,
+            employee_id: ventaEmployeeId,
+            total: total,
+            subtotal: subtotal,
+            descuento: montoDescuento > 0 ? {
+              tipo: descuento.tipo,
+              valor: descuento.valor,
+              monto: montoDescuento,
+              alcance: descuento.alcance,
+              productosIds: descuento.productosIds
+            } : null,
+            metodo_pago: metodoPagoFinal,
+            items: cart.map(item => {
+              const producto = productos.find(p => p.id === item.id);
+              return {
+                id: item.id,
+                nombre: item.nombre,
+                qty: item.qty,
+                cantidad: item.qty,
+                precio_venta: item.precio_venta,
+                precio_compra: item.precio_compra || 0,
+                precio: item.precio_venta,
+                precio_unitario: item.precio_venta,
+                toppings: item.toppings || [],
+                variaciones: item.variaciones || {},
+                metadata: {
+                  ...item.metadata,
+                  peso: item.metadata?.peso || producto?.metadata?.peso,
+                  material: item.metadata?.material || producto?.metadata?.material,
+                  jewelry_material_type: item.metadata?.jewelry_material_type || producto?.metadata?.jewelry_material_type,
+                },
+                variant_id: item.variant_id || null,
+                variant_nombre: item.variant_nombre || null,
+                notas: item.notas || null
+              };
+            }),
+            fecha: fechaVenta,
+            created_at: fechaVenta,
+            pago_cliente: montoPagoCliente,
+            detalles_pago_mixto: metodoActual === "Mixto" && detallesPagoMixto ? detallesPagoMixto : null,
+            numero_venta: numeroVenta,
+            cliente_id: clienteSeleccionado?.id || null,
+            es_credito: metodoActual === 'Credito',
+            notas: (cotizacionId ? `[Venta desde Cotización #${cotizacionId}] ` : '') + (notas || '')
+          };
 
-          if (!toppingError && topping && topping.stock !== null && topping.stock !== undefined) {
-            const nuevoStock = topping.stock - item.qty;
-            const { error: stockError } = await supabase
-              .from('toppings')
-              .update({ stock: nuevoStock })
-              .eq('id', toppingId);
+          const { data: result, error: ventaError } = await supabase
+            .from('ventas')
+            .insert([ventaData])
+            .select();
 
-            if (stockError) {
-              console.error(`Error al actualizar el stock del topping ${item.nombre}: `, stockError);
-              toast.error(`Error al actualizar el stock de ${item.nombre}. La venta se guardó pero el stock no se actualizó.`);
+          if (ventaError) {
+            // Detectar error de clave duplicada
+            const esDuplicado = ventaError.code === '23505' ||
+              ventaError.message?.includes('duplicate key') ||
+              ventaError.message?.includes('idx_ventas_numero_venta_unique');
+
+            if (esDuplicado && intento < maxIntentos - 1) {
+              intento++;
+              // Esperar un poco antes de reintentar para evitar condiciones de carrera
+              const tiempoEspera = 100 * intento;
+              await new Promise(resolve => setTimeout(resolve, tiempoEspera));
+              continue;
             }
-          }
-        } else {
-          // Es un producto normal
-          // Primero intentar obtener el producto del array, si no está, obtenerlo de la BD
-          let producto = productos.find(p => p.id === item.id);
 
-          // Si no está en el array, obtenerlo directamente de la BD
-          if (!producto) {
-            const { data: productoBD, error: productoBDError } = await supabase
-              .from('productos')
-              .select('id, nombre, stock, metadata')
-              .eq('id', item.id)
-              .single();
-
-            if (!productoBDError && productoBD) {
-              producto = productoBD;
-            }
-          }
-
-          if (item.variant_id) {
-            const { data: variante, error: varianteError } = await supabase
-              .from('product_variants')
-              .select('stock')
-              .eq('id', item.variant_id)
-              .single();
-
-            if (!varianteError && variante && variante.stock !== null && variante.stock !== undefined) {
-              const nuevoStock = variante.stock - item.qty;
-              const { error: stockError } = await supabase
-                .from('product_variants')
-                .update({ stock: nuevoStock })
-                .eq('id', item.variant_id);
-
-              if (stockError) {
-                console.error(`Error al actualizar el stock de la variante ${item.variant_nombre || item.nombre}: `, stockError);
-                toast.error(`Error al actualizar el stock de ${item.nombre}. La venta se guardó pero el stock de la variante no se actualizó.`);
-              }
-            }
-          } else if (producto && producto.stock !== null && producto.stock !== undefined) {
-            const nuevoStock = producto.stock - item.qty;
-            const { error: stockError } = await supabase
-              .from('productos')
-              .update({ stock: nuevoStock })
-              .eq('id', item.id);
-
-            if (stockError) {
-              console.error(`Error al actualizar el stock de ${item.nombre}: `, stockError);
-              toast.error(`Error al actualizar el stock de ${item.nombre}. La venta se guardó pero el stock no se actualizó.`);
-            }
-          }
-
-          // Descontar productos vinculados si existen
-          // Parsear metadata si viene como string
-          let metadata = producto?.metadata;
-          if (typeof metadata === 'string') {
-            try {
-              metadata = JSON.parse(metadata);
-            } catch (e) {
-              console.warn('Error parseando metadata:', e);
-              metadata = null;
-            }
+            toast.error(`Error al guardar la venta: ${ventaError.message} `);
+            setProcesandoVenta(false);
+            return;
           }
 
-          const productosVinculados = metadata?.productos_vinculados;
-          if (productosVinculados && Array.isArray(productosVinculados) && productosVinculados.length > 0) {
-            for (const productoVinculado of productosVinculados) {
-              // Validar que tenga producto_id
-              if (!productoVinculado.producto_id) {
-                console.warn('Producto vinculado sin producto_id:', productoVinculado);
-                continue;
-              }
-
-              // Calcular cantidad a descontar (puede ser fraccionada)
-              const cantidadADescontar = parseFloat(productoVinculado.cantidad || 0) * parseFloat(item.qty || 1);
-
-              console.log(`📦 Descontando producto vinculado: `, {
-                producto_id: productoVinculado.producto_id,
-                producto_nombre: productoVinculado.producto_nombre,
-                cantidad_por_unidad: productoVinculado.cantidad,
-                cantidad_vendida: item.qty,
-                cantidad_total_a_descontar: cantidadADescontar,
-                es_porcion: productoVinculado.es_porcion
-              });
-
-              // Obtener el producto vinculado actual
-              const { data: prodVinculado, error: prodError } = await supabase
-                .from('productos')
-                .select('id, nombre, stock')
-                .eq('id', productoVinculado.producto_id)
-                .single();
-
-              if (prodError) {
-                console.error(`Error obteniendo producto vinculado ${productoVinculado.producto_id}: `, prodError);
-                toast.error(`Error al obtener producto vinculado ${productoVinculado.producto_nombre || productoVinculado.producto_id}. La venta se guardó pero el stock no se actualizó.`);
-                continue;
-              }
-
-              if (prodVinculado && prodVinculado.stock !== null && prodVinculado.stock !== undefined) {
-                // Convertir stock actual a número (puede venir como string)
-                const stockActual = parseFloat(prodVinculado.stock) || 0;
-                const nuevoStockVinculado = Math.max(0, stockActual - cantidadADescontar);
-
-                // Redondear a 2 decimales para evitar problemas de precisión
-                const nuevoStockRedondeado = Math.round(nuevoStockVinculado * 100) / 100;
-
-                console.log(`📊 Actualizando stock: `, {
-                  producto: prodVinculado.nombre,
-                  stock_actual: stockActual,
-                  cantidad_a_descontar: cantidadADescontar,
-                  nuevo_stock: nuevoStockRedondeado
-                });
-
-                const { error: stockVinculadoError } = await supabase
-                  .from('productos')
-                  .update({ stock: nuevoStockRedondeado })
-                  .eq('id', productoVinculado.producto_id);
-
-                if (stockVinculadoError) {
-                  console.error(`❌ Error al actualizar el stock del producto vinculado ${productoVinculado.producto_nombre || prodVinculado.nombre}: `, stockVinculadoError);
-                  console.error(`   Detalles del error: `, JSON.stringify(stockVinculadoError, null, 2));
-                  console.error(`   Valores usados: `, {
-                    producto_id: productoVinculado.producto_id,
-                    stock_actual: stockActual,
-                    cantidad_a_descontar: cantidadADescontar,
-                    nuevo_stock: nuevoStockRedondeado
-                  });
-                  toast.error(`Error al actualizar el stock de ${productoVinculado.producto_nombre || prodVinculado.nombre}. La venta se guardó pero el stock no se actualizó.`);
-                } else {
-                  console.log(`✅ Stock actualizado para producto vinculado: ${prodVinculado.nombre} (${stockActual} -> ${nuevoStockRedondeado})`);
-                }
-              } else {
-                console.warn(`Producto vinculado ${prodVinculado?.nombre || productoVinculado.producto_id} no tiene stock configurado`);
-              }
-            }
+          if (!result || result.length === 0) {
+            toast.error('Error: No se pudo obtener el ID de la venta');
+            setProcesandoVenta(false);
+            return;
           }
+
+          ventaResult = result;
+          exito = true;
+        } catch (error) {
+          // Si no es un error de duplicado o ya agotamos los intentos, mostrar error
+          const esDuplicado = error.code === '23505' ||
+            error.message?.includes('duplicate key') ||
+            error.message?.includes('idx_ventas_numero_venta_unique');
+
+          if (!esDuplicado || intento >= maxIntentos - 1) {
+            toast.error(`Error al guardar la venta: ${error.message || 'Error desconocido'} `);
+            setProcesandoVenta(false);
+            return;
+          }
+
+          // Si es duplicado y aún hay intentos, continuar el loop
+          intento++;
+          const tiempoEsperaActual = 100 * intento;
+          await new Promise(resolve => setTimeout(resolve, tiempoEsperaActual));
         }
       }
+
+      if (!exito || !ventaResult) {
+        toast.error('Error: No se pudo guardar la venta después de varios intentos');
+        setProcesandoVenta(false);
+        return;
+      }
+
+      // Si es crédito, crear el registro de crédito
+      let creditoId = null;
+      if (metodoActual === 'Credito' && clienteSeleccionado) {
+        try {
+          // Calcular fecha de vencimiento (por defecto 30 días desde hoy)
+          const fechaVenc = fechaVencimientoCredito
+            ? new Date(fechaVencimientoCredito)
+            : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+          // Si hubo abono, montoPagoCliente tiene el valor
+          const abonoInicial = tieneAbono ? montoPagoCliente : 0;
+
+          const creditoData = {
+            organization_id: organization.id,
+            venta_id: ventaResult[0].id,
+            cliente_id: clienteSeleccionado.id,
+            monto_total: total,
+            // Iniciamos en 0 para que el trigger de Supabase actualice monto_pagado
+            // cuando se inserte el abono en pagos_creditos (evita doble conteo)
+            monto_pagado: 0,
+            monto_pendiente: total,
+            fecha_vencimiento: fechaVenc.toISOString().split('T')[0],
+            estado: 'pendiente',
+            notas: `Crédito generado automáticamente por venta ${ventaResult[0].numero_venta}${tieneAbono ? ` (Abono Inicial: ${formatCOP(abonoInicial)} en ${detallesPagoMixto.metodoAbono})` : ''}`
+          };
+
+          const creditoCreado = await crearCreditoMutation.mutateAsync(creditoData);
+          creditoId = creditoCreado.id;
+
+          // Actualizar la venta con el credito_id
+          await supabase
+            .from('ventas')
+            .update({ credito_id: creditoId })
+            .eq('id', ventaResult[0].id);
+
+          // Si hubo abono, registrar el pago del abono en pagos_creditos
+          if (tieneAbono && abonoInicial > 0) {
+            const pagoAbonoData = {
+              organization_id: organization.id,
+              credito_id: creditoId,
+              monto: abonoInicial,
+              metodo_pago: detallesPagoMixto.metodoAbono,
+              notas: 'Abono inicial al momento de la venta',
+              user_id: ventaUserId || null,
+            };
+            const { error: errorPago } = await supabase
+              .from('pagos_creditos')
+              .insert([pagoAbonoData]);
+            if (errorPago) {
+              console.error('Error registrando abono inicial en pagos_creditos:', errorPago);
+            } else {
+              // Actualizar manualmente el crédito con los montos correctos
+              // (evita doble conteo si hay un trigger en Supabase que sume pagos_creditos)
+              const deudaReal = total - abonoInicial;
+              await supabase
+                .from('creditos')
+                .update({
+                  monto_pagado: abonoInicial,
+                  monto_pendiente: Math.max(deudaReal, 0),
+                  estado: deudaReal <= 0 ? 'pagado' : 'parcial'
+                })
+                .eq('id', creditoId);
+            }
+          }
+
+        } catch (error) {
+          console.error('Error al crear crédito:', error);
+          toast.error('La venta se guardó pero hubo un error al crear el crédito. Por favor, créalo manualmente.');
+        }
+      }
+
+      // Actualizar stock de productos y toppings y registrar movimientos
+      await actualizarStockVenta({
+        supabase,
+        items: cart.map(item => ({
+          ...item,
+          id: item.id,
+          qty: item.qty,
+          variant_id: item.variant_id
+        })),
+        productos,
+        organizationId: organization.id,
+        userId: ventaUserId,
+        userName: userProfile?.full_name || user?.user_metadata?.full_name || user?.email || 'Usuario',
+        ventaId: ventaResult[0].id
+      });
+
 
       // Obtener información del cliente si existe
       // Priorizar cliente seleccionado en caja, si no hay, usar el nombre del pedido
@@ -3694,6 +3771,7 @@ export default function Caja({
           setClienteNombrePedido(null); // Limpiar nombre del cliente del pedido
           setDescuento({ tipo: 'porcentaje', valor: 0, alcance: 'total', productosIds: [] });
           setClienteSeleccionado(null);
+          setCotizacionId(null);
 
           // Si viene de pedidos, mostrar modal de regreso
           if (vieneDePedidos) {
@@ -3710,6 +3788,20 @@ export default function Caja({
 
       // Recargar productos para actualizar stock
       await refetchProductos();
+
+      // Si venía de una cotización, eliminarla después de completar la venta
+      if (cotizacionId) {
+        try {
+          await eliminarCotizacionMutation.mutateAsync({
+            id: cotizacionId,
+            organizationId: organization.id
+          });
+          localStorage.removeItem('cotizacionOriginal');
+          localStorage.removeItem('cotizacionIdActivo');
+        } catch (err) {
+          console.error('Error al eliminar cotización completada:', err);
+        }
+      }
 
     } catch (error) {
       toast.error(`Error al procesar la venta: ${error.message} `);
@@ -3817,6 +3909,43 @@ export default function Caja({
     }
   };
 
+  const cargarCotizacionEnCarrito = (cotizacion) => {
+    if (!cotizacion.items || cotizacion.items.length === 0) {
+      toast.error('La cotización no tiene items');
+      return;
+    }
+
+    // Guardar el ID de la cotización para poder actualizarla luego si es necesario
+    setCotizacionId(cotizacion.id);
+    localStorage.setItem('cotizacionIdActivo', cotizacion.id);
+    localStorage.setItem('cotizacionOriginal', JSON.stringify(cotizacion));
+
+    // Cargar items en el carrito
+    setCart(cotizacion.items);
+
+    // Cargar cliente si existe
+    if (cotizacion.cliente) {
+      setClienteSeleccionado(cotizacion.cliente);
+    } else if (cotizacion.cliente_id) {
+      const cliente = clientes.find(c => c.id === cotizacion.cliente_id);
+      if (cliente) setClienteSeleccionado(cliente);
+    }
+
+    setMostrandoPedidosPendientes(false);
+    toast.success('Cotización cargada en el carrito');
+  };
+
+  const handleEliminarCotizacion = async (e, cot) => {
+    e.stopPropagation();
+    if (window.confirm('¿Estás seguro de que deseas eliminar esta cotización?')) {
+      try {
+        await eliminarCotizacionMutation.mutateAsync({ id: cot.id, organizationId: organization.id });
+      } catch (err) {
+        console.error('Error al eliminar cotización:', err);
+      }
+    }
+  };
+
   if (cargando || (!esModoPedido && cargandoApertura)) {
     return (
       <div className="caja-loading">
@@ -3835,7 +3964,12 @@ export default function Caja({
   // No bloquear toda la página, solo la funcionalidad de ventas
 
   return (
-    <div className="caja-container">
+    <DegradedPlanOverlay 
+      moduleName="Caja / Ventas"
+      forceBlock={limiteAlcanzado}
+      description="Has alcanzado el límite de 50 ventas mensuales de tu plan gratuito. Para seguir vendiendo, actualiza tu plan."
+    >
+      <div className="caja-container">
       {/* Overlay de bloqueo si no hay apertura activa (solo en modo venta) */}
       {!esModoPedido && !aperturaActivaFinal && organization?.id && !cargandoApertura && (
         <div className="caja-bloqueo-overlay">
@@ -4072,6 +4206,54 @@ export default function Caja({
                     </>
                   )}
                 </div>
+
+                {/* Sección de Cotizaciones Pendientes */}
+                {cotizaciones.length > 0 && (
+                  <div className="caja-cotizaciones-sidebar-list" style={{ marginTop: '1rem' }}>
+                    <div className="caja-pedidos-title" style={{ marginBottom: '0.75rem', padding: '0 0.5rem' }}>
+                      <Save size={18} color="#10B981" />
+                      <h3 style={{ fontSize: '1rem' }}>Cotizaciones</h3>
+                    </div>
+                    <div className="caja-pedidos-list">
+                      {cotizaciones.map((cot) => (
+                        <div key={cot.id} className="caja-pedido-card caja-cotizacion-card">
+                          <div className="caja-pedido-info">
+                            <div className="caja-pedido-header-info">
+                              <h4>{cot.numero_venta || `COT-${cot.id.substring(0, 5)}`}</h4>
+                              <div className="caja-pedido-meta-info">
+                                {cot.cliente?.nombre ? (
+                                  <span className="caja-pedido-cliente">{cot.cliente.nombre}</span>
+                                ) : (
+                                  <span className="caja-pedido-cliente" style={{ fontStyle: 'italic', opacity: 0.7 }}>Sin cliente</span>
+                                )}
+                              </div>
+                            </div>
+                            <p className="caja-pedido-items">
+                              {cot.items?.length || 0} items - {formatCOP(cot.total)}
+                            </p>
+                          </div>
+                          <div style={{ display: 'flex', gap: '0.4rem' }}>
+                            <button
+                              className="caja-pedido-cargar-btn"
+                              style={{ background: '#fee2e2', color: '#ef4444' }}
+                              onClick={(e) => handleEliminarCotizacion(e, cot)}
+                              title="Eliminar cotización"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                            <button
+                              className="caja-pedido-cargar-btn"
+                              onClick={() => cargarCotizacionEnCarrito(cot)}
+                              title="Retomar cotización"
+                            >
+                              <ArrowRight size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -4100,15 +4282,30 @@ export default function Caja({
               </div>
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem', width: '100%' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem', width: '100%', gap: '0.75rem' }}>
               <button
                 onClick={() => navigate(isEmployeeMode ? '/empleado/historial-ventas' : '/dashboard/historial-ventas')}
-                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: '#e0f2fe', color: '#0284c7', borderRadius: '8px', border: '1px solid #bae6fd', cursor: 'pointer', fontWeight: '500', fontSize: '0.9rem', width: 'auto' }}
-                title="Ir al Historial de Ventas"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: '#e0f2fe', color: '#0284c7', borderRadius: '8px', border: '1px solid #bae6fd', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem', width: 'auto' }}
+                title="Ver Historial de Ventas"
                 className="hover:bg-blue-100 transition-colors"
               >
                 <History size={18} />
-                Ver Historial de Ventas
+                <span>Historial</span>
+              </button>
+
+              <button
+                onClick={() => setMostrandoModalCotizaciones(true)}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: '#ecfdf5', color: '#059669', borderRadius: '8px', border: '1px solid #d1fae5', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem', width: 'auto' }}
+                title="Retomar Cotizaciones pendientes"
+                className="hover:bg-green-100 transition-colors"
+              >
+                <Save size={18} />
+                <span>Cotizaciones</span>
+                {cotizaciones.length > 0 && (
+                  <span style={{ background: '#10b981', color: 'white', borderRadius: '50%', width: '18px', height: '18px', fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                    {cotizaciones.length}
+                  </span>
+                )}
               </button>
             </div>
             <div className="caja-search-wrapper">
@@ -4205,6 +4402,15 @@ export default function Caja({
 
                 <button
                   type="button"
+                  className="camera-scan-btn"
+                  onClick={() => setCameraScannerOpen(true)}
+                  title="Escanear con cámara"
+                >
+                  <Camera size={18} />
+                </button>
+
+                <button
+                  type="button"
                   className="caja-btn-consultar-precio"
                   onClick={() => setMostrandoConsultarPrecio(true)}
                   title="Consultar precio de producto"
@@ -4238,59 +4444,15 @@ export default function Caja({
             )}
 
             <div className="caja-products-list">
-              {visibleProducts.map((producto, index) => (
-                <motion.div
+              {visibleProducts.map((producto) => (
+                <ProductCard
                   key={producto.id}
-                  className="caja-product-card"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{
-                    duration: 0.3,
-                    delay: index * 0.05,
-                    ease: "easeOut"
-                  }}
-                  whileHover={{
-                    scale: 1.02,
-                    transition: { duration: 0.2 }
-                  }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => addToCart(producto)}
-                >
-                  <div className="caja-product-content">
-                    <OptimizedProductImage
-                      imagePath={producto.imagen}
-                      alt={producto.nombre}
-                      className="caja-product-image"
-                    />
-                    <div className="caja-product-info">
-                      <p className="caja-product-name" title={producto.nombre}>{producto.nombre}</p>
-                      <p className="caja-product-stock">Stock: {producto.stock !== null && producto.stock !== undefined ? parseFloat(producto.stock).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '0'}</p>
-                      {/* Mostrar información de joyería en tarjetas de productos */}
-                      {isJewelryBusiness && producto.metadata && (
-                        <div className="caja-product-jewelry-info">
-                          {producto.metadata.peso && (
-                            <span className="caja-product-jewelry-tag">
-                              {producto.metadata.peso}g
-                            </span>
-                          )}
-                          {producto.metadata.material && (
-                            <span className="caja-product-jewelry-tag">
-                              {producto.metadata.material}
-                            </span>
-                          )}
-                          {producto.metadata.jewelry_material_type && producto.metadata.jewelry_material_type !== 'na' && (
-                            <span className="caja-product-jewelry-tag caja-product-jewelry-type">
-                              {producto.metadata.jewelry_material_type === 'local' ? 'Nac' : 'Int'}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <span className="caja-product-price">
-                      {formatCOP(isJewelryBusiness ? getJewelryUnitPrice(producto) : producto.precio_venta)}
-                    </span>
-                  </div>
-                </motion.div>
+                  producto={producto}
+                  isJewelryBusiness={isJewelryBusiness}
+                  getJewelryUnitPrice={getJewelryUnitPrice}
+                  addToCart={addToCart}
+                  formatCOP={formatCOP}
+                />
               ))}
 
               {filteredProducts.length === 0 && (
@@ -4332,7 +4494,7 @@ export default function Caja({
                           <UserCircle
                             size={16}
                             strokeWidth={2.5}
-                            color="#3b82f6"
+                            color="#02A5E0"
                             style={{
                               display: 'block',
                               position: 'relative',
@@ -4352,7 +4514,7 @@ export default function Caja({
                         <UserCircle
                           size={20}
                           strokeWidth={2.5}
-                          color="#3b82f6"
+                          color="#02A5E0"
                           style={{
                             display: 'block',
                             position: 'relative',
@@ -4813,7 +4975,7 @@ export default function Caja({
                     <UserCircle
                       size={18}
                       strokeWidth={2.5}
-                      color={clienteSeleccionado ? "#3b82f6" : "#6b7280"}
+                      color={clienteSeleccionado ? "#02A5E0" : "#6b7280"}
                     />
                     {clienteSeleccionado && (
                       <span className="caja-mobile-header-icon-badge"></span>
@@ -4883,7 +5045,7 @@ export default function Caja({
               <div className="caja-mobile-cart-info-bar">
                 {clienteSeleccionado && (
                   <div className="caja-mobile-cart-info-item">
-                    <UserCircle size={16} color="#3b82f6" />
+                    <UserCircle size={16} color="#02A5E0" />
                     <span className="caja-mobile-cart-info-text">
                       {clienteSeleccionado.nombre.length > 30
                         ? `${clienteSeleccionado.nombre.substring(0, 30)}...`
@@ -5635,13 +5797,13 @@ export default function Caja({
               {/* Resumen del crédito */}
               {clienteSeleccionado && (
                 <div style={{
-                  background: 'linear-gradient(135deg, #eff6ff, #dbeafe)',
+                  background: 'linear-gradient(135deg, #FFFFFF, #E6F0FF)',
                   padding: '1rem',
                   borderRadius: '10px',
                   marginBottom: '1.25rem',
                   border: '1px solid #bae6fd'
                 }}>
-                  <p style={{ margin: 0, fontWeight: 600, color: '#1d4ed8', fontSize: '0.95rem' }}>
+                  <p style={{ margin: 0, fontWeight: 600, color: '#004481', fontSize: '0.95rem' }}>
                     👤 Cliente: {clienteSeleccionado.nombre}
                   </p>
                   <p style={{ margin: '0.4rem 0 0 0', color: '#1e40af', fontSize: '0.9rem' }}>
@@ -5702,9 +5864,9 @@ export default function Caja({
                           style={{
                             padding: '0.4rem 0.9rem',
                             borderRadius: '20px',
-                            border: metodoAbonoModalCredito === m ? '2px solid #2563eb' : '1.5px solid #d1d5db',
-                            background: metodoAbonoModalCredito === m ? '#eff6ff' : '#f9fafb',
-                            color: metodoAbonoModalCredito === m ? '#1d4ed8' : '#374151',
+                            border: metodoAbonoModalCredito === m ? '2px solid #02A5E0' : '1.5px solid #d1d5db',
+                            background: metodoAbonoModalCredito === m ? '#FFFFFF' : '#f9fafb',
+                            color: metodoAbonoModalCredito === m ? '#004481' : '#374151',
                             fontWeight: metodoAbonoModalCredito === m ? 600 : 400,
                             cursor: 'pointer',
                             fontSize: '0.85rem'
@@ -5752,7 +5914,7 @@ export default function Caja({
                   padding: '0.65rem 1.75rem',
                   borderRadius: '8px',
                   border: 'none',
-                  background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                  background: 'linear-gradient(135deg, #004481, #02A5E0)',
                   color: '#fff',
                   fontWeight: 600,
                   fontSize: '0.95rem',
@@ -5897,6 +6059,145 @@ export default function Caja({
         onClose={() => setMostrandoConsultarPrecio(false)}
       />
 
+      {/* Modal de recuperar cotizaciones */}
+      {mostrandoModalCotizaciones && (
+        <div className="caja-modal-overlay">
+          <div className="caja-modal-content" style={{ maxWidth: '600px' }}>
+            <div className="caja-modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <Save size={24} color="#10B981" />
+                <h3>Retomar Cotización</h3>
+              </div>
+              <button className="caja-modal-close" onClick={() => setMostrandoModalCotizaciones(false)}>
+                <X size={24} />
+              </button>
+            </div>
+            <div className="caja-modal-body">
+              {/* Buscador de cotizaciones */}
+              <div className="caja-pedidos-search-container" style={{ marginBottom: '1.5rem', background: '#f8fafc' }}>
+                <Search size={18} className="caja-pedidos-search-icon" />
+                <input
+                  type="text"
+                  className="caja-pedidos-search-input"
+                  placeholder="Buscar por cliente o número de cotización..."
+                  value={busquedaCotizacion}
+                  onChange={(e) => setBusquedaCotizacion(e.target.value)}
+                />
+                {busquedaCotizacion && (
+                  <button className="caja-pedidos-search-clear" onClick={() => setBusquedaCotizacion('')}>
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
+
+              {cotizaciones.filter(cot => {
+                const query = busquedaCotizacion.toLowerCase();
+                return (
+                  (cot.numero_venta || '').toLowerCase().includes(query) ||
+                  (cot.cliente?.nombre || '').toLowerCase().includes(query) ||
+                  (cot.items || []).some(item => (item.nombre || '').toLowerCase().includes(query))
+                );
+              }).length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#64748b' }}>
+                  <Package size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
+                  <p>{busquedaCotizacion ? 'No se encontraron cotizaciones con ese criterio.' : 'No hay cotizaciones pendientes.'}</p>
+                </div>
+              ) : (
+                <div className="caja-pedidos-list" style={{ maxHeight: '50vh', overflowY: 'auto', paddingRight: '0.5rem' }}>
+                  {cotizaciones
+                    .filter(cot => {
+                      const query = busquedaCotizacion.toLowerCase();
+                      return (
+                        (cot.numero_venta || '').toLowerCase().includes(query) ||
+                        (cot.cliente?.nombre || '').toLowerCase().includes(query) ||
+                        (cot.items || []).some(item => (item.nombre || '').toLowerCase().includes(query))
+                      );
+                    })
+                    .map((cot) => (
+                      <div key={cot.id} className="caja-pedido-card caja-cotizacion-card" style={{ marginBottom: '1.25rem', padding: '1.25rem', display: 'flex', flexDirection: 'column', alignItems: 'stretch', border: '1px solid #e2e8f0', background: 'white', borderRadius: '12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', gap: '1rem' }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <h4 style={{ fontSize: '1.1rem', fontWeight: '800', color: '#0f172a', margin: '0 0 0.5rem 0', letterSpacing: '-0.01em' }}>
+                              {cot.numero_venta || `COT-${cot.id.substring(0, 5)}`}
+                            </h4>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                              {cot.cliente?.nombre ? (
+                                <span style={{ background: '#f0fdf4', color: '#166534', fontSize: '0.75rem', padding: '0.25rem 0.6rem', borderRadius: '6px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.35rem', border: '1px solid #dcfce7' }}>
+                                  <UserCircle size={14} /> {cot.cliente.nombre}
+                                </span>
+                              ) : (
+                                <span style={{ background: '#f8fafc', color: '#64748b', fontSize: '0.75rem', padding: '0.25rem 0.6rem', borderRadius: '6px', fontWeight: '500', border: '1px solid #e2e8f0' }}>
+                                  Sin cliente
+                                </span>
+                              )}
+                              <span style={{ background: '#f1f5f9', color: '#475569', fontSize: '0.75rem', padding: '0.25rem 0.6rem', borderRadius: '6px', fontWeight: '500', border: '1px solid #e2e8f0' }}>
+                                {new Date(cot.created_at).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
+                              </span>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', gap: '0.6rem', flexShrink: 0 }}>
+                            <button
+                              className="caja-pedido-cargar-btn"
+                              style={{ background: '#f93434ff', color: '#f40606ff', border: '1px solid #fee2e2', width: '40px', height: '40px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }}
+                              onClick={(e) => handleEliminarCotizacion(e, cot)}
+                              title="Eliminar Cotización"
+                            >
+                              <Trash2 size={20} />
+                            </button>
+                            <button
+                              className="caja-pedido-cargar-btn"
+                              style={{ background: '#10b981', color: 'white', width: '40px', height: '40px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(16, 185, 129, 0.2)' }}
+                              onClick={() => {
+                                cargarCotizacionEnCarrito(cot);
+                                setMostrandoModalCotizaciones(false);
+                                setBusquedaCotizacion('');
+                              }}
+                              title="Retomar Cotización"
+                            >
+                              <ArrowRight size={22} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Detalle de productos con tono más suave */}
+                        <div style={{ background: '#f0fdf4', padding: '1rem', borderRadius: '10px', border: '1px solid #dcfce7' }}>
+                          <p style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#166534', fontWeight: '800', marginBottom: '0.75rem', letterSpacing: '0.05em', opacity: 0.8 }}>
+                            Productos en esta cotización:
+                          </p>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                            {cot.items?.map((item, idx) => (
+                              <span key={idx} style={{ background: 'white', border: '1px solid #dcfce7', padding: '0.35rem 0.75rem', borderRadius: '8px', fontSize: '0.85rem', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.4rem', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+                                <span style={{ fontWeight: '800', color: '#10b981' }}>{item.qty}x</span> {item.nombre}
+                              </span>
+                            ))}
+                          </div>
+                          <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid rgba(16, 185, 129, 0.1)', paddingTop: '0.75rem' }}>
+                            <div style={{ textAlign: 'right' }}>
+                              <p style={{ margin: 0, fontSize: '0.75rem', color: '#166534', fontWeight: '600', opacity: 0.7 }}>Monto Total</p>
+                              <span style={{ fontSize: '1.4rem', fontWeight: '900', color: '#059669', display: 'block' }}>
+                                {formatCOP(cot.total)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+            <div className="caja-modal-footer" style={{ borderTop: '1px solid #e2e8f0', padding: '1rem 1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                className="caja-modal-btn-secondary"
+                onClick={() => setMostrandoModalCotizaciones(false)}
+                style={{ padding: '0.5rem 1.25rem', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer' }}
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal de apertura de caja (solo en modo venta) */}
       {!esModoPedido && (
         <AperturaCajaModal
@@ -5922,5 +6223,20 @@ export default function Caja({
         />
       )}
     </div>
+
+    {/* Escáner de cámara */}
+    {cameraScannerOpen && (
+      <CameraScanner
+        title="Escanear producto"
+        onScan={(codigo) => {
+          setQuery(codigo);
+          setCameraScannerOpen(false);
+          // Disparar el scanner handler para buscar el producto automáticamente
+          handleBarcodeScanned(codigo);
+        }}
+        onClose={() => setCameraScannerOpen(false)}
+      />
+    )}
+    </DegradedPlanOverlay>
   );
 }

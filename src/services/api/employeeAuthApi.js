@@ -1,4 +1,6 @@
 import { setEmployeeSession } from '../../utils/employeeSession';
+import { supabase } from './supabaseClient';
+import { hasBypassAccess } from '../../constants/vipUsers';
 
 const getEmployeeAuthUrl = () => {
   const override = process.env.REACT_APP_EMPLOYEE_LOGIN_URL;
@@ -42,6 +44,49 @@ export const loginEmployee = async ({ username, code, password }) => {
 
   if (!response.ok) {
     throw new Error(data?.error || 'Error al iniciar sesión');
+  }
+
+  // Verificar plan de la organización para empleados
+  const orgId = data.employee?.organization_id;
+  if (orgId) {
+    try {
+      const { data: orgData } = await supabase
+        .from('organizations')
+        .select('email')
+        .eq('id', orgId)
+        .single();
+        
+      const orgEmail = orgData?.email;
+      const isVip = hasBypassAccess({ email: orgEmail }, { owner_email: orgEmail });
+      
+      if (!isVip) {
+        const { data: subData } = await supabase
+          .from('subscriptions')
+          .select('status, current_period_end')
+          .eq('organization_id', orgId)
+          .eq('status', 'active')
+          .maybeSingle();
+          
+        let blockLogin = false;
+        if (subData && subData.current_period_end) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const endDate = new Date(subData.current_period_end);
+          endDate.setHours(0, 0, 0, 0);
+          const diffDays = Math.round((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          if (diffDays < -3) blockLogin = true;
+        } else if (!subData) {
+          blockLogin = true;
+        }
+        
+        if (blockLogin) {
+          throw new Error('Acceso denegado: La organización no tiene un plan activo o su suscripción está vencida.');
+        }
+      }
+    } catch (err) {
+      if (err.message.includes('Acceso denegado')) throw err;
+      console.error('Error al verificar suscripción:', err);
+    }
   }
 
   const session = {

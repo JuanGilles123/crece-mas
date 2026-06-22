@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useCreditos, useEstadisticasCreditos, useCrearPagoCredito, useEliminarPagoCredito, usePagosCredito } from '../../hooks/useCreditos';
+import { useAperturaCajaActiva } from '../../hooks/useAperturasCaja';
 import { 
   Filter, 
   DollarSign, 
@@ -36,7 +37,8 @@ function formatCOP(value) {
 }
 
 export default function Creditos() {
-  const { organization } = useAuth();
+  const { organization, user } = useAuth();
+  const { data: aperturaActiva } = useAperturaCajaActiva(organization?.id, user?.id);
   const location = useLocation();
   const [filtroEstado, setFiltroEstado] = useState('todos');
   const [busqueda, setBusqueda] = useState('');
@@ -178,7 +180,7 @@ export default function Creditos() {
         monto: monto,
         metodo_pago: metodoPago,
         notas: notasPago.trim() || null,
-        user_id: organization.user_id || null
+        user_id: aperturaActiva?.user_id || user.id
       });
 
       setMontoPago('');
@@ -251,7 +253,7 @@ export default function Creditos() {
       {estadisticas && (
         <div className="creditos-estadisticas">
           <div className="credito-stat-card">
-            <div className="credito-stat-icon" style={{ background: '#dbeafe' }}>
+            <div className="credito-stat-icon" style={{ background: '#E6F0FF' }}>
               <FileText size={24} color="#1e40af" />
             </div>
             <div className="credito-stat-content">
@@ -699,7 +701,7 @@ function DetalleCredito({ credito, onClose, onEliminarPago }) {
                       <div style={{ 
                         width: `${porcentajePagado}%`, 
                         height: '100%', 
-                        background: 'linear-gradient(90deg, #3b82f6, #2563eb)',
+                        background: 'linear-gradient(90deg, #02A5E0, #02A5E0)',
                         transition: 'width 0.3s'
                       }} />
                     </div>

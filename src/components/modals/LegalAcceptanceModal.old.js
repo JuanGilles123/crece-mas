@@ -8,6 +8,7 @@ import {
   Database, 
   CheckCircle, 
   AlertCircle,
+  AlertTriangle,
   X,
   Eye,
   ChevronRight,

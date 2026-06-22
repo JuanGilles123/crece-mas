@@ -40,8 +40,8 @@
   width: 40px;
   height: 40px;
   border-radius: 8px;
-  background: #3b82f6 !important;
-  border: 2px solid #3b82f6 !important;
+  background: #02A5E0 !important;
+  border: 2px solid #02A5E0 !important;
   color: white !important;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -76,8 +76,8 @@
 }
 
 .vista-toggle-btn:hover {
-  background: #2563eb !important;
-  border-color: #2563eb !important;
+  background: #02A5E0 !important;
+  border-color: #02A5E0 !important;
   transform: scale(1.05);
 }
 
@@ -88,8 +88,8 @@
 }
 
 .vista-toggle-btn.active {
-  background: #1d4ed8 !important;
-  border-color: #1d4ed8 !important;
+  background: #004481 !important;
+  border-color: #004481 !important;
   color: white !important;
   box-shadow: 0 2px 8px rgba(29, 78, 216, 0.4);
   font-weight: 600;

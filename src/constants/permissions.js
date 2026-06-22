@@ -151,7 +151,7 @@ export const PREDEFINED_ROLES = {
     id: 'admin',
     name: 'Administrador',
     description: 'Gestión completa excepto facturación',
-    color: '#3B82F6',
+    color: '#02A5E0',
     icon: '🛡️',
     permissions: [
       // Ventas

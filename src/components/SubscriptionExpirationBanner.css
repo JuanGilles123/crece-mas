@@ -39,6 +39,12 @@
   color: #7F1D1D;
 }
 
+.sub-expiry-degraded {
+  background: linear-gradient(135deg, #EDE9FE 0%, #DDD6FE 100%);
+  border-color: #7C3AED;
+  color: #3B0764;
+}
+
 /* ─── Icono ─── */
 
 .sub-expiry-icon {
@@ -62,6 +68,10 @@
 
 .sub-expiry-overdue .sub-expiry-icon {
   color: #B91C1C;
+}
+
+.sub-expiry-degraded .sub-expiry-icon {
+  color: #6D28D9;
 }
 
 /* ─── Cuerpo ─── */
@@ -126,6 +136,20 @@
   box-shadow: 0 4px 12px rgba(185, 28, 28, 0.4);
 }
 
+.sub-expiry-degraded .sub-expiry-pay-btn {
+  background: linear-gradient(135deg, #7C3AED 0%, #5B21B6 100%);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.45);
+  padding: 0.65rem 1.3rem;
+  font-size: 0.9rem;
+  animation: pulse-cta 2.5s ease-in-out infinite;
+}
+
+@keyframes pulse-cta {
+  0%, 100% { box-shadow: 0 4px 16px rgba(124, 58, 237, 0.45); }
+  50% { box-shadow: 0 6px 28px rgba(124, 58, 237, 0.75); }
+}
+
 .sub-expiry-pay-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
@@ -139,18 +163,18 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   flex-shrink: 0;
-  border: none;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.55);
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.12);
   cursor: pointer;
   transition: background 0.2s, transform 0.15s;
 }
 
 .sub-expiry-dismiss-btn svg {
-  color: #111 !important;
+  color: rgba(0, 0, 0, 0.7) !important;
   width: 18px;
   height: 18px;
   stroke-width: 2.5;
@@ -158,7 +182,7 @@
 }
 
 .sub-expiry-dismiss-btn:hover {
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(0, 0, 0, 0.22);
   transform: scale(1.1);
 }
 
@@ -182,20 +206,27 @@
   color: #FECACA;
 }
 
+.dark .sub-expiry-degraded {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.22) 0%, rgba(91, 33, 182, 0.15) 100%);
+  border-color: #7C3AED;
+  color: #DDD6FE;
+}
+
 .dark .sub-expiry-icon {
   background: rgba(255, 255, 255, 0.1);
 }
 
 .dark .sub-expiry-dismiss-btn {
-  background: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 .dark .sub-expiry-dismiss-btn svg {
-  color: #fff !important;
+  color: rgba(255, 255, 255, 0.85) !important;
 }
 
 .dark .sub-expiry-dismiss-btn:hover {
-  background: rgba(255, 255, 255, 0.32);
+  background: rgba(255, 255, 255, 0.28);
 }
 
 /* ─── Responsive ─── */

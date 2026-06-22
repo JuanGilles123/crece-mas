@@ -1,0 +1,332 @@
+/* ====== CameraScanner — Escaneo de códigos de barras por cámara ====== */
+
+.camera-scanner-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  backdrop-filter: blur(4px);
+}
+
+.camera-scanner-modal {
+  background: var(--bg-card, #1e1e2e);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 420px;
+  overflow: hidden;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Header */
+.camera-scanner-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.camera-scanner-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-primary, #e2e8f0);
+}
+
+.camera-scanner-close {
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary, #94a3b8);
+  transition: background 0.2s;
+}
+
+.camera-scanner-close:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--text-primary, #e2e8f0);
+}
+
+/* Visor de cámara */
+.camera-scanner-viewport {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  background: #000;
+  overflow: hidden;
+}
+
+.camera-scanner-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Guía de escaneo */
+.camera-scanner-guide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.camera-scanner-guide::before {
+  content: '';
+  position: absolute;
+  width: 70%;
+  height: 40%;
+  border: none;
+  box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.45);
+  border-radius: 8px;
+}
+
+.guide-corner {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-color: #6366f1;
+  border-style: solid;
+}
+
+.guide-corner.top-left {
+  top: calc(30% - 1px);
+  left: calc(15% - 1px);
+  border-width: 3px 0 0 3px;
+  border-radius: 4px 0 0 0;
+}
+.guide-corner.top-right {
+  top: calc(30% - 1px);
+  right: calc(15% - 1px);
+  border-width: 3px 3px 0 0;
+  border-radius: 0 4px 0 0;
+}
+.guide-corner.bottom-left {
+  bottom: calc(30% - 1px);
+  left: calc(15% - 1px);
+  border-width: 0 0 3px 3px;
+  border-radius: 0 0 0 4px;
+}
+.guide-corner.bottom-right {
+  bottom: calc(30% - 1px);
+  right: calc(15% - 1px);
+  border-width: 0 3px 3px 0;
+  border-radius: 0 0 4px 0;
+}
+
+/* Éxito — borde verde */
+.camera-scanner-guide.success .guide-corner {
+  border-color: #10b981;
+}
+
+/* Línea de escaneo animada */
+.guide-scan-line {
+  position: absolute;
+  left: 15%;
+  width: 70%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #6366f1, #a78bfa, #6366f1, transparent);
+  top: 30%;
+  border-radius: 2px;
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.8);
+}
+
+.guide-scan-line.animated {
+  animation: scanLine 2s ease-in-out infinite;
+}
+
+@keyframes scanLine {
+  0%   { top: 30%; opacity: 1; }
+  50%  { top: 68%; opacity: 0.6; }
+  100% { top: 30%; opacity: 1; }
+}
+
+/* Feedback de éxito */
+.camera-scanner-success {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(16, 185, 129, 0.9);
+  color: white;
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+/* Error */
+.camera-scanner-error {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #f87171;
+  padding: 24px;
+  text-align: center;
+}
+
+.camera-scanner-error p {
+  font-size: 0.875rem;
+  color: #e2e8f0;
+  line-height: 1.5;
+}
+
+.camera-retry-btn {
+  background: #6366f1;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 20px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.camera-retry-btn:hover {
+  background: #4f46e5;
+}
+
+/* Controles inferiores */
+.camera-scanner-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  background: var(--bg-card, #1e1e2e);
+  flex-wrap: wrap;
+}
+
+.camera-ctrl-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  color: var(--text-secondary, #94a3b8);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.camera-ctrl-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-primary, #e2e8f0);
+}
+
+.camera-ctrl-btn.active {
+  background: rgba(250, 204, 21, 0.15);
+  border-color: rgba(250, 204, 21, 0.4);
+  color: #fbbf24;
+}
+
+.camera-ctrl-btn.cancel {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #f87171;
+}
+
+.camera-ctrl-btn.cancel:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+/* Zoom controls */
+.camera-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 2px;
+}
+
+.camera-zoom-controls .camera-ctrl-btn {
+  border: none;
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+
+.camera-zoom-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-primary, #e2e8f0);
+  min-width: 32px;
+  text-align: center;
+}
+
+/* Hint */
+.camera-scanner-hint {
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-secondary, #64748b);
+  padding: 0 20px 16px;
+  margin: 0;
+}
+
+/* Botón de cámara en inputs */
+.camera-scan-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent-primary, #6366f1);
+  color: white;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s;
+  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.35);
+}
+
+.camera-scan-btn:hover {
+  background: var(--accent-hover, #4f46e5);
+  transform: scale(1.05);
+  box-shadow: 0 4px 10px rgba(99, 102, 241, 0.5);
+}
+
+.camera-scan-btn:active {
+  transform: scale(0.96);
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .camera-scanner-modal {
+    max-width: 100%;
+    border-radius: 16px 16px 0 0;
+  }
+
+  .camera-scanner-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .camera-scanner-controls {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+}

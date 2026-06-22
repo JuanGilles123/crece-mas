@@ -26,8 +26,31 @@ const SubscriptionCallback = () => {
           return;
         }
 
-        // Esperar un momento para que el webhook procese (el webhook puede tardar unos segundos)
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Auto-verificación y auto-reparación (Self-healing) de webhook fallido
+        // Si no llegó el webhook, le preguntamos directamente a Wompi y ejecutamos la función
+        if (id) {
+          try {
+            const wompiEnv = searchParams.get('env') === 'test' || searchParams.get('env') === 'sandbox' ? 'sandbox' : 'production';
+            const apiUrl = `https://${wompiEnv}.wompi.co/v1/transactions/${id}`;
+            const wompiRes = await fetch(apiUrl);
+            if (wompiRes.ok) {
+              const wompiData = await wompiRes.json();
+              const transaction = wompiData.data;
+              if (transaction && transaction.status === 'APPROVED') {
+                console.log("Pago aprobado en Wompi, auto-procesando...");
+                // Llamamos la Edge function directamente para asegurar el registro
+                await supabase.functions.invoke('wompi-webhook', {
+                  body: { event: 'transaction.updated', data: { transaction } }
+                });
+              }
+            }
+          } catch (e) {
+            console.warn("Fallo auto-verificación Wompi:", e);
+          }
+        }
+
+        // Esperar un momento para que el webhook (o nuestra llamada forzada) procese
+        await new Promise(resolve => setTimeout(resolve, 1500));
 
         // Verificar el estado del pago y suscripción
         // Buscar por transaction_id primero, si no por reference

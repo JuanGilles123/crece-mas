@@ -1,23 +1,30 @@
-// Componente para vincular productos del stock a otro producto
+// Componente para vincular productos del stock a otro producto (Modo Premium)
 import React, { useState, useEffect } from 'react';
-import { Plus, X, Trash2 } from 'lucide-react';
+import { Plus, X, Trash2, Search, Package, Minus, ShoppingCart } from 'lucide-react';
 import { supabase } from '../services/api/supabaseClient';
 import { useAuth } from '../context/AuthContext';
+import OptimizedProductImage from './business/OptimizedProductImage';
 import './ProductosVinculados.css';
 
 const ProductosVinculados = ({ productosVinculados = [], onChange, organizationId }) => {
   const { organization } = useAuth();
   const [productosDisponibles, setProductosDisponibles] = useState([]);
   const [mostrandoSelector, setMostrandoSelector] = useState(false);
-  const [productoSeleccionado, setProductoSeleccionado] = useState(null);
-  const [cantidad, setCantidad] = useState(1);
-  const [esPorcion, setEsPorcion] = useState(false);
   const [busqueda, setBusqueda] = useState('');
   const [cargando, setCargando] = useState(false);
 
+  // Utilidad para formatear moneda
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      maximumFractionDigits: 0
+    }).format(value);
+  };
+
   // Cargar productos con búsqueda debounced
   useEffect(() => {
-    const orgId = organizationId || organization.id;
+    const orgId = organizationId || organization?.id;
     if (!orgId || !mostrandoSelector) return;
 
     const cargarProductos = async () => {
@@ -25,20 +32,18 @@ const ProductosVinculados = ({ productosVinculados = [], onChange, organizationI
       try {
         let query = supabase
           .from('productos')
-          .select('id, nombre, codigo, stock, precio_venta')
+          .select('id, nombre, codigo, stock, precio_venta, precio_compra, imagen, metadata')
           .eq('organization_id', orgId)
           .not('stock', 'is', null)
           .gt('stock', 0)
           .order('nombre', { ascending: true })
-          .limit(50); // Mostrar solo los primeros 50 que coincidan
+          .limit(30);
 
         if (busqueda.trim()) {
-          // Búsqueda por nombre o código
           query = query.or(`nombre.ilike.%${busqueda}%,codigo.ilike.%${busqueda}%`);
         }
 
         const { data, error } = await query;
-
         if (error) throw error;
         setProductosDisponibles(data || []);
       } catch (error) {
@@ -48,32 +53,41 @@ const ProductosVinculados = ({ productosVinculados = [], onChange, organizationI
       }
     };
 
-    // Debounce de 300ms
     const timeout = setTimeout(cargarProductos, 300);
     return () => clearTimeout(timeout);
   }, [organizationId, organization?.id, busqueda, mostrandoSelector]);
 
-  // Filtrar solo los ya vinculados (la búsqueda ya se hizo en el servidor)
-  const productosDisponiblesParaVincular = productosDisponibles.filter(
-    p => !productosVinculados.some(v => v.producto_id === p.id)
-  );
+  const handleAgregarDirecto = (producto) => {
+    const existe = productosVinculados.find(v => v.producto_id === producto.id);
 
-  const handleAgregar = () => {
-    if (!productoSeleccionado) return;
+    if (existe) {
+      // Incrementar cantidad si ya existe
+      const nuevos = productosVinculados.map(v =>
+        v.producto_id === producto.id
+          ? { ...v, cantidad: (v.cantidad || 1) + 1 }
+          : v
+      );
+      onChange(nuevos);
+    } else {
+      // Agregar nuevo
+      const nuevoVinculo = {
+        producto_id: producto.id,
+        producto_nombre: producto.nombre,
+        cantidad: 1,
+        es_porcion: false,
+        precio_compra: producto.precio_compra || 0,
+        precio_venta: producto.precio_venta || 0,
+        categoria: producto.metadata?.categoria || 'Sin categoría'
+      };
+      onChange([...productosVinculados, nuevoVinculo]);
+    }
+  };
 
-    const nuevoVinculo = {
-      producto_id: productoSeleccionado.id,
-      producto_nombre: productoSeleccionado.nombre,
-      cantidad: parseFloat(cantidad) || 1,
-      es_porcion: esPorcion
-    };
-
-    onChange([...productosVinculados, nuevoVinculo]);
-    setProductoSeleccionado(null);
-    setCantidad(1);
-    setEsPorcion(false);
-    setMostrandoSelector(false);
-    setBusqueda('');
+  const handleActualizarCantidad = (index, delta) => {
+    const nuevos = [...productosVinculados];
+    const nuevaCantidad = Math.max(0.1, (nuevos[index].cantidad || 1) + delta);
+    nuevos[index].cantidad = parseFloat(nuevaCantidad.toFixed(2));
+    onChange(nuevos);
   };
 
   const handleEliminar = (index) => {
@@ -82,155 +96,160 @@ const ProductosVinculados = ({ productosVinculados = [], onChange, organizationI
   };
 
   return (
-    <div className="productos-vinculados-container">
-      <div className="productos-vinculados-header">
-        <label className="productos-vinculados-label">
-          Productos Vinculados
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 400, marginLeft: '0.5rem' }}>
-            (Se descontarán del stock al vender este producto)
-          </span>
-        </label>
+    <div className="productos-vinculados-premium">
+      <div className="pv-header">
+        <div className="pv-title-box">
+          <h3>Componentes de la Ancheta / Combo</h3>
+          <p>Selecciona los productos que conforman este pack</p>
+        </div>
         <button
           type="button"
-          className="productos-vinculados-add-btn"
+          className="pv-add-main-btn"
           onClick={() => setMostrandoSelector(true)}
         >
-          <Plus size={16} />
-          Agregar Producto
+          <Search size={18} />
+          Buscar Productos
         </button>
       </div>
 
-      {/* Lista de productos vinculados */}
-      {productosVinculados.length > 0 && (
-        <div className="productos-vinculados-list">
-          {productosVinculados.map((vinculo, index) => {
-            const producto = productosDisponibles.find(p => p.id === vinculo.producto_id);
-            return (
-              <div key={index} className="productos-vinculados-item">
-                <div className="productos-vinculados-item-info">
-                  <span className="productos-vinculados-item-nombre">
-                    {vinculo.producto_nombre || producto?.nombre || 'Producto'}
-                  </span>
-                  <span className="productos-vinculados-item-details">
-                    Cantidad: {vinculo.cantidad} {vinculo.es_porcion ? '(porción)' : '(unidad completa)'}
-                  </span>
+      {/* Lista de productos ya vinculados */}
+      <div className="pv-selected-list">
+        {productosVinculados.length === 0 ? (
+          <div className="pv-empty-state">
+            <Package size={48} className="pv-empty-icon" />
+            <p>No hay productos vinculados aún</p>
+            <span>Usa el buscador para añadir los elementos de la ancheta</span>
+          </div>
+        ) : (
+          <div className="pv-items-container">
+            <div className="pv-table-header">
+              <span className="pv-th-name">Producto</span>
+              <span className="pv-th-category">Categoría</span>
+              <span className="pv-th-prices">Precios (C/V)</span>
+              <span className="pv-th-qty">Cant.</span>
+              <span className="pv-th-actions"></span>
+            </div>
+            {productosVinculados.map((vinculo, index) => (
+              <div key={index} className="pv-selected-item">
+                <div className="pv-col-name" title={vinculo.producto_nombre}>
+                  <span className="pv-item-name">{vinculo.producto_nombre}</span>
                 </div>
-                <button
-                  type="button"
-                  className="productos-vinculados-remove-btn"
-                  onClick={() => handleEliminar(index)}
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
+                
+                <div className="pv-col-category">
+                  <span className="pv-item-category">{vinculo.categoria || 'Producto'}</span>
+                </div>
 
-      {/* Modal selector de producto */}
+                <div className="pv-col-prices">
+                  <span className="pv-price-tag cost">{formatCurrency(vinculo.precio_compra)}</span>
+                  <span className="pv-price-tag sale">{formatCurrency(vinculo.precio_venta)}</span>
+                </div>
+
+                <div className="pv-col-qty">
+                  <div className="pv-qty-controls">
+                    <button type="button" onClick={() => handleActualizarCantidad(index, -1)} disabled={vinculo.cantidad <= 0.1}>
+                      <Minus size={10} />
+                    </button>
+                    <input
+                      type="number"
+                      value={vinculo.cantidad}
+                      step="0.1"
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value) || 0;
+                        const nuevos = [...productosVinculados];
+                        nuevos[index].cantidad = val;
+                        onChange(nuevos);
+                      }}
+                    />
+                    <button type="button" onClick={() => handleActualizarCantidad(index, 1)}>
+                      <Plus size={10} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="pv-col-actions">
+                  <button
+                    type="button"
+                    className="pv-remove-btn"
+                    onClick={() => handleEliminar(index)}
+                    title="Eliminar"
+                  >
+                    <Trash2 size={10} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Selector Modal (Estilo Caja) */}
       {mostrandoSelector && (
-        <div className="productos-vinculados-modal-overlay" onClick={() => setMostrandoSelector(false)}>
-          <div className="productos-vinculados-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="productos-vinculados-modal-header">
-              <h3>Vincular Producto</h3>
-              <button
-                type="button"
-                className="productos-vinculados-modal-close"
-                onClick={() => setMostrandoSelector(false)}
-              >
-                <X size={20} />
+        <div className="pv-modal-overlay" onClick={() => setMostrandoSelector(false)}>
+          <div className="pv-modal-content" onClick={e => e.stopPropagation()}>
+            <div className="pv-modal-header">
+              <div className="pv-modal-title">
+                <ShoppingCart size={20} />
+                <h3>Agregar Productos al Combo</h3>
+              </div>
+              <button type="button" onClick={() => setMostrandoSelector(false)} className="pv-close-modal">
+                <X size={24} />
               </button>
             </div>
 
-            <div className="productos-vinculados-modal-content">
-              <div style={{ marginBottom: '1rem' }}>
-                <label>Buscar Producto</label>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    type="text"
-                    className="productos-vinculados-input"
-                    placeholder="Escribe nombre o código..."
-                    value={busqueda}
-                    onChange={(e) => setBusqueda(e.target.value)}
-                    style={{ marginBottom: '0.5rem' }}
-                  />
-                </div>
-              </div>
+            <div className="pv-search-container">
+              <Search className="pv-search-icon" size={20} />
+              <input
+                type="text"
+                placeholder="Busca por nombre o código de barras..."
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                autoFocus
+              />
+            </div>
 
-              <label>Seleccionar Resultado ({cargando ? 'Buscando...' : productosDisponiblesParaVincular.length})</label>
-              <select
-                className="productos-vinculados-select"
-                value={productoSeleccionado?.id || ''}
-                onChange={(e) => {
-                  const producto = productosDisponibles.find(p => p.id === e.target.value);
-                  setProductoSeleccionado(producto || null);
-                }}
-              >
-                <option value="">-- Seleccione un producto --</option>
-                {productosDisponiblesParaVincular.map(p => (
-                  <option key={p.id} value={p.id}>
-                    {p.nombre} {p.codigo ? `(${p.codigo})` : ''} - Stock: {p.stock}
-                  </option>
-                ))}
-              </select>
+            <div className={`pv-results-grid ${cargando ? 'is-loading' : ''}`}>
+              {productosDisponibles.length === 0 && !cargando ? (
+                <div className="pv-no-results">No se encontraron productos con "{busqueda}"</div>
+              ) : (
+                productosDisponibles.map(producto => {
+                  const vinculado = productosVinculados.find(v => v.producto_id === producto.id);
+                  const isSelected = !!vinculado;
 
-              {productoSeleccionado && (
-                <>
-                  <label style={{ marginTop: '1rem' }}>Cantidad</label>
-                  <input
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    value={cantidad}
-                    onChange={(e) => setCantidad(e.target.value)}
-                    className="productos-vinculados-input"
-                    placeholder="Ej: 1 o 0.5"
-                  />
-
-                  <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <input
-                      type="checkbox"
-                      id="es_porcion"
-                      checked={esPorcion}
-                      onChange={(e) => setEsPorcion(e.target.checked)}
-                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                    />
-                    <label htmlFor="es_porcion" style={{ cursor: 'pointer', fontSize: '0.9rem' }}>
-                      Es una porción (descontar fracción del stock)
-                    </label>
-                  </div>
-
-                  {esPorcion && (
-                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
-                      Ejemplo: Si cantidad es 0.5, se descontará media unidad del stock
-                    </p>
-                  )}
-                </>
+                  return (
+                    <div
+                      key={producto.id}
+                      className={`pv-product-card ${isSelected ? 'is-selected' : ''}`}
+                      onClick={() => handleAgregarDirecto(producto)}
+                    >
+                      <div className="pv-card-image">
+                        <OptimizedProductImage imagePath={producto.imagen} alt={producto.nombre} />
+                      </div>
+                      <div className="pv-card-info">
+                        <h4 title={producto.nombre}>{producto.nombre}</h4>
+                        <span className="pv-card-category">{producto.metadata?.categoria || 'Sin categoría'}</span>
+                        <div className="pv-card-meta">
+                          <span className="pv-card-stock">Stock: {producto.stock}</span>
+                          <span className="pv-card-price">{formatCurrency(producto.precio_venta)}</span>
+                        </div>
+                      </div>
+                      {isSelected && (
+                        <div className="pv-card-badge">
+                          {vinculado.cantidad}
+                        </div>
+                      )}
+                      <div className="pv-card-add">
+                        <Plus size={20} />
+                      </div>
+                    </div>
+                  );
+                })
               )}
             </div>
 
-            <div className="productos-vinculados-modal-actions">
-              <button
-                type="button"
-                className="productos-vinculados-btn-secondary"
-                onClick={() => {
-                  setMostrandoSelector(false);
-                  setProductoSeleccionado(null);
-                  setCantidad(1);
-                  setEsPorcion(false);
-                  setBusqueda('');
-                }}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className="productos-vinculados-btn-primary"
-                onClick={handleAgregar}
-                disabled={!productoSeleccionado || !cantidad || parseFloat(cantidad) <= 0}
-              >
-                Agregar
+            <div className="pv-modal-footer">
+              <p>{productosVinculados.length} productos seleccionados</p>
+              <button type="button" className="pv-done-btn" onClick={() => setMostrandoSelector(false)}>
+                Listo
               </button>
             </div>
           </div>

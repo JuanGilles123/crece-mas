@@ -1,0 +1,25 @@
+.movimientos-stock-page {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.movimientos-stock-page-header {
+  margin-bottom: 0.5rem;
+}
+
+.movimientos-stock-page-header h1 {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--text-primary, #111827);
+  margin: 0;
+  letter-spacing: -0.025em;
+}
+
+.movimientos-stock-page-header p {
+  font-size: 0.95rem;
+  color: var(--text-secondary, #6b7280);
+  margin: 0.25rem 0 0 0;
+}

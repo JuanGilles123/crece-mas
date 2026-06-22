@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -21,7 +21,14 @@ import {
   Zap,
   RefreshCw,
   Clock,
-  Trash2
+  Trash2,
+  Mail,
+  Phone,
+  User,
+  Copy,
+  ExternalLink,
+  CreditCard,
+  Info
 } from 'lucide-react';
 import { supabase } from '../services/api/supabaseClient';
 import toast from 'react-hot-toast';
@@ -38,6 +45,12 @@ const VIPAdminPanel = () => {
   const [selectedOrg, setSelectedOrg] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [procesando, setProcesando] = useState(false);
+
+  // Panel de detalle del cliente
+  const [detailOrg, setDetailOrg] = useState(null);
+  const [showDetail, setShowDetail] = useState(false);
+  const [detailData, setDetailData] = useState(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
   
   // Planes disponibles (cargados desde la DB)
   const [availablePlans, setAvailablePlans] = useState([]);
@@ -196,6 +209,80 @@ const VIPAdminPanel = () => {
     }
   };
 
+  // Cargar detalle completo de una organización (owner + miembros + pagos)
+  const loadOrgDetail = useCallback(async (org) => {
+    setLoadingDetail(true);
+    setDetailData(null);
+    try {
+      // 1. Perfil del owner
+      let ownerProfile = null;
+      if (org.owner_id) {
+        const { data: profile } = await supabase
+          .from('user_profiles')
+          .select('full_name, phone, avatar_url, email')
+          .eq('user_id', org.owner_id)
+          .maybeSingle();
+        ownerProfile = profile;
+      }
+
+      // 2. Miembros del equipo con su perfil
+      const { data: members } = await supabase
+        .from('team_members')
+        .select('id, user_id, role, status, joined_at, employee_name, employee_phone, employee_email, is_employee')
+        .eq('organization_id', org.id)
+        .order('joined_at', { ascending: true });
+
+      let membersWithProfiles = [];
+      if (members && members.length > 0) {
+        const userIds = members.filter(m => m.user_id).map(m => m.user_id);
+        let profiles = [];
+        if (userIds.length > 0) {
+          const { data: profilesData } = await supabase
+            .from('user_profiles')
+            .select('user_id, full_name, phone, avatar_url, email')
+            .in('user_id', userIds);
+          profiles = profilesData || [];
+        }
+        membersWithProfiles = members.map(m => ({
+          ...m,
+          profile: profiles.find(p => p.user_id === m.user_id) || null,
+          displayName: m.employee_name || profiles.find(p => p.user_id === m.user_id)?.full_name || 'Sin nombre',
+          displayEmail: m.employee_email || profiles.find(p => p.user_id === m.user_id)?.email || null,
+          displayPhone: m.employee_phone || profiles.find(p => p.user_id === m.user_id)?.phone || null,
+        }));
+      }
+
+      // 3. Últimos pagos
+      const { data: payments } = await supabase
+        .from('payments')
+        .select('id, status, amount, currency, created_at, billing_period, wompi_reference')
+        .eq('organization_id', org.id)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      setDetailData({
+        ownerProfile,
+        members: membersWithProfiles,
+        payments: payments || [],
+      });
+    } catch (err) {
+      console.error('Error loading org detail:', err);
+      toast.error('Error al cargar detalle');
+    } finally {
+      setLoadingDetail(false);
+    }
+  }, []);
+
+  const handleOpenDetail = (org) => {
+    setDetailOrg(org);
+    setShowDetail(true);
+    loadOrgDetail(org);
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text).then(() => toast.success('Copiado al portapapeles'));
+  };
+
   const filterOrganizations = () => {
     let filtered = [...organizations];
 
@@ -270,6 +357,13 @@ const VIPAdminPanel = () => {
         if (error) throw error;
         toast.success('Suscripción creada correctamente');
       }
+
+      // Actualizar también el status en la organización por si acaso
+      const orgStatus = formData.status === 'active' ? 'active' : formData.status;
+      await supabase
+        .from('organizations')
+        .update({ subscription_status: orgStatus })
+        .eq('id', selectedOrg.id);
 
       setShowModal(false);
       loadOrganizations();
@@ -347,7 +441,7 @@ const VIPAdminPanel = () => {
     const colors = {
       free: '#8b5cf6',
       professional: '#10b981',
-      enterprise: '#3b82f6',
+      enterprise: '#02A5E0',
       custom: '#f59e0b'
     };
     return colors[slug] || '#6b7280';
@@ -429,7 +523,7 @@ const VIPAdminPanel = () => {
 
           <motion.div className="stat-card" whileHover={{ scale: 1.02 }}>
             <div className="stat-icon" style={{ background: 'rgba(59, 130, 246, 0.2)' }}>
-              <Sparkles size={24} color="#3b82f6" />
+              <Sparkles size={24} color="#02A5E0" />
             </div>
             <div className="stat-content">
               <span className="stat-value">{stats.premiumOrgs}</span>
@@ -598,11 +692,19 @@ const VIPAdminPanel = () => {
 
                 <div className="org-actions">
                   <button
+                    className="btn-detail"
+                    onClick={() => handleOpenDetail(org)}
+                    title="Ver detalle del cliente"
+                  >
+                    <Info size={16} />
+                    Detalle
+                  </button>
+                  <button
                     className="btn-edit"
                     onClick={() => handleEditSubscription(org)}
                   >
                     <Edit2 size={16} />
-                    {org.subscription ? 'Editar Suscripción' : 'Crear Suscripción'}
+                    {org.subscription ? 'Editar' : 'Crear Plan'}
                   </button>
                   <button
                     className="btn-delete"
@@ -629,7 +731,175 @@ const VIPAdminPanel = () => {
         </motion.div>
       )}
 
-      {/* Modal */}
+      {/* ===== DRAWER DE DETALLE DEL CLIENTE ===== */}
+      <AnimatePresence>
+        {showDetail && detailOrg && (
+          <motion.div
+            className="detail-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowDetail(false)}
+          >
+            <motion.div
+              className="detail-drawer"
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header del drawer */}
+              <div className="detail-header">
+                <div className="detail-header-info">
+                  <Building2 size={22} />
+                  <div>
+                    <h2>{detailOrg.name}</h2>
+                    <span className="detail-created">Cliente desde {new Date(detailOrg.created_at).toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                  </div>
+                </div>
+                <button className="detail-close" onClick={() => setShowDetail(false)}><X size={20} /></button>
+              </div>
+
+              <div className="detail-body">
+                {loadingDetail ? (
+                  <div className="detail-loading"><LottieLoader size="small" message="Cargando información..." /></div>
+                ) : (
+                  <>
+                    {/* Dueño */}
+                    <div className="detail-section">
+                      <h3 className="detail-section-title"><User size={16} /> Dueño de la cuenta</h3>
+                      {detailData?.ownerProfile ? (
+                        <div className="detail-owner-card">
+                          <div className="detail-avatar">
+                            {detailData.ownerProfile.avatar_url
+                              ? <img src={detailData.ownerProfile.avatar_url} alt="avatar" />
+                              : <span>{(detailData.ownerProfile.full_name || detailOrg.name || '?')[0].toUpperCase()}</span>
+                            }
+                          </div>
+                          <div className="detail-owner-info">
+                            <p className="owner-name">{detailData.ownerProfile.full_name || 'Sin nombre'}</p>
+                            {detailData.ownerProfile.email && (
+                              <div className="detail-contact-row">
+                                <Mail size={14} />
+                                <span>{detailData.ownerProfile.email}</span>
+                                <button className="copy-btn" onClick={() => copyToClipboard(detailData.ownerProfile.email)} title="Copiar email"><Copy size={12} /></button>
+                                <a href={`mailto:${detailData.ownerProfile.email}`} className="contact-link" title="Enviar email" target="_blank" rel="noreferrer"><ExternalLink size={12} /></a>
+                              </div>
+                            )}
+                            {detailData.ownerProfile.phone && (
+                              <div className="detail-contact-row">
+                                <Phone size={14} />
+                                <span>{detailData.ownerProfile.phone}</span>
+                                <button className="copy-btn" onClick={() => copyToClipboard(detailData.ownerProfile.phone)} title="Copiar teléfono"><Copy size={12} /></button>
+                                <a href={`https://wa.me/${detailData.ownerProfile.phone.replace(/\D/g, '')}`} className="contact-link whatsapp" title="WhatsApp" target="_blank" rel="noreferrer"><ExternalLink size={12} /></a>
+                              </div>
+                            )}
+                            {!detailData.ownerProfile.email && !detailData.ownerProfile.phone && (
+                              <p className="detail-empty">Sin información de contacto registrada</p>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="detail-empty">No se encontró perfil del dueño</p>
+                      )}
+                    </div>
+
+                    {/* Suscripción actual */}
+                    <div className="detail-section">
+                      <h3 className="detail-section-title"><Shield size={16} /> Suscripción actual</h3>
+                      {detailOrg.subscription ? (
+                        <div className="detail-sub-info">
+                          <span className="detail-plan-badge" style={{ background: `${getPlanColor(detailOrg.subscription.plan?.slug)}20`, color: getPlanColor(detailOrg.subscription.plan?.slug), border: `1px solid ${getPlanColor(detailOrg.subscription.plan?.slug)}40` }}>
+                            {detailOrg.subscription.plan?.name || 'Plan desconocido'}
+                          </span>
+                          <div className="detail-sub-dates">
+                            <span><Calendar size={13} /> Desde: {new Date(detailOrg.subscription.current_period_start).toLocaleDateString('es-CO')}</span>
+                            <span><Calendar size={13} /> Hasta: {detailOrg.subscription.current_period_end ? new Date(detailOrg.subscription.current_period_end).toLocaleDateString('es-CO') : 'N/A'}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="detail-empty">Sin suscripción activa</p>
+                      )}
+                    </div>
+
+                    {/* Miembros */}
+                    <div className="detail-section">
+                      <h3 className="detail-section-title"><Users size={16} /> Equipo ({detailData?.members?.length || 0} miembros)</h3>
+                      <div className="detail-members-list">
+                        {detailData?.members?.length > 0 ? detailData.members.map(m => (
+                          <div key={m.id} className="detail-member-row">
+                            <div className="member-avatar-sm">{(m.displayName || '?')[0].toUpperCase()}</div>
+                            <div className="member-info-col">
+                              <span className="member-name-sm">{m.displayName}</span>
+                              <span className="member-role-badge" style={{ background: m.role === 'owner' ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.08)', color: m.role === 'owner' ? '#f59e0b' : '#9ca3af' }}>
+                                {m.is_employee ? 'Empleado' : m.role}
+                              </span>
+                            </div>
+                            <div className="member-contact-col">
+                              {m.displayEmail && (
+                                <div className="detail-contact-row">
+                                  <Mail size={12} />
+                                  <span>{m.displayEmail}</span>
+                                  <button className="copy-btn" onClick={() => copyToClipboard(m.displayEmail)}><Copy size={11} /></button>
+                                </div>
+                              )}
+                              {m.displayPhone && (
+                                <div className="detail-contact-row">
+                                  <Phone size={12} />
+                                  <span>{m.displayPhone}</span>
+                                  <button className="copy-btn" onClick={() => copyToClipboard(m.displayPhone)}><Copy size={11} /></button>
+                                </div>
+                              )}
+                              {!m.displayEmail && !m.displayPhone && <span className="detail-empty" style={{fontSize:'0.75rem'}}>Sin contacto</span>}
+                            </div>
+                          </div>
+                        )) : <p className="detail-empty">Sin miembros registrados</p>}
+                      </div>
+                    </div>
+
+                    {/* Historial de pagos */}
+                    <div className="detail-section">
+                      <h3 className="detail-section-title"><CreditCard size={16} /> Últimos pagos</h3>
+                      {detailData?.payments?.length > 0 ? (
+                        <div className="detail-payments-list">
+                          {detailData.payments.map(p => (
+                            <div key={p.id} className="detail-payment-row">
+                              <div className="payment-left">
+                                <span className={`payment-status-dot status-${p.status}`}></span>
+                                <div>
+                                  <span className="payment-amount">${Number(p.amount || 0).toLocaleString('es-CO')} {p.currency || 'COP'}</span>
+                                  <span className="payment-ref">{p.wompi_reference || p.id.substring(0, 8)}</span>
+                                </div>
+                              </div>
+                              <div className="payment-right">
+                                <span className={`payment-badge payment-${p.status}`}>{p.status}</span>
+                                <span className="payment-date">{new Date(p.created_at).toLocaleDateString('es-CO')}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="detail-empty">Sin pagos registrados</p>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Footer del drawer */}
+              <div className="detail-footer">
+                <button className="btn-edit" style={{flex:1}} onClick={() => { setShowDetail(false); handleEditSubscription(detailOrg); }}>
+                  <Edit2 size={16} />
+                  {detailOrg.subscription ? 'Editar Suscripción' : 'Crear Suscripción'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal de Suscripción */}
       <AnimatePresence>
         {showModal && (
           <motion.div

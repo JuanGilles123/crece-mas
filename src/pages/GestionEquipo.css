@@ -110,7 +110,7 @@
 .btn-link {
   background: none;
   border: none;
-  color: #1d4ed8;
+  color: #004481;
   text-decoration: underline;
   cursor: pointer;
   font-size: 0.95rem;
@@ -414,12 +414,12 @@
 }
 
 .btn-icon.btn-edit {
-  background: #3b82f6;
+  background: #02A5E0;
   color: white;
 }
 
 .btn-icon.btn-edit:hover {
-  background: #2563eb;
+  background: #02A5E0;
 }
 
 .btn-icon.btn-danger {

@@ -282,6 +282,14 @@ const InventarioStats = ({ productos, totalProductosOverride }) => {
     // Bullets de joyería (solo si es negocio de metales preciosos)
     ...(isJewelryBusiness ? [
       {
+        id: 'gramos-total',
+        label: 'Peso Total Inventario',
+        value: gramosNacional + gramosInternacional,
+        icon: Scale,
+        color: 'primary',
+        format: (val) => `${parseFloat(val).toLocaleString('es-CO', { minimumFractionDigits: 1, maximumFractionDigits: 2 })} g`
+      },
+      {
         id: 'gramos-nacional',
         label: 'Gramos Nacional',
         value: gramosNacional,

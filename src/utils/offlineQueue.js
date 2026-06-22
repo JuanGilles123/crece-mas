@@ -167,37 +167,57 @@ export const cacheClientes = async (organizationId, clientes = []) => {
 };
 
 export const cacheProductos = async (organizationId, productos = []) => {
-  if (!organizationId) return;
-  for (const producto of productos || []) {
-    const payload = {
-      id: producto.id,
-      organization_id: organizationId,
-      user_id: producto.user_id,
-      nombre: producto.nombre || '',
-      codigo: producto.codigo || '',
-      precio_venta: producto.precio_venta ?? null,
-      precio_compra: producto.precio_compra ?? null,
-      stock: producto.stock ?? null,
-      imagen: producto.imagen || null,
-      tipo: producto.tipo || null,
-      metadata: producto.metadata || null,
-      variantes: producto.variantes || [],
-      created_at: producto.created_at || new Date().toISOString(),
-      updated_at: producto.updated_at || new Date().toISOString(),
-      synced: 1,
-      deleted: false,
-      server_id: producto.id
-    };
+  if (!organizationId || !productos.length) return;
+  
+  try {
+    const unsyncedProducts = await db.productos_local
+      .where('organization_id').equals(organizationId)
+      .and(p => p.synced === 0)
+      .toArray();
+    
+    const unsyncedIds = new Set(unsyncedProducts.map(p => p.id));
+    
+    const payloads = productos
+      .filter(p => !unsyncedIds.has(p.id))
+      .map(producto => ({
+        id: producto.id,
+        organization_id: organizationId,
+        user_id: producto.user_id,
+        nombre: producto.nombre || '',
+        codigo: producto.codigo || '',
+        precio_venta: producto.precio_venta ?? null,
+        precio_compra: producto.precio_compra ?? null,
+        stock: producto.stock ?? null,
+        imagen: producto.imagen || null,
+        tipo: producto.tipo || null,
+        metadata: producto.metadata || null,
+        variantes: producto.variantes || [],
+        created_at: producto.created_at || new Date().toISOString(),
+        updated_at: producto.updated_at || new Date().toISOString(),
+        synced: 1,
+        deleted: false,
+        server_id: producto.id
+      }));
 
-    const existing = await db.productos_local.where('id').equals(producto.id).first();
-    if (existing && existing.synced === 0) {
-      continue;
+    if (payloads.length > 0) {
+      const existingMap = new Map();
+      const allExisting = await db.productos_local
+        .where('organization_id').equals(organizationId)
+        .toArray();
+      
+      allExisting.forEach(p => existingMap.set(p.id, p.local_id));
+      
+      const finalPayloads = payloads.map(p => {
+        if (existingMap.has(p.id)) {
+          return { ...p, local_id: existingMap.get(p.id) };
+        }
+        return p;
+      });
+
+      await db.productos_local.bulkPut(finalPayloads);
     }
-    if (existing) {
-      await db.productos_local.update(existing.local_id, payload);
-    } else {
-      await db.productos_local.put(payload);
-    }
+  } catch (error) {
+    console.error('Error caching products:', error);
   }
 };
 
@@ -637,8 +657,8 @@ export const enqueuePedidoCreate = async ({ pedidoData, items }) => {
 
 export const enqueuePedidoUpdate = async ({ id, updates, organizationId }) => {
   const updatedAt = new Date().toISOString();
-  const pedidoRow = await db.pedidos_local.where('id').equals(id).first();
-  const orgId = organizationId || pedidoRow?.organization_id;
+  const pedidoRowForOrg = await db.pedidos_local.where('id').equals(id).first();
+  const orgId = organizationId || pedidoRowForOrg?.organization_id;
 
   await db.outbox.add({
     type: 'pedido_update',
@@ -648,11 +668,11 @@ export const enqueuePedidoUpdate = async ({ id, updates, organizationId }) => {
     payload: {
       id,
       updates: { ...updates, updated_at: updatedAt },
-      organizationId: orgId,
-      mesa_id: pedidoRow?.mesa_id || null
+      organizationId: orgId
     }
   });
 
+  const pedidoRow = pedidoRowForOrg || await db.pedidos_local.where('id').equals(id).first();
   if (pedidoRow) {
     await db.pedidos_local.update(pedidoRow.local_id, {
       ...updates,
@@ -666,8 +686,8 @@ export const enqueuePedidoUpdate = async ({ id, updates, organizationId }) => {
 
 export const enqueuePedidoDelete = async ({ id, organizationId }) => {
   const updatedAt = new Date().toISOString();
-  const pedidoRow = await db.pedidos_local.where('id').equals(id).first();
-  const orgId = organizationId || pedidoRow?.organization_id;
+  const pedidoRowForOrg = await db.pedidos_local.where('id').equals(id).first();
+  const orgId = organizationId || pedidoRowForOrg?.organization_id;
 
   await db.outbox.add({
     type: 'pedido_delete',
@@ -676,11 +696,11 @@ export const enqueuePedidoDelete = async ({ id, organizationId }) => {
     tries: 0,
     payload: {
       id,
-      organizationId: orgId,
-      mesa_id: pedidoRow?.mesa_id || null
+      organizationId: orgId
     }
   });
 
+  const pedidoRow = pedidoRowForOrg || await db.pedidos_local.where('id').equals(id).first();
   if (pedidoRow) {
     await db.pedidos_local.update(pedidoRow.local_id, {
       deleted: true,
@@ -795,7 +815,7 @@ export const enqueueProductoDelete = async ({ id, organizationId }) => {
     }
   });
 
-  const productoRow = await db.productos_local.where('id').equals(id).first();
+  const productoRow = productoRowForOrg || await db.productos_local.where('id').equals(id).first();
   if (productoRow) {
     await db.productos_local.update(productoRow.local_id, {
       deleted: true,
@@ -814,7 +834,6 @@ export const syncOutbox = async ({ supabase }) => {
 
   const pending = await db.outbox.where('status').equals('pending').sortBy('created_at');
   
-  // Si no hay nada pendiente, retornar temprano sin hacer nada
   if (!pending || pending.length === 0) {
     return { synced: 0, failed: 0, nothingToSync: true };
   }
@@ -841,7 +860,13 @@ export const syncOutbox = async ({ supabase }) => {
             .in('id', pedidosIds);
         }
 
-        await actualizarStockVenta({ supabase, items: ventaData?.items || [] });
+        await actualizarStockVenta({ 
+          supabase, 
+          items: ventaData?.items || [],
+          organizationId: ventaData?.organization_id,
+          userId: ventaData?.user_id,
+          ventaId: ventaResult.id
+        });
 
         await db.ventas_local.update(tempId, {
           synced: 1,
@@ -1331,4 +1356,3 @@ export const syncOutbox = async ({ supabase }) => {
 
   return { synced, failed };
 };
-

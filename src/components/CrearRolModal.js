@@ -97,7 +97,7 @@ const CrearRolModal = ({ open, onClose, onGuardar, roleToEdit, loading }) => {
   };
 
   const coloresPreset = [
-    { value: '#3B82F6', label: 'Azul' },
+    { value: '#02A5E0', label: 'Azul' },
     { value: '#10B981', label: 'Verde' },
     { value: '#8B5CF6', label: 'Morado' },
     { value: '#F59E0B', label: 'Amarillo' },

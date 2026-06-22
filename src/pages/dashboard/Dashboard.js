@@ -9,6 +9,7 @@ const Caja = lazy(() => import('./Caja'));
 const Inventario = lazy(() => import('./Inventario'));
 const InventarioRevisiones = lazy(() => import('./InventarioRevisiones'));
 const InventarioInicial = lazy(() => import('./InventarioInicial'));
+const MovimientosStock = lazy(() => import('./MovimientosStock'));
 const ConsultarPrecio = lazy(() => import('./ConsultarPrecio'));
 const ResumenVentas = lazy(() => import('./ResumenVentas'));
 const Perfil = lazy(() => import('./Perfil'));
@@ -27,6 +28,7 @@ const Creditos = lazy(() => import('./Creditos'));
 const Egresos = lazy(() => import('./Egresos'));
 const GestionMesas = lazy(() => import('../../components/GestionMesas'));
 const GestionToppings = lazy(() => import('../../components/GestionToppings'));
+const MonitorCajas = lazy(() => import('./MonitorCajas'));
 const GestionVariaciones = lazy(() => import('../../components/GestionVariaciones'));
 
 // Loading fallback optimizado
@@ -102,6 +104,11 @@ const Dashboard = () => (
             <InventarioInicial />
           </Suspense>
         } />
+        <Route path="inventario/movimientos" element={
+          <Suspense fallback={<DashboardLoader />}>
+            <MovimientosStock />
+          </Suspense>
+        } />
         <Route path="consultar-precio" element={
           <Suspense fallback={<DashboardLoader />}>
             <ConsultarPrecio />
@@ -175,6 +182,11 @@ const Dashboard = () => (
         <Route path="variaciones" element={
           <Suspense fallback={<DashboardLoader />}>
             <GestionVariaciones />
+          </Suspense>
+        } />
+        <Route path="monitor-cajas" element={
+          <Suspense fallback={<DashboardLoader />}>
+            <MonitorCajas />
           </Suspense>
         } />
         <Route path="*" element={<Navigate to="/dashboard" />} />

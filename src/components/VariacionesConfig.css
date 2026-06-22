@@ -1,13 +1,13 @@
 .variaciones-config {
   margin-top: 1.5rem;
-  padding: 1.5rem;
+  padding: 1rem;
   background: var(--bg-secondary);
   border-radius: 12px;
   border: 1px solid var(--border-color);
 }
 
 .variaciones-config-header {
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
 }
 
 .variaciones-config-header h4 {
@@ -26,12 +26,15 @@
 .variaciones-config-actions {
   display: flex;
   gap: 0.75rem;
+  width: 100%;
 }
 
 .variaciones-config-btn-vincular,
 .variaciones-config-btn-agregar {
   display: flex;
   align-items: center;
+  justify-content: center;
+  flex: 1;
   gap: 0.5rem;
   padding: 0.625rem 1rem;
   color: white;
@@ -63,7 +66,8 @@
 
 .variaciones-config-empty {
   text-align: center;
-  padding: 2rem 1rem;
+  padding: 0.5rem;
+  margin-top: 0.5rem;
   color: var(--text-secondary);
 }
 
@@ -288,7 +292,7 @@
   cursor: pointer;
   width: 18px;
   height: 18px;
-  accent-color: #3b82f6;
+  accent-color: #02A5E0;
 }
 
 .variacion-config-field .required {
@@ -314,7 +318,7 @@
 .variacion-config-field input[type="number"]:focus,
 .variacion-config-field select:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: #02A5E0;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
@@ -411,7 +415,7 @@
 
 .variacion-config-opcion input[type="text"]:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: #02A5E0;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
@@ -993,8 +997,10 @@
 
 @media (max-width: 768px) {
   .variaciones-config-actions {
-    flex-direction: column;
-  }
+  display: flex;
+  gap: 0.75rem;
+  width: 100%;
+}
 
   .variaciones-config-btn-vincular,
   .variaciones-config-btn-agregar {

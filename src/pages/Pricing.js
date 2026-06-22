@@ -63,7 +63,7 @@ const Pricing = () => {
       priceYearly: 699000,
       savings: '2 meses gratis',
       icon: Zap,
-      color: '#3B82F6',
+      color: '#02A5E0',
       features: [
         { name: '1 organización', included: true },
         { name: 'Hasta 3 usuarios', included: true },
@@ -495,7 +495,7 @@ const Pricing = () => {
 
           <div className="faq-item">
             <h3>¿Hay período de prueba?</h3>
-            <p>Sí, todos los planes pagos incluyen 14 días de prueba gratis. No se requiere tarjeta de crédito para empezar.</p>
+            <p>Ofrecemos una versión gratuita permanente con funciones básicas para que pruebes el sistema a tu propio ritmo. No se requiere tarjeta de crédito para empezar.</p>
           </div>
 
           <div className="faq-item">

@@ -52,10 +52,11 @@ const gastoVariableSchema = z.object({
   categoria_id: z.string().optional().or(z.literal('')),
   proveedor_id: z.string().uuid().optional().or(z.literal('')),
   orden_compra_id: z.string().uuid().optional().or(z.literal('')),
+  afecta_caja: z.boolean().default(false),
   notas: z.string().optional()
 });
 
-const GastoVariableModal = ({ open, onClose, gasto = null }) => {
+const GastoVariableModal = ({ open, onClose, gasto = null, aperturaActiva = null }) => {
   const { organization, user } = useAuth();
   const crearGastoVariable = useCrearGastoVariable();
   const actualizarGastoVariable = useActualizarGastoVariable();
@@ -71,7 +72,8 @@ const GastoVariableModal = ({ open, onClose, gasto = null }) => {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-    reset
+    reset,
+    watch
   } = useForm({
     resolver: zodResolver(gastoVariableSchema),
     defaultValues: {
@@ -85,6 +87,7 @@ const GastoVariableModal = ({ open, onClose, gasto = null }) => {
       categoria_id: '',
       proveedor_id: '',
       orden_compra_id: '',
+      afecta_caja: false,
       notas: ''
     }
   });
@@ -105,6 +108,7 @@ const GastoVariableModal = ({ open, onClose, gasto = null }) => {
           categoria_id: gasto.categoria_id || '',
           proveedor_id: gasto.proveedor_id || '',
           orden_compra_id: gasto.orden_compra_id || '',
+          afecta_caja: gasto.afecta_caja !== undefined ? gasto.afecta_caja : false,
           notas: gasto.notas || ''
         });
       } else {
@@ -120,6 +124,7 @@ const GastoVariableModal = ({ open, onClose, gasto = null }) => {
           categoria_id: '',
           proveedor_id: '',
           orden_compra_id: '',
+          afecta_caja: false,
           notas: ''
         });
       }
@@ -138,6 +143,13 @@ const GastoVariableModal = ({ open, onClose, gasto = null }) => {
       if (!montoInput.displayValue || montoInput.numericValue <= 0) {
         throw new Error('El monto es requerido');
       }
+
+      // Reconfirmación de afectación de caja
+      const confirmMsg = data.afecta_caja 
+        ? `¿Confirmas que este gasto de $${montoInput.displayValue} SE DESCONTARÁ de la caja actual?`
+        : `¿Confirmas que este gasto de $${montoInput.displayValue} NO se descontará de la caja actual? (Solo registro informativo)`;
+      
+      if (!window.confirm(confirmMsg)) return;
       // Si la categoría es un texto (categoría predefinida), buscar si existe o guardarla en notas
       let categoriaId = data.categoria_id || null;
       let notasFinal = data.notas || null;
@@ -166,7 +178,8 @@ const GastoVariableModal = ({ open, onClose, gasto = null }) => {
       const gastoData = {
         ...data,
         organization_id: organization.id,
-        user_id: user.id,
+        user_id: aperturaActiva?.user_id || user.id,
+        employee_id: aperturaActiva?.employee_id || null,
         monto: monto,
         fecha: data.fecha,
         factura_fecha: data.factura_fecha || null,
@@ -176,6 +189,7 @@ const GastoVariableModal = ({ open, onClose, gasto = null }) => {
         descripcion: data.descripcion || null,
         factura_numero: data.factura_numero || null,
         comprobante_url: data.comprobante_url || null,
+        afecta_caja: data.afecta_caja,
         notas: notasFinal
       };
 
@@ -272,6 +286,36 @@ const GastoVariableModal = ({ open, onClose, gasto = null }) => {
                 <option value="cheque">Cheque</option>
                 <option value="credito">Crédito</option>
               </select>
+            </div>
+
+            <div className="form-group" style={{ marginTop: '0.5rem' }}>
+              <label style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '0.75rem', 
+                padding: '1rem', 
+                background: watch('afecta_caja') ? '#fff7ed' : '#f0f9ff',
+                border: `2px solid ${watch('afecta_caja') ? '#fb923c' : '#02A5E0'}`,
+                borderRadius: '10px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}>
+                <input
+                  type="checkbox"
+                  {...register('afecta_caja')}
+                  style={{ width: '1.25rem', height: '1.25rem', cursor: 'pointer' }}
+                />
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 800, color: watch('afecta_caja') ? '#9a3412' : '#1e40af' }}>
+                    {watch('afecta_caja') ? '✅ SE DESCONTARÁ DE LA CAJA' : '⬜ NO DESCONTAR DE CAJA (Marcar para incluir)'}
+                  </span>
+                  <span style={{ fontSize: '0.75rem', color: watch('afecta_caja') ? '#c2410c' : '#2E2E2E', fontWeight: 500 }}>
+                    {watch('afecta_caja') 
+                      ? 'El dinero se restará del saldo en el cierre de caja de hoy.' 
+                      : 'Para que este gasto reste dinero de tu caja hoy, debes marcar esta casilla.'}
+                  </span>
+                </div>
+              </label>
             </div>
           </div>
 

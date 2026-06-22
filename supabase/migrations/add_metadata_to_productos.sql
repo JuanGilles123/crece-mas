@@ -8,7 +8,7 @@ DROP CONSTRAINT IF EXISTS productos_tipo_check;
 
 ALTER TABLE productos 
 ADD CONSTRAINT productos_tipo_check 
-CHECK (tipo IN ('fisico', 'servicio', 'comida', 'accesorio'));
+CHECK (tipo IN ('fisico', 'servicio', 'comida', 'accesorio', 'combo'));
 
 -- Comentarios para documentación
 COMMENT ON COLUMN productos.metadata IS 'Campos adicionales del producto almacenados en formato JSON (marca, modelo, color, talla, peso, dimensiones, etc.)';

@@ -1,7 +1,7 @@
 /* Confirmación de Correo - Diseño Elegante */
 .container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #004481 0%, #02A5E0 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -63,7 +63,7 @@
 }
 
 .mailIcon {
-  color: #3b82f6;
+  color: #02A5E0;
   filter: drop-shadow(0 4px 8px rgba(59, 130, 246, 0.3));
 }
 
@@ -96,7 +96,7 @@
   font-weight: 800;
   color: #1f2937;
   margin-bottom: 1rem;
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, #004481 0%, #02A5E0 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -116,8 +116,8 @@
   align-items: center;
   justify-content: center;
   gap: 0.75rem;
-  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-  border: 2px solid #3b82f6;
+  background: linear-gradient(135deg, #FFFFFF 0%, #E6F0FF 100%);
+  border: 2px solid #02A5E0;
   border-radius: 1rem;
   padding: 1rem 1.5rem;
   margin-bottom: 2rem;
@@ -153,7 +153,7 @@
   justify-content: center;
   width: 2rem;
   height: 2rem;
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, #004481 0%, #02A5E0 100%);
   color: white;
   border-radius: 50%;
   font-weight: 700;
@@ -202,7 +202,7 @@
 }
 
 .infoItem svg {
-  color: #3b82f6;
+  color: #02A5E0;
   flex-shrink: 0;
 }
 
@@ -237,7 +237,7 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, #004481 0%, #02A5E0 100%);
   color: white;
   border: none;
   border-radius: 1rem;
@@ -250,7 +250,7 @@
 }
 
 .resendButton:hover {
-  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+  background: linear-gradient(135deg, #02A5E0 0%, #1e40af 100%);
   box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
   transform: translateY(-2px);
 }

@@ -24,7 +24,7 @@ serve(async (req) => {
     const body = await req.json()
     const email = String(body?.email || '').trim()
     const redirectTo = String(body?.redirectTo || '').trim()
-    const appBaseUrl = Deno.env.get('APP_BASE_URL') || 'https://creceplus.app'
+    const appBaseUrl = Deno.env.get('APP_BASE_URL') || 'https://crecemas.co'
     const safeRedirect = redirectTo || `${appBaseUrl}/restablecer-contraseña`
 
     if (!email) {

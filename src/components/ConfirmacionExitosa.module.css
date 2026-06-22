@@ -1,7 +1,7 @@
 /* Confirmación Exitosa - Diseño Moderno */
 .container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #004481 0%, #02A5E0 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -122,7 +122,7 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, #004481 0%, #02A5E0 100%);
   color: white;
   border: none;
   border-radius: 1rem;
@@ -135,7 +135,7 @@
 }
 
 .loginButton:hover {
-  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+  background: linear-gradient(135deg, #02A5E0 0%, #1e40af 100%);
   box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
   transform: translateY(-2px);
 }

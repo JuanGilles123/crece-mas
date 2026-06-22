@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../services/api/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { useCurrencyInput } from '../hooks/useCurrencyInput';
-import { Calculator, TrendingUp, DollarSign, ShoppingCart, AlertCircle, CheckCircle, XCircle, Save, Banknote, CreditCard, Smartphone, Share2, Download, Receipt } from 'lucide-react';
+import { Calculator, TrendingUp, TrendingDown, DollarSign, ShoppingCart, AlertCircle, CheckCircle, XCircle, Save, Banknote, CreditCard, Smartphone, Share2, Download, Receipt, Lock, UserCircle } from 'lucide-react';
 import { getEmployeeSession } from '../utils/employeeSession';
 import { enqueueCierre, getPendingVentas } from '../utils/offlineQueue';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
@@ -13,6 +14,7 @@ import './CierreCaja.css';
 
 const CierreCaja = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { userProfile, user, hasPermission, organization } = useAuth();
   const { isOnline } = useNetworkStatus();
   const { isSyncing } = useOfflineSync();
@@ -20,11 +22,16 @@ const CierreCaja = () => {
   const [ventasHoy, setVentasHoy] = useState([]);
   const [cotizacionesHoy, setCotizacionesHoy] = useState([]); // Cotizaciones informativas (no cuentan en totales)
   const [ventasCreditoHoy, setVentasCreditoHoy] = useState([]); // Ventas a crédito informativas (no cuentan en totales)
-  const [pagosCreditoHoy, setPagosCreditoHoy] = useState([]); // Pagos de créditos recibidos hoy
-  const [, setDesglosePagosCredito] = useState({ efectivo: 0, transferencias: 0, tarjeta: 0 });
+  const [pagosCreditoHoy, setPagosCreditoHoy] = useState([]);
+  const [desglosePagosCredito, setDesglosePagosCredito] = useState({ efectivo: 0, transferencias: 0, tarjeta: 0 });
+  const [desgloseVentas, setDesgloseVentas] = useState({ efectivo: 0, transferencias: 0, tarjeta: 0, mixto: 0 });
   const [totalPagosCredito, setTotalPagosCredito] = useState(0);
   const [totalPagosTotales, setTotalPagosTotales] = useState(0);
   const [totalAbonos, setTotalAbonos] = useState(0);
+  const [totalDevoluciones, setTotalDevoluciones] = useState(0);
+  const [devolucionesDetalle, setDevolucionesDetalle] = useState([]);
+  const [totalEgresos, setTotalEgresos] = useState(0);
+  const [egresosDetalle, setEgresosDetalle] = useState([]);
   const [totalSistema, setTotalSistema] = useState(0);
 
   // Currency inputs optimizados
@@ -39,10 +46,21 @@ const CierreCaja = () => {
   const [cierreGuardado, setCierreGuardado] = useState(false);
   const [yaCerrado, setYaCerrado] = useState(false);
   const [montoInicialApertura, setMontoInicialApertura] = useState(0);
+  const [aperturaActivaObjeto, setAperturaActivaObjeto] = useState(null);
+  const [isSynced, setIsSynced] = useState(false);
   const [realAuthUid, setRealAuthUid] = useState(null);
 
   const puedeCerrarCaja = hasPermission('cierre.create') || ['owner', 'admin'].includes(userProfile?.role);
   const puedeVerEsperado = hasPermission('cierre.view_expected') || ['owner', 'admin'].includes(userProfile?.role);
+
+  // Determinar si el usuario actual es el dueño de la apertura (para permitir el cierre)
+  const employeeSession = getEmployeeSession();
+  const isOwnerOfAperture = aperturaActivaObjeto && (
+    (employeeSession?.employee?.id && aperturaActivaObjeto.employee_id === employeeSession.employee.id) ||
+    (!employeeSession?.employee?.id && aperturaActivaObjeto.user_id === user.id)
+  );
+
+  const canSaveCierre = isOwnerOfAperture || ['owner', 'admin'].includes(userProfile?.role);
 
   // Desglose por método de pago
   const [desgloseSistema, setDesgloseSistema] = useState({
@@ -51,6 +69,26 @@ const CierreCaja = () => {
     tarjeta: 0,
     mixto: 0
   });
+
+  // --- OPTIMIZACIÓN: SCROLL INFINITO PARA VENTAS ---
+  const [visibleCountVentas, setVisibleCountVentas] = useState(50);
+  const loadingObserverRef = useRef(null);
+
+  const handleObserver = useCallback((entries) => {
+    const target = entries[0];
+    if (target.isIntersecting && visibleCountVentas < ventasHoy.length) {
+      setVisibleCountVentas((prev) => Math.min(prev + 50, ventasHoy.length));
+    }
+  }, [visibleCountVentas, ventasHoy.length]);
+
+  useEffect(() => {
+    const option = { root: null, rootMargin: "400px", threshold: 0 };
+    const observer = new IntersectionObserver(handleObserver, option);
+    if (loadingObserverRef.current) observer.observe(loadingObserverRef.current);
+    return () => observer.disconnect();
+  }, [handleObserver]);
+
+  const visibleVentas = useMemo(() => ventasHoy.slice(0, visibleCountVentas), [ventasHoy, visibleCountVentas]);
 
   const getActorIds = useCallback(() => {
     const employeeSession = getEmployeeSession();
@@ -118,23 +156,58 @@ const CierreCaja = () => {
         return;
       }
 
-      // Obtener la apertura activa para obtener el monto inicial
-      const { data: aperturaActiva, error: errorApertura } = await supabase
+      // Obtener la apertura activa de ESTE usuario/empleado
+      const employeeSession = getEmployeeSession();
+      let aperturaActiva = null;
+
+      // 1. Intentar buscar apertura propia
+      let aperturaQuery = supabase
         .from('aperturas_caja')
-        .select('id, monto_inicial, created_at')
+        .select('*')
         .eq('organization_id', userProfile.organization_id)
         .is('cierre_id', null)
-        .eq('estado', 'abierta')
+        .eq('estado', 'abierta');
+
+      if (employeeSession?.employee?.id) {
+        aperturaQuery = aperturaQuery.eq('employee_id', employeeSession.employee.id);
+      } else {
+        aperturaQuery = aperturaQuery.eq('user_id', user.id);
+      }
+
+      const { data: miApertura } = await aperturaQuery
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      if (errorApertura) {
-        console.error('Error obteniendo apertura activa:', errorApertura);
+      aperturaActiva = miApertura;
+
+      // 2. Si no hay propia, buscar si hay una SINCRONIZADA en localStorage
+      if (!aperturaActiva) {
+        const syncedId = localStorage.getItem(`synced_apertura_${userProfile.organization_id}`);
+        if (syncedId) {
+          const { data: syncedApertura, error: syncedError } = await supabase
+            .from('aperturas_caja')
+            .select('*')
+            .eq('id', syncedId)
+            .is('cierre_id', null)
+            .maybeSingle();
+
+          if (!syncedError && syncedApertura) {
+            aperturaActiva = { ...syncedApertura, is_synced: true };
+          }
+        }
+      }
+
+      if (!aperturaActiva) {
         setMontoInicialApertura(0);
+        setAperturaActivaObjeto(null);
+        setIsSynced(false);
       } else {
         setMontoInicialApertura(aperturaActiva?.monto_inicial || 0);
+        setAperturaActivaObjeto(aperturaActiva);
+        setIsSynced(!!aperturaActiva.is_synced);
       }
+
 
       // 1. Obtener el último cierre de caja (sin limitar por día)
       const { data: ultimoCierre, error: errorCierres } = await supabase
@@ -159,16 +232,37 @@ const CierreCaja = () => {
         .neq('metodo_pago', 'COTIZACION')
         .neq('estado', 'cancelada');
 
-      // 2. Si ya hay un cierre, solo mostrar ventas posteriores al último cierre
-      if (hayUltioCierre) {
-        ventasQuery = ventasQuery.gt('created_at', ultimoCierre.created_at);
-      } else if (aperturaActiva?.created_at) {
+      // LÓGICA DE FILTRADO CORREGIDA Y REFORZADA:
+      // El punto de partida es la fecha de apertura de la caja actual.
+      // Si no hay apertura propia (ej: Dueño monitoreando), usamos el último cierre como punto de partida
+      // para solo ver ventas NUEVAS que aún no han sido cerradas.
+      if (aperturaActiva?.created_at) {
         ventasQuery = ventasQuery.gte('created_at', aperturaActiva.created_at);
+      } else if (hayUltioCierre) {
+        ventasQuery = ventasQuery.gt('created_at', ultimoCierre.created_at);
+      } else {
+        // Solo como respaldo total si no hay ni apertura ni cierres previos
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+        ventasQuery = ventasQuery.gte('created_at', hoy.toISOString());
       }
 
-      const { data: rawVentasData, error } = await ventasQuery.order('created_at', { ascending: false });
+      const { data: rawVentasDataAll, error } = await ventasQuery.order('created_at', { ascending: false });
 
       if (error) throw error;
+
+      // FILTRAR: Solo incluir ventas que pertenecen a esta caja activa (particionamiento estricto por employee_id)
+      const rawVentasData = (rawVentasDataAll || []).filter(venta => {
+        if (!aperturaActiva) return true;
+        
+        // Si la caja es de un empleado específico, solo incluir sus ventas
+        if (aperturaActiva.employee_id) {
+          return venta.employee_id === aperturaActiva.employee_id;
+        }
+        
+        // Si la caja es del dueño (independiente), solo incluir ventas sin employee_id (las del dueño o sincronizados a él)
+        return venta.employee_id === null;
+      });
 
       // Cargar vendedores manualmente
       const employeeIds = [...new Set((rawVentasData || []).map(v => v.employee_id).filter(Boolean))];
@@ -207,6 +301,7 @@ const CierreCaja = () => {
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       });
 
+      // Mostramos todas las ventas de la caja vinculada (detalle total)
       setVentasHoy(ventasCombinadas);
       setVentasCreditoHoy(ventasCredito);
       const total = ventasCombinadas.reduce((sum, venta) => sum + (venta.total || 0), 0);
@@ -226,14 +321,29 @@ const CierreCaja = () => {
         pagosCreditoQuery = pagosCreditoQuery.gt('created_at', ultimoCierre.created_at);
       } else if (aperturaActiva?.created_at) {
         pagosCreditoQuery = pagosCreditoQuery.gte('created_at', aperturaActiva.created_at);
+      } else {
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+        pagosCreditoQuery = pagosCreditoQuery.gte('created_at', hoy.toISOString());
       }
 
-      const { data: rawPagosData = [], error: errorPagosCredito } = await pagosCreditoQuery
+      const { data: rawPagosDataAll = [], error: errorPagosCredito } = await pagosCreditoQuery
         .order('created_at', { ascending: false });
 
       if (errorPagosCredito) {
         console.error('Error cargando pagos de créditos:', errorPagosCredito);
       }
+
+      // FILTRAR PAGOS: Solo incluir pagos que pertenecen a esta caja activa (particionamiento estricto por employee_id)
+      const rawPagosData = (rawPagosDataAll || []).filter(pago => {
+        if (!aperturaActiva) return true;
+        
+        if (aperturaActiva.employee_id) {
+          return pago.employee_id === aperturaActiva.employee_id;
+        }
+        
+        return pago.employee_id === null;
+      });
 
       // Cargar vendedores para pagos manualmente
       const pagosEmployeeIds = [...new Set(rawPagosData.map(p => p.employee_id).filter(Boolean))];
@@ -411,19 +521,97 @@ const CierreCaja = () => {
         return acc;
       }, { efectivo: 0, transferencias: 0, tarjeta: 0, mixto: 0 });
 
+      // Cargar Egresos (Gastos Variables) del turno
+      let egresosTurno = 0;
+      try {
+        let egresosQuery = supabase
+          .from('gastos_variables')
+          .select('monto, afecta_caja, employee_id')
+          .eq('organization_id', userProfile.organization_id);
+
+        if (hayUltioCierre) {
+          egresosQuery = egresosQuery.gt('created_at', ultimoCierre.created_at);
+        } else if (aperturaActiva?.created_at) {
+          egresosQuery = egresosQuery.gte('created_at', aperturaActiva.created_at);
+        }
+
+        const { data: dataEgresos } = await egresosQuery;
+        const rawEgresos = dataEgresos || [];
+        // Filtrar solo los egresos que deben descontarse de caja y pertenecen a la caja activa
+        const egresosQueAfectan = rawEgresos.filter(e => {
+          if (e.afecta_caja === false) return false;
+          if (!aperturaActiva) return true;
+          if (aperturaActiva.employee_id) {
+            return e.employee_id === aperturaActiva.employee_id;
+          }
+          return e.employee_id === null;
+        });
+        
+        egresosTurno = egresosQueAfectan.reduce((sum, e) => sum + parseFloat(e.monto || 0), 0);
+        setTotalEgresos(egresosTurno);
+        setEgresosDetalle(egresosQueAfectan);
+      } catch (eError) {
+        console.warn('Error cargando egresos:', eError);
+      }
+
+      // Cargar Devoluciones del turno
+      let devolucionesTurno = 0;
+      try {
+        let devolucionesQuery = supabase
+          .from('devoluciones')
+          .select('*, venta:ventas(numero_venta, items, employee_id)')
+          .eq('organization_id', userProfile.organization_id);
+
+        if (hayUltioCierre) {
+          devolucionesQuery = devolucionesQuery.gt('fecha', ultimoCierre.created_at);
+        } else if (aperturaActiva?.created_at) {
+          devolucionesQuery = devolucionesQuery.gte('fecha', aperturaActiva.created_at);
+        }
+
+        const { data: dataDevoluciones } = await devolucionesQuery;
+        const rawDevoluciones = dataDevoluciones || [];
+        
+        // Filtrar devoluciones que pertenecen a la caja activa
+        const devolucionesFiltradas = rawDevoluciones.filter(d => {
+          if (!aperturaActiva) return true;
+          const ventaEmployeeId = d.venta?.employee_id || null;
+          if (aperturaActiva.employee_id) {
+            return ventaEmployeeId === aperturaActiva.employee_id;
+          }
+          return ventaEmployeeId === null;
+        });
+
+        devolucionesTurno = devolucionesFiltradas.reduce((sum, d) => {
+          if (d.tipo === 'devolucion') {
+            return sum + parseFloat(d.total_devolucion || 0);
+          } else if (d.tipo === 'cambio' && (d.diferencia || 0) < 0) {
+            // Si la diferencia es negativa, devolvimos dinero al cliente
+            return sum + Math.abs(parseFloat(d.diferencia || 0));
+          }
+          return sum;
+        }, 0);
+        setTotalDevoluciones(devolucionesTurno);
+        setDevolucionesDetalle(devolucionesFiltradas);
+      } catch (dError) {
+        console.warn('Error cargando devoluciones:', dError);
+      }
+
       // Sumar los pagos de créditos al desglose (estos SÍ cuentan en el cierre porque son dinero recibido)
-      // Nota: desglosePagosCredito, totalPagosCredito ya fueron calculados arriba
       const desgloseFinal = {
-        efectivo: desglose.efectivo + desglosePagosCredito.efectivo,
+        efectivo: (desglose.efectivo + desglosePagosCredito.efectivo) - (egresosTurno + devolucionesTurno),
         transferencias: desglose.transferencias + desglosePagosCredito.transferencias,
         tarjeta: desglose.tarjeta + desglosePagosCredito.tarjeta,
         mixto: desglose.mixto
       };
 
-      // Actualizar el total del sistema para incluir los pagos de créditos
-      const totalConPagosCredito = total + totalPagosCredito;
-      setTotalSistema(totalConPagosCredito);
+      // Guardar desgloses por separado para discriminación en la UI
+      setDesgloseVentas(desglose);
+      setDesglosePagosCredito(desglosePagosCredito);
       setDesgloseSistema(desgloseFinal);
+
+      // Actualizar el total del sistema para incluir los pagos de créditos y restar egresos/devoluciones
+      const totalConMovimientos = (total + totalPagosCredito) - (egresosTurno + devolucionesTurno);
+      setTotalSistema(totalConMovimientos);
 
       // Cargar cotizaciones por separado (solo informativas, no cuentan en totales)
       try {
@@ -444,8 +632,17 @@ const CierreCaja = () => {
           .order('created_at', { ascending: false });
 
         if (!cotizacionesError && rawCotizaciones) {
+          // Filtrar cotizaciones que pertenecen a la caja activa
+          const cotizacionesFiltradas = rawCotizaciones.filter(c => {
+            if (!aperturaActiva) return true;
+            if (aperturaActiva.employee_id) {
+              return c.employee_id === aperturaActiva.employee_id;
+            }
+            return c.employee_id === null;
+          });
+
           // Cargar vendedores para cotizaciones
-          const cotizEmployeeIds = [...new Set(rawCotizaciones.map(v => v.employee_id).filter(Boolean))];
+          const cotizEmployeeIds = [...new Set(cotizacionesFiltradas.map(v => v.employee_id).filter(Boolean))];
           let cotizVendedoresMap = new Map();
           if (cotizEmployeeIds.length > 0) {
             const { data: cvData } = await supabase
@@ -455,7 +652,7 @@ const CierreCaja = () => {
             cotizVendedoresMap = new Map((cvData || []).map(v => [v.id, v]));
           }
 
-          const cotizacionesFinal = rawCotizaciones.map(v => ({
+          const cotizacionesFinal = cotizacionesFiltradas.map(v => ({
             ...v,
             vendedor: v.employee_id ? (cotizVendedoresMap.get(v.employee_id) || null) : null
           }));
@@ -513,14 +710,18 @@ const CierreCaja = () => {
     });
 
     const resumenSistema = puedeVerEsperado ? `
-📊 RESUMEN REGISTRADO EN SISTEMA:
+📊 RESUMEN ${isSynced ? 'DE MI TURNO' : 'REGISTRADO EN SISTEMA'}:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-💵 Efectivo registrado en sistema: ${formatCOP(desgloseSistema.efectivo)}
-📲 Transferencias registradas en sistema: ${formatCOP(desgloseSistema.transferencias)}
-💳 Tarjeta registrada en sistema: ${formatCOP(desgloseSistema.tarjeta)}${desgloseSistema.mixto > 0 ? `
-💰 Mixto registrado en sistema: ${formatCOP(desgloseSistema.mixto)}` : ''}
+💵 Efectivo en ventas: ${formatCOP(desgloseSistema.efectivo + totalEgresos + totalDevoluciones)}
+📲 Transferencias: ${formatCOP(desgloseSistema.transferencias)}
+💳 Tarjeta: ${formatCOP(desgloseSistema.tarjeta)}${desgloseSistema.mixto > 0 ? `
+💰 Mixto: ${formatCOP(desgloseSistema.mixto)}` : ''}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TOTAL REGISTRADO EN SISTEMA: ${formatCOP(totalSistema)}
+💸 EGRESOS/GASTOS: -${formatCOP(totalEgresos)}
+🔄 DEVOLUCIONES: -${formatCOP(totalDevoluciones)}
+📥 ABONOS A CRÉDITOS: +${formatCOP(totalPagosCredito)}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TOTAL NETO ESPERADO: ${formatCOP(totalSistema)}
 ` : '';
 
     const montoInicialTexto = puedeVerEsperado ? `
@@ -598,6 +799,31 @@ Generado por Crece+ 🚀
     setTimeout(() => setMensaje({ tipo: '', texto: '' }), 3000);
   };
 
+  const finalizarTurnoYDesvincular = () => {
+    const confirmar = window.confirm(
+      '¿Estás seguro de que deseas finalizar tu turno y desvincularte de esta caja? \n\nTu reporte personal de ventas ha sido generado. Podrás compartirlo antes de salir.'
+    );
+
+    if (confirmar) {
+      localStorage.removeItem(`synced_apertura_${userProfile.organization_id}`);
+      
+      // Limpiar cache de React Query para que la Caja sepa que ya no hay apertura activa
+      queryClient.invalidateQueries({ queryKey: ['apertura_caja_activa'] });
+      queryClient.invalidateQueries({ queryKey: ['otras_cajas_abiertas'] });
+
+      setMensaje({ tipo: 'success', texto: 'Turno finalizado con éxito. Redirigiendo...' });
+      setTimeout(() => {
+        // Redirigir según el tipo de sesión para evitar que el sistema los saque
+        const session = getEmployeeSession();
+        if (session) {
+          navigate('/empleado/caja');
+        } else {
+          navigate('/dashboard/caja');
+        }
+      }, 1500);
+    }
+  };
+
   const guardarCierre = async () => {
     if (!user?.id) {
       setMensaje({ tipo: 'error', texto: 'No hay usuario activo para cerrar caja' });
@@ -605,6 +831,18 @@ Generado por Crece+ 🚀
     }
     if (efectivoRealInput.displayValue === '' && transferenciasRealInput.displayValue === '' && tarjetaRealInput.displayValue === '') {
       setMensaje({ tipo: 'error', texto: 'Por favor ingresa al menos un monto' });
+      return;
+    }
+
+    // Validar si la apertura es del usuario actual (solo el que abrió puede cerrar)
+    const employeeSession = getEmployeeSession();
+    const isOwnerOfAperture = aperturaActivaObjeto && (
+      (employeeSession?.employee?.id && aperturaActivaObjeto.employee_id === employeeSession.employee.id) ||
+      (!employeeSession?.employee?.id && aperturaActivaObjeto.user_id === user.id)
+    );
+
+    if (!isOwnerOfAperture && !['owner', 'admin'].includes(userProfile?.role)) {
+      setMensaje({ tipo: 'error', texto: 'Solo el usuario que abrió esta caja puede realizar el cierre.' });
       return;
     }
 
@@ -661,18 +899,12 @@ Generado por Crece+ 🚀
       // Primero, obtener la apertura activa para cerrarla
       const { actorUserId, actorEmployeeId } = getActorIds();
 
-      const { data: aperturaActiva, error: errorApertura } = await supabase
-        .from('aperturas_caja')
-        .select('id, monto_inicial')
-        .eq('organization_id', userProfile.organization_id)
-        .is('cierre_id', null)
-        .eq('estado', 'abierta')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const aperturaActiva = aperturaActivaObjeto;
 
-      if (errorApertura) {
-        console.error('Error obteniendo apertura activa:', errorApertura);
+      if (!aperturaActiva) {
+        setMensaje({ tipo: 'error', texto: 'No se encontró una apertura activa para cerrar.' });
+        setGuardando(false);
+        return;
       }
 
       // Log de depuración para RLS
@@ -733,13 +965,13 @@ Generado por Crece+ 🚀
         }
       }
 
-      setMensaje({ tipo: 'success', texto: 'Cierre de caja guardado. Redirigiendo...' });
+      setMensaje({ tipo: 'success', texto: 'Cierre de caja guardado con éxito.' });
       setCierreGuardado(true); // Activar botones de compartir/descargar
 
-      // Redirigir a caja después de 1 segundo para forzar la nueva apertura
-      setTimeout(() => {
-        navigate('/dashboard/caja');
-      }, 1000);
+      // IMPORTANTE: Notificar a otros perfiles que la caja se cerró
+      // Usamos una marca de tiempo para que el useEffect de Caja.js lo detecte
+      localStorage.setItem(`caja_cerrada_at_${userProfile.organization_id}`, Date.now().toString());
+      localStorage.removeItem(`synced_apertura_${userProfile.organization_id}`);
     } catch (error) {
       console.error('Error guardando cierre:', error);
       setMensaje({ tipo: 'error', texto: 'Error al guardar el cierre de caja' });
@@ -801,6 +1033,120 @@ Generado por Crece+ 🚀
 
   return (
     <div className="cierre-caja">
+      <AnimatePresence>
+        {cierreGuardado && (
+          <motion.div
+            className="success-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0,0,0,0.8)',
+              backdropFilter: 'blur(8px)',
+              zIndex: 9999,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '20px'
+            }}
+          >
+            <motion.div
+              className="success-card"
+              initial={{ scale: 0.8, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              style={{
+                background: 'white',
+                padding: '2.5rem',
+                borderRadius: '24px',
+                textAlign: 'center',
+                maxWidth: '450px',
+                width: '100%',
+                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)'
+              }}
+            >
+              <div style={{
+                width: '80px',
+                height: '80px',
+                background: '#dcfce7',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1.5rem',
+                color: '#22c55e'
+              }}>
+                <CheckCircle size={48} />
+              </div>
+              <h2 style={{ fontSize: '1.8rem', color: '#1e293b', marginBottom: '0.5rem', border: 'none' }}>¡Cierre Exitoso!</h2>
+              <p style={{ color: '#64748b', marginBottom: '2rem' }}>
+                El cierre de caja ha sido guardado correctamente en el sistema.
+              </p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+                <button
+                  className="btn-accion compartir"
+                  onClick={compartirCierre}
+                  style={{
+                    padding: '1rem',
+                    borderRadius: '12px',
+                    background: '#25d366',
+                    color: 'white',
+                    border: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                    fontWeight: '600',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Share2 size={20} /> Compartir
+                </button>
+                <button
+                  className="btn-accion descargar"
+                  onClick={descargarCierre}
+                  style={{
+                    padding: '1rem',
+                    borderRadius: '12px',
+                    background: '#02A5E0',
+                    color: 'white',
+                    border: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                    fontWeight: '600',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Download size={20} /> PDF
+                </button>
+              </div>
+
+              <button
+                onClick={() => window.location.reload()}
+                style={{
+                  width: '100%',
+                  padding: '1rem',
+                  borderRadius: '12px',
+                  background: '#f1f5f9',
+                  color: '#475569',
+                  border: 'none',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Finalizar y Salir
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <motion.div
         className="cierre-header"
         initial={{ opacity: 0, y: -20 }}
@@ -808,7 +1154,21 @@ Generado por Crece+ 🚀
       >
         <Calculator size={32} />
         <h1>Cierre de Caja</h1>
-        <p>{new Date().toLocaleDateString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+          <p>{new Date().toLocaleDateString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+          <p style={{
+            fontSize: '0.85rem',
+            background: 'rgba(255,255,255,0.1)',
+            padding: '4px 12px',
+            borderRadius: '20px',
+            display: 'inline-block',
+            margin: '4px auto 0',
+            fontWeight: '500'
+          }}>
+            <UserCircle size={14} style={{ verticalAlign: 'middle', marginRight: '6px' }} />
+            Usuario: {getEmployeeSession()?.employee?.employee_name || userProfile?.full_name || user?.email || 'Usuario'}
+          </p>
+        </div>
       </motion.div>
       {!isOnline && (
         <div
@@ -828,9 +1188,9 @@ Generado por Crece+ 🚀
       {isOnline && isSyncing && (
         <div
           style={{
-            background: '#eff6ff',
+            background: '#FFFFFF',
             border: '1px solid #93c5fd',
-            color: '#1d4ed8',
+            color: '#004481',
             padding: '0.6rem 0.9rem',
             borderRadius: '10px',
             fontSize: '0.9rem',
@@ -889,7 +1249,7 @@ Generado por Crece+ 🚀
               <div className="resumen-card total">
                 <TrendingUp size={24} />
                 <div>
-                  <p className="resumen-label">Total Registrado en Sistema</p>
+                  <p className="resumen-label">Total en Sistema</p>
                   <h3>{formatCOP(totalSistema)}</h3>
                 </div>
               </div>
@@ -898,26 +1258,95 @@ Generado por Crece+ 🚀
             {/* Desglose por método de pago */}
             <div className="desglose-metodos">
               <h3>Desglose por Método</h3>
-              <div className="metodo-item">
-                <Banknote size={18} />
-                <span>Efectivo registrado en sistema:</span>
-                <strong>{formatCOP(desgloseSistema.efectivo)}</strong>
-              </div>
-              <div className="metodo-item">
-                <Smartphone size={18} />
-                <span>Transferencias registradas en sistema:</span>
-                <strong>{formatCOP(desgloseSistema.transferencias)}</strong>
-              </div>
-              <div className="metodo-item">
-                <CreditCard size={18} />
-                <span>Tarjeta registrada en sistema:</span>
-                <strong>{formatCOP(desgloseSistema.tarjeta)}</strong>
-              </div>
-              {desgloseSistema.mixto > 0 && (
+              <div className="metodo-grupo" style={{ marginBottom: '1.5rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '1rem' }}>
                 <div className="metodo-item">
-                  <DollarSign size={18} />
-                  <span>Mixto registrado en sistema:</span>
-                  <strong>{formatCOP(desgloseSistema.mixto)}</strong>
+                  <Banknote size={18} />
+                  <span>Ventas Directas (Efectivo):</span>
+                  <strong>{formatCOP(desgloseVentas.efectivo + totalEgresos + totalDevoluciones)}</strong>
+                </div>
+
+                {desglosePagosCredito.efectivo > 0 && (
+                  <div className="metodo-item" style={{ color: '#10b981' }}>
+                    <Receipt size={18} />
+                    <span>Abonos Crédito (Efectivo):</span>
+                    <strong>+{formatCOP(desglosePagosCredito.efectivo)}</strong>
+                  </div>
+                )}
+
+                {(totalEgresos > 0 || totalDevoluciones > 0) && (
+                  <div style={{ padding: '0.25rem 0' }}>
+                    {totalEgresos > 0 && (
+                      <div className="metodo-item" style={{ color: '#dc2626', fontSize: '0.85rem' }}>
+                        <TrendingDown size={14} />
+                        <span>Egresos/Gastos:</span>
+                        <strong>-{formatCOP(totalEgresos)}</strong>
+                      </div>
+                    )}
+                    {totalDevoluciones > 0 && (
+                      <div className="metodo-item" style={{ color: '#ef4444', fontWeight: 'bold' }}>
+                        <AlertCircle size={14} />
+                        <span>Devoluciones:</span>
+                        <strong>-{formatCOP(totalDevoluciones)}</strong>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="metodo-item" style={{ background: '#f0f9ff', border: '1px solid #bae6fd', padding: '0.75rem', borderRadius: '8px', marginTop: '0.5rem' }}>
+                  <Banknote size={18} color="#0369a1" />
+                  <span style={{ color: '#0369a1', fontWeight: 'bold' }}>Efectivo Neto Esperado:</span>
+                  <strong style={{ fontSize: '1.1rem', color: '#0c4a6e' }}>{formatCOP(desgloseSistema.efectivo)}</strong>
+                </div>
+              </div>
+
+              {/* GRUPO: TRANSFERENCIAS */}
+              <div className="metodo-grupo" style={{ marginBottom: '1.5rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '1rem' }}>
+                <div className="metodo-item">
+                  <Smartphone size={18} />
+                  <span>Ventas Directas (Transf.):</span>
+                  <strong>{formatCOP(desgloseVentas.transferencias)}</strong>
+                </div>
+                {desglosePagosCredito.transferencias > 0 && (
+                  <div className="metodo-item" style={{ color: '#10b981' }}>
+                    <Receipt size={18} />
+                    <span>Abonos Crédito (Transf.):</span>
+                    <strong>+{formatCOP(desglosePagosCredito.transferencias)}</strong>
+                  </div>
+                )}
+                <div className="metodo-item" style={{ background: '#f8fafc', padding: '0.5rem 0.75rem', borderRadius: '8px' }}>
+                  <span style={{ color: '#64748b', fontWeight: 600 }}>Total Transferencias:</span>
+                  <strong style={{ color: '#334155' }}>{formatCOP(desgloseVentas.transferencias + desglosePagosCredito.transferencias)}</strong>
+                </div>
+              </div>
+
+              {/* GRUPO: TARJETAS */}
+              <div className="metodo-grupo" style={{ marginBottom: '1.5rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '1rem' }}>
+                <div className="metodo-item">
+                  <CreditCard size={18} />
+                  <span>Ventas Directas (Tarjeta):</span>
+                  <strong>{formatCOP(desgloseVentas.tarjeta)}</strong>
+                </div>
+                {desglosePagosCredito.tarjeta > 0 && (
+                  <div className="metodo-item" style={{ color: '#10b981' }}>
+                    <Receipt size={18} />
+                    <span>Abonos Crédito (Tarjeta):</span>
+                    <strong>+{formatCOP(desglosePagosCredito.tarjeta)}</strong>
+                  </div>
+                )}
+                <div className="metodo-item" style={{ background: '#f8fafc', padding: '0.5rem 0.75rem', borderRadius: '8px' }}>
+                  <span style={{ color: '#64748b', fontWeight: 600 }}>Total Tarjetas:</span>
+                  <strong style={{ color: '#334155' }}>{formatCOP(desgloseVentas.tarjeta + desglosePagosCredito.tarjeta)}</strong>
+                </div>
+              </div>
+
+              {/* OTROS (MIXTO) */}
+              {desgloseVentas.mixto > 0 && (
+                <div className="metodo-grupo" style={{ marginBottom: '1rem' }}>
+                  <div className="metodo-item">
+                    <DollarSign size={18} />
+                    <span>Ventas Mixtas:</span>
+                    <strong>{formatCOP(desgloseVentas.mixto)}</strong>
+                  </div>
                 </div>
               )}
             </div>
@@ -931,13 +1360,10 @@ Generado por Crece+ 🚀
                   <small>Todas las ventas de hoy ya fueron cerradas</small>
                 </div>
               ) : (
-                <div className="ventas-scroll">{ventasHoy.map((venta, index) => (
-                  <motion.div
+                <div className="ventas-scroll">{visibleVentas.map((venta, index) => (
+                  <div
                     key={venta.id}
-                    className="venta-item"
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.05 }}
+                    className="venta-item fade-in-fast"
                   >
                     <div className="venta-hora">{formatHora(venta.created_at)}</div>
                     <div className="venta-metodo">
@@ -952,8 +1378,13 @@ Generado por Crece+ 🚀
                       </div>
                     </div>
                     <div className="venta-total">{formatCOP(venta.total)}</div>
-                  </motion.div>
+                  </div>
                 ))}
+                {visibleCountVentas < ventasHoy.length && (
+                  <div ref={loadingObserverRef} style={{ padding: '10px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                    Cargando más ventas...
+                  </div>
+                )}
                 </div>
               )}
             </div>
@@ -970,13 +1401,10 @@ Generado por Crece+ 🚀
                 </p>
                 <div className="ventas-scroll" style={{ maxHeight: '200px' }}>
                   {ventasCreditoHoy.map((venta, index) => (
-                    <motion.div
+                    <div
                       key={venta.id}
-                      className="venta-item"
+                      className="venta-item fade-in-fast"
                       style={{ opacity: 0.7, backgroundColor: '#fef3c7' }}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 0.7, x: 0 }}
-                      transition={{ delay: index * 0.05 }}
                     >
                       <div className="venta-hora">{formatHora(venta.created_at)}</div>
                       <div className="venta-metodo">
@@ -984,7 +1412,7 @@ Generado por Crece+ 🚀
                         <span>Crédito</span>
                       </div>
                       <div className="venta-total" style={{ color: '#d97706' }}>{formatCOP(venta.total)}</div>
-                    </motion.div>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -1042,16 +1470,13 @@ Generado por Crece+ 🚀
                     })();
 
                     return (
-                      <motion.div
+                      <div
                         key={pago.id}
-                        className="venta-item"
+                        className="venta-item fade-in-fast"
                         style={{
                           backgroundColor: esPagoTotal ? '#dcfce7' : '#fef3c7',
                           borderLeft: `3px solid ${esPagoTotal ? '#10b981' : '#d97706'}`
                         }}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.05 }}
                       >
                         <div className="venta-hora">{formatHora(pago.created_at)}</div>
                         <div className="venta-metodo" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.25rem' }}>
@@ -1086,9 +1511,90 @@ Generado por Crece+ 🚀
                         <div className="venta-total" style={{ color: esPagoTotal ? '#10b981' : '#d97706' }}>
                           {formatCOP(parseFloat(pago.monto || 0))}
                         </div>
-                      </motion.div>
+                      </div>
                     );
                   })}
+                </div>
+              </div>
+            )}
+
+            {/* Sección de Devoluciones y Cambios */}
+            {devolucionesDetalle.length > 0 && (
+              <div className="devoluciones-lista" style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #e5e7eb' }}>
+                <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#dc2626', fontSize: '1rem', marginBottom: '0.75rem' }}>
+                  <AlertCircle size={18} />
+                  Devoluciones y Cambios Realizados
+                </h3>
+                <p style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.75rem' }}>
+                  Dinero que salió de caja por devoluciones de productos.
+                </p>
+                <div className="ventas-scroll" style={{ maxHeight: '250px' }}>
+                  {devolucionesDetalle.map((dev, index) => {
+                    const montoSalida = dev.tipo === 'devolucion' ? dev.total_devolucion : (dev.diferencia < 0 ? Math.abs(dev.diferencia) : 0);
+                    if (montoSalida === 0 && dev.tipo !== 'devolucion') return null;
+
+                    return (
+                      <div
+                        key={dev.id}
+                        className="venta-item fade-in-fast"
+                        style={{ borderLeft: '3px solid #dc2626', backgroundColor: '#fef2f2' }}
+                      >
+                        <div className="venta-hora">{formatHora(dev.fecha || dev.created_at)}</div>
+                        <div className="venta-metodo" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <AlertCircle size={16} />
+                            <span style={{ fontWeight: 600 }}>{dev.tipo === 'devolucion' ? 'Devolución' : 'Cambio de productos'}</span>
+                          </div>
+                          <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                            Venta: #{dev.venta?.numero_venta || 'S/N'}
+                          </span>
+                          {dev.motivo && (
+                            <span style={{ fontSize: '0.75rem', fontStyle: 'italic', color: '#6b7280' }}>
+                              "{dev.motivo}"
+                            </span>
+                          )}
+                        </div>
+                        <div className="venta-total" style={{ color: '#dc2626' }}>
+                          -{formatCOP(montoSalida)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Sección de Egresos / Gastos */}
+            {egresosDetalle.length > 0 && (
+              <div className="egresos-detalle-lista" style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #e5e7eb' }}>
+                <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#d97706', fontSize: '1rem', marginBottom: '0.75rem' }}>
+                  <TrendingDown size={18} />
+                  Egresos y Gastos del Turno
+                </h3>
+                <div className="ventas-scroll" style={{ maxHeight: '200px' }}>
+                  {egresosDetalle.map((egreso, index) => (
+                    <div
+                      key={egreso.id}
+                      className="venta-item fade-in-fast"
+                      style={{ borderLeft: '3px solid #d97706', backgroundColor: '#fffbeb' }}
+                    >
+                      <div className="venta-hora">{formatHora(egreso.created_at)}</div>
+                      <div className="venta-metodo" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <TrendingDown size={16} />
+                          <span style={{ fontWeight: 600 }}>{egreso.nombre || 'Gasto'}</span>
+                        </div>
+                        {egreso.categoria && (
+                          <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                            Categoría: {egreso.categoria}
+                          </span>
+                        )}
+                      </div>
+                      <div className="venta-total" style={{ color: '#d97706' }}>
+                        -{formatCOP(egreso.monto)}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -1105,13 +1611,10 @@ Generado por Crece+ 🚀
                 </p>
                 <div className="ventas-scroll" style={{ maxHeight: '200px' }}>
                   {cotizacionesHoy.map((cotizacion, index) => (
-                    <motion.div
+                    <div
                       key={cotizacion.id}
-                      className="venta-item"
+                      className="venta-item fade-in-fast"
                       style={{ opacity: 0.7, backgroundColor: '#f9fafb' }}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 0.7, x: 0 }}
-                      transition={{ delay: index * 0.05 }}
                     >
                       <div className="venta-hora">{formatHora(cotizacion.created_at)}</div>
                       <div className="venta-metodo">
@@ -1126,7 +1629,7 @@ Generado por Crece+ 🚀
                         </div>
                       </div>
                       <div className="venta-total" style={{ color: '#6b7280' }}>{formatCOP(cotizacion.total)}</div>
-                    </motion.div>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -1157,6 +1660,29 @@ Generado por Crece+ 🚀
         >
           <h2><Calculator size={20} /> Cierre Real</h2>
 
+          {!canSaveCierre && (
+            <div style={{
+              background: '#fff7ed',
+              border: '2px solid #fdba74',
+              color: '#9a3412',
+              padding: '1rem',
+              borderRadius: '12px',
+              fontSize: '0.95rem',
+              marginBottom: '1.5rem',
+              display: 'flex',
+              gap: '0.75rem',
+              alignItems: 'center',
+              fontWeight: '500',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+            }}>
+              <AlertCircle size={24} style={{ flexShrink: 0 }} />
+              <span>
+                <strong>Sesión Sincronizada:</strong> Estás trabajando en una caja compartida.
+                Solo el usuario que inició la sesión original puede realizar el cierre contable final.
+              </span>
+            </div>
+          )}
+
           <div className="calculo-container">
             {puedeVerEsperado && montoInicialApertura > 0 && (
               <div className="monto-inicial-info" style={{
@@ -1180,62 +1706,79 @@ Generado por Crece+ 🚀
               </div>
             )}
 
-            <div className="input-group">
-              <label>
-                <Banknote size={20} />
-                Efectivo Real en Caja
-              </label>
-              <input
-                type="text"
-                value={efectivoRealInput.displayValue}
-                onChange={efectivoRealInput.handleChange}
-                placeholder="0"
-                inputMode="numeric"
-                className="input-total-contado"
-              />
-              <span className="input-hint">Cuenta el efectivo físico en caja</span>
-              {puedeVerEsperado && (
-                <span className="sistema-vs-contado">Efectivo registrado en sistema: {formatCOP(desgloseSistema.efectivo)}</span>
-              )}
-            </div>
+            {canSaveCierre ? (
+              <>
+                <div className="input-group">
+                  <label>
+                    <Banknote size={20} />
+                    Efectivo Real en Caja
+                  </label>
+                  <input
+                    type="text"
+                    value={efectivoRealInput.displayValue}
+                    onChange={efectivoRealInput.handleChange}
+                    placeholder="0"
+                    inputMode="numeric"
+                    className="input-total-contado"
+                  />
+                  <span className="input-hint">Cuenta el efectivo físico en caja</span>
+                  {puedeVerEsperado && (
+                    <span className="sistema-vs-contado">Efectivo registrado en sistema: {formatCOP(desgloseSistema.efectivo)}</span>
+                  )}
+                </div>
 
-            <div className="input-group">
-              <label>
-                <Smartphone size={20} />
-                Transferencias Reales Recibidas
-              </label>
-              <input
-                type="text"
-                value={transferenciasRealInput.displayValue}
-                onChange={transferenciasRealInput.handleChange}
-                placeholder="0"
-                inputMode="numeric"
-                className="input-total-contado"
-              />
-              <span className="input-hint">Verifica las transferencias recibidas</span>
-              {puedeVerEsperado && (
-                <span className="sistema-vs-contado">Transferencias registradas en sistema: {formatCOP(desgloseSistema.transferencias)}</span>
-              )}
-            </div>
+                <div className="input-group">
+                  <label>
+                    <Smartphone size={20} />
+                    Transferencias Reales Recibidas
+                  </label>
+                  <input
+                    type="text"
+                    value={transferenciasRealInput.displayValue}
+                    onChange={transferenciasRealInput.handleChange}
+                    placeholder="0"
+                    inputMode="numeric"
+                    className="input-total-contado"
+                  />
+                  <span className="input-hint">Verifica las transferencias recibidas</span>
+                  {puedeVerEsperado && (
+                    <span className="sistema-vs-contado">Transferencias registradas en sistema: {formatCOP(desgloseSistema.transferencias)}</span>
+                  )}
+                </div>
 
-            <div className="input-group">
-              <label>
-                <CreditCard size={20} />
-                Pago con Tarjetas Real Recibido
-              </label>
-              <input
-                type="text"
-                value={tarjetaRealInput.displayValue}
-                onChange={tarjetaRealInput.handleChange}
-                placeholder="0"
-                inputMode="numeric"
-                className="input-total-contado"
-              />
-              <span className="input-hint">Verifica los pagos con tarjeta</span>
-              {puedeVerEsperado && (
-                <span className="sistema-vs-contado">Tarjeta registrada en sistema: {formatCOP(desgloseSistema.tarjeta)}</span>
-              )}
-            </div>
+                <div className="input-group">
+                  <label>
+                    <CreditCard size={20} />
+                    Pago con Tarjetas Real Recibido
+                  </label>
+                  <input
+                    type="text"
+                    value={tarjetaRealInput.displayValue}
+                    onChange={tarjetaRealInput.handleChange}
+                    placeholder="0"
+                    inputMode="numeric"
+                    className="input-total-contado"
+                  />
+                  <span className="input-hint">Verifica los pagos con tarjeta</span>
+                  {puedeVerEsperado && (
+                    <span className="sistema-vs-contado">Tarjeta registrada en sistema: {formatCOP(desgloseSistema.tarjeta)}</span>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div style={{
+                textAlign: 'center',
+                padding: '2rem 1rem',
+                background: 'var(--bg-secondary)',
+                borderRadius: '12px',
+                border: '1px dashed var(--border-primary)',
+                marginBottom: '1.5rem',
+                color: 'var(--text-secondary)'
+              }}>
+                <Lock size={32} style={{ marginBottom: '0.75rem', opacity: 0.5 }} />
+                <p>Los campos de ingreso de dinero están deshabilitados para esta sesión sincronizada.</p>
+              </div>
+            )}
 
             {(efectivoRealInput.displayValue !== '' || transferenciasRealInput.displayValue !== '' || tarjetaRealInput.displayValue !== '') && (
               <div className="total-contado-calculado">
@@ -1316,42 +1859,30 @@ Generado por Crece+ 🚀
               )}
             </div>
 
-            <button
-              className="btn-guardar-cierre"
-              onClick={guardarCierre}
-              disabled={guardando || (efectivoRealInput.displayValue === '' && transferenciasRealInput.displayValue === '' && tarjetaRealInput.displayValue === '')}
-            >
-              <Save size={20} />
-              {guardando ? 'Guardando...' : 'Guardar Cierre de Caja'}
-            </button>
-
-            {cierreGuardado && (
-              <motion.div
-                className="botones-acciones"
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.3 }}
+            {canSaveCierre ? (
+              <button
+                className="btn-guardar-cierre"
+                onClick={guardarCierre}
+                disabled={guardando || (efectivoRealInput.displayValue === '' && transferenciasRealInput.displayValue === '' && tarjetaRealInput.displayValue === '')}
               >
-                <button
-                  className="btn-accion compartir"
-                  onClick={compartirCierre}
-                  title="Compartir cierre"
-                >
-                  <Share2 size={18} />
-                  Compartir
-                </button>
-
-                <button
-                  className="btn-accion descargar"
-                  onClick={descargarCierre}
-                  title="Descargar cierre"
-                >
-                  <Download size={18} />
-                  Descargar
-                </button>
-              </motion.div>
+                <Save size={20} />
+                {guardando ? 'Guardando...' : 'Guardar Cierre de Caja'}
+              </button>
+            ) : isSynced && (
+              <button
+                className="btn-guardar-cierre"
+                onClick={finalizarTurnoYDesvincular}
+                style={{ 
+                  background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+                  boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)' 
+                }}
+              >
+                <Share2 size={20} />
+                Finalizar Turno y Desvincularme
+              </button>
             )}
+
+
 
             <div className="cierre-nota">
               <AlertCircle size={16} />

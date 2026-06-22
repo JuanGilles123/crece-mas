@@ -4,9 +4,7 @@ import { supabase } from '../../services/api/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import { useSubscription } from '../../hooks/useSubscription';
 import UpgradePrompt from '../UpgradePrompt';
-import { Save, Building2, MapPin, Phone, Hash, Mail, AlertCircle, FileText, CreditCard, ShieldAlert, Store, Check, Settings, Plus, ArrowLeft } from 'lucide-react';
-import { BUSINESS_TYPES } from '../../constants/businessTypes';
-import { BUSINESS_FEATURES, getCompatibleFeatures, getDefaultFeatures, checkFeatureDependencies } from '../../constants/businessFeatures';
+import { Save, Building2, MapPin, Phone, Hash, Mail, AlertCircle, FileText, CreditCard, ShieldAlert, Settings, ArrowLeft } from 'lucide-react';
 import { hasBypassAccess } from '../../constants/vipUsers';
 import toast from 'react-hot-toast';
 import './ConfiguracionFacturacion.css';
@@ -14,13 +12,13 @@ import './ConfiguracionFacturacion.css';
 export default function ConfiguracionFacturacion() {
   const navigate = useNavigate();
   const { organization, hasRoleOwner, user, hasPermission } = useAuth();
-  
+
   // Verificar si el usuario puede editar facturación
   // Puede ser owner, tener permiso específico, o ser desarrollador VIP
-  const canEditBilling = hasRoleOwner || 
-                         hasPermission('config.edit_billing') || 
-                         (user && hasBypassAccess(user, organization));
-  const { hasFeature, planSlug, loading: subscriptionLoading } = useSubscription();
+  const canEditBilling = hasRoleOwner ||
+    hasPermission('config.edit_billing') ||
+    (user && hasBypassAccess(user, organization));
+  const { planSlug, loading: subscriptionLoading, hasFeature } = useSubscription();
   const [datosEmpresa, setDatosEmpresa] = useState({
     razon_social: '',
     nit: '',
@@ -30,15 +28,10 @@ export default function ConfiguracionFacturacion() {
     ciudad: '',
     regimen_tributario: 'simplificado',
     responsable_iva: false,
-    mensaje_factura: 'Gracias por su compra',
-    business_type: 'other',
-    mesas_habilitadas: false,
-    pedidos_habilitados: false,
-    enabled_features: [] // Array de funciones habilitadas
+    mensaje_factura: 'Gracias por su compra'
   });
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
-  const [guardandoTipo, setGuardandoTipo] = useState(false);
 
   // Verificar si tiene acceso a configuración de facturas
   const tieneAccesoConfiguracion = hasFeature('invoiceCustomization');
@@ -57,30 +50,8 @@ export default function ConfiguracionFacturacion() {
         ciudad: organization.ciudad || '',
         regimen_tributario: organization.regimen_tributario || 'simplificado',
         responsable_iva: organization.responsable_iva || false,
-        mensaje_factura: organization.mensaje_factura || 'Gracias por su compra',
-        business_type: organization.business_type || 'other',
-        mesas_habilitadas: organization.mesas_habilitadas || false,
-        pedidos_habilitados: organization.pedidos_habilitados || false,
-        enabled_features: organization.enabled_features || []
+        mensaje_factura: organization.mensaje_factura || 'Gracias por su compra'
       });
-      
-      // Si no hay funciones habilitadas pero hay mesas/pedidos, migrar a nuevo sistema
-      if ((organization.mesas_habilitadas || organization.pedidos_habilitados) && !organization.enabled_features) {
-        const features = [];
-        if (organization.mesas_habilitadas) features.push('mesas');
-        if (organization.pedidos_habilitadas) features.push('pedidos');
-        setDatosEmpresa(prev => ({ ...prev, enabled_features: features }));
-      }
-      
-      // Si cambia el tipo de negocio, sugerir funciones por defecto
-      if (organization.business_type) {
-        const defaultFeatures = getDefaultFeatures(organization.business_type);
-        const currentFeatures = organization.enabled_features || [];
-        // Agregar funciones por defecto si no están ya habilitadas y no hay funciones configuradas
-        if (currentFeatures.length === 0 && defaultFeatures.length > 0) {
-          setDatosEmpresa(prev => ({ ...prev, enabled_features: defaultFeatures }));
-        }
-      }
     } catch (error) {
       console.error('Error:', error);
       toast.error('Error al cargar los datos');
@@ -95,87 +66,12 @@ export default function ConfiguracionFacturacion() {
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    
-    // Si cambia el tipo de negocio, actualizar funciones compatibles
-    if (name === 'business_type') {
-      const defaultFeatures = getDefaultFeatures(value);
-      setDatosEmpresa(prev => ({
-        ...prev,
-        [name]: value,
-        enabled_features: prev.enabled_features.length === 0 ? defaultFeatures : prev.enabled_features
-      }));
-      return;
-    }
-    
+
     setDatosEmpresa(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
   };
-  
-  // Manejar toggle de funciones
-  const handleFeatureToggle = (featureId) => {
-    if (!hasRoleOwner) return;
-    
-    const feature = BUSINESS_FEATURES[featureId];
-    if (!feature) return;
-    
-    // Verificar compatibilidad con tipo de negocio
-    if (!feature.compatibleWith.includes(datosEmpresa.business_type)) {
-      toast.error(`Esta función no es compatible con el tipo de negocio seleccionado`);
-      return;
-    }
-    
-    // Verificar si requiere premium
-    if (feature.requiresPremium) {
-      // Para mesas y pedidos, verificar features específicas
-      if (featureId === 'mesas' && !hasFeature('mesas')) {
-        toast.error(`Esta función requiere el plan Estándar o superior`);
-        return;
-      }
-      if (featureId === 'pedidos' && !hasFeature('pedidos')) {
-        toast.error(`Esta función requiere el plan Estándar o superior`);
-        return;
-      }
-      // Para otras funciones premium, verificar según el plan (si aplica)
-      // Por ahora, solo mesas y pedidos requieren premium explícito
-    }
-    
-    const currentFeatures = datosEmpresa.enabled_features || [];
-    const isEnabled = currentFeatures.includes(featureId);
-    
-    if (isEnabled) {
-      // Desactivar función
-      let newFeatures = currentFeatures.filter(id => id !== featureId);
-      
-      // Si se desactiva una función requerida, desactivar dependientes
-      Object.values(BUSINESS_FEATURES).forEach(f => {
-        if (f.requires && f.requires.includes(featureId) && newFeatures.includes(f.id)) {
-          newFeatures = newFeatures.filter(id => id !== f.id);
-        }
-      });
-      
-      setDatosEmpresa(prev => ({
-        ...prev,
-        enabled_features: newFeatures
-      }));
-    } else {
-      // Activar función - verificar dependencias
-      const dependencyCheck = checkFeatureDependencies(featureId, currentFeatures);
-      if (!dependencyCheck.valid) {
-        toast.error(dependencyCheck.message);
-        return;
-      }
-      
-      setDatosEmpresa(prev => ({
-        ...prev,
-        enabled_features: [...currentFeatures, featureId]
-      }));
-    }
-  };
-  
-  // Obtener funciones compatibles con el tipo de negocio actual
-  const compatibleFeatures = getCompatibleFeatures(datosEmpresa.business_type);
 
   const guardarDatos = async () => {
     if (!organization || !canEditBilling) {
@@ -190,20 +86,19 @@ export default function ConfiguracionFacturacion() {
 
     setGuardando(true);
     try {
-      // Sincronizar enabled_features con mesas_habilitadas y pedidos_habilitados para compatibilidad
-      const updateData = { ...datosEmpresa };
-      const enabledFeatures = updateData.enabled_features || [];
-      
-      // Mantener compatibilidad con sistema antiguo
-      updateData.mesas_habilitadas = enabledFeatures.includes('mesas');
-      updateData.pedidos_habilitados = enabledFeatures.includes('pedidos');
-
-      // Normalizar campos numéricos para joyería y metales
-      // Paramétricos de Joyería se guardan en Preferencias de la Aplicación
-      
       const { error } = await supabase
         .from('organizations')
-        .update(updateData)
+        .update({
+          razon_social: datosEmpresa.razon_social,
+          nit: datosEmpresa.nit,
+          direccion: datosEmpresa.direccion,
+          telefono: datosEmpresa.telefono,
+          email: datosEmpresa.email,
+          ciudad: datosEmpresa.ciudad,
+          regimen_tributario: datosEmpresa.regimen_tributario,
+          responsable_iva: datosEmpresa.responsable_iva,
+          mensaje_factura: datosEmpresa.mensaje_factura
+        })
         .eq('id', organization.id);
 
       if (error) throw error;
@@ -213,47 +108,6 @@ export default function ConfiguracionFacturacion() {
       toast.error('Error al guardar');
     } finally {
       setGuardando(false);
-    }
-  };
-
-  const guardarTipoNegocio = async () => {
-    if (!organization || !canEditBilling) {
-      toast.error('No tienes permisos para actualizar el tipo de negocio');
-      return;
-    }
-    if (!datosEmpresa.business_type) {
-      toast.error('Selecciona un tipo de negocio');
-      return;
-    }
-
-    setGuardandoTipo(true);
-    try {
-      const defaultFeatures = getDefaultFeatures(datosEmpresa.business_type);
-      const enabledFeatures = (datosEmpresa.enabled_features && datosEmpresa.enabled_features.length > 0)
-        ? datosEmpresa.enabled_features
-        : defaultFeatures;
-
-      const { error } = await supabase
-        .from('organizations')
-        .update({
-          business_type: datosEmpresa.business_type,
-          enabled_features: enabledFeatures,
-          mesas_habilitadas: enabledFeatures.includes('mesas'),
-          pedidos_habilitados: enabledFeatures.includes('pedidos')
-        })
-        .eq('id', organization.id);
-
-      if (error) {
-        throw error;
-      }
-
-      toast.success('Tipo de negocio actualizado');
-      window.location.reload();
-    } catch (error) {
-      console.error('Error guardando tipo de negocio:', error);
-      toast.error('No se pudo guardar el tipo de negocio');
-    } finally {
-      setGuardandoTipo(false);
     }
   };
 
@@ -279,7 +133,7 @@ export default function ConfiguracionFacturacion() {
     );
   }
 
-  // Si no tiene acceso, permitir configurar tipo de negocio en plan gratis
+  // Si no tiene acceso, mostrar explicación y prompt de mejora
   if (!subscriptionLoading && !tieneAccesoConfiguracion) {
     return (
       <div className="config-facturacion">
@@ -287,68 +141,47 @@ export default function ConfiguracionFacturacion() {
           <button
             type="button"
             className="config-back-btn"
-            onClick={() => navigate('/dashboard/perfil', { state: { activeTab: 'configuracion' } })}
+            onClick={() => navigate('/dashboard/perfil')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              color: '#007AFF',
+              fontWeight: '600'
+            }}
           >
             <ArrowLeft size={18} />
             Volver
           </button>
           <div className="header-content">
             <div className="header-icon">
-              <Store size={40} />
+              <Building2 size={40} />
             </div>
             <div className="header-text">
-              <h1>Tipo de negocio</h1>
+              <h1>Configuración de Facturación</h1>
               <p className="subtitle">{organization?.name || 'Tu negocio'}</p>
             </div>
           </div>
-          {canEditBilling && (
-            <button
-              className="btn-guardar-principal"
-              onClick={guardarTipoNegocio}
-              disabled={guardandoTipo}
-            >
-              <Save size={20} />
-              {guardandoTipo ? 'Guardando...' : 'Guardar'}
-            </button>
-          )}
         </div>
 
-        {!canEditBilling && (
-          <div className="alert-warning">
-            <div className="alert-icon">
-              <ShieldAlert size={24} />
-            </div>
-            <div className="alert-content">
-              <h3>Permisos Restringidos</h3>
-              <p>Solo el propietario del negocio o usuarios con permisos específicos pueden modificar esta configuración.</p>
-            </div>
-          </div>
-        )}
-
-        <div className="business-type-selector">
-          <label className="section-label">Selecciona el tipo de negocio</label>
-          <div className="business-type-grid">
-            {Object.values(BUSINESS_TYPES).map((type) => (
-              <button
-                type="button"
-                key={type.id}
-                className={`business-type-option ${datosEmpresa.business_type === type.id ? 'selected' : ''}`}
-                onClick={() => canEditBilling && handleInputChange({ target: { name: 'business_type', value: type.id } })}
-              >
-                <span className="business-type-icon">{type.icon}</span>
-                <div className="business-type-info">
-                  <strong>{type.label}</strong>
-                  <span>{type.description}</span>
-                </div>
-                {datosEmpresa.business_type === type.id && (
-                  <Check size={18} className="selected-check" />
-                )}
-              </button>
-            ))}
-          </div>
-          <p className="form-hint">
-            El tipo de negocio define funcionalidades sugeridas (mesas, pedidos, toppings). Puedes cambiarlo luego.
+        <div className="config-card" style={{ marginBottom: '2rem', padding: '2rem' }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Settings size={20} style={{ color: '#007AFF' }} /> Configuración del Tipo de Negocio
+          </h2>
+          <p style={{ color: '#718096', marginBottom: '1.5rem', lineHeight: '1.5' }}>
+            La configuración de tu tipo de negocio (como alimentación, servicios o retail) y sus funciones personalizables ahora se encuentra en la sección de <strong>Preferencias de la Aplicación</strong>.
           </p>
+          <button
+            type="button"
+            className="btn-guardar-principal"
+            onClick={() => navigate('/dashboard/perfil')}
+            style={{ width: 'fit-content' }}
+          >
+            Ir a Preferencias
+          </button>
         </div>
 
         <UpgradePrompt
@@ -520,134 +353,6 @@ export default function ConfiguracionFacturacion() {
                 className={!canEditBilling ? 'disabled' : ''}
               />
             </div>
-
-            <div className="form-group">
-              <label htmlFor="business_type">
-                <Store size={16} /> Tipo de Negocio
-              </label>
-              <div className="business-type-selector">
-                {Object.values(BUSINESS_TYPES).map((type) => {
-                  const IconComponent = type.Icon;
-                  return (
-                    <button
-                      key={type.id}
-                      type="button"
-                      className={`business-type-option ${datosEmpresa.business_type === type.id ? 'selected' : ''}`}
-                      onClick={() => canEditBilling && handleInputChange({ target: { name: 'business_type', value: type.id } })}
-                      disabled={!canEditBilling}
-                    >
-                      <span className="business-type-icon">
-                        <IconComponent size={24} />
-                      </span>
-                      <div className="business-type-info">
-                        <span className="business-type-label">{type.label}</span>
-                        <span className="business-type-desc">{type.description}</span>
-                        {type.features.length > 0 && (
-                          <span className="business-type-features">
-                            {type.features.join(' • ')}
-                          </span>
-                        )}
-                      </div>
-                      {datosEmpresa.business_type === type.id && (
-                        <div className="business-type-check">
-                          <Check size={20} />
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-              <input
-                type="hidden"
-                name="business_type"
-                value={datosEmpresa.business_type}
-              />
-              <small className="field-hint">
-                <strong>Nota:</strong> El tipo de negocio define las funcionalidades principales disponibles (ej: toppings para comida, mesas y pedidos). 
-                Sin embargo, puedes crear productos de cualquier tipo independientemente del tipo de negocio seleccionado.
-              </small>
-            </div>
-
-            {/* Funciones Personalizables */}
-            {compatibleFeatures.length > 0 && (
-              <div className="form-group">
-                <label>
-                  <Settings size={16} /> Funciones Personalizables
-                </label>
-                <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-                  Activa o desactiva funciones adicionales según las necesidades de tu negocio
-                </p>
-                <div className="business-features-grid">
-                  {compatibleFeatures.map((feature) => {
-                    const IconComponent = feature.Icon;
-                    const isEnabled = (datosEmpresa.enabled_features || []).includes(feature.id);
-                    // Verificar acceso premium
-                    let hasPremiumAccess = true;
-                    if (feature.requiresPremium) {
-                      if (feature.id === 'mesas') {
-                        hasPremiumAccess = hasFeature('mesas');
-                      } else if (feature.id === 'pedidos') {
-                        hasPremiumAccess = hasFeature('pedidos');
-                      } else {
-                        hasPremiumAccess = true; // Otras funciones no requieren premium por ahora
-                      }
-                    }
-                    const dependencyCheck = checkFeatureDependencies(feature.id, datosEmpresa.enabled_features || []);
-                    const canToggle = hasRoleOwner && hasPremiumAccess && dependencyCheck.valid;
-                    
-                    return (
-                      <div
-                        key={feature.id}
-                        className={`business-feature-card ${isEnabled ? 'enabled' : ''} ${!canToggle ? 'disabled' : ''}`}
-                        onClick={() => canToggle && handleFeatureToggle(feature.id)}
-                        style={{ cursor: canToggle ? 'pointer' : 'not-allowed' }}
-                      >
-                        <div className="business-feature-header">
-                          <div className="business-feature-icon">
-                            <IconComponent size={20} />
-                          </div>
-                          {feature.id === 'mesas' && isEnabled ? (
-                            <button
-                              className="business-feature-add-btn"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate('/dashboard/mesas');
-                              }}
-                              title="Ir a Gestión de Mesas"
-                            >
-                              <Plus size={18} />
-                            </button>
-                          ) : (
-                            <div className="business-feature-checkbox">
-                              <input
-                                type="checkbox"
-                                checked={isEnabled}
-                                onChange={() => {}}
-                                disabled={!canToggle}
-                                onClick={(e) => e.stopPropagation()}
-                              />
-                            </div>
-                          )}
-                        </div>
-                        <div className="business-feature-content">
-                          <h4>{feature.label}</h4>
-                          <p>{feature.description}</p>
-                          {feature.requiresPremium && !hasFeature(feature.id) && (
-                            <span className="feature-premium-badge">Requiere Estándar+</span>
-                          )}
-                          {!dependencyCheck.valid && (
-                            <span className="feature-dependency-warning">{dependencyCheck.message}</span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <small className="field-hint">
-                  Las funciones marcadas con "Requiere Estándar+" necesitan una suscripción Estándar o superior
-                </small>
-              </div>
-            )}
 
 
             <div className="form-group">

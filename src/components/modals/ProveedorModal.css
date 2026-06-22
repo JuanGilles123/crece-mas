@@ -75,18 +75,18 @@
 }
 
 .proveedor-modal {
-  max-width: 700px;
-  max-height: 90vh;
+  max-width: 500px !important;
+  max-height: 85vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  width: 100%;
+  width: 95%;
   margin: auto;
 }
 
 @media (min-width: 769px) {
   .proveedor-modal {
-    max-width: 600px;
+    max-width: 500px !important;
   }
 }
 
@@ -142,7 +142,7 @@
 .proveedor-modal .form-group textarea:focus,
 .proveedor-modal .form-group select:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: #02A5E0;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
@@ -204,12 +204,12 @@
 }
 
 .proveedor-modal .btn-primary {
-  background: #3b82f6;
+  background: #02A5E0;
   color: white;
 }
 
 .proveedor-modal .btn-primary:hover:not(:disabled) {
-  background: #2563eb;
+  background: #02A5E0;
 }
 
 .proveedor-modal .btn-primary:disabled {
@@ -233,10 +233,7 @@
   }
 
   .proveedor-modal {
-    max-width: calc(100vw - 1rem) !important;
-    max-width: 636px !important; /* 652px - 16px padding */
     max-height: calc(100vh - 1rem) !important;
-    max-height: 962px !important; /* 974px - 12px padding */
   }
 
   .modal-header {

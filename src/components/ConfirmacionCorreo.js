@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, CheckCircle, ArrowLeft, Clock, RefreshCw, Home } from 'lucide-react';
@@ -8,18 +8,8 @@ import styles from './ConfirmacionCorreo.module.css';
 
 const ConfirmacionCorreo = ({ email = 'usuario@ejemplo.com' }) => {
   const [isResending, setIsResending] = useState(false);
-  const [countdown, setCountdown] = useState(10);
   const navigate = useNavigate();
 
-  // Countdown para redirigir al home
-  useEffect(() => {
-    if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(timer);
-    } else {
-      navigate('/');
-    }
-  }, [countdown, navigate]);
 
   const handleResendEmail = async () => {
     setIsResending(true);
@@ -53,14 +43,14 @@ const ConfirmacionCorreo = ({ email = 'usuario@ejemplo.com' }) => {
   return (
     <div className={styles.container}>
       <div className={styles.content}>
-        <motion.div 
+        <motion.div
           className={styles.card}
           initial={{ opacity: 0, y: 50, scale: 0.9 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
         >
           {/* Icono principal */}
-          <motion.div 
+          <motion.div
             className={styles.iconContainer}
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
@@ -73,7 +63,7 @@ const ConfirmacionCorreo = ({ email = 'usuario@ejemplo.com' }) => {
           </motion.div>
 
           {/* Título */}
-          <motion.h1 
+          <motion.h1
             className={styles.title}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -83,7 +73,7 @@ const ConfirmacionCorreo = ({ email = 'usuario@ejemplo.com' }) => {
           </motion.h1>
 
           {/* Subtítulo */}
-          <motion.p 
+          <motion.p
             className={styles.subtitle}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -93,7 +83,7 @@ const ConfirmacionCorreo = ({ email = 'usuario@ejemplo.com' }) => {
           </motion.p>
 
           {/* Email destacado */}
-          <motion.div 
+          <motion.div
             className={styles.emailContainer}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -104,7 +94,7 @@ const ConfirmacionCorreo = ({ email = 'usuario@ejemplo.com' }) => {
           </motion.div>
 
           {/* Instrucciones */}
-          <motion.div 
+          <motion.div
             className={styles.instructions}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -117,7 +107,7 @@ const ConfirmacionCorreo = ({ email = 'usuario@ejemplo.com' }) => {
                 <span>Busca un correo de Crece+</span>
               </div>
             </div>
-            
+
             <div className={styles.step}>
               <div className={styles.stepNumber}>2</div>
               <div className={styles.stepText}>
@@ -125,7 +115,7 @@ const ConfirmacionCorreo = ({ email = 'usuario@ejemplo.com' }) => {
                 <span>Confirma tu cuenta para activarla</span>
               </div>
             </div>
-            
+
             <div className={styles.step}>
               <div className={styles.stepNumber}>3</div>
               <div className={styles.stepText}>
@@ -136,7 +126,7 @@ const ConfirmacionCorreo = ({ email = 'usuario@ejemplo.com' }) => {
           </motion.div>
 
           {/* Información adicional */}
-          <motion.div 
+          <motion.div
             className={styles.info}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -150,14 +140,11 @@ const ConfirmacionCorreo = ({ email = 'usuario@ejemplo.com' }) => {
               <RefreshCw size={16} />
               <span>¿No recibiste el correo? Revisa tu carpeta de spam</span>
             </div>
-            <div className={styles.countdownInfo}>
-              <Home size={16} />
-              <span>Te redirigiremos al inicio en {countdown} segundos</span>
-            </div>
+
           </motion.div>
 
           {/* Botones de acción */}
-          <motion.div 
+          <motion.div
             className={styles.actions}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -173,7 +160,7 @@ const ConfirmacionCorreo = ({ email = 'usuario@ejemplo.com' }) => {
               <RefreshCw size={20} className={isResending ? styles.spinning : ''} />
               {isResending ? 'Reenviando...' : 'Reenviar correo'}
             </motion.button>
-            
+
             <motion.button
               className={styles.homeButton}
               onClick={() => navigate('/')}
@@ -183,7 +170,7 @@ const ConfirmacionCorreo = ({ email = 'usuario@ejemplo.com' }) => {
               <Home size={20} />
               Ir al inicio ahora
             </motion.button>
-            
+
             <Link to="/confirmacion-exitosa" className={styles.backButton}>
               <ArrowLeft size={20} />
               Ver confirmación

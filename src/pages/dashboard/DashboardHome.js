@@ -31,6 +31,7 @@ import {
   Check,
   Tag,
   Store,
+  Scale,
   ChevronDown
 } from 'lucide-react';
 import { BUSINESS_TYPES } from '../../constants/businessTypes';
@@ -57,6 +58,7 @@ const DashboardHome = () => {
     totalProductos: 0,
     bajoStock: 0,
     proximosVencer: 0,
+    totalPeso: 0,
     cargando: true
   });
   const [mostrarTipoNegocio, setMostrarTipoNegocio] = useState(false);
@@ -69,13 +71,19 @@ const DashboardHome = () => {
     if (!organization.business_type) {
       const done = localStorage.getItem(storageKey);
       if (!done) {
-        setTipoNegocioSeleccionado('');
-        setMostrarTipoNegocio(true);
+        // Primera vez: redirigir a Preferencias de Aplicación completas
+        navigate('/dashboard/perfil', { 
+          state: { 
+            activeTab: 'configuracion',
+            firstTimeSetup: true 
+          } 
+        });
+        return;
       }
       return;
     }
     localStorage.setItem(storageKey, 'true');
-  }, [organization?.id, organization?.business_type]);
+  }, [organization?.id, organization?.business_type, navigate]);
 
   const guardarTipoNegocio = async () => {
     if (!organization?.id || !tipoNegocioSeleccionado) {
@@ -273,6 +281,14 @@ const DashboardHome = () => {
           return stock > 0 && stock <= getUmbralProducto(producto);
         }).length;
 
+        // Calcular peso total para joyería
+        const totalPeso = (productosStock || []).reduce((sum, p) => {
+          const meta = typeof p.metadata === 'string' ? JSON.parse(p.metadata || '{}') : (p.metadata || {});
+          const stock = parseNumber(p.stock);
+          const peso = parseNumber(meta.peso);
+          return sum + (stock * peso);
+        }, 0);
+
         // Productos próximos a vencer (dentro de 7 días)
         const hoy = new Date().toISOString().split('T')[0];
         const en7dias = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
@@ -289,6 +305,7 @@ const DashboardHome = () => {
           totalProductos: productos || 0,
           bajoStock: bajoStock || 0,
           proximosVencer: proximosVencer || 0,
+          totalPeso: totalPeso || 0,
           cargando: false
         });
       } catch (error) {
@@ -354,7 +371,7 @@ const DashboardHome = () => {
 
   const accesosRapidos = [
     { icon: ShoppingCart, label: 'Caja', path: '/dashboard/caja', color: '#8B5CF6' },
-    { icon: Package, label: 'Inventario', path: '/dashboard/inventario', color: '#3B82F6' },
+    { icon: Package, label: 'Inventario', path: '/dashboard/inventario', color: '#02A5E0' },
     ...(pedidosHabilitados
       ? [{ icon: ClipboardList, label: 'Pedidos', path: '/dashboard/tomar-pedido', color: '#06B6D4' }]
       : [{ icon: TrendingUp, label: 'Resumen Ventas', path: '/dashboard/resumen-ventas', color: '#10B981' }]
@@ -680,6 +697,19 @@ const DashboardHome = () => {
               <h3>{metricas.cargando ? '...' : metricas.totalProductos}</h3>
               <p>Total Productos</p>
             </motion.div>
+
+            {organization?.business_type === 'jewelry_metals' && (
+              <motion.div
+                className="metrica-card productos"
+                whileHover={{ scale: 1.05, y: -5 }}
+                whileTap={{ scale: 0.95 }}
+                style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', color: 'white' }}
+              >
+                <Scale size={32} />
+                <h3>{metricas.cargando ? '...' : `${metricas.totalPeso.toLocaleString('es-CO', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} g`}</h3>
+                <p>Peso Total Inventario</p>
+              </motion.div>
+            )}
 
             <motion.div
               className="metrica-card clientes"

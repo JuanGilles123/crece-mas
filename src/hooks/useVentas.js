@@ -4,9 +4,9 @@ import toast from 'react-hot-toast';
 import { enqueueVenta, cacheVentas, getCachedVentas, getPendingVentas } from '../utils/offlineQueue';
 
 // Hook para obtener ventas
-export const useVentas = (organizationId, limit = 100, historyDays = null) => {
+export const useVentas = (organizationId, limit = 100, historyDays = null, employeeId = null, includeCotizaciones = false) => {
   return useQuery({
-    queryKey: ['ventas', organizationId, limit, historyDays],
+    queryKey: ['ventas', organizationId, limit, historyDays, employeeId, includeCotizaciones],
     queryFn: async () => {
       if (!organizationId) return [];
       const applyFilters = (ventas = []) => {
@@ -28,32 +28,71 @@ export const useVentas = (organizationId, limit = 100, historyDays = null) => {
         const cached = await getCachedVentas(organizationId);
         const pending = await getPendingVentas({ organizationId });
         const merged = [...cached, ...pending.map(v => ({ ...v, id: v.id || v.temp_id }))];
-        return applyFilters(merged);
+        
+        let result = merged;
+        if (!includeCotizaciones) {
+          result = merged.filter(v => 
+            (v.metodo_pago || '').toUpperCase() !== 'COTIZACION' && 
+            (v.estado || '').toLowerCase() !== 'cotizacion'
+          );
+        }
+        
+        return applyFilters(result);
       }
 
       try {
-        // Construir query base
-        let query = supabase
-          .from('ventas')
-          .select('*')
-          .eq('organization_id', organizationId);
+        let ventasData = [];
+        let hasMore = true;
+        let from = 0;
+        const pageSize = 1000; // Límite máximo de la API de Supabase
 
-        // Aplicar límite de días si existe (plan gratuito = 7 días)
-        if (historyDays !== null && historyDays !== undefined) {
-          const fechaLimite = new Date();
-          fechaLimite.setDate(fechaLimite.getDate() - historyDays);
-          query = query.gte('created_at', fechaLimite.toISOString());
+        while (hasMore && ventasData.length < limit) {
+          const to = from + pageSize - 1;
+          
+          // Construir query base para la página actual
+          let query = supabase
+            .from('ventas')
+            .select('*')
+            .eq('organization_id', organizationId);
+
+          if (!includeCotizaciones) {
+            query = query.neq('metodo_pago', 'COTIZACION');
+          }
+
+          if (employeeId) {
+            query = query.eq('employee_id', employeeId);
+          }
+
+          if (historyDays !== null && historyDays !== undefined) {
+            const fechaLimite = new Date();
+            fechaLimite.setDate(fechaLimite.getDate() - historyDays);
+            query = query.gte('created_at', fechaLimite.toISOString());
+          }
+
+          // Aplicar orden y rango para paginación
+          const { data, error: ventasError } = await query
+            .order('created_at', { ascending: false })
+            .range(from, to);
+
+          if (ventasError) {
+            console.error('Error fetching ventas:', ventasError);
+            throw new Error('Error al cargar ventas');
+          }
+
+          if (data && data.length > 0) {
+            ventasData = [...ventasData, ...data];
+            from += pageSize;
+            // Si trajimos menos del tamaño de página, ya no hay más registros
+            if (data.length < pageSize) {
+              hasMore = false;
+            }
+          } else {
+            hasMore = false;
+          }
         }
 
-        // Aplicar orden y límite
-        const { data: ventasData, error: ventasError } = await query
-          .order('created_at', { ascending: false })
-          .limit(limit);
-
-        if (ventasError) {
-          console.error('Error fetching ventas:', ventasError);
-          throw new Error('Error al cargar ventas');
-        }
+        // Asegurar que no excedemos el límite solicitado
+        ventasData = ventasData.slice(0, limit);
 
         if (!ventasData || ventasData.length === 0) {
           return [];
@@ -62,8 +101,11 @@ export const useVentas = (organizationId, limit = 100, historyDays = null) => {
         // Cargar clientes y vendedores para las ventas
         const clienteIds = [...new Set(ventasData.map(v => v.cliente_id).filter(Boolean))];
         const employeeIds = [...new Set(ventasData.map(v => v.employee_id).filter(Boolean))];
+        const userIds = [...new Set(ventasData.map(v => v.user_id).filter(Boolean))];
+        
         let clientesMap = new Map();
         let vendedoresMap = new Map();
+        let userProfilesMap = new Map();
 
         if (clienteIds.length > 0) {
           const { data: clientesData } = await supabase
@@ -78,14 +120,39 @@ export const useVentas = (organizationId, limit = 100, historyDays = null) => {
             .from('team_members')
             .select('id, employee_name')
             .in('id', employeeIds);
-          vendedoresMap = new Map((vendedoresData || []).map(v => [v.id, v]));
+          vendedoresMap = new Map(
+            (vendedoresData || []).map(v => [v.id, v])
+          );
         }
 
-        const ventasProcesadas = ventasData.map(venta => ({
-          ...venta,
-          cliente: venta.cliente_id ? (clientesMap.get(venta.cliente_id) || null) : null,
-          vendedor: venta.employee_id ? (vendedoresMap.get(venta.employee_id) || null) : null
-        }));
+        if (userIds.length > 0) {
+          const { data: profilesData } = await supabase
+            .from('user_profiles')
+            .select('user_id, full_name')
+            .in('user_id', userIds);
+          userProfilesMap = new Map(
+            (profilesData || []).map(p => [p.user_id, p])
+          );
+        }
+
+        const ventasProcesadas = ventasData.map(venta => {
+          let vendedorObj = null;
+          if (venta.employee_id) {
+            vendedorObj = vendedoresMap.get(venta.employee_id) || null;
+          }
+          if (!vendedorObj?.employee_name && venta.user_id) {
+            const profile = userProfilesMap.get(venta.user_id);
+            if (profile?.full_name) {
+              vendedorObj = { id: venta.user_id, employee_name: profile.full_name };
+            }
+          }
+          
+          return {
+            ...venta,
+            cliente: venta.cliente_id ? (clientesMap.get(venta.cliente_id) || null) : null,
+            vendedor: vendedorObj
+          };
+        });
 
         await cacheVentas(organizationId, ventasProcesadas);
         const pending = await getPendingVentas({ organizationId });

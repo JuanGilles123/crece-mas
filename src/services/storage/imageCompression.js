@@ -130,3 +130,17 @@ export const compressAvatarImage = async (file) => {
     initialQuality: 0.8 // Calidad del 80% para avatares
   });
 };
+
+export const compressPromoImage = async (file) => {
+  // Para banners y promociones, si el archivo ya pesa menos de 2.5MB, lo subimos original para garantizar 100% nitidez y calidad
+  if (file.size <= 2.5 * 1024 * 1024) {
+    return file;
+  }
+  // Si pesa más, aplicamos una compresión de alta fidelidad para mantener excelente definición en pantallas grandes (4K / Full HD)
+  return compressImage(file, {
+    maxSizeMB: 1.5, // Límite generoso de 1.5MB
+    maxWidthOrHeight: 2400, // Ancho de hasta 2400px (ideal para monitores de PC de alta resolución)
+    fileType: 'image/jpeg',
+    initialQuality: 0.92 // Calidad de compresión del 92% para evitar artefactos borrosos
+  });
+};

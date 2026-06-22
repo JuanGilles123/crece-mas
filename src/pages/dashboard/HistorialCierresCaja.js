@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import FeatureGuard from '../../components/FeatureGuard';
@@ -14,27 +14,34 @@ import {
   TrendingDown,
   CheckCircle
 } from 'lucide-react';
+import { getEmployeeSession } from '../../utils/employeeSession';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import './HistorialCierresCaja.css';
 
-const HistorialCierresCaja = ({ employeeId = null }) => {
+const HistorialCierresCaja = ({ employeeId: propEmployeeId = null }) => {
   const { userProfile } = useAuth();
+  const employeeSession = getEmployeeSession();
+  
+  // Si es empleado y no es admin/owner, solo ver sus propios cierres
+  const isOwnerAdmin = ['owner', 'admin'].includes(userProfile?.role);
+  const effectiveEmployeeId = propEmployeeId || (isOwnerAdmin ? null : employeeSession?.employee?.id);
+
   const { data: cierres = [], isLoading, refetch } = useCierresCaja(
     userProfile?.organization_id,
     200,
-    employeeId
+    effectiveEmployeeId
   );
   const [busqueda, setBusqueda] = useState('');
   const [cierreSeleccionado, setCierreSeleccionado] = useState(null);
 
   const getResponsableLabel = useCallback((cierre) => {
     if (cierre?.employee_id) {
-      const employeeName = cierre?.employee?.team_member?.employee_name;
+      const employeeName = cierre?.employee?.employee_name;
       return employeeName ? `Empleado: ${employeeName}` : `Empleado (${cierre.employee_id.slice(0, 8)})`;
     }
     if (cierre?.user_id) {
-      const ownerName = userProfile?.full_name || userProfile?.nombre;
+      const ownerName = cierre?.user_profile?.full_name || cierre?.user_profile?.nombre || userProfile?.full_name || userProfile?.nombre;
       return ownerName ? `Propietario: ${ownerName}` : 'Propietario';
     }
     return 'No disponible';
@@ -54,6 +61,31 @@ const HistorialCierresCaja = ({ employeeId = null }) => {
              responsable.includes(termino);
     });
   }, [cierres, busqueda, getResponsableLabel]);
+
+  // --- OPTIMIZACIÓN: SCROLL INFINITO (PAGINACIÓN VIRTUAL) ---
+  const [visibleCount, setVisibleCount] = useState(20);
+  const loadingObserverRef = useRef(null);
+
+  useEffect(() => {
+    setVisibleCount(20);
+  }, [busqueda]);
+
+  const handleObserver = useCallback((entries) => {
+    const target = entries[0];
+    if (target.isIntersecting && visibleCount < cierresFiltrados.length) {
+      setVisibleCount((prev) => Math.min(prev + 20, cierresFiltrados.length));
+    }
+  }, [visibleCount, cierresFiltrados.length]);
+
+  useEffect(() => {
+    const option = { root: null, rootMargin: "400px", threshold: 0 };
+    const observer = new IntersectionObserver(handleObserver, option);
+    if (loadingObserverRef.current) observer.observe(loadingObserverRef.current);
+    return () => observer.disconnect();
+  }, [handleObserver]);
+
+  const visibleCierres = useMemo(() => cierresFiltrados.slice(0, visibleCount), [cierresFiltrados, visibleCount]);
+
 
   const formatCOP = (value) => {
     return new Intl.NumberFormat('es-CO', {
@@ -87,7 +119,7 @@ const HistorialCierresCaja = ({ employeeId = null }) => {
 
   const generarTextoCierre = (cierre) => {
     const fecha = formatFecha(cierre.created_at);
-    const diferencia = cierre.diferencia || 0;
+    const diferencia = cierre.diferencia !== undefined && cierre.diferencia !== null ? cierre.diferencia : (cierre.total_real || 0) - ((cierre.total_sistema || 0) + (cierre.monto_inicial || 0));
     const responsable = getResponsableLabel(cierre);
     const resumenPagos = [
       { label: 'Efectivo', sistema: cierre.sistema_efectivo, real: cierre.real_efectivo },
@@ -97,6 +129,9 @@ const HistorialCierresCaja = ({ employeeId = null }) => {
       .filter((item) => (item.sistema || 0) !== 0 || (item.real || 0) !== 0)
       .map((item) => `• ${item.label}: ${formatCOP(item.sistema || 0)} / ${formatCOP(item.real || 0)}`)
       .join('\n');
+    
+    const montoInicialTexto = cierre.monto_inicial > 0 ? `🏦 Monto Inicial: ${formatCOP(cierre.monto_inicial)}\n` : '';
+    const totalEsperadoTexto = cierre.monto_inicial > 0 ? `📈 TOTAL ESPERADO (Ventas + Inicial): ${formatCOP((cierre.total_sistema || 0) + cierre.monto_inicial)}\n` : '';
     
     return `
 🧾 CIERRE DE CAJA
@@ -112,15 +147,15 @@ Responsable: ${responsable}
 📲 Transferencias: ${formatCOP(cierre.sistema_transferencias || 0)}
 💳 Tarjeta: ${formatCOP(cierre.sistema_tarjeta || 0)}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TOTAL SISTEMA: ${formatCOP(cierre.total_sistema || 0)}
+TOTAL SISTEMA (VENTAS/MOVIMIENTOS): ${formatCOP(cierre.total_sistema || 0)}
 
 💰 CONTEO REAL:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-💵 Efectivo: ${formatCOP(cierre.real_efectivo || 0)}
+${montoInicialTexto}💵 Efectivo: ${formatCOP(cierre.real_efectivo || 0)}
 📲 Transferencias: ${formatCOP(cierre.real_transferencias || 0)}
 💳 Tarjeta: ${formatCOP(cierre.real_tarjeta || 0)}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TOTAL REAL: ${formatCOP(cierre.total_real || 0)}
+${totalEsperadoTexto}TOTAL REAL: ${formatCOP(cierre.total_real || 0)}
 
 🧾 COMPARATIVO POR MÉTODO (SISTEMA / REAL):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -187,23 +222,20 @@ Generado por Crece+ 🚀
 
       {/* Lista de cierres */}
       <div className="cierres-lista">
-        {cierresFiltrados.length === 0 ? (
+        {visibleCierres.length === 0 ? (
           <div className="empty-state">
             <FileText size={48} />
             <p>No se encontraron cierres de caja</p>
           </div>
         ) : (
-          cierresFiltrados.map((cierre, index) => {
-            const diferencia = cierre.diferencia || 0;
+          visibleCierres.map((cierre, index) => {
+            const diferencia = cierre.diferencia !== undefined && cierre.diferencia !== null ? cierre.diferencia : (cierre.total_real || 0) - ((cierre.total_sistema || 0) + (cierre.monto_inicial || 0));
             const cuadra = diferencia === 0;
             
             return (
-              <motion.div
+              <div
                 key={cierre.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="cierre-card"
+                className="cierre-card fade-in-fast"
               >
                 <div className="cierre-header">
                   <div className="cierre-info">
@@ -239,10 +271,22 @@ Generado por Crece+ 🚀
                 </div>
 
                 <div className="cierre-resumen">
+                  {cierre.monto_inicial > 0 && (
+                    <div className="resumen-item">
+                      <span className="label">Monto Inicial</span>
+                      <span className="value">{formatCOP(cierre.monto_inicial)}</span>
+                    </div>
+                  )}
                   <div className="resumen-item">
-                    <span className="label">Total Sistema</span>
+                    <span className="label">{cierre.monto_inicial > 0 ? "Ventas/Movimientos" : "Total Sistema"}</span>
                     <span className="value">{formatCOP(cierre.total_sistema || 0)}</span>
                   </div>
+                  {cierre.monto_inicial > 0 && (
+                    <div className="resumen-item">
+                      <span className="label">Total Esperado</span>
+                      <span className="value">{formatCOP((cierre.total_sistema || 0) + cierre.monto_inicial)}</span>
+                    </div>
+                  )}
                   <div className="resumen-item">
                     <span className="label">Total Real</span>
                     <span className="value">{formatCOP(cierre.total_real || 0)}</span>
@@ -295,9 +339,14 @@ Generado por Crece+ 🚀
                     Descargar
                   </button>
                 </div>
-              </motion.div>
+              </div>
             );
           })
+        )}
+        {visibleCount < cierresFiltrados.length && (
+          <div ref={loadingObserverRef} style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+            <RefreshCw className="spinning" size={24} style={{ margin: '0 auto' }} />
+          </div>
         )}
       </div>
 
