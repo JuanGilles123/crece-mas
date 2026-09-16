@@ -348,6 +348,60 @@
   }
 }
 
+/* Sección de ancho de papel para recibos - Compacto */
+.config-impresora-papel-section {
+  margin: 1.25rem 0;
+  padding: 0.85rem 1rem;
+  background: var(--bg-hover, #f9fafb);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.config-impresora-papel-section .config-impresora-tipo-label {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+}
+
+.config-impresora-papel-options {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.config-impresora-papel-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.85rem;
+  background: var(--card-bg, #ffffff);
+  border: 1.5px solid var(--border-color, #d1d5db);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary, #4b5563);
+  transition: all 0.2s ease;
+  min-width: 4rem;
+}
+
+.config-impresora-papel-btn:hover {
+  border-color: #10b981;
+  color: #10b981;
+}
+
+.config-impresora-papel-btn.active {
+  border-color: #10b981;
+  background: #10b981;
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(16, 185, 129, 0.25);
+}
+
 /* Estilos para Cajón Monedero */
 .config-cajon-monedero {
   margin-top: 1.5rem;

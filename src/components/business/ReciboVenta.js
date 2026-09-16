@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { CheckCircle, Printer, Share2, Download, Banknote, CreditCard, Smartphone, MessageCircle, Loader2, Image } from "lucide-react";
+import { CheckCircle, Printer, Share2, Download, Banknote, CreditCard, Smartphone, MessageCircle, Loader2, Image, X, Plus } from "lucide-react";
 import { supabase } from '../../services/api/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import jsPDF from 'jspdf';
@@ -30,7 +30,40 @@ export default function ReciboVenta({ venta, onNuevaVenta, onCerrar, mostrarCerr
   const [descargandoImagen, setDescargandoImagen] = useState(false);
   const [compartiendoWA, setCompartiendoWA] = useState(false);
   const [imprimiendoBluetooth, setImprimiendoBluetooth] = useState(false);
+  const [anchoPapel, setAnchoPapel] = useState(() => {
+    return localStorage.getItem('crecemas_ancho_papel') || 
+      user?.user_metadata?.impresora_configuracion?.ancho_papel || 
+      '58mm';
+  });
   const reciboRef = useRef(null);
+
+  const cambiarAnchoPapel = (nuevoAncho) => {
+    setAnchoPapel(nuevoAncho);
+    localStorage.setItem('crecemas_ancho_papel', nuevoAncho);
+  };
+
+  const [mensajeFacturaCustom, setMensajeFacturaCustom] = useState(organization?.mensaje_factura || '');
+
+  React.useEffect(() => {
+    if (organization?.mensaje_factura) {
+      setMensajeFacturaCustom(organization.mensaje_factura);
+    }
+    if (organization?.id) {
+      supabase
+        .from('organizations')
+        .select('mensaje_factura')
+        .eq('id', organization.id)
+        .single()
+        .then(({ data, error }) => {
+          if (!error && data?.mensaje_factura) {
+            setMensajeFacturaCustom(data.mensaje_factura);
+          }
+        })
+        .catch(err => console.warn('Error cargando mensaje_factura:', err));
+    }
+  }, [organization?.id, organization?.mensaje_factura]);
+
+  const mensajeFinalFactura = mensajeFacturaCustom || organization?.mensaje_factura || '¡Gracias por su compra!';
 
   // Usar datos de la organización directamente desde AuthContext
   const datosEmpresa = organization ? {
@@ -40,7 +73,8 @@ export default function ReciboVenta({ venta, onNuevaVenta, onCerrar, mostrarCerr
     telefono: organization.telefono || '',
     email: organization.email || '',
     ciudad: organization.ciudad || '',
-    mensaje_factura: organization.mensaje_factura || 'Gracias por su compra'
+    mensaje_factura: mensajeFinalFactura,
+    logo_url: organization.logo_url || ''
   } : null;
 
   if (!venta) return null;
@@ -305,7 +339,7 @@ ${esCotizacion ? '\n📋 COTIZACIÓN — Pendiente de pago' : `\n💳 Método: $
         }
       }
 
-      await printReceipt(venta, datosEmpresa, user);
+      await printReceipt(venta, datosEmpresa, user, { anchoPapel });
       toast.success('✅ Recibo impreso correctamente');
     } catch (error) {
       console.error('Error imprimiendo Bluetooth:', error);
@@ -354,181 +388,363 @@ ${esCotizacion ? '\n📋 COTIZACIÓN — Pendiente de pago' : `\n💳 Método: $
 
     // Si no hay impresora térmica o no está disponible, usar impresión estándar
     // Crear una ventana nueva para imprimir solo el recibo
-    const ventanaImpresion = window.open('', '_blank', 'width=800,height=600');
+    const ventanaImpresion = window.open('', '_blank', 'width=450,height=650');
+    if (!ventanaImpresion) {
+      alert('⚠️ Las ventanas emergentes están bloqueadas en tu navegador. Habilítalas para poder imprimir.');
+      return;
+    }
 
     // Obtener el HTML del recibo
     const reciboHTML = reciboRef.current.outerHTML;
 
-    // Crear el documento HTML completo para impresión
-    // Optimizado para impresoras térmicas (58mm y 80mm)
+    const is58mm = anchoPapel === '58mm';
+    const paperWidth = is58mm ? '58mm' : '80mm';
+    const printableWidth = is58mm ? '47mm' : '72mm';
+    const baseFontSize = is58mm ? '10.5px' : '12px';
+
+    // Crear el documento HTML completo para impresión optimizado para impresoras térmicas
     const documentoImpresion = `
       <!DOCTYPE html>
-      <html>
+      <html lang="es">
         <head>
+          <meta charset="utf-8">
           <title>Recibo de Venta #${venta.id}</title>
           <style>
-            @media print {
-              @page {
-                size: 80mm auto;
-                margin: 0;
-              }
-              body { 
-                margin: 0; 
-                padding: 0;
-                width: 80mm;
-                font-size: 10pt;
-              }
-              .recibo-container { 
-                box-shadow: none !important;
-                border: none !important;
-                margin: 0 !important;
-                padding: 10mm !important;
-                max-width: 80mm !important;
-                width: 80mm !important;
-                background: white !important;
-              }
-              .recibo-actions { display: none !important; }
-              .recibo-controls { display: none !important; }
-              * {
-                color: black !important;
-                background: white !important;
-              }
+            @page {
+              size: ${paperWidth} auto;
+              margin: 0mm;
             }
-            body {
-              font-family: 'Courier New', monospace, Arial, sans-serif;
+            *, *::before, *::after {
+              box-sizing: border-box !important;
               margin: 0;
               padding: 0;
-              background: white;
-              color: black;
-              font-size: 10pt;
-              line-height: 1.2;
+              color: #000000 !important;
+              -webkit-text-fill-color: #000000 !important;
+              border-color: #000000 !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
             }
-            .recibo-container {
-              background: white;
-              border: none;
-              max-width: 80mm;
-              margin: 0 auto;
-              padding: 10mm;
-              width: 80mm;
-              box-sizing: border-box;
+            html, body {
+              width: ${paperWidth} !important;
+              max-width: ${paperWidth} !important;
+              margin: 0 auto !important;
+              padding: 0 !important;
+              background: #ffffff !important;
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+              font-size: ${baseFontSize} !important;
+              font-weight: 700 !important;
+              line-height: 1.25 !important;
+              text-rendering: geometricPrecision !important;
+              -webkit-font-smoothing: antialiased !important;
             }
-            .recibo-header {
-              text-align: center;
-              border-bottom: 2px solid #e5e7eb;
-              padding-bottom: 15px;
-              margin-bottom: 20px;
+            .recibo-paper {
+              width: 100% !important;
+              max-width: ${printableWidth} !important;
+              margin: 0 auto !important;
+              padding: ${is58mm ? '1.5mm 3.5mm 5mm 1.5mm' : '3mm 3mm 8mm 2mm'} !important;
+              box-shadow: none !important;
+              border: none !important;
+              background: #ffffff !important;
+              box-sizing: border-box !important;
             }
-            .recibo-logo {
-              max-width: 80px;
-              max-height: 80px;
-              margin-bottom: 10px;
+            .recibo-actions, 
+            .recibo-controls, 
+            .recibo-formato-bar, 
+            .recibo-quick-print-btn, 
+            .recibo-paper-success-icon {
+              display: none !important;
             }
-            .recibo-empresa {
-              font-size: 18px;
-              font-weight: bold;
-              color: #1f2937;
-              margin-bottom: 5px;
+            .recibo-paper-header {
+              text-align: center !important;
+              border-bottom: 1px dashed #000000 !important;
+              padding-bottom: 5px !important;
+              margin-bottom: 6px !important;
             }
-            .recibo-datos {
-              font-size: 12px;
-              color: #6b7280;
-              line-height: 1.4;
+            .recibo-paper-logo {
+              max-width: ${is58mm ? '36mm' : '50mm'} !important;
+              max-height: 24mm !important;
+              margin: 0 auto 4px auto !important;
+              display: block !important;
+              filter: grayscale(100%) contrast(200%) !important;
             }
-            .recibo-info {
-              text-align: center;
-              margin-bottom: 20px;
+            .recibo-paper-empresa {
+              font-size: ${is58mm ? '15px' : '17px'} !important;
+              font-weight: 900 !important;
+              margin: 0 0 2px 0 !important;
+              text-align: center !important;
+              line-height: 1.15 !important;
+              text-transform: uppercase !important;
             }
-            .recibo-success {
-              color: #10b981;
-              font-size: 16px;
-              font-weight: bold;
-              margin-bottom: 5px;
+            .recibo-paper-dato, .recibo-paper-nit-val {
+              font-size: ${is58mm ? '10px' : '11px'} !important;
+              font-weight: 700 !important;
+              margin: 0 0 1px 0 !important;
+              text-align: center !important;
+              line-height: 1.2 !important;
             }
-            .recibo-id {
-              font-size: 14px;
-              color: #6b7280;
-              margin-bottom: 5px;
+            .recibo-paper-info {
+              text-align: center !important;
+              border-bottom: 1px dashed #000000 !important;
+              padding-bottom: 5px !important;
+              margin-bottom: 6px !important;
             }
-            .recibo-fecha {
-              font-size: 12px;
-              color: #9ca3af;
+            .recibo-paper-title {
+              font-size: ${is58mm ? '12px' : '13px'} !important;
+              font-weight: 900 !important;
+              margin: 0 0 2px 0 !important;
+              text-align: center !important;
+              text-transform: uppercase !important;
             }
-            .recibo-cajero {
-              font-size: 11px;
-              color: #9ca3af;
-              margin-top: 5px;
+            .recibo-paper-id-val {
+              font-size: ${is58mm ? '11px' : '12px'} !important;
+              font-weight: 900 !important;
+              margin: 0 0 2px 0 !important;
+              text-align: center !important;
             }
-            .recibo-productos {
-              margin-bottom: 20px;
+            .recibo-paper-date-val, .recibo-paper-extra-info {
+              font-size: ${is58mm ? '9.5px' : '10.5px'} !important;
+              font-weight: 700 !important;
+              margin: 0 0 2px 0 !important;
+              text-align: center !important;
             }
-            .recibo-productos h3 {
-              font-size: 14px;
-              font-weight: bold;
-              color: #1f2937;
-              margin-bottom: 10px;
+            .recibo-paper-order {
+              font-size: ${is58mm ? '10.5px' : '11.5px'} !important;
+              font-weight: 900 !important;
+              text-align: center !important;
+              padding: 1px 5px !important;
+              border: 1px solid #000000 !important;
+              display: inline-block !important;
+              margin-top: 3px !important;
             }
-            .recibo-tabla {
-              width: 100%;
-              border-collapse: collapse;
-              font-size: 12px;
+            .recibo-paper-cliente {
+              margin-top: 5px !important;
+              padding: 4px 5px !important;
+              border: 1px dashed #000000 !important;
+              background: transparent !important;
+              text-align: left !important;
             }
-            .recibo-tabla th {
-              background-color: #f9fafb;
-              padding: 8px 4px;
-              text-align: left;
-              font-weight: bold;
-              color: #374151;
-              border-bottom: 1px solid #e5e7eb;
+            .cliente-label {
+              font-size: 8.5px !important;
+              font-weight: 900 !important;
+              text-transform: uppercase !important;
+              margin: 0 0 1px 0 !important;
             }
-            .recibo-tabla td {
-              padding: 6px 4px;
-              border-bottom: 1px solid #f3f4f6;
+            .cliente-nombre {
+              font-size: ${is58mm ? '11px' : '12px'} !important;
+              font-weight: 800 !important;
+              margin: 0 0 1px 0 !important;
             }
-            .recibo-totales {
-              border-top: 2px solid #e5e7eb;
-              padding-top: 15px;
-              margin-bottom: 20px;
+            .cliente-dato {
+              font-size: ${is58mm ? '9.5px' : '10.5px'} !important;
+              font-weight: 700 !important;
+              margin: 0 !important;
             }
-            .recibo-total-line {
-              display: flex;
-              justify-content: space-between;
-              margin-bottom: 5px;
-              font-size: 12px;
+            .recibo-paper-products {
+              margin-bottom: 6px !important;
             }
-            .recibo-total-final {
-              font-size: 16px;
-              font-weight: bold;
-              color: #1f2937;
-              border-top: 1px solid #e5e7eb;
-              padding-top: 10px;
-              margin-top: 10px;
+            .recibo-paper-section-title {
+              font-size: ${is58mm ? '10px' : '11px'} !important;
+              font-weight: 900 !important;
+              text-align: center !important;
+              text-transform: uppercase !important;
+              margin: 3px 0 !important;
+              letter-spacing: 0.5px !important;
             }
-            .recibo-pago {
-              border-top: 2px solid #e5e7eb;
-              padding-top: 15px;
-              margin-bottom: 20px;
+            .recibo-paper-table {
+              width: 100% !important;
+              border-collapse: collapse !important;
+              table-layout: fixed !important;
+              font-size: ${is58mm ? '10.5px' : '11.5px'} !important;
             }
-            .recibo-pago h3 {
-              font-size: 14px;
-              font-weight: bold;
-              color: #1f2937;
-              margin-bottom: 10px;
+            .recibo-paper-table-header {
+              border-top: 1px solid #000000 !important;
+              border-bottom: 1px solid #000000 !important;
             }
-            .recibo-cambio {
-              font-weight: bold;
+            .recibo-paper-table-header th {
+              padding: 3px 1px !important;
+              font-weight: 900 !important;
+              font-size: ${is58mm ? '9.5px' : '10.5px'} !important;
+              text-transform: uppercase !important;
             }
-            .recibo-cambio.positivo {
-              color: #10b981;
+            .th-cant, .recibo-td-cant {
+              width: 14% !important;
+              text-align: left !important;
+              font-weight: 800 !important;
+              padding: 3px 1px !important;
+              vertical-align: top !important;
             }
-            .recibo-cambio.negativo {
-              color: #ef4444;
+            .th-producto, .recibo-td-producto {
+              width: 50% !important;
+              text-align: left !important;
+              font-weight: 700 !important;
+              padding: 3px 1px !important;
+              vertical-align: top !important;
+              word-break: break-word !important;
             }
-            .recibo-footer {
-              text-align: center;
-              border-top: 2px solid #e5e7eb;
-              padding-top: 15px;
-              font-size: 12px;
-              color: #6b7280;
+            .th-total, .recibo-td-total {
+              width: 36% !important;
+              text-align: right !important;
+              font-weight: 800 !important;
+              padding: 3px 2px 3px 1px !important;
+              vertical-align: top !important;
+              white-space: nowrap !important;
+            }
+            .recibo-table-row td {
+              border-bottom: 1px dotted #000000 !important;
+            }
+            .recibo-paper-table-detail-row td {
+              padding: 1px 1px 3px 1px !important;
+              border-bottom: 1px dotted #000000 !important;
+            }
+            .unit-price-info {
+              font-size: 9px !important;
+              font-style: italic !important;
+              font-weight: 700 !important;
+            }
+            .recibo-paper-variaciones, .recibo-paper-toppings {
+              margin-top: 2px !important;
+              padding-left: 4px !important;
+              border-left: 1px solid #000000 !important;
+            }
+            .variaciones-title, .toppings-title {
+              font-size: 8.5px !important;
+              font-weight: 900 !important;
+            }
+            .variacion-item, .recibo-paper-topping-fila {
+              font-size: 9.5px !important;
+              font-weight: 700 !important;
+            }
+            .recibo-paper-topping-fila {
+              display: flex !important;
+              justify-content: space-between !important;
+            }
+            .topping-precio {
+              font-weight: 800 !important;
+            }
+            .recibo-paper-totals {
+              border-top: 1px solid #000000 !important;
+              border-bottom: 1px dashed #000000 !important;
+              padding: 4px 1px 5px 0 !important;
+              margin-bottom: 6px !important;
+            }
+            .recibo-paper-total-row {
+              display: flex !important;
+              justify-content: space-between !important;
+              align-items: center !important;
+              font-size: ${is58mm ? '10.5px' : '12px'} !important;
+              font-weight: 700 !important;
+              margin-bottom: 2px !important;
+              padding-right: 2px !important;
+            }
+            .recibo-paper-total-row .val {
+              font-weight: 800 !important;
+              padding-right: 1px !important;
+            }
+            .recibo-paper-total-row.discount {
+              font-weight: 800 !important;
+            }
+            .recibo-paper-total-row.final {
+              font-size: ${is58mm ? '13px' : '15px'} !important;
+              font-weight: 900 !important;
+              border-top: 1px solid #000000 !important;
+              padding-top: 4px !important;
+              margin-top: 4px !important;
+              padding-right: 2px !important;
+            }
+            .recibo-paper-payment-info {
+              display: flex !important;
+              justify-content: space-between !important;
+              align-items: center !important;
+              font-size: ${is58mm ? '9.5px' : '11px'} !important;
+              font-weight: 700 !important;
+              margin-top: 3px !important;
+              padding-right: 2px !important;
+            }
+            .recibo-paper-payment-info .method {
+              font-weight: 900 !important;
+              text-transform: uppercase !important;
+            }
+            .cotizacion-badge-container {
+              border: 2px dashed #000000 !important;
+              padding: 4px !important;
+              margin-top: 4px !important;
+              text-align: center !important;
+            }
+            .cotizacion-label {
+              font-weight: 900 !important;
+              font-size: 11px !important;
+            }
+            .cotizacion-sublabel {
+              font-size: 9px !important;
+              font-weight: 700 !important;
+            }
+            .pago-mixto-container {
+              border: 1px dashed #000000 !important;
+              padding: 4px 5px !important;
+              margin-top: 4px !important;
+            }
+            .pago-mixto-title {
+              font-size: 9.5px !important;
+              font-weight: 900 !important;
+              text-align: center !important;
+              text-transform: uppercase !important;
+              margin-bottom: 3px !important;
+            }
+            .pago-mixto-fila {
+              display: flex !important;
+              justify-content: space-between !important;
+              font-size: 10px !important;
+              font-weight: 700 !important;
+              padding-right: 2px !important;
+            }
+            .pago-mixto-fila .monto {
+              font-weight: 800 !important;
+            }
+            .recibo-paper-payment {
+              border-bottom: 1px dashed #000000 !important;
+              padding-bottom: 5px !important;
+              margin-bottom: 6px !important;
+            }
+            .payment-row {
+              display: flex !important;
+              justify-content: space-between !important;
+              align-items: center !important;
+              font-size: ${is58mm ? '11px' : '12px'} !important;
+              font-weight: 700 !important;
+              margin-bottom: 2px !important;
+            }
+            .payment-row .val {
+              font-weight: 800 !important;
+            }
+            .payment-row.change {
+              margin-top: 3px !important;
+              padding-top: 3px !important;
+              border-top: 1px dotted #000000 !important;
+              font-size: ${is58mm ? '11px' : '12px'} !important;
+              font-weight: 800 !important;
+            }
+            .payment-row.change .val {
+              font-weight: 900 !important;
+            }
+            .recibo-paper-footer {
+              text-align: center !important;
+              padding-top: 4px !important;
+              margin-top: 4px !important;
+            }
+            .thanks-msg {
+              font-size: ${is58mm ? '10px' : '11.5px'} !important;
+              font-weight: 800 !important;
+              text-align: center !important;
+              margin: 0 0 3px 0 !important;
+              white-space: pre-wrap !important;
+              line-height: 1.35 !important;
+            }
+            .footer-note {
+              font-size: ${is58mm ? '8.5px' : '9.5px'} !important;
+              font-weight: 700 !important;
+              text-align: center !important;
+              font-style: italic !important;
+              margin: 0 !important;
             }
           </style>
         </head>
@@ -539,17 +755,37 @@ ${esCotizacion ? '\n📋 COTIZACIÓN — Pendiente de pago' : `\n💳 Método: $
     `;
 
     // Escribir el documento en la ventana
+    ventanaImpresion.document.open();
     ventanaImpresion.document.write(documentoImpresion);
     ventanaImpresion.document.close();
 
-    // Esperar a que se cargue y luego imprimir
-    ventanaImpresion.onload = () => {
-      ventanaImpresion.focus();
-      ventanaImpresion.print();
-      // Cerrar la ventana después de imprimir
-      ventanaImpresion.onafterprint = () => {
-        ventanaImpresion.close();
+    let printDisparado = false;
+    const ejecutarImpresion = () => {
+      if (printDisparado) return;
+      printDisparado = true;
+      try {
+        ventanaImpresion.focus();
+        ventanaImpresion.print();
+      } catch (e) {
+        console.error('Error al invocar impresión:', e);
+      }
+    };
+
+    // Esperar a que el DOM y los estilos estén completamente listos
+    if (ventanaImpresion.document.readyState === 'complete') {
+      setTimeout(ejecutarImpresion, 250);
+    } else {
+      ventanaImpresion.onload = () => {
+        setTimeout(ejecutarImpresion, 250);
       };
+      // Fallback en caso de que onload no dispare
+      setTimeout(ejecutarImpresion, 800);
+    }
+
+    ventanaImpresion.onafterprint = () => {
+      try {
+        ventanaImpresion.close();
+      } catch (e) {}
     };
   };
 
@@ -603,10 +839,51 @@ ${esCotizacion ? '\n📋 COTIZACIÓN — Pendiente de pago' : `\n💳 Método: $
 
   return (
     <div className="recibo-overlay">
-      <div className="recibo-container">
+      <div className={`recibo-container ${anchoPapel === '58mm' ? 'formato-58mm' : 'formato-80mm'}`}>
 
-        {/* Contenido del recibo */}
-        <div className="recibo-paper" ref={reciboRef}>
+        {/* Barra superior con selección de papel y botón rápido de imprimir */}
+        <div className="recibo-formato-bar">
+          <div className="recibo-formato-left">
+            <span className="recibo-formato-label">Papel:</span>
+            <div className="recibo-formato-pills">
+              <button
+                type="button"
+                className={`recibo-formato-pill ${anchoPapel === '58mm' ? 'active' : ''}`}
+                onClick={() => cambiarAnchoPapel('58mm')}
+                title="Formato de 58 mm"
+              >
+                58 mm
+              </button>
+              <button
+                type="button"
+                className={`recibo-formato-pill ${anchoPapel === '80mm' ? 'active' : ''}`}
+                onClick={() => cambiarAnchoPapel('80mm')}
+                title="Formato de 80 mm"
+              >
+                80 mm
+              </button>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="recibo-quick-print-btn"
+            onClick={imprimir}
+            disabled={imprimiendoBluetooth}
+            title="Imprimir recibo"
+            aria-label="Imprimir recibo"
+            data-tooltip={imprimiendoBluetooth ? "Imprimiendo..." : "Imprimir"}
+          >
+            {imprimiendoBluetooth ? (
+              <Loader2 className="recibo-quick-icon rotating" size={15} />
+            ) : (
+              <Printer className="recibo-quick-icon" size={15} />
+            )}
+          </button>
+        </div>
+
+        {/* Contenedor con scroll para el ticket del recibo */}
+        <div className="recibo-scroll-area">
+          <div className="recibo-paper" ref={reciboRef}>
           {/* Logo y datos del establecimiento */}
           <div className="recibo-paper-header">
             {datosEmpresa.logo_url && (
@@ -704,9 +981,9 @@ ${esCotizacion ? '\n📋 COTIZACIÓN — Pendiente de pago' : `\n💳 Método: $
                             paddingTop: '0.75rem'
                           }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                              <span style={{ fontWeight: '500' }}>{item.nombre}</span>
+                              <span className="producto-nombre-val" style={{ fontWeight: '600' }}>{item.nombre}</span>
                               {item.variant_nombre && (
-                                <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>
+                                <div className="producto-variante-val" style={{ fontSize: '0.8rem', color: '#6b7280' }}>
                                   Variante: {item.variant_nombre}
                                 </div>
                               )}
@@ -890,74 +1167,97 @@ ${esCotizacion ? '\n📋 COTIZACIÓN — Pendiente de pago' : `\n💳 Método: $
 
           {/* Pie del recibo */}
           <div className="recibo-paper-footer">
-            <p className="thanks-msg">¡Gracias por su compra!</p>
+            <p className="thanks-msg">{mensajeFinalFactura}</p>
             <p className="footer-note">Conserve este recibo como comprobante de pago</p>
           </div>
         </div>
+      </div>
 
-        {/* Acciones */}
-        <div className="recibo-actions">
+      {/* Acciones */}
+      <div className="recibo-actions">
+        <button
+          className="recibo-btn recibo-btn-whatsapp"
+          onClick={() => compartirWA(false)}
+          disabled={compartiendoWA}
+          title="Compartir por WhatsApp"
+          aria-label="Compartir por WhatsApp"
+          data-tooltip={compartiendoWA ? "Enviando..." : "WhatsApp"}
+        >
+          {compartiendoWA ? <Loader2 className="recibo-btn-icon rotating" /> : <Share2 className="recibo-btn-icon" />}
+        </button>
+
+        {venta.cliente?.telefono && (
           <button
-            className="recibo-btn recibo-btn-whatsapp"
-            onClick={() => compartirWA(false)}
+            className="recibo-btn recibo-btn-whatsapp-cliente"
+            onClick={() => compartirWA(true)}
             disabled={compartiendoWA}
-            title="Compartir por WhatsApp"
+            title="Enviar a WhatsApp del Cliente"
+            aria-label="Enviar a WhatsApp del Cliente"
+            data-tooltip={compartiendoWA ? "Enviando..." : "Al cliente"}
           >
-            {compartiendoWA ? <Loader2 className="recibo-btn-icon rotating" /> : <Share2 className="recibo-btn-icon" />}
-            <span className="recibo-btn-text">WhatsApp</span>
+            {compartiendoWA ? <Loader2 className="recibo-btn-icon rotating" /> : <MessageCircle className="recibo-btn-icon" />}
           </button>
-          {venta.cliente?.telefono && (
-            <button
-              className="recibo-btn recibo-btn-whatsapp"
-              onClick={() => compartirWA(true)}
-              disabled={compartiendoWA}
-              title="Enviar a WhatsApp del Cliente"
-            >
-              <MessageCircle className="recibo-btn-icon" />
-              <span className="recibo-btn-text recibo-btn-text-mobile-hidden">Al cliente</span>
-            </button>
-          )}
-          <button
-            className="recibo-btn recibo-btn-secondary"
-            onClick={imprimir}
-            disabled={imprimiendoBluetooth}
-            title="Imprimir recibo"
-          >
-            {imprimiendoBluetooth ? (
-              <Loader2 className="recibo-btn-icon rotating" />
-            ) : (
-              <Printer className="recibo-btn-icon" />
-            )}
-            <span className="recibo-btn-text">{imprimiendoBluetooth ? 'Imprimiendo...' : 'Imprimir'}</span>
-          </button>
-          <button
-            className="recibo-btn recibo-btn-secondary"
-            onClick={descargarImagenRecibo}
-            disabled={descargandoImagen}
-            title="Descargar como imagen PNG"
-          >
-            {descargandoImagen ? <Loader2 className="recibo-btn-icon rotating" /> : <Image className="recibo-btn-icon" />}
-            <span className="recibo-btn-text">{descargandoImagen ? 'Generando...' : 'Imagen'}</span>
-          </button>
-          <button
-            className="recibo-btn recibo-btn-secondary"
-            onClick={generarPDF}
-            disabled={generandoPDF}
-            title="Descargar como PDF"
-          >
-            <Download className="recibo-btn-icon" />
-            <span className="recibo-btn-text">{generandoPDF ? 'Generando...' : 'PDF'}</span>
-          </button>
-          {mostrarCerrar ? (
-            <button className="recibo-btn recibo-btn-primary" onClick={cerrarRecibo}>
-              Cerrar
-            </button>
+        )}
+
+        <button
+          className="recibo-btn recibo-btn-secondary"
+          onClick={imprimir}
+          disabled={imprimiendoBluetooth}
+          title="Imprimir recibo"
+          aria-label="Imprimir recibo"
+          data-tooltip={imprimiendoBluetooth ? "Imprimiendo..." : "Imprimir"}
+        >
+          {imprimiendoBluetooth ? (
+            <Loader2 className="recibo-btn-icon rotating" />
           ) : (
-            <button className="recibo-btn recibo-btn-primary" onClick={nuevaVenta}>
-              Nueva venta
-            </button>
+            <Printer className="recibo-btn-icon" />
           )}
-        </div>
+        </button>
+
+        <button
+          className="recibo-btn recibo-btn-secondary"
+          onClick={descargarImagenRecibo}
+          disabled={descargandoImagen}
+          title="Descargar como imagen PNG"
+          aria-label="Descargar como imagen PNG"
+          data-tooltip={descargandoImagen ? "Generando..." : "Imagen"}
+        >
+          {descargandoImagen ? <Loader2 className="recibo-btn-icon rotating" /> : <Image className="recibo-btn-icon" />}
+        </button>
+
+        <button
+          className="recibo-btn recibo-btn-secondary"
+          onClick={generarPDF}
+          disabled={generandoPDF}
+          title="Descargar como PDF"
+          aria-label="Descargar como PDF"
+          data-tooltip={generandoPDF ? "Generando..." : "PDF"}
+        >
+          {generandoPDF ? <Loader2 className="recibo-btn-icon rotating" /> : <Download className="recibo-btn-icon" />}
+        </button>
+
+        {mostrarCerrar ? (
+          <button
+            className="recibo-btn recibo-btn-close"
+            onClick={cerrarRecibo}
+            title="Cerrar recibo"
+            aria-label="Cerrar recibo"
+            data-tooltip="Cerrar"
+          >
+            <X className="recibo-btn-icon" />
+          </button>
+        ) : (
+          <button
+            className="recibo-btn recibo-btn-primary"
+            onClick={nuevaVenta}
+            title="Nueva venta"
+            aria-label="Nueva venta"
+            data-tooltip="Nueva venta"
+          >
+            <Plus className="recibo-btn-icon" />
+          </button>
+        )}
+      </div>
       </div>
     </div>
   );
