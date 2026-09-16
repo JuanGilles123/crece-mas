@@ -9,8 +9,8 @@ export const DiaTextReveal = ({ text, children, className = "", once = false, gr
     #ce1126 45%, 
     #003893 50%, 
     #fcd116 55%, 
-    transparent 65%, 
-    transparent 100%
+    #1ad61a 65%, 
+    #1ad61a 100%
   )`;
 
   return (

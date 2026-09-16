@@ -435,7 +435,7 @@ const Home = () => {
             transition={{ duration: 0.6, delay: 0.3 }}
           >
             <div className={styles.statNumber}>
-              <DiaTextReveal text="24/7" once={false} gradient="linear-gradient(to right, #072146 0%, #072146 45%, #02A5E0 55%, transparent 65%, transparent 100%)" />
+              <DiaTextReveal text="24/7" once={false} gradient="linear-gradient(to right, #072146 0%, #072146 45%, #02A5E0 55%, #072146 65%, #072146 100%)" />
             </div>
             <div className={styles.statLabel}>Acceso Seguro Nube</div>
           </motion.div>
