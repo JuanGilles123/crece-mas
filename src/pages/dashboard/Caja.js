@@ -942,8 +942,22 @@ export default function Caja({
   const [metodoAbonoModalCredito, setMetodoAbonoModalCredito] = useState('Efectivo');
   const [mostrandoModalCredito, setMostrandoModalCredito] = useState(false);
 
-  // Leer preferencia de mostrar factura desde user_metadata
-  const mostrarFacturaPantalla = user?.user_metadata?.mostrarFacturaPantalla === true;
+  // Leer preferencia de mostrar factura desde user_metadata, catalogo_config de la organización o localStorage
+  const mostrarFacturaPantalla = useMemo(() => {
+    if (user?.user_metadata?.mostrarFacturaPantalla !== undefined) {
+      return Boolean(user.user_metadata.mostrarFacturaPantalla);
+    }
+    if (organization?.catalogo_config?.mostrar_factura_pantalla !== undefined) {
+      return Boolean(organization.catalogo_config.mostrar_factura_pantalla);
+    }
+    const local = localStorage.getItem(`crecemas_mostrar_factura_pantalla_${organization?.id}`) ?? localStorage.getItem('crecemas_mostrar_factura_pantalla');
+    if (local !== null) {
+      return local === 'true';
+    }
+    return false;
+  }, [user?.user_metadata?.mostrarFacturaPantalla, organization?.catalogo_config?.mostrar_factura_pantalla, organization?.id]);
+
+  const [reciboManual, setReciboManual] = useState(false);
   const [mostrarModalRegresarPedidos, setMostrarModalRegresarPedidos] = useState(false);
   const [vieneDePedidos, setVieneDePedidos] = useState(false);
   const [mostrarModalApertura, setMostrarModalApertura] = useState(false);
@@ -2489,6 +2503,7 @@ export default function Caja({
     setPedidoIdActual(null);
     setPedidosConsolidados([]);
     setVentaCompletada(null);
+    setReciboManual(false);
     setClienteNombrePedido(null); // Limpiar nombre del cliente del pedido
     setDescuento({ tipo: 'porcentaje', valor: 0, alcance: 'total', productosIds: [] });
     setClienteSeleccionado(null);
@@ -2716,6 +2731,17 @@ export default function Caja({
     setDatosVentaConfirmada(null);
   };
 
+  const handleVerReciboDesdeConfirmacion = (ventaData) => {
+    const dataRecibo = ventaData || datosVentaConfirmada;
+    setMostrandoConfirmacion(false);
+    setConfirmacionCargando(false);
+    setConfirmacionExito(false);
+    if (dataRecibo) {
+      setVentaCompletada(dataRecibo);
+      setReciboManual(true);
+    }
+  };
+
   const handleConfirmarPagoCredito = () => {
     // El modal ya valida que no sea excesivo, simplemente continuamos a venta
     setMostrandoPagoCredito(false);
@@ -2852,8 +2878,23 @@ export default function Caja({
         setMostrandoConfirmacion(true);
         setConfirmacionCargando(false);
         setConfirmacionExito(true);
-        setDatosVentaConfirmada({ ...ventaData, id: ventaData.numero_venta });
+        const ventaOfflinePedido = {
+          ...ventaData,
+          id: ventaData.numero_venta,
+          cantidadProductos: ventaData.items?.length || 0,
+          total: ventaData.total,
+          metodo_pago: ventaData.metodo_pago,
+          cliente: clienteSeleccionado
+        };
+        setDatosVentaConfirmada(ventaOfflinePedido);
         checkAndOpenCashDrawer();
+
+        if (mostrarFacturaPantalla) {
+          setTimeout(() => {
+            setMostrandoConfirmacion(false);
+            setVentaCompletada(ventaOfflinePedido);
+          }, 1500);
+        }
 
         // Invalidar cache de pedidos para refrescar la lista inmediatamente
         if (organization?.id) {
@@ -3143,11 +3184,28 @@ export default function Caja({
       setMontoEntregado('');
 
       // Mostrar confirmación
+      const ventaReciboPedido = {
+        ...ventaResult,
+        items: ventaResult.items || cart,
+        metodo_pago: metodoPago,
+        total: total,
+        pagoCliente: montoPagoCliente || total,
+        cliente: clienteSeleccionado,
+        cantidadProductos: cart.length
+      };
+
       setMostrandoConfirmacion(true);
       setConfirmacionCargando(false);
       setConfirmacionExito(true);
-      setDatosVentaConfirmada(ventaResult);
+      setDatosVentaConfirmada(ventaReciboPedido);
       checkAndOpenCashDrawer();
+
+      if (mostrarFacturaPantalla) {
+        setTimeout(() => {
+          setMostrandoConfirmacion(false);
+          setVentaCompletada(ventaReciboPedido);
+        }, 1500);
+      }
 
       // Invalidar cache de pedidos para refrescar la lista inmediatamente
       if (organization?.id) {
@@ -3502,8 +3560,23 @@ export default function Caja({
       setMontoEntregado('');
       setConfirmacionCargando(false);
       setConfirmacionExito(true);
-      setDatosVentaConfirmada({ ...ventaData, id: ventaData.numero_venta });
+      const ventaOfflineRecibo = {
+        ...ventaData,
+        id: ventaData.numero_venta,
+        cantidadProductos: cart.length || ventaData.items?.length || 0,
+        total: ventaData.total,
+        metodo_pago: ventaData.metodo_pago,
+        cliente: clienteSeleccionado
+      };
+      setDatosVentaConfirmada(ventaOfflineRecibo);
       checkAndOpenCashDrawer();
+
+      if (mostrarFacturaPantalla) {
+        setTimeout(() => {
+          setMostrandoConfirmacion(false);
+          setVentaCompletada(ventaOfflineRecibo);
+        }, 1500);
+      }
 
       // Invalidar cache de pedidos para refrescar la lista inmediatamente
       if (organization?.id) {
@@ -3771,14 +3844,17 @@ export default function Caja({
       setConfirmacionCargando(false);
       setConfirmacionExito(true);
 
-      // Simular tiempo de procesamiento para la animación
+      // Simular tiempo de procesamiento para la animación y abrir recibo si está configurado
       setTimeout(() => {
 
         // Toast de éxito
         toast.success(`¡Venta completada! Total: ${formatCOP(total)} `);
 
-        // Después de mostrar éxito, limpiar carrito
+        // Después de mostrar éxito, limpiar carrito y abrir recibo
         setTimeout(() => {
+          if (mostrarFacturaPantalla) {
+            setMostrandoConfirmacion(false);
+          }
           setVentaCompletada(ventaRecibo);
           setCart([]);
           setVieneDePedidos(false); // Resetear flag cuando se vacía el carrito
@@ -3794,8 +3870,8 @@ export default function Caja({
           if (vieneDePedidos) {
             setMostrarModalRegresarPedidos(true);
           }
-        }, 2000);
-      }, 1500);
+        }, 1200);
+      }, 800);
 
       // Invalidar cache de pedidos para refrescar la lista inmediatamente
       if (organization?.id) {
@@ -5516,10 +5592,12 @@ export default function Caja({
       )}
 
       {/* Recibo de venta */}
-      {ventaCompletada && mostrarFacturaPantalla && (
+      {ventaCompletada && (mostrarFacturaPantalla || reciboManual) && (
         <ReciboVenta
           venta={ventaCompletada}
           onNuevaVenta={handleNuevaVenta}
+          onCerrar={handleNuevaVenta}
+          mostrarCerrar={true}
         />
       )}
 
@@ -5656,6 +5734,7 @@ export default function Caja({
         isSuccess={confirmacionExito}
         onClose={handleCerrarConfirmacion}
         ventaData={datosVentaConfirmada}
+        onVerRecibo={handleVerReciboDesdeConfirmacion}
       />
 
       {/* Modal de regreso a pedidos */}

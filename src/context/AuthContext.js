@@ -115,6 +115,25 @@ export function AuthProvider({ children }) {
             localStorage.setItem('last_org_name', orgWithOwnerEmail.name);
           }
 
+          // Sincronizar preferencia de mostrar factura si existe en organización o localStorage
+          const localMostrar = localStorage.getItem(`crecemas_mostrar_factura_pantalla_${orgWithOwnerEmail?.id}`) ?? localStorage.getItem('crecemas_mostrar_factura_pantalla');
+          if (orgWithOwnerEmail?.catalogo_config?.mostrar_factura_pantalla !== undefined) {
+            localStorage.setItem(`crecemas_mostrar_factura_pantalla_${orgWithOwnerEmail.id}`, orgWithOwnerEmail.catalogo_config.mostrar_factura_pantalla ? 'true' : 'false');
+            localStorage.setItem('crecemas_mostrar_factura_pantalla', orgWithOwnerEmail.catalogo_config.mostrar_factura_pantalla ? 'true' : 'false');
+          } else if (localMostrar !== null && orgWithOwnerEmail?.id) {
+            supabase
+              .from('organizations')
+              .update({
+                catalogo_config: {
+                  ...(orgWithOwnerEmail.catalogo_config || {}),
+                  mostrar_factura_pantalla: localMostrar === 'true'
+                }
+              })
+              .eq('id', orgWithOwnerEmail.id)
+              .then(() => {})
+              .catch(() => {});
+          }
+
           // Actualizar el perfil con el rol efectivo y organization_id si viene de team_members
           if (effectiveRole !== profile.role || orgId !== profile.organization_id) {
             const updatedProfile = {
@@ -163,6 +182,7 @@ export function AuthProvider({ children }) {
 
       const loadEmployeeOrganization = async () => {
 
+        let orgData = null;
         try {
           const { data: org, error: orgError } = await supabase
             .from('organizations')
@@ -171,6 +191,7 @@ export function AuthProvider({ children }) {
             .single();
 
           if (!orgError && org) {
+            orgData = org;
             setOrganization(org);
           }
         } catch (error) {
@@ -178,9 +199,18 @@ export function AuthProvider({ children }) {
         }
 
         const role = employeeSession.employee?.role || 'cashier';
+        const orgCatalogo = orgData?.catalogo_config || {};
+        const localMostrarFactura = localStorage.getItem(`crecemas_mostrar_factura_pantalla_${employeeSession.employee?.organization_id}`) ?? localStorage.getItem('crecemas_mostrar_factura_pantalla');
+        const mostrarFacturaPantalla = orgCatalogo.mostrar_factura_pantalla !== undefined
+          ? Boolean(orgCatalogo.mostrar_factura_pantalla)
+          : (localMostrarFactura !== null ? localMostrarFactura === 'true' : false);
+
         setUser({
           id: employeeSession.employee?.id,
-          user_metadata: { role }
+          user_metadata: { 
+            role,
+            mostrarFacturaPantalla
+          }
         });
         setUserProfile({
           role,
@@ -200,6 +230,9 @@ export function AuthProvider({ children }) {
     // Cargar sesión inicial
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
+      if (session?.user?.user_metadata?.mostrarFacturaPantalla !== undefined) {
+        localStorage.setItem('crecemas_mostrar_factura_pantalla', session.user.user_metadata.mostrarFacturaPantalla ? 'true' : 'false');
+      }
       if (session?.user) {
         loadUserProfile(session.user.id);
       }
@@ -209,6 +242,9 @@ export function AuthProvider({ children }) {
     // Escuchar cambios de autenticación
     const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user ?? null);
+      if (session?.user?.user_metadata?.mostrarFacturaPantalla !== undefined) {
+        localStorage.setItem('crecemas_mostrar_factura_pantalla', session.user.user_metadata.mostrarFacturaPantalla ? 'true' : 'false');
+      }
       if (session?.user) {
         loadUserProfile(session.user.id);
 
