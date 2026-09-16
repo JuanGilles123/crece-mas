@@ -14,6 +14,9 @@ const ConfiguracionImpresora = () => {
   const [impresoraConfigurada, setImpresoraConfigurada] = useState(null);
   const [dispositivosDisponibles, setDispositivosDisponibles] = useState([]);
   const [tipoImpresora, setTipoImpresora] = useState('bluetooth'); // 'bluetooth', 'wifi', 'usb', 'estandar'
+  const [anchoPapel, setAnchoPapel] = useState(() => {
+    return localStorage.getItem('crecemas_ancho_papel') || '58mm';
+  });
   const [abrirCajonVenta, setAbrirCajonVenta] = useState(false);
   const [abrirCajonImpresion, setAbrirCajonImpresion] = useState(true);
   const [abriendoCajon, setAbriendoCajon] = useState(false);
@@ -31,12 +34,20 @@ const ConfiguracionImpresora = () => {
         setImpresoraConfigurada(config);
         setAbrirCajonVenta(config.abrir_cajon_automatico || false);
         setAbrirCajonImpresion(config.abrir_cajon_impresion !== false);
+        if (config.ancho_papel) {
+          setAnchoPapel(config.ancho_papel);
+          localStorage.setItem('crecemas_ancho_papel', config.ancho_papel);
+        }
       } else if (userMetadata.impresora_bluetooth) {
         // Compatibilidad con configuración antigua
         setTipoImpresora('bluetooth');
         setImpresoraConfigurada(userMetadata.impresora_bluetooth);
         setAbrirCajonVenta(userMetadata.impresora_bluetooth.abrir_cajon_automatico || false);
         setAbrirCajonImpresion(userMetadata.impresora_bluetooth.abrir_cajon_impresion !== false);
+        if (userMetadata.impresora_bluetooth.ancho_papel) {
+          setAnchoPapel(userMetadata.impresora_bluetooth.ancho_papel);
+          localStorage.setItem('crecemas_ancho_papel', userMetadata.impresora_bluetooth.ancho_papel);
+        }
       }
     } catch (error) {
       console.error('Error cargando configuración de impresora:', error);
@@ -105,6 +116,7 @@ const ConfiguracionImpresora = () => {
         tipo: 'bluetooth',
         id: device.id,
         name: device.name || 'Impresora Bluetooth',
+        ancho_papel: anchoPapel,
         abrir_cajon_automatico: abrirCajonVenta,
         abrir_cajon_impresion: abrirCajonImpresion,
         fechaConfiguracion: new Date().toISOString()
@@ -152,6 +164,7 @@ const ConfiguracionImpresora = () => {
     try {
       const configuracion = {
         tipo: tipoImpresora,
+        ancho_papel: anchoPapel,
         abrir_cajon_automatico: abrirCajonVenta,
         abrir_cajon_impresion: abrirCajonImpresion,
         ...(tipoImpresora === 'bluetooth' && impresoraConfigurada ? {
@@ -182,6 +195,32 @@ const ConfiguracionImpresora = () => {
       toast.error('Error al guardar la configuración');
     } finally {
       setGuardando(false);
+    }
+  };
+
+  const handleCambiarAnchoPapel = async (nuevoAncho) => {
+    setAnchoPapel(nuevoAncho);
+    localStorage.setItem('crecemas_ancho_papel', nuevoAncho);
+
+    if (!user) return;
+    try {
+      const configActual = user?.user_metadata?.impresora_configuracion || {};
+      const configActualizada = {
+        ...configActual,
+        tipo: configActual.tipo || tipoImpresora,
+        ancho_papel: nuevoAncho
+      };
+      await supabase.auth.updateUser({
+        data: {
+          ...user.user_metadata,
+          impresora_configuracion: configActualizada,
+          ...(configActualizada.tipo === 'bluetooth' ? { impresora_bluetooth: configActualizada } : {})
+        }
+      });
+      setImpresoraConfigurada(configActualizada);
+      toast.success(`Formato de recibo configurado en ${nuevoAncho}`);
+    } catch (err) {
+      console.warn('Error al guardar ajuste de ancho de papel:', err);
     }
   };
 
@@ -422,6 +461,27 @@ const ConfiguracionImpresora = () => {
           >
             <Monitor size={18} />
             <span>Estándar</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Selector de tamaño de papel para recibos */}
+      <div className="config-impresora-papel-section">
+        <label className="config-impresora-tipo-label">Ancho de papel para recibos:</label>
+        <div className="config-impresora-papel-options">
+          <button
+            type="button"
+            className={`config-impresora-papel-btn ${anchoPapel === '58mm' ? 'active' : ''}`}
+            onClick={() => handleCambiarAnchoPapel('58mm')}
+          >
+            58 mm
+          </button>
+          <button
+            type="button"
+            className={`config-impresora-papel-btn ${anchoPapel === '80mm' ? 'active' : ''}`}
+            onClick={() => handleCambiarAnchoPapel('80mm')}
+          >
+            80 mm
           </button>
         </div>
       </div>

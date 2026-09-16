@@ -274,43 +274,60 @@ const formatDate = (date) => {
  * Divide texto en múltiples líneas respetando el ancho máximo
  * Las impresoras térmicas de 58mm tienen aproximadamente 32 caracteres por línea
  */
-const wrapText = (text, maxLength = 32) => {
+const wrapText = (text, maxLength = 30) => {
   if (!text) return [''];
   const textStr = String(text);
-  if (textStr.length <= maxLength) return [textStr];
-  
-  const lines = [];
-  let currentLine = '';
-  
-  // Dividir por palabras primero
-  const words = textStr.split(' ');
-  
-  for (const word of words) {
-    if (word.length > maxLength) {
-      // Si la palabra es muy larga, dividirla
-      if (currentLine) {
-        lines.push(currentLine.trim());
-        currentLine = '';
+  const paragraphs = textStr.split(/\r?\n/);
+  const allLines = [];
+
+  for (const paragraph of paragraphs) {
+    if (!paragraph.trim()) {
+      allLines.push('');
+      continue;
+    }
+    if (paragraph.length <= maxLength) {
+      allLines.push(paragraph);
+      continue;
+    }
+
+    const words = paragraph.split(' ');
+    let currentLine = '';
+
+    for (const word of words) {
+      if (word.length > maxLength) {
+        if (currentLine) {
+          allLines.push(currentLine.trim());
+          currentLine = '';
+        }
+        for (let i = 0; i < word.length; i += maxLength) {
+          allLines.push(word.substring(i, i + maxLength));
+        }
+      } else if ((currentLine ? currentLine + ' ' + word : word).length <= maxLength) {
+        currentLine += (currentLine ? ' ' : '') + word;
+      } else {
+        if (currentLine) {
+          allLines.push(currentLine.trim());
+        }
+        currentLine = word;
       }
-      // Dividir la palabra larga
-      for (let i = 0; i < word.length; i += maxLength) {
-        lines.push(word.substring(i, i + maxLength));
-      }
-    } else if ((currentLine + ' ' + word).length <= maxLength) {
-      currentLine += (currentLine ? ' ' : '') + word;
-    } else {
-      if (currentLine) {
-        lines.push(currentLine.trim());
-      }
-      currentLine = word;
+    }
+
+    if (currentLine) {
+      allLines.push(currentLine.trim());
     }
   }
-  
-  if (currentLine) {
-    lines.push(currentLine.trim());
-  }
-  
-  return lines;
+
+  return allLines;
+};
+
+/**
+ * Formatea una línea con dos columnas alineadas a izquierda y derecha con espacios
+ */
+const formatTwoColumns = (left, right, width = 30) => {
+  const leftStr = String(left || '');
+  const rightStr = String(right || '');
+  const spaces = Math.max(1, width - leftStr.length - rightStr.length);
+  return `${leftStr}${' '.repeat(spaces)}${rightStr}`;
 };
 
 /**
@@ -319,6 +336,11 @@ const wrapText = (text, maxLength = 32) => {
  */
 export const generateReceiptCommands = (venta, datosEmpresa, opciones = {}) => {
   const encoder = new EscPosEncoder();
+  const anchoPapel = opciones.anchoPapel || '58mm';
+  const is58mm = anchoPapel === '58mm';
+  // En impresoras de 58mm, 30 caracteres asegura que el margen derecho no corte el último dígito del precio
+  const maxChars = is58mm ? 30 : 46;
+  const separator = '-'.repeat(maxChars);
 
   // Inicializar impresora
   encoder.initialize();
@@ -335,12 +357,15 @@ export const generateReceiptCommands = (venta, datosEmpresa, opciones = {}) => {
   // Encabezado centrado (igual que en pantalla)
   encoder
     .align('center')
+    .bold(true)
     .size(1, 2)
     .text(datosEmpresa?.razon_social || 'MI NEGOCIO')
+    .size(1, 1)
+    .bold(false)
     .newline();
 
   if (datosEmpresa?.direccion) {
-    const direccionLines = wrapText(datosEmpresa.direccion, 32);
+    const direccionLines = wrapText(datosEmpresa.direccion, maxChars);
     direccionLines.forEach(line => {
       encoder
         .size(1, 1)
@@ -364,7 +389,7 @@ export const generateReceiptCommands = (venta, datosEmpresa, opciones = {}) => {
   }
 
   if (datosEmpresa?.email) {
-    const emailLines = wrapText(`Email: ${datosEmpresa.email}`, 32);
+    const emailLines = wrapText(`Email: ${datosEmpresa.email}`, maxChars);
     emailLines.forEach(line => {
       encoder
         .size(1, 1)
@@ -375,25 +400,25 @@ export const generateReceiptCommands = (venta, datosEmpresa, opciones = {}) => {
 
   if (datosEmpresa?.nit) {
     encoder
+      .bold(true)
       .size(1, 1)
       .text(`NIT: ${datosEmpresa.nit}`)
+      .bold(false)
       .newline();
   }
 
   encoder
-    .size(1, 1)
-    .text('--------------------------------')
-    .newline()
+    .text(separator)
     .newline();
 
   // Sección de información del recibo
   encoder
     .align('center')
-    .text('Venta registrada')
+    .bold(true)
+    .text('VENTA REGISTRADA')
     .newline()
-    .newline()
-    .align('left')
     .text(`Recibo #${venta.id}`)
+    .bold(false)
     .newline();
 
   // Fecha y hora
@@ -404,7 +429,7 @@ export const generateReceiptCommands = (venta, datosEmpresa, opciones = {}) => {
 
   // Cajero
   if (venta.cajero_nombre || venta.cashier) {
-    const cajeroLines = wrapText(`Cajero: ${venta.cajero_nombre || venta.cashier || ''}`, 32);
+    const cajeroLines = wrapText(`Cajero: ${venta.cajero_nombre || venta.cashier || ''}`, maxChars);
     cajeroLines.forEach(line => {
       encoder
         .text(line)
@@ -415,22 +440,26 @@ export const generateReceiptCommands = (venta, datosEmpresa, opciones = {}) => {
   // Orden si existe
   if (venta.numero_venta) {
     encoder
+      .bold(true)
       .text(`Orden: ${venta.numero_venta}`)
+      .bold(false)
       .newline();
   }
 
   // Cliente si existe
   if (venta.cliente_nombre || venta.cliente?.nombre) {
     encoder
-      .text('--------------------------------')
+      .text(separator)
       .newline()
+      .bold(true)
       .text('Cliente:')
       .newline();
     
-    const clienteNombreLines = wrapText(venta.cliente_nombre || venta.cliente?.nombre || '', 32);
+    const clienteNombreLines = wrapText(venta.cliente_nombre || venta.cliente?.nombre || '', maxChars);
     clienteNombreLines.forEach(line => {
       encoder.text(line).newline();
     });
+    encoder.bold(false);
     
     if (venta.cliente?.documento) {
       encoder
@@ -445,7 +474,7 @@ export const generateReceiptCommands = (venta, datosEmpresa, opciones = {}) => {
     }
     
     if (venta.cliente?.direccion) {
-      const direccionLines = wrapText(venta.cliente.direccion, 32);
+      const direccionLines = wrapText(venta.cliente.direccion, maxChars);
       direccionLines.forEach(line => {
         encoder.text(line).newline();
       });
@@ -453,12 +482,16 @@ export const generateReceiptCommands = (venta, datosEmpresa, opciones = {}) => {
   }
 
   encoder
-    .text('--------------------------------')
+    .text(separator)
     .newline()
-    .text('Detalle de la venta')
+    .align('center')
+    .bold(true)
+    .text('DETALLE DE LA VENTA')
+    .bold(false)
     .newline()
-    .text('--------------------------------')
-    .newline();
+    .text(separator)
+    .newline()
+    .align('left');
 
   // Calcular subtotal para mostrar descuentos correctamente
   const calcularSubtotalItem = (item) => {
@@ -498,23 +531,18 @@ export const generateReceiptCommands = (venta, datosEmpresa, opciones = {}) => {
     
     const tieneVariaciones = item.variaciones && Object.keys(item.variaciones).length > 0;
 
-    // Nombre del producto (puede ocupar múltiples líneas)
-    const nombreLines = wrapText(nombreProducto, 24);
-    
-    // Primera línea: Cantidad + Nombre (primera línea) + Total
-    const cantidadStr = `${cantidad}x`;
+    const cantidadStr = `${cantidad}x `;
     const totalStr = formatCOP(totalItem);
+    const anchoMaxNombre = Math.max(10, maxChars - cantidadStr.length - totalStr.length - 1);
+    const nombreLines = wrapText(nombreProducto, anchoMaxNombre);
     const primeraLineaNombre = nombreLines[0] || '';
     
-    // Calcular espacios para alinear el total
-    const anchoDisponible = 32;
-    const anchoCantidad = cantidadStr.length;
-    const anchoNombre = primeraLineaNombre.length;
-    const anchoTotal = totalStr.length;
-    const espaciosNecesarios = anchoDisponible - anchoCantidad - anchoNombre - anchoTotal;
+    const espaciosNecesarios = Math.max(1, maxChars - cantidadStr.length - primeraLineaNombre.length - totalStr.length);
     
     encoder
-      .text(`${cantidadStr} ${primeraLineaNombre}${' '.repeat(Math.max(1, espaciosNecesarios))}${totalStr}`)
+      .bold(true)
+      .text(`${cantidadStr}${primeraLineaNombre}${' '.repeat(espaciosNecesarios)}${totalStr}`)
+      .bold(false)
       .newline();
     
     // Líneas adicionales del nombre (si hay)
@@ -535,7 +563,7 @@ export const generateReceiptCommands = (venta, datosEmpresa, opciones = {}) => {
           ? (value ? 'Sí' : 'No') 
           : String(value);
         const variacionText = `  • ${key}: ${opcionLabel}`;
-        const variacionLines = wrapText(variacionText, 32);
+        const variacionLines = wrapText(variacionText, maxChars);
         variacionLines.forEach(line => {
           encoder.text(line).newline();
         });
@@ -553,45 +581,36 @@ export const generateReceiptCommands = (venta, datosEmpresa, opciones = {}) => {
         const toppingCantidad = topping.cantidad || 1;
         const toppingPrecio = (topping.precio || 0) * toppingCantidad;
         
-        // Construir texto del topping
         let toppingText = `  • ${toppingNombre}`;
         if (toppingCantidad > 1) {
           toppingText += ` (x${toppingCantidad})`;
         }
         
-        // Calcular espacios para alinear el precio
-        const precioStr = formatCOP(toppingPrecio);
-        const anchoDisponible = 32;
-        const anchoTopping = toppingText.length;
-        const anchoPrecio = precioStr.length;
-        const espacios = Math.max(1, anchoDisponible - anchoTopping - anchoPrecio);
-        
         encoder
-          .text(`${toppingText}${' '.repeat(espacios)}${precioStr}`)
+          .text(formatTwoColumns(toppingText, formatCOP(toppingPrecio), maxChars))
           .newline();
       });
     }
 
     // Línea de precio base + toppings = total c/u (si hay toppings)
     if (tieneToppings) {
-      const precioLine = `  Precio base: ${formatCOP(precioItemBase)} + Toppings: ${formatCOP(precioToppings)} = ${formatCOP(precioTotalItem)} c/u`;
-      const precioLines = wrapText(precioLine, 32);
+      const precioLine = `  Base: ${formatCOP(precioItemBase)} + Top: ${formatCOP(precioToppings)} = ${formatCOP(precioTotalItem)} c/u`;
+      const precioLines = wrapText(precioLine, maxChars);
       precioLines.forEach(line => {
         encoder.text(line).newline();
       });
     }
 
     encoder
-      .text('--------------------------------')
+      .text(separator)
       .newline();
   });
 
   // Totales
   encoder
-    .text('Subtotal')
-    .align('right')
-    .text(formatCOP(subtotal))
-    .align('left')
+    .bold(true)
+    .text(formatTwoColumns('Subtotal', formatCOP(subtotal), maxChars))
+    .bold(false)
     .newline();
 
   // Descuento si existe
@@ -605,28 +624,21 @@ export const generateReceiptCommands = (venta, datosEmpresa, opciones = {}) => {
     }
     
     const descuentoStr = `-${formatCOP(montoDescuento)}`;
-    const anchoDisponible = 32;
-    const anchoDescuento = descuentoTexto.length;
-    const anchoMonto = descuentoStr.length;
-    const espacios = Math.max(1, anchoDisponible - anchoDescuento - anchoMonto);
-    
     encoder
-      .text(`${descuentoTexto}${' '.repeat(espacios)}${descuentoStr}`)
+      .text(formatTwoColumns(descuentoTexto, descuentoStr, maxChars))
       .newline();
   }
 
   // Total final
   encoder
-    .text('--------------------------------')
+    .text(separator)
     .newline()
-    .size(1, 2)
-    .text('TOTAL')
-    .align('right')
-    .text(formatCOP(total))
-    .align('left')
+    .bold(true)
     .size(1, 1)
+    .text(formatTwoColumns('TOTAL', formatCOP(total), maxChars))
+    .bold(false)
     .newline()
-    .text('--------------------------------')
+    .text(separator)
     .newline();
 
   // Método de pago
@@ -647,11 +659,9 @@ export const generateReceiptCommands = (venta, datosEmpresa, opciones = {}) => {
     }
   }
 
+  const metodoTexto = esCotizacion ? 'COTIZACIÓN' : esPagoMixto ? 'Mixto' : (venta.metodo_pago || 'N/A');
   encoder
-    .text('Método de pago')
-    .align('right')
-    .text(esCotizacion ? 'COTIZACIÓN' : esPagoMixto ? 'Mixto' : (venta.metodo_pago || 'N/A'))
-    .align('left')
+    .text(formatTwoColumns('Método de pago', metodoTexto, maxChars))
     .newline();
 
   // Detalles de pago mixto
@@ -663,12 +673,12 @@ export const generateReceiptCommands = (venta, datosEmpresa, opciones = {}) => {
       
       if (detalles.metodo1 && detalles.monto1) {
         encoder
-          .text(`  ${detalles.metodo1}: ${formatCOP(detalles.monto1)}`)
+          .text(formatTwoColumns(`  ${detalles.metodo1}`, formatCOP(detalles.monto1), maxChars))
           .newline();
       }
       if (detalles.metodo2 && detalles.monto2) {
         encoder
-          .text(`  ${detalles.metodo2}: ${formatCOP(detalles.monto2)}`)
+          .text(formatTwoColumns(`  ${detalles.metodo2}`, formatCOP(detalles.monto2), maxChars))
           .newline();
       }
     } catch (e) {
@@ -676,10 +686,19 @@ export const generateReceiptCommands = (venta, datosEmpresa, opciones = {}) => {
     }
   }
 
+  // Pago cliente
+  if (venta.pagoCliente) {
+    encoder
+      .text(formatTwoColumns('Pago cliente', formatCOP(venta.pagoCliente), maxChars))
+      .newline();
+  }
+
   // Cambio si existe
   if (venta.cambio && venta.cambio > 0) {
     encoder
-      .text(`Cambio: ${formatCOP(venta.cambio)}`)
+      .bold(true)
+      .text(formatTwoColumns('Cambio', formatCOP(venta.cambio), maxChars))
+      .bold(false)
       .newline();
   }
 
@@ -687,12 +706,14 @@ export const generateReceiptCommands = (venta, datosEmpresa, opciones = {}) => {
   encoder
     .newline();
   
-  const mensajeFinal = datosEmpresa?.mensaje_factura || 'Gracias por su compra';
-  const mensajeLines = wrapText(mensajeFinal, 32);
+  const mensajeFinal = datosEmpresa?.mensaje_factura || '¡Gracias por su compra!';
+  const mensajeLines = wrapText(mensajeFinal, maxChars);
   mensajeLines.forEach(line => {
     encoder
       .align('center')
+      .bold(true)
       .text(line)
+      .bold(false)
       .newline();
   });
   
@@ -724,8 +745,9 @@ const chunkArrayBuffer = (buffer, chunkSize = 512) => {
  * @param {Object} venta - Datos de la venta
  * @param {Object} datosEmpresa - Datos de la empresa
  * @param {Object} user - Usuario actual (opcional, para obtener impresora guardada)
+ * @param {Object} opciones - Opciones adicionales de impresión (ej. anchoPapel)
  */
-export const printReceipt = async (venta, datosEmpresa, user = null) => {
+export const printReceipt = async (venta, datosEmpresa, user = null, opciones = {}) => {
   let connection = null;
 
   try {
@@ -741,7 +763,8 @@ export const printReceipt = async (venta, datosEmpresa, user = null) => {
     // Generar comandos ESC/POS
     const config = user?.user_metadata?.impresora_configuracion || user?.user_metadata?.impresora_bluetooth;
     const abrirCajonImpresion = config?.abrir_cajon_impresion !== false;
-    const commands = generateReceiptCommands(venta, datosEmpresa, { abrirCajonImpresion });
+    const anchoPapel = opciones?.anchoPapel || config?.ancho_papel || '58mm';
+    const commands = generateReceiptCommands(venta, datosEmpresa, { abrirCajonImpresion, anchoPapel, ...opciones });
 
     // Dividir comandos en chunks de máximo 512 bytes (límite de Bluetooth GATT)
     const chunks = chunkArrayBuffer(commands, 512);

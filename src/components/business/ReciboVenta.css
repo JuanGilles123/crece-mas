@@ -18,13 +18,22 @@
   background: var(--bg-card);
   border-radius: 1rem;
   box-shadow: var(--shadow-xl);
-  max-width: 32rem;
+  max-width: 24rem;
   width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
+  max-height: 88vh;
   display: flex;
   flex-direction: column;
   border: 1px solid var(--border-primary);
+  overflow: hidden; /* Fija la barra superior y las acciones inferiores */
+}
+
+/* Área de desplazamiento exclusiva para el ticket del recibo */
+.recibo-scroll-area {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 0;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.4rem 0.5rem;
 }
 
 /* Responsive para ReciboVenta */
@@ -72,20 +81,6 @@
     padding: 1rem;
   }
   
-  .recibo-actions {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.75rem;
-    padding: 1rem;
-  }
-  
-  .recibo-btn {
-    padding: 0.75rem 0.5rem;
-    font-size: 0.8rem;
-  }
-  
-  .recibo-btn-text-mobile-hidden {
-    display: none;
-  }
 }
 
 @media (max-width: 600px) {
@@ -131,10 +126,6 @@
     padding: 0.8rem;
   }
   
-  .recibo-btn {
-    padding: 0.7rem 0.8rem;
-    font-size: 0.85rem;
-  }
 }
 
 @media (max-width: 480px) {
@@ -180,10 +171,6 @@
     padding: 0.6rem;
   }
   
-  .recibo-btn {
-    padding: 0.6rem 0.7rem;
-    font-size: 0.8rem;
-  }
 }
 
 /* Controles superiores mejorados */
@@ -284,157 +271,169 @@
   box-shadow: 0 2px 4px rgba(16, 185, 129, 0.1);
 }
 
-/* Papel del Recibo */
+/* Papel del Recibo - Formato Compacto para Evitar Desplazamiento Excesivo */
 .recibo-paper {
   background: var(--bg-card);
-  padding: 2rem;
+  padding: 0.75rem 0.75rem;
   font-family: 'Inter', sans-serif;
   color: var(--text-primary);
   max-width: 100%;
   margin: 0 auto;
   border-radius: 0.5rem;
+  box-sizing: border-box;
 }
 
 .recibo-paper-header {
   text-align: center;
-  border-bottom: 2px dashed var(--border-primary);
-  padding-bottom: 1.5rem;
-  margin-bottom: 1.5rem;
+  border-bottom: 1px dashed var(--border-primary);
+  padding-bottom: 0.45rem;
+  margin-bottom: 0.45rem;
 }
 
 .recibo-paper-logo {
-  width: 5rem;
-  height: 5rem;
+  max-width: 3.5rem;
+  max-height: 2.2rem;
   object-fit: contain;
-  margin: 0 auto 1rem;
-  border-radius: 1rem;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+  margin: 0 auto 0.25rem;
+  border-radius: 0.35rem;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.06));
 }
 
 .recibo-paper-empresa {
-  font-size: 1.5rem;
+  font-size: 1.05rem;
   font-weight: 800;
   color: var(--text-primary);
-  margin: 0 0 0.5rem 0;
-  letter-spacing: -0.02em;
+  margin: 0 0 0.15rem 0;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
 }
 
 .recibo-paper-dato {
-  font-size: 0.875rem;
+  font-size: 0.74rem;
   color: var(--text-secondary);
-  margin: 0 0 0.25rem 0;
+  margin: 0 0 0.08rem 0;
+  line-height: 1.25;
 }
 
 .recibo-paper-nit-val {
-  font-size: 0.875rem;
+  font-size: 0.74rem;
   color: var(--text-secondary);
   margin: 0;
   font-weight: 600;
-  opacity: 0.8;
+  opacity: 0.85;
+  line-height: 1.25;
 }
 
 .recibo-paper-info {
   text-align: center;
   border-bottom: 1px dashed var(--border-primary);
-  padding-bottom: 1.5rem;
-  margin-bottom: 1.5rem;
+  padding-bottom: 0.45rem;
+  margin-bottom: 0.45rem;
 }
 
 .recibo-paper-success-icon {
-  width: 3.5rem;
-  height: 3.5rem;
+  width: 1.6rem;
+  height: 1.6rem;
   color: var(--accent-success);
-  margin: 0 auto 1rem;
+  margin: 0 auto 0.25rem;
   display: block;
 }
 
 .recibo-paper-title {
-  font-size: 1.25rem;
+  font-size: 0.9rem;
   font-weight: 700;
   color: var(--text-primary);
-  margin: 0 0 0.5rem 0;
+  margin: 0 0 0.15rem 0;
+  line-height: 1.2;
 }
 
 .recibo-paper-id-val {
-  font-size: 1rem;
+  font-size: 0.82rem;
   color: var(--text-primary);
-  margin: 0 0 0.25rem 0;
+  margin: 0 0 0.12rem 0;
   font-weight: 700;
   font-family: 'JetBrains Mono', monospace;
+  line-height: 1.2;
 }
 
 .recibo-paper-date-val {
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   color: var(--text-secondary);
-  margin: 0 0 0.25rem 0;
+  margin: 0 0 0.1rem 0;
+  line-height: 1.2;
 }
 
 .recibo-paper-extra-info {
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   color: var(--text-secondary);
   margin: 0;
+  line-height: 1.2;
 }
 
 .recibo-paper-order {
-  font-size: 0.9rem;
+  font-size: 0.72rem;
   color: var(--accent-primary);
-  margin: 0.5rem 0 0 0;
+  margin: 0.25rem 0 0 0;
   font-weight: 700;
-  padding: 0.25rem 0.75rem;
+  padding: 0.12rem 0.5rem;
   background: rgba(0, 122, 255, 0.1);
-  border-radius: 2rem;
+  border-radius: 1rem;
   display: inline-block;
+  line-height: 1.2;
 }
 
 .recibo-paper-cliente {
-  margin-top: 1.25rem;
-  padding: 1rem;
+  margin-top: 0.4rem;
+  padding: 0.35rem 0.5rem;
   background: var(--bg-tertiary);
-  border-radius: 0.75rem;
+  border-radius: 0.45rem;
   text-align: left;
 }
 
 .cliente-label {
-  font-size: 0.7rem;
+  font-size: 0.62rem;
   color: var(--text-secondary);
-  margin: 0 0 0.25rem 0;
+  margin: 0 0 0.08rem 0;
   font-weight: 700;
   text-transform: uppercase;
 }
 
 .cliente-nombre {
-  font-size: 1rem;
+  font-size: 0.82rem;
   color: var(--text-primary);
-  margin: 0 0 0.25rem 0;
+  margin: 0 0 0.08rem 0;
   font-weight: 600;
+  line-height: 1.2;
 }
 
 .cliente-dato {
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   color: var(--text-secondary);
-  margin: 0 0 0.125rem 0;
+  margin: 0 0 0.04rem 0;
+  line-height: 1.2;
 }
 
 .recibo-paper-products {
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.45rem;
 }
 
 .recibo-paper-section-title {
   font-weight: 700;
   color: var(--text-primary);
-  margin: 0 0 1rem 0;
-  font-size: 0.95rem;
+  margin: 0 0 0.3rem 0;
+  font-size: 0.74rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
 }
 
 .recibo-paper-no-products {
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   color: var(--text-secondary);
   text-align: center;
-  padding: 2rem;
+  padding: 1rem;
   background: var(--bg-tertiary);
-  border-radius: 0.5rem;
+  border-radius: 0.4rem;
 }
 
 .recibo-paper-table {
@@ -443,25 +442,27 @@
 }
 
 .recibo-paper-table-header {
-  border-bottom: 2px solid var(--border-primary);
+  border-bottom: 1px solid var(--border-primary);
 }
 
 .recibo-paper-table-header th {
-  padding: 0.75rem 0.5rem;
+  padding: 0.25rem 0.2rem;
   font-weight: 700;
   color: var(--text-primary);
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   text-transform: uppercase;
+  line-height: 1.2;
 }
 
 .th-cant { text-align: left; width: 15%; }
-.th-producto { text-align: left; width: 60%; }
-.th-total { text-align: right; width: 25%; }
+.th-producto { text-align: left; width: 55%; }
+.th-total { text-align: right; width: 30%; }
 
 .recibo-paper-table td {
-  padding: 0.75rem 0.5rem;
-  font-size: 0.9rem;
+  padding: 0.22rem 0.2rem;
+  font-size: 0.76rem;
   vertical-align: top;
+  line-height: 1.25;
 }
 
 .recibo-td-cant {
@@ -478,77 +479,78 @@
 }
 
 .producto-variante-val {
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   color: var(--accent-primary);
-  margin-top: 0.125rem;
+  margin-top: 0.05rem;
 }
 
 .recibo-td-total {
   font-weight: 700;
   color: var(--text-primary);
   text-align: right;
+  white-space: nowrap;
 }
 
 .recibo-paper-table-detail-row td {
-  padding: 0 0.5rem 0.75rem 0.5rem;
-  border-bottom: 1px solid var(--border-primary);
+  padding: 0 0.2rem 0.25rem 0.2rem;
+  border-bottom: 1px dashed var(--border-primary);
 }
 
 .unit-price-info {
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   color: var(--text-secondary);
   font-style: italic;
 }
 
 .recibo-paper-variaciones,
 .recibo-paper-toppings {
-  margin-top: 0.5rem;
-  padding-left: 0.75rem;
+  margin-top: 0.25rem;
+  padding-left: 0.5rem;
   border-left: 2px solid var(--border-primary);
 }
 
 .variaciones-title,
 .toppings-title {
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   font-weight: 700;
   color: var(--text-secondary);
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.15rem;
   text-transform: uppercase;
 }
 
 .variacion-item {
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   color: var(--text-primary);
-  margin-bottom: 0.125rem;
+  margin-bottom: 0.05rem;
 }
 
 .recibo-paper-topping-fila {
   display: flex;
   justify-content: space-between;
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   color: var(--text-primary);
-  margin-bottom: 0.125rem;
+  margin-bottom: 0.05rem;
 }
-
 
 .topping-precio {
   font-weight: 600;
 }
 
 .recibo-paper-totals {
-  border-bottom: 2px dashed var(--border-primary);
-  padding-bottom: 1.5rem;
-  margin-bottom: 1.5rem;
+  border-bottom: 1px dashed var(--border-primary);
+  padding-bottom: 0.45rem;
+  margin-bottom: 0.45rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.2rem;
 }
 
 .recibo-paper-total-row {
   display: flex;
   justify-content: space-between;
-  font-size: 0.95rem;
+  font-size: 0.76rem;
   color: var(--text-secondary);
+  line-height: 1.25;
 }
 
 .recibo-paper-total-row.discount {
@@ -558,19 +560,19 @@
 
 .recibo-paper-total-row.final {
   font-weight: 800;
-  font-size: 1.5rem;
+  font-size: 1.05rem;
   color: var(--text-primary);
-  margin-top: 0.5rem;
-  padding-top: 0.75rem;
+  margin-top: 0.25rem;
+  padding-top: 0.3rem;
   border-top: 1px solid var(--border-primary);
 }
 
 .recibo-paper-payment-info {
   display: flex;
   justify-content: space-between;
-  font-size: 0.8rem;
+  font-size: 0.74rem;
   color: var(--text-secondary);
-  margin-top: 0.5rem;
+  margin-top: 0.25rem;
 }
 
 .recibo-paper-payment-info .method {
@@ -582,37 +584,37 @@
 .cotizacion-badge-container {
   background: linear-gradient(135deg, rgba(255, 59, 48, 0.1) 0%, rgba(255, 149, 0, 0.1) 100%);
   border: 1px solid var(--accent-warning);
-  border-radius: 0.75rem;
-  padding: 1rem;
-  margin-top: 1rem;
+  border-radius: 0.5rem;
+  padding: 0.45rem 0.65rem;
+  margin-top: 0.45rem;
   text-align: center;
 }
 
 .cotizacion-label {
   font-weight: 800;
   color: var(--accent-warning);
-  font-size: 1rem;
+  font-size: 0.82rem;
 }
 
 .cotizacion-sublabel {
-  font-size: 0.85rem;
+  font-size: 0.72rem;
   color: var(--text-secondary);
-  margin-top: 0.25rem;
+  margin-top: 0.15rem;
 }
 
 .pago-mixto-container {
   background: rgba(0, 122, 255, 0.05);
   border: 1px solid var(--accent-primary);
-  border-radius: 0.75rem;
-  padding: 1rem;
-  margin-top: 1rem;
+  border-radius: 0.5rem;
+  padding: 0.45rem 0.65rem;
+  margin-top: 0.45rem;
 }
 
 .pago-mixto-title {
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   font-weight: 700;
   color: var(--accent-primary);
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.35rem;
   text-align: center;
   text-transform: uppercase;
 }
@@ -621,8 +623,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.85rem;
-  margin-bottom: 0.5rem;
+  font-size: 0.74rem;
+  margin-bottom: 0.25rem;
 }
 
 .pago-mixto-fila:last-child {
@@ -632,7 +634,7 @@
 .pago-mixto-fila .metodo {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.35rem;
   color: var(--text-primary);
   font-weight: 500;
 }
@@ -644,18 +646,19 @@
 
 .recibo-paper-payment {
   border-bottom: 1px dashed var(--border-primary);
-  padding-bottom: 1.5rem;
-  margin-bottom: 1.5rem;
+  padding-bottom: 0.45rem;
+  margin-bottom: 0.45rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.2rem;
 }
 
 .recibo-paper-payment .payment-row {
   display: flex;
   justify-content: space-between;
-  font-size: 0.95rem;
+  font-size: 0.76rem;
   color: var(--text-secondary);
+  line-height: 1.25;
 }
 
 .recibo-paper-payment .payment-row .val {
@@ -664,8 +667,8 @@
 }
 
 .recibo-paper-payment .payment-row.change {
-  margin-top: 0.25rem;
-  padding-top: 0.5rem;
+  margin-top: 0.15rem;
+  padding-top: 0.2rem;
   border-top: 1px solid var(--border-primary);
 }
 
@@ -679,117 +682,121 @@
 
 .recibo-paper-footer {
   text-align: center;
+  padding-top: 0.15rem;
 }
 
 .thanks-msg {
-  font-size: 1.25rem;
-  font-weight: 800;
-  color: var(--accent-success);
-  margin: 0 0 0.5rem 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 0.15rem 0;
+  white-space: pre-wrap;
+  line-height: 1.25;
+  text-align: center;
 }
 
 .footer-note {
-  font-size: 0.8rem;
+  font-size: 0.68rem;
   color: var(--text-secondary);
   margin: 0;
   font-style: italic;
+  line-height: 1.2;
 }
 
-/* Acciones */
+/* Acciones fijas en la parte inferior - Botones compactos con iconos y etiquetas */
 .recibo-actions {
-  border-top: 1px solid #e5e7eb;
+  flex-shrink: 0;
+  border-top: 1px solid var(--border-primary, #e5e7eb);
   background: var(--bg-secondary);
   border-radius: 0 0 1rem 1rem;
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  grid-template-rows: repeat(2, auto);
-  gap: 0.75rem;
-  max-width: 100%;
-  box-sizing: border-box;
-}
-
-/* Distribución: 3 botones arriba (cada uno ocupa 2 columnas), 2 abajo centrados (cada uno ocupa 3 columnas) */
-.recibo-actions > *:nth-child(1) {
-  grid-row: 1;
-  grid-column: 1 / 3;
-}
-
-.recibo-actions > *:nth-child(2) {
-  grid-row: 1;
-  grid-column: 3 / 5;
-}
-
-.recibo-actions > *:nth-child(3) {
-  grid-row: 1;
-  grid-column: 5 / 7;
-}
-
-.recibo-actions > *:nth-child(4) {
-  grid-row: 2;
-  grid-column: 1 / 4;
-}
-
-.recibo-actions > *:nth-child(5) {
-  grid-row: 2;
-  grid-column: 4 / 7;
-}
-
-/* Si no hay WhatsApp (4 botones), usar distribución 2x2 */
-.recibo-actions:not(:has(.recibo-btn-whatsapp)) {
-  grid-template-columns: repeat(4, 1fr);
-}
-
-.recibo-actions:not(:has(.recibo-btn-whatsapp)) > *:nth-child(1) {
-  grid-column: 1 / 3;
-}
-
-.recibo-actions:not(:has(.recibo-btn-whatsapp)) > *:nth-child(2) {
-  grid-column: 3 / 5;
-}
-
-.recibo-actions:not(:has(.recibo-btn-whatsapp)) > *:nth-child(3) {
-  grid-row: 2;
-  grid-column: 1 / 3;
-}
-
-.recibo-actions:not(:has(.recibo-btn-whatsapp)) > *:nth-child(4) {
-  grid-row: 2;
-  grid-column: 3 / 5;
-}
-
-.recibo-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  padding: 0.75rem 0.5rem;
-  border-radius: 0.5rem;
-  font-size: 0.85rem;
-  font-weight: 500;
+  gap: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: visible;
+  position: relative;
+  z-index: 10;
+}
+
+.recibo-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  flex: 0 0 2.35rem;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   border: none;
   text-decoration: none;
-  min-width: 0;
   box-sizing: border-box;
+  padding: 0;
 }
 
-@media (max-width: 768px) {
-  .recibo-btn {
-    font-size: 0.65rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .recibo-btn {
-    font-size: 0.6rem;
-  }
-}
-
-.recibo-btn-text {
+/* Etiqueta / Tooltip flotante para cada botón */
+.recibo-btn[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: #111827;
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 500;
+  line-height: 1;
+  padding: 0.35rem 0.6rem;
+  border-radius: 0.375rem;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  z-index: 9999;
+}
+
+.recibo-btn[data-tooltip]::before {
+  content: '';
+  position: absolute;
+  bottom: calc(100% + 3px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  border-width: 5px 4px 0 4px;
+  border-style: solid;
+  border-color: #111827 transparent transparent transparent;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  z-index: 9999;
+}
+
+.recibo-btn[data-tooltip]:hover::after,
+.recibo-btn[data-tooltip]:hover::before,
+.recibo-btn[data-tooltip]:focus-visible::after,
+.recibo-btn[data-tooltip]:focus-visible::before {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+.recibo-btn-icon {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex-shrink: 0;
+}
+
+.rotating,
+.recibo-btn-icon.rotating {
+  animation: spin 1s linear infinite;
 }
 
 .recibo-btn-whatsapp {
@@ -798,52 +805,69 @@
   border: none !important;
 }
 
-.recibo-btn-whatsapp:hover {
+.recibo-btn-whatsapp:hover:not(:disabled) {
   background: #20BA5A !important;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(37, 211, 102, 0.35);
+}
+
+.recibo-btn-whatsapp-cliente {
+  background: #128C7E !important;
+  color: white !important;
+  border: none !important;
+}
+
+.recibo-btn-whatsapp-cliente:hover:not(:disabled) {
+  background: #0e7266 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(18, 140, 126, 0.35);
 }
 
 .recibo-btn-secondary {
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
-  border: 1px solid var(--border-primary);
+  background: var(--bg-card, #ffffff);
+  color: var(--text-primary, #1f2937);
+  border: 1px solid var(--border-primary, #e5e7eb);
 }
 
 .recibo-btn-secondary:hover:not(:disabled) {
-  background: var(--bg-tertiary);
-  border-color: var(--text-placeholder);
-  transform: translateY(-1px);
+  background: var(--bg-tertiary, #f3f4f6);
+  border-color: var(--border-secondary, #cbd5e1);
+  color: #111827;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
 }
 
 .recibo-btn-primary {
   background: #10b981;
   color: white;
+  border: none;
 }
 
-.recibo-btn-primary:hover {
+.recibo-btn-primary:hover:not(:disabled) {
   background: #059669;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.35);
+}
+
+.recibo-btn-close {
+  background: var(--bg-card, #ffffff);
+  color: #ef4444;
+  border: 1px solid #fecaca;
+}
+
+.recibo-btn-close:hover:not(:disabled) {
+  background: #ef4444;
+  color: white;
+  border-color: #ef4444;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.35);
 }
 
 .recibo-btn:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: not-allowed;
-  transform: none;
-}
-
-.recibo-btn-icon {
-  width: 1rem;
-  height: 1rem;
-  flex-shrink: 0;
-}
-
-/* En móvil, hacer los iconos un poco más grandes si solo hay icono */
-@media (max-width: 768px) {
-  .recibo-btn-text-mobile-hidden + .recibo-btn-icon,
-  .recibo-btn:has(.recibo-btn-text-mobile-hidden) .recibo-btn-icon {
-    width: 1.2rem;
-    height: 1.2rem;
-  }
+  transform: none !important;
+  box-shadow: none !important;
 }
 
 /* Estados de loading y error */
@@ -911,8 +935,8 @@
   }
   
   .recibo-container {
-    max-width: 100%;
-    max-height: 95vh;
+    max-width: min(24rem, calc(100vw - 1rem));
+    max-height: 92vh;
   }
   
   .recibo-content {
@@ -920,22 +944,22 @@
   }
   
   .recibo-actions {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.6rem;
-    padding: 0.875rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.6rem;
   }
   
   .recibo-btn {
-    padding: 0.7rem 0.4rem;
-    font-size: 0.6rem;
+    width: 2.25rem;
+    height: 2.25rem;
+    flex: 0 0 2.25rem;
   }
-  
-  .recibo-btn-text {
-    font-size: 0.6rem;
-  }
-  
-  .recibo-btn-text-mobile-hidden {
-    display: none;
+
+  .recibo-btn-icon {
+    width: 1.1rem;
+    height: 1.1rem;
   }
   
   .recibo-iva-section {
@@ -965,64 +989,22 @@
 
 @media (max-width: 480px) {
   .recibo-actions {
-    grid-template-columns: repeat(6, 1fr);
-    grid-template-rows: repeat(2, auto);
-    gap: 0.5rem;
-    padding: 0.75rem;
-  }
-  
-  /* Mantener distribución en móvil pequeño */
-  .recibo-actions > *:nth-child(1) {
-    grid-column: 1 / 3;
-  }
-  
-  .recibo-actions > *:nth-child(2) {
-    grid-column: 3 / 5;
-  }
-  
-  .recibo-actions > *:nth-child(3) {
-    grid-column: 5 / 7;
-  }
-  
-  .recibo-actions > *:nth-child(4) {
-    grid-column: 1 / 4;
-  }
-  
-  .recibo-actions > *:nth-child(5) {
-    grid-column: 4 / 7;
-  }
-  
-  .recibo-actions:not(:has(.recibo-btn-whatsapp)) {
-    grid-template-columns: repeat(4, 1fr);
-  }
-  
-  .recibo-actions:not(:has(.recibo-btn-whatsapp)) > *:nth-child(1) {
-    grid-column: 1 / 3;
-  }
-  
-  .recibo-actions:not(:has(.recibo-btn-whatsapp)) > *:nth-child(2) {
-    grid-column: 3 / 5;
-  }
-  
-  .recibo-actions:not(:has(.recibo-btn-whatsapp)) > *:nth-child(3) {
-    grid-column: 1 / 3;
-  }
-  
-  .recibo-actions:not(:has(.recibo-btn-whatsapp)) > *:nth-child(4) {
-    grid-column: 3 / 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.38rem;
+    padding: 0.38rem 0.4rem;
   }
   
   .recibo-btn {
-    padding: 0.65rem 0.4rem;
-    font-size: 0.55rem;
+    width: 2.1rem;
+    height: 2.1rem;
+    flex: 0 0 2.1rem;
   }
-  
-  .recibo-btn-text {
-    font-size: 0.55rem;
-  }
-  
-  .recibo-btn-text-mobile-hidden {
-    display: none;
+
+  .recibo-btn-icon {
+    width: 1.05rem;
+    height: 1.05rem;
   }
   
   .recibo-empresa-nombre {
@@ -1034,55 +1016,446 @@
   }
 }
 
-/* Estilos para impresión */
+/* Barra superior de formato de papel y botón rápido de imprimir */
+.recibo-formato-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.45rem 1.1rem;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-primary);
+  border-top-left-radius: 1rem;
+  border-top-right-radius: 1rem;
+  gap: 0.5rem;
+}
+
+.recibo-formato-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.recibo-quick-print-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: #10b981;
+  color: #ffffff;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 4px rgba(16, 185, 129, 0.3);
+  flex-shrink: 0;
+}
+
+.recibo-quick-print-btn:hover:not(:disabled) {
+  background: #059669;
+  transform: translateY(-1px) scale(1.05);
+  box-shadow: 0 3px 8px rgba(16, 185, 129, 0.4);
+}
+
+.recibo-quick-print-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Tooltip / Etiqueta flotante para el botón superior rápido de imprimir */
+.recibo-quick-print-btn[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 7px);
+  right: 0;
+  transform: translateY(-4px);
+  background: #111827;
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 500;
+  line-height: 1;
+  padding: 0.32rem 0.55rem;
+  border-radius: 0.375rem;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  z-index: 9999;
+}
+
+.recibo-quick-print-btn[data-tooltip]::before {
+  content: '';
+  position: absolute;
+  top: calc(100% + 2px);
+  right: 9px;
+  transform: translateY(-4px);
+  border-width: 0 4px 5px 4px;
+  border-style: solid;
+  border-color: transparent transparent #111827 transparent;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  z-index: 9999;
+}
+
+.recibo-quick-print-btn[data-tooltip]:hover::after,
+.recibo-quick-print-btn[data-tooltip]:hover::before,
+.recibo-quick-print-btn[data-tooltip]:focus-visible::after,
+.recibo-quick-print-btn[data-tooltip]:focus-visible::before {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.recibo-quick-icon {
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+}
+
+.recibo-formato-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.recibo-formato-pills {
+  display: flex;
+  gap: 0.25rem;
+  background: var(--bg-tertiary);
+  padding: 0.15rem;
+  border-radius: 1.5rem;
+  border: 1px solid var(--border-primary);
+}
+
+.recibo-formato-pill {
+  background: transparent;
+  border: none;
+  padding: 0.2rem 0.6rem;
+  border-radius: 1rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1.2;
+}
+
+.recibo-formato-pill:hover {
+  color: var(--text-primary);
+}
+
+.recibo-formato-pill.active {
+  background: #10b981;
+  color: #ffffff;
+  box-shadow: 0 1px 4px rgba(16, 185, 129, 0.25);
+}
+
+/* Modificadores de ancho según formato seleccionado */
+.recibo-container.formato-58mm .recibo-paper {
+  max-width: 275px;
+  margin: 0 auto;
+  padding: 0.65rem 0.7rem;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.recibo-container.formato-80mm .recibo-paper {
+  max-width: 345px;
+  margin: 0 auto;
+  padding: 0.8rem 0.9rem;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* Estilos para impresión directa desde el navegador */
 @media print {
+  @page {
+    margin: 0mm;
+  }
+  
+  *, *::before, *::after {
+    color: #000000 !important;
+    -webkit-text-fill-color: #000000 !important;
+    border-color: #000000 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
   .recibo-overlay {
-    position: static;
-    background: none;
-    padding: 0;
+    position: static !important;
+    background: none !important;
+    padding: 0 !important;
   }
   
   .recibo-container {
-    box-shadow: none;
-    max-width: none;
-    width: 100%;
-    max-height: none;
-    border-radius: 0;
+    box-shadow: none !important;
+    border: none !important;
+    max-width: none !important;
+    width: 100% !important;
+    max-height: none !important;
+    border-radius: 0 !important;
+    margin: 0 auto !important;
   }
   
-  .recibo-controls {
-    display: none;
+  .recibo-controls,
+  .recibo-actions,
+  .recibo-formato-bar,
+  .recibo-quick-print-btn,
+  .recibo-paper-success-icon {
+    display: none !important;
   }
   
-  .recibo-actions {
-    display: none;
+  .recibo-paper {
+    padding: 1.5mm 3.5mm 5mm 1.5mm !important;
+    margin: 0 auto !important;
+    width: 100% !important;
+    max-width: 47mm !important;
+    font-size: 10.5px !important;
+    font-weight: 700 !important;
+    line-height: 1.25 !important;
+    background: #ffffff !important;
   }
-  
-  .recibo-content {
-    padding: 0;
+
+  .recibo-container.formato-80mm .recibo-paper {
+    max-width: 72mm !important;
+    font-size: 12px !important;
   }
-  
-  .recibo-header,
-  .recibo-info-section,
-  .recibo-products,
-  .recibo-totals,
-  .recibo-payment,
-  .recibo-footer {
-    border-bottom: 1px solid #000;
-    padding-bottom: 0.5rem;
-    margin-bottom: 0.5rem;
+
+  .recibo-paper-header {
+    text-align: center !important;
+    border-bottom: 1px dashed #000000 !important;
+    padding-bottom: 5px !important;
+    margin-bottom: 6px !important;
   }
-  
-  .recibo-table {
-    border: 1px solid #000;
+
+  .recibo-paper-empresa {
+    font-size: 15px !important;
+    font-weight: 900 !important;
+    text-align: center !important;
+    text-transform: uppercase !important;
+    margin-bottom: 2px !important;
   }
-  
-  .recibo-table-header {
-    background: var(--bg-tertiary);
+
+  .recibo-paper-dato,
+  .recibo-paper-nit-val {
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    text-align: center !important;
+    margin: 0 0 1px 0 !important;
   }
-  
-  .recibo-table-row {
-    border-bottom: 1px solid #ccc;
+
+  .recibo-paper-info {
+    text-align: center !important;
+    border-bottom: 1px dashed #000000 !important;
+    padding-bottom: 5px !important;
+    margin-bottom: 6px !important;
+  }
+
+  .recibo-paper-title {
+    font-size: 12px !important;
+    font-weight: 900 !important;
+    text-transform: uppercase !important;
+    margin-bottom: 2px !important;
+  }
+
+  .recibo-paper-id-val {
+    font-size: 11px !important;
+    font-weight: 900 !important;
+  }
+
+  .recibo-paper-date-val,
+  .recibo-paper-extra-info {
+    font-size: 9.5px !important;
+    font-weight: 700 !important;
+  }
+
+  .recibo-paper-order {
+    font-size: 10.5px !important;
+    font-weight: 900 !important;
+    border: 1px solid #000000 !important;
+    padding: 1px 4px !important;
+    display: inline-block !important;
+    margin-top: 3px !important;
+  }
+
+  .recibo-paper-cliente {
+    border: 1px dashed #000000 !important;
+    background: transparent !important;
+    padding: 4px !important;
+    margin-top: 4px !important;
+    text-align: left !important;
+  }
+
+  .cliente-label {
+    font-size: 8.5px !important;
+    font-weight: 900 !important;
+    text-transform: uppercase !important;
+  }
+
+  .cliente-nombre {
+    font-size: 11px !important;
+    font-weight: 800 !important;
+  }
+
+  .cliente-dato {
+    font-size: 9.5px !important;
+    font-weight: 700 !important;
+  }
+
+  .recibo-paper-section-title {
+    font-size: 10px !important;
+    font-weight: 900 !important;
+    text-align: center !important;
+    text-transform: uppercase !important;
+    margin: 3px 0 !important;
+  }
+
+  .recibo-paper-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    table-layout: fixed !important;
+  }
+
+  .recibo-paper-table-header {
+    border-top: 1px solid #000000 !important;
+    border-bottom: 1px solid #000000 !important;
+  }
+
+  .recibo-paper-table-header th {
+    font-size: 9.5px !important;
+    font-weight: 900 !important;
+    padding: 3px 1px !important;
+    text-transform: uppercase !important;
+  }
+
+  .th-cant, .recibo-td-cant {
+    width: 14% !important;
+    text-align: left !important;
+    font-weight: 800 !important;
+  }
+
+  .th-producto, .recibo-td-producto {
+    width: 50% !important;
+    text-align: left !important;
+    font-weight: 700 !important;
+    word-break: break-word !important;
+  }
+
+  .th-total, .recibo-td-total {
+    width: 36% !important;
+    text-align: right !important;
+    font-weight: 800 !important;
+    padding-right: 2px !important;
+    white-space: nowrap !important;
+  }
+
+  .recibo-table-row td {
+    border-bottom: 1px dotted #000000 !important;
+    padding: 3px 1px !important;
+  }
+
+  .recibo-paper-table-detail-row td {
+    border-bottom: 1px dotted #000000 !important;
+    padding: 1px 1px 3px 1px !important;
+  }
+
+  .recibo-paper-totals {
+    border-top: 1px solid #000000 !important;
+    border-bottom: 1px dashed #000000 !important;
+    padding: 4px 1px 5px 0 !important;
+    margin-bottom: 6px !important;
+  }
+
+  .recibo-paper-total-row {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    font-size: 10.5px !important;
+    font-weight: 700 !important;
+    margin-bottom: 2px !important;
+    padding-right: 2px !important;
+  }
+
+  .recibo-paper-total-row.final {
+    font-size: 13px !important;
+    font-weight: 900 !important;
+    border-top: 1px solid #000000 !important;
+    padding-top: 4px !important;
+    margin-top: 4px !important;
+    padding-right: 2px !important;
+  }
+
+  .recibo-paper-payment-info {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    font-size: 9.5px !important;
+    font-weight: 700 !important;
+    padding-right: 2px !important;
+  }
+
+  .recibo-paper-payment {
+    border-bottom: 1px dashed #000000 !important;
+    padding-bottom: 5px !important;
+    margin-bottom: 6px !important;
+  }
+
+  .payment-row {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    margin-bottom: 2px !important;
+    padding-right: 2px !important;
+  }
+
+  .payment-row.change {
+    margin-top: 3px !important;
+    padding-top: 3px !important;
+    border-top: 1px dotted #000000 !important;
+    font-size: 11px !important;
+    font-weight: 900 !important;
+  }
+
+  .recibo-paper-footer {
+    text-align: center !important;
+    padding-top: 4px !important;
+    margin-top: 4px !important;
+  }
+
+  .thanks-msg {
+    font-size: 10.5px !important;
+    font-weight: 800 !important;
+    text-align: center !important;
+    margin: 0 0 3px 0 !important;
+    white-space: pre-wrap !important;
+    line-height: 1.35 !important;
+  }
+
+  .footer-note {
+    font-size: 8.5px !important;
+    font-weight: 700 !important;
+    text-align: center !important;
+    font-style: italic !important;
+    margin: 0 !important;
   }
 }
 

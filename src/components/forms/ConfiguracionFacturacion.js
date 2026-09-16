@@ -11,7 +11,7 @@ import './ConfiguracionFacturacion.css';
 
 export default function ConfiguracionFacturacion() {
   const navigate = useNavigate();
-  const { organization, hasRoleOwner, user, hasPermission } = useAuth();
+  const { organization, hasRoleOwner, user, hasPermission, refreshProfile } = useAuth();
 
   // Verificar si el usuario puede editar facturación
   // Puede ser owner, tener permiso específico, o ser desarrollador VIP
@@ -103,6 +103,9 @@ export default function ConfiguracionFacturacion() {
 
       if (error) throw error;
       toast.success('Información actualizada correctamente');
+      if (refreshProfile) {
+        refreshProfile();
+      }
     } catch (error) {
       console.error('Error:', error);
       toast.error('Error al guardar');
