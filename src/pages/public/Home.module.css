@@ -1,9 +1,8 @@
 /* Landing Page - Premium iOS-inspired Light SaaS Aesthetic (BBVA Blue Palette) */
 .container {
   min-height: 100vh;
-  background-color: #bfd7ed;
-  background-image: linear-gradient(180deg, #bfd7ed 0%, #60a3d9 100%);
-  color: #072146;
+  background-color: #ffffff;
+  color: #014abb;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   position: relative;
   overflow-x: hidden;
@@ -27,35 +26,44 @@
 .whatsappIconWrapper {
   width: 60px;
   height: 60px;
-  background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
-  color: white;
+  background: rgba(255, 255, 255, 0.6); /* Glassmorphism light */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(26, 214, 26, 0.3); /* Borde sutil verde */
+  color: #1ad61a; /* Verde para el ícono outline */
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 24px rgba(37, 211, 102, 0.3);
-  transition: all 0.3s ease;
-  animation: pulseWhatsapp 2s infinite;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08); /* Sombra elegante, no fosforescente */
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  animation: pulseWhatsappGlass 3s infinite;
 }
 
-@keyframes pulseWhatsapp {
+.whatsappIconWrapper svg {
+  width: 30px;
+  height: 30px;
+  stroke: #1ad61a; /* El SVG nuevo usa stroke */
+  fill: none;
+}
+
+@keyframes pulseWhatsappGlass {
   0% {
-    box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.6);
-    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(26, 214, 26, 0.2);
   }
   70% {
-    box-shadow: 0 0 0 15px rgba(37, 211, 102, 0);
-    transform: scale(1.05);
+    box-shadow: 0 0 0 15px rgba(26, 214, 26, 0);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(37, 211, 102, 0);
-    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(26, 214, 26, 0);
   }
 }
 
 .whatsappLink:hover .whatsappIconWrapper {
-  transform: scale(1.1) rotate(5deg);
-  box-shadow: 0 10px 28px rgba(37, 211, 102, 0.4);
+  transform: scale(1.08) translateY(-4px);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(26, 214, 26, 0.5);
+  box-shadow: 0 12px 36px rgba(26, 214, 26, 0.15);
 }
 
 .whatsappTooltip {
@@ -89,17 +97,17 @@
   left: 0;
   right: 0;
   z-index: 1000;
-  background: rgba(191, 215, 237, 0.75);
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(96, 163, 217, 0.15);
+  border-bottom: 1px solid rgba(1, 74, 187, 0.08);
   transition: all 0.3s ease;
 }
 
 .navbarScrolled {
-  background: rgba(191, 215, 237, 0.92);
-  box-shadow: 0 4px 20px rgba(0, 68, 129, 0.04);
-  border-bottom: 1px solid rgba(96, 163, 217, 0.3);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 4px 20px rgba(1, 74, 187, 0.05);
+  border-bottom: 1px solid rgba(1, 74, 187, 0.15);
   padding: 0.6rem 0;
 }
 
@@ -117,11 +125,34 @@
   align-items: center;
   gap: 0.75rem;
   cursor: pointer;
+  margin-left: -1rem; /* Lo pega más a la esquina izquierda */
+}
+
+.logoAnimated {
+  width: 80px;  /* Mucho más grande */
+  height: 80px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  will-change: transform;
+  filter: drop-shadow(0 4px 12px rgba(1, 74, 187, 0.25)); /* Sombra un poco más fuerte para destacar */
+}
+
+.logoAnimated svg {
+  width: 80px;
+  height: 80px;
+  display: block;
 }
 
 .logoIcon {
-  color: #004481;
   filter: drop-shadow(0 2px 6px rgba(2, 165, 224, 0.2));
+}
+
+.navLogo img {
+  filter: drop-shadow(0 2px 6px rgba(1, 74, 187, 0.15));
+  flex-shrink: 0;
 }
 
 .logoText {
@@ -145,12 +176,12 @@
   color: #475569;
   text-decoration: none;
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 1.05rem; /* Letra más grande y legible */
   transition: color 0.2s ease;
 }
 
 .navLinks a:hover {
-  color: #004481;
+  color: #014abb; /* Azul del logo */
 }
 
 .navActions {
@@ -160,10 +191,10 @@
 }
 
 .navLogin {
-  color: #1e293b;
+  color: #014abb;
   text-decoration: none;
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 1.05rem; /* Letra más grande */
   transition: opacity 0.2s;
 }
 
@@ -172,20 +203,21 @@
 }
 
 .navRegister {
-  background: linear-gradient(135deg, #004481 0%, #02A5E0 100%);
+  background: #014abb; /* Azul exacto del logo */
   color: white;
   text-decoration: none;
-  padding: 0.6rem 1.25rem;
+  padding: 0.75rem 1.5rem;
   border-radius: 0.5rem;
   font-weight: 700;
-  font-size: 0.95rem;
-  box-shadow: 0 4px 14px rgba(2, 165, 224, 0.25);
+  font-size: 1.05rem;
+  box-shadow: 0 4px 14px rgba(1, 74, 187, 0.25);
   transition: all 0.2s;
 }
 
 .navRegister:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(0, 68, 129, 0.35);
+  background: #013a96; /* Azul más oscuro en hover */
+  box-shadow: 0 6px 18px rgba(1, 74, 187, 0.35);
 }
 
 .mobileMenuToggle {
@@ -241,19 +273,17 @@
 }
 
 .heroTitle {
-  font-size: 3.5rem;
+  font-size: 4rem; /* Más grande */
   font-weight: 800;
   line-height: 1.15;
   letter-spacing: -0.03em;
   margin-bottom: 1.5rem;
-  color: #072146;
+  color: #014abb; /* Azul de la marca */
 }
 
 .gradientText {
-  background: linear-gradient(135deg, #004481 0%, #02A5E0 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #1ad61a; /* Verde de la marca para destacar "para Colombia" */
+  font-weight: 900;
 }
 
 .heroSubtitle {
@@ -274,15 +304,39 @@
   display: inline-flex;
   align-items: center;
   gap: 0.75rem;
-  background: linear-gradient(135deg, #004481 0%, #02A5E0 100%);
+  background: #014abb; /* Azul sólido exacto de la marca */
   color: white;
   text-decoration: none;
-  padding: 0.9rem 1.8rem;
+  padding: 1rem 2rem; /* Botón más grande */
   border-radius: 0.75rem;
   font-weight: 700;
-  font-size: 1.05rem;
-  box-shadow: 0 4px 18px rgba(2, 165, 224, 0.25);
+  font-size: 1.15rem; /* Texto más grande */
+  box-shadow: 0 4px 18px rgba(1, 74, 187, 0.25);
   transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.primaryButton svg {
+  stroke: #ffffff !important;
+  color: #ffffff !important;
+}
+
+.primaryButton::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+  animation: shimmerButton 3s infinite;
+}
+
+@keyframes shimmerButton {
+  0% { left: -100%; }
+  20% { left: 200%; }
+  100% { left: 200%; }
 }
 
 .primaryButton:hover {
@@ -504,7 +558,7 @@
   margin: 0 auto;
   padding: 0 2rem;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 3rem;
 }
 
@@ -1360,6 +1414,33 @@
   flex-direction: column;
   gap: 1rem;
   margin-bottom: 2.5rem;
+}
+
+.scrollTopButton {
+  position: fixed;
+  bottom: 7rem;
+  right: 2.3rem;
+  width: 55px;
+  height: 55px;
+  border-radius: 50% !important;
+  background: linear-gradient(135deg, #014abb 0%, #003893 100%);
+  color: white !important;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 24px rgba(1, 74, 187, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 999;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.scrollTopButton svg {
+  stroke: #ffffff !important;
+  fill: none !important;
+  width: 26px;
+  height: 26px;
 }
 
 .benefitItem {

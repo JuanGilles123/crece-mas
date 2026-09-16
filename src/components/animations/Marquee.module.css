@@ -1,0 +1,30 @@
+.marquee {
+  overflow: hidden;
+  display: flex;
+  width: 100%;
+  mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+}
+
+.marqueeContent {
+  display: flex;
+  min-width: 100%;
+  flex-shrink: 0;
+  animation: marquee-scroll 25s linear infinite;
+  gap: 4rem;
+  padding-right: 4rem; /* Match gap */
+  align-items: center;
+}
+
+.reverse {
+  animation-direction: reverse;
+}
+
+.pauseOnHover:hover .marqueeContent {
+  animation-play-state: paused;
+}
+
+@keyframes marquee-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}

@@ -4,11 +4,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../services/api/supabaseClient';
 import {
-  TrendingUp,
   BarChart3,
   Users,
   CheckCircle,
   ArrowRight,
+  ArrowUp,
   Zap,
   Target,
   Globe,
@@ -22,9 +22,28 @@ import {
   X,
   MessageCircle,
   Mail,
-  Send
+  Send,
+  Coffee,
+  ShoppingBag,
+  Check
 } from 'lucide-react';
+import { ReactComponent as LogoSVG } from '../../assets/logo-crece.svg';
+import { TextAnimate } from '../../components/animations/TextAnimate';
+import { Marquee } from '../../components/animations/Marquee';
+import { NumberTicker } from '../../components/animations/NumberTicker';
+import { DiaTextReveal } from '../../components/animations/DiaTextReveal';
 import styles from './Home.module.css';
+
+// Logo animado — rota -45° en hover aludiendo a la flecha verde "subiendo"
+const CreceLogo = () => (
+  <motion.div
+    className={styles.logoAnimated}
+    whileHover={{ rotate: -45 }}
+    transition={{ type: 'spring', stiffness: 200, damping: 12 }}
+  >
+    <LogoSVG />
+  </motion.div>
+);
 
 const Home = () => {
   const navigate = useNavigate();
@@ -66,17 +85,39 @@ const Home = () => {
 
   // Scroll effect to shrink navbar
   const [scrolled, setScrolled] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  
   useEffect(() => {
     const handleScroll = () => {
-      if (window.scrollY > 50) {
-        setScrolled(true);
-      } else {
-        setScrolled(false);
-      }
+      setScrolled(window.scrollY > 50);
+      setShowScrollTop(window.scrollY > 400);
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  const handleSmoothScroll = (e, targetId) => {
+    e.preventDefault();
+    setMobileMenuOpen(false);
+    const element = document.getElementById(targetId);
+    if (element) {
+      const navHeight = 80; // approximate height of fixed navbar
+      const elementPosition = element.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - navHeight;
+  
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: "smooth"
+      });
+    }
+  };
+
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  };
 
   const features = [
     {
@@ -118,13 +159,6 @@ const Home = () => {
     "Respaldo en tiempo real y seguridad bancaria de datos",
     "Búsqueda instantánea de productos con scroll infinito",
     "Importación y exportación masiva en segundos vía CSV"
-  ];
-
-  const stats = [
-    { number: "10,000+", label: "Ventas Registradas" },
-    { number: "99.9%", label: "Tiempo de Actividad" },
-    { number: "Ilimitado", label: "Versión Gratuita Base" },
-    { number: "24/7", label: "Acceso Seguro Nube" }
   ];
 
   // simulated products for inventory mockup filter
@@ -182,9 +216,9 @@ const Home = () => {
         >
           <span className={styles.whatsappTooltip}>💬 ¿Preguntas? ¡Hablemos por WhatsApp!</span>
           <div className={styles.whatsappIconWrapper}>
-            {/* Custom WhatsApp Clean SVG */}
-            <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
-              <path d="M12.004 2C6.48 2 2 6.48 2 12.004c0 1.908.533 3.69 1.458 5.214L2 22l4.928-1.428A9.957 9.957 0 0012.004 22c5.52 0 10-4.48 10-10S17.524 2 12.004 2zm5.795 14.197c-.244.686-1.233 1.258-1.795 1.343-.54.085-1.218.157-3.415-.744-2.825-1.157-4.607-4.047-4.75-4.232-.143-.186-1.157-1.545-1.157-2.946 0-1.4.729-2.087.986-2.373.257-.286.558-.358.744-.358.186 0 .372.014.53.028.172.014.386-.057.6-.057.215 0 .415.086.63.586.23.53.772 1.902.844 2.045.072.143.115.315.015.515-.1.2-.15.315-.3.486-.15.172-.315.386-.45.515-.15.143-.308.301-.129.615.18.3.794 1.31 1.702 2.116.78.694 1.442.909 1.758 1.052.315.143.5.122.687-.086.186-.208.787-.915.994-1.23.208-.315.415-.258.701-.15.286.1.18.1.18.1s1.825.9 2.14 1.058c.315.158.53.23.6.358.072.13.072.744-.172 1.43z" />
+            <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9L3 21" />
+              <path d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1a5 5 0 0 0 5 5h1a.5.5 0 0 0 0-1h-1a.5.5 0 0 0 0 1" />
             </svg>
           </div>
         </a>
@@ -194,15 +228,14 @@ const Home = () => {
       <header className={`${styles.navbar} ${scrolled ? styles.navbarScrolled : ''}`}>
         <div className={styles.navContainer}>
           <div className={styles.navLogo}>
-            <TrendingUp size={28} className={styles.logoIcon} />
-            <span className={styles.logoText}>Crece<span className={styles.accentPlus}>+</span></span>
+            <CreceLogo />
           </div>
 
           <nav className={`${styles.navLinks} ${mobileMenuOpen ? styles.navLinksMobileActive : ''}`}>
-            <a href="#funcionalidades" onClick={() => setMobileMenuOpen(false)}>Funcionalidades</a>
-            <a href="#visuales" onClick={() => setMobileMenuOpen(false)}>Ver Ejemplos</a>
-            <a href="#precios" onClick={() => setMobileMenuOpen(false)}>Planes</a>
-            <a href="#contacto" onClick={() => setMobileMenuOpen(false)}>Soporte</a>
+            <a href="#funcionalidades" onClick={(e) => handleSmoothScroll(e, 'funcionalidades')}>Funcionalidades</a>
+            <a href="#visuales" onClick={(e) => handleSmoothScroll(e, 'visuales')}>Ver Ejemplos</a>
+            <a href="#precios" onClick={(e) => handleSmoothScroll(e, 'precios')}>Planes</a>
+            <a href="#contacto" onClick={(e) => handleSmoothScroll(e, 'contacto')}>Soporte</a>
             <div className={styles.mobileNavActions}>
               <Link to="/login" className={styles.navLoginMobile} onClick={() => setMobileMenuOpen(false)}>Iniciar Sesión</Link>
               <Link to="/registro" className={styles.navRegisterMobile} onClick={() => setMobileMenuOpen(false)}>Comenzar Gratis</Link>
@@ -243,12 +276,17 @@ const Home = () => {
             </div>
 
             <h1 className={styles.heroTitle}>
-              Software POS y Sistema de Ventas en la Nube{' '}
-              <span className={styles.gradientText}>para Colombia</span>
+              <TextAnimate content="Transforma tu negocio con el POS más ágil" as="span" by="word" once={false} />{' '}
+              <span className={styles.gradientText}>
+                <TextAnimate content="de " as="span" by="character" delay={0.6} once={false} />
+                <DiaTextReveal once={false}>
+                  <TextAnimate content="Colombia" as="span" by="character" delay={0.6} once={false} />
+                </DiaTextReveal>
+              </span>
             </h1>
 
             <p className={styles.heroSubtitle}>
-              La plataforma en la nube más rápida y accesible para controlar tu inventario, registrar tus ventas y optimizar tu caja registradora. Diseñada especialmente para emprendedores colombianos que quieren profesionalizar su negocio sin gastar una fortuna.
+              <TextAnimate content="Olvídate del papel y los descuadres. Controla tu inventario, registra ventas en segundos y mira cómo crecen tus ganancias desde cualquier dispositivo." as="span" by="word" delay={0.8} once={false} />
             </p>
 
             <div className={styles.heroActions}>
@@ -256,31 +294,22 @@ const Home = () => {
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                   <Link to="/registro" className={styles.primaryButton}>
                     Probar Gratis Ahora
-                    <ArrowRight size={20} />
+                    <ArrowRight size={20} color="#ffffff" />
                   </Link>
                 </motion.div>
                 <span style={{ fontSize: '0.85rem', color: '#9ca3af', fontWeight: '500' }}>Sin tarjeta de crédito requerida</span>
               </div>
 
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <a href="#precios" className={styles.secondaryButton}>
+                <a href="#precios" onClick={(e) => handleSmoothScroll(e, 'precios')} className={styles.secondaryButton}>
                   Ver Planes de Bajo Costo
                 </a>
               </motion.div>
             </div>
 
             <div className={styles.heroWhatsAppCallout}>
-              <Phone size={18} color="#22c55e" />
-              <span>Soporte personalizado por WhatsApp: <strong><a href="tel:3046422366" className={styles.phoneLink}>304 642 2366</a></strong></span>
-            </div>
-
-            <div className={styles.trustIndicators}>
-              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-                <span style={{ fontSize: '0.9rem', color: '#4b5563' }}>Funciona ideal con:</span>
-                <span style={{ fontWeight: '500', color: '#1f2937', backgroundColor: 'rgba(0, 0, 0, 0.04)', border: '1px solid rgba(0, 0, 0, 0.1)', padding: '3px 12px', borderRadius: '20px', fontSize: '0.85rem', letterSpacing: '0.5px' }}>Bancolombia</span>
-                <span style={{ fontWeight: '500', color: '#1f2937', backgroundColor: 'rgba(0, 0, 0, 0.04)', border: '1px solid rgba(0, 0, 0, 0.1)', padding: '3px 12px', borderRadius: '20px', fontSize: '0.85rem', letterSpacing: '0.5px' }}>Nequi</span>
-                <span style={{ fontWeight: '500', color: '#1f2937', backgroundColor: 'rgba(0, 0, 0, 0.04)', border: '1px solid rgba(0, 0, 0, 0.1)', padding: '3px 12px', borderRadius: '20px', fontSize: '0.85rem', letterSpacing: '0.5px' }}>Daviplata</span>
-              </div>
+              <Phone size={18} color="#1ad61a" />
+              <span>Soporte directo por WhatsApp: <strong><a href="tel:3046422366" className={styles.phoneLink}>304 642 2366</a></strong></span>
             </div>
           </motion.div>
 
@@ -303,20 +332,35 @@ const Home = () => {
                 {/* Visual Quick POS Simulator */}
                 <div className={styles.simulatedHeroPos}>
                   <div className={styles.simulatedHeroPosHeader}>
-                    <div className={styles.simulatedHeroPosTitle}>💵 Registrando Venta</div>
+                    <div className={styles.simulatedHeroPosTitle} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <DollarSign size={16} color="#014abb" /> Registrando Venta
+                    </div>
                     <div className={styles.simulatedHeroPosBadge}>$54.500 COP</div>
                   </div>
                   <div className={styles.simulatedHeroPosItems}>
-                    <div className={styles.simulatedHeroPosItem}>🍔 Hamburguesa Premium x2 <span className={styles.simulatedHeroItemVal}>$36.000</span></div>
-                    <div className={styles.simulatedHeroPosItem}>🍟 Papas Rústicas x1 <span className={styles.simulatedHeroItemVal}>$9.500</span></div>
-                    <div className={styles.simulatedHeroPosItem}>🥤 Gaseosa Cola 350ml x2 <span className={styles.simulatedHeroItemVal}>$9.000</span></div>
+                    <div className={styles.simulatedHeroPosItem}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Coffee size={14} color="#6b7280" /> Hamburguesa Premium x2</span> 
+                      <span className={styles.simulatedHeroItemVal}>$36.000</span>
+                    </div>
+                    <div className={styles.simulatedHeroPosItem}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><ShoppingBag size={14} color="#6b7280" /> Papas Rústicas x1</span> 
+                      <span className={styles.simulatedHeroItemVal}>$9.500</span>
+                    </div>
+                    <div className={styles.simulatedHeroPosItem}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Package size={14} color="#6b7280" /> Gaseosa Cola 350ml x2</span> 
+                      <span className={styles.simulatedHeroItemVal}>$9.000</span>
+                    </div>
                   </div>
                   <div className={styles.simulatedHeroPosFooter}>
                     <div className={styles.simulatedHeroMethod}>
                       <span className={styles.methodLabel}>Método Activo:</span>
-                      <span className={styles.methodValue}>⚡ Pago Mixto (Efectivo/Transferencia)</span>
+                      <span className={styles.methodValue} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Zap size={14} color="#f59e0b" /> Pago Mixto
+                      </span>
                     </div>
-                    <div className={styles.simulatedHeroBtn}>Venta Completada con Éxito ✓</div>
+                    <div className={styles.simulatedHeroBtn} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                      Venta Completada <Check size={16} />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -325,22 +369,76 @@ const Home = () => {
         </div>
       </section>
 
+      {/* Marquee Logos Section */}
+      <section className={styles.marqueeSection} style={{ padding: '3rem 0', background: '#ffffff', borderTop: '1px solid rgba(1, 74, 187, 0.05)', borderBottom: '1px solid rgba(1, 74, 187, 0.05)' }}>
+        <div style={{ textAlign: 'center', marginBottom: '2rem', fontSize: '0.9rem', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          Negocios que confían en nuestro sistema
+        </div>
+        <Marquee pauseOnHover={true} className="[--duration:30s]">
+          {/* Aquí irán los logos reales. Por ahora usamos textos con estilo de logo */}
+          {[
+            'Restaurantes', 'Minimercados', 'Boutiques', 'Ferreterías', 
+            'Papelerías', 'Licorerías', 'Droguerías', 'Cafeterías'
+          ].map((client, i) => (
+            <div key={i} style={{ 
+              padding: '0.75rem 2rem', 
+              background: '#f8fafc', 
+              borderRadius: '8px',
+              border: '1px solid #e2e8f0',
+              fontWeight: '700',
+              color: '#014abb',
+              fontSize: '1.1rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+            }}>
+              {client}
+            </div>
+          ))}
+        </Marquee>
+      </section>
+
       {/* Stats Section */}
       <section className={styles.stats}>
         <div className={styles.statsContainer}>
-          {stats.map((stat, index) => (
-            <motion.div
-              key={index}
-              className={styles.statItem}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: index * 0.1 }}
-            >
-              <div className={styles.statNumber}>{stat.number}</div>
-              <div className={styles.statLabel}>{stat.label}</div>
-            </motion.div>
-          ))}
+          <motion.div
+            className={styles.statItem}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: false }}
+            transition={{ duration: 0.6, delay: 0 }}
+          >
+            <div className={styles.statNumber}>
+              <NumberTicker value={10000} suffix="+" once={false} />
+            </div>
+            <div className={styles.statLabel}>Ventas Registradas</div>
+          </motion.div>
+          <motion.div
+            className={styles.statItem}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: false }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+          >
+            <div className={styles.statNumber}>
+              <NumberTicker value={99.9} decimalPlaces={1} suffix="%" once={false} />
+            </div>
+            <div className={styles.statLabel}>Tiempo de Actividad</div>
+          </motion.div>
+
+          <motion.div
+            className={styles.statItem}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: false }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+          >
+            <div className={styles.statNumber}>
+              <DiaTextReveal text="24/7" once={false} gradient="linear-gradient(to right, #072146 0%, #072146 45%, #02A5E0 55%, transparent 65%, transparent 100%)" />
+            </div>
+            <div className={styles.statLabel}>Acceso Seguro Nube</div>
+          </motion.div>
         </div>
       </section>
 
@@ -1311,7 +1409,7 @@ const Home = () => {
         <div className={styles.footerContainer}>
           <div className={styles.footerInfoCol}>
             <div className={styles.footerLogo}>
-              <TrendingUp size={20} color="#fbbf24" />
+              <CreceLogo />
               <span>Crece+</span>
             </div>
             <p className={styles.footerBrandDesc}>El sistema de gestión y ventas más amigable del mercado colombiano. Empoderamos a los pequeños y medianos emprendimientos con tecnología ágil en la nube.</p>
@@ -1349,8 +1447,24 @@ const Home = () => {
           <p>&copy; {new Date().getFullYear()} Crece+. Todos los derechos reservados. Diseñado con amor para impulsar a los emprendedores de Colombia.</p>
         </div>
       </footer>
+      {/* Scroll to Top Button */}
+      <AnimatePresence>
+        {showScrollTop && (
+          <motion.button
+            className={styles.scrollTopButton}
+            initial={{ opacity: 0, scale: 0.5, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.5, y: 20 }}
+            whileHover={{ scale: 1.1, boxShadow: "0 12px 28px rgba(1, 74, 187, 0.5)" }}
+            whileTap={{ scale: 0.9 }}
+            onClick={scrollToTop}
+          >
+            <ArrowUp size={24} strokeWidth={2.5} />
+          </motion.button>
+        )}
+      </AnimatePresence>
     </div>
   );
-};
+}
 
 export default Home;
