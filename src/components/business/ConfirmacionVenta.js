@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle, Loader2, X } from 'lucide-react';
+import { CheckCircle, Loader2, X, Printer } from 'lucide-react';
 import './ConfirmacionVenta.css';
 
 const ConfirmacionVenta = ({ 
@@ -8,7 +8,8 @@ const ConfirmacionVenta = ({
   isLoading, 
   isSuccess, 
   onClose, 
-  ventaData = null 
+  ventaData = null,
+  onVerRecibo = null
 }) => {
   const containerVariants = {
     hidden: { 
@@ -278,17 +279,35 @@ const ConfirmacionVenta = ({
                   </motion.div>
                 )}
 
-                <motion.button
-                  className="confirmacion-venta-continue"
-                  onClick={onClose}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.8 }}
-                >
-                  Continuar
-                </motion.button>
+                <div className="confirmacion-venta-actions">
+                  {onVerRecibo && (
+                    <motion.button
+                      type="button"
+                      className="confirmacion-venta-btn confirmacion-venta-btn-recibo"
+                      onClick={() => onVerRecibo(ventaData)}
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.7 }}
+                    >
+                      <Printer size={18} />
+                      <span>Imprimir Recibo</span>
+                    </motion.button>
+                  )}
+                  <motion.button
+                    type="button"
+                    className="confirmacion-venta-btn confirmacion-venta-btn-continue"
+                    onClick={onClose}
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.8 }}
+                  >
+                    Continuar
+                  </motion.button>
+                </div>
               </motion.div>
             )}
           </motion.div>

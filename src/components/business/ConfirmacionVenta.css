@@ -192,24 +192,58 @@
   font-size: 0.875rem;
 }
 
-/* Botón continuar */
-.confirmacion-venta-continue {
-  background: linear-gradient(135deg, #004481 0%, #02A5E0 100%);
-  color: var(--text-inverse);
-  border: none;
+/* Botones de acción */
+.confirmacion-venta-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  margin-top: 1.5rem;
+}
+
+@media (min-width: 480px) {
+  .confirmacion-venta-actions {
+    flex-direction: row;
+  }
+}
+
+.confirmacion-venta-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   border-radius: 0.75rem;
-  padding: 1rem 2rem;
-  font-size: 1rem;
+  padding: 0.875rem 1.25rem;
+  font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-  width: 100%;
+  border: none;
 }
 
+.confirmacion-venta-btn-recibo {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.confirmacion-venta-btn-recibo:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.45);
+}
+
+.confirmacion-venta-btn-continue,
+.confirmacion-venta-continue {
+  background: linear-gradient(135deg, #004481 0%, #02A5E0 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(2, 165, 224, 0.3);
+}
+
+.confirmacion-venta-btn-continue:hover,
 .confirmacion-venta-continue:hover {
   background: linear-gradient(135deg, #02A5E0 0%, #1e40af 100%);
-  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 6px 18px rgba(2, 165, 224, 0.45);
 }
 
 /* Animaciones adicionales */

@@ -48,8 +48,15 @@ const PreferenciasAplicacion = () => {
     
     setLoading(true);
     try {
-      // Obtener preferencias del metadata del usuario
+      // Obtener preferencias del metadata del usuario, organización y almacenamiento local
       const userMetadata = user.user_metadata || {};
+      const orgConfig = organization?.catalogo_config || {};
+      const storedMostrar = localStorage.getItem(`crecemas_mostrar_factura_pantalla_${organization?.id}`) ?? localStorage.getItem('crecemas_mostrar_factura_pantalla');
+      const mostrarFacturaDefault = userMetadata.mostrarFacturaPantalla !== undefined
+        ? userMetadata.mostrarFacturaPantalla === true
+        : (orgConfig.mostrar_factura_pantalla !== undefined
+          ? orgConfig.mostrar_factura_pantalla === true
+          : (storedMostrar !== null ? storedMostrar === 'true' : false));
       
       setPreferencias({
         moneda: userMetadata.moneda || 'COP',
@@ -57,14 +64,14 @@ const PreferenciasAplicacion = () => {
         idioma: userMetadata.idioma || 'es',
         mostrarStockBajo: userMetadata.mostrarStockBajo !== false,
         umbralStockBajo: userMetadata.umbralStockBajo ?? 10,
-        mostrarFacturaPantalla: userMetadata.mostrarFacturaPantalla === true
+        mostrarFacturaPantalla: mostrarFacturaDefault
       });
     } catch (error) {
       console.error('Error cargando preferencias:', error);
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, organization]);
 
   useEffect(() => {
     cargarPreferencias();
@@ -189,7 +196,13 @@ const PreferenciasAplicacion = () => {
 
       if (error) throw error;
 
-      // 2. Guardar tipo de negocio, características e información de joyería en la organización
+      // Guardar también en localStorage para el terminal actual y todos los empleados en este navegador
+      localStorage.setItem('crecemas_mostrar_factura_pantalla', preferencias.mostrarFacturaPantalla ? 'true' : 'false');
+      if (organization?.id) {
+        localStorage.setItem(`crecemas_mostrar_factura_pantalla_${organization.id}`, preferencias.mostrarFacturaPantalla ? 'true' : 'false');
+      }
+
+      // 2. Guardar tipo de negocio, características e información de joyería y catálogo en la organización
       if (organization?.id && canEditOrgSettings) {
         const defaultFeaturesForNewType = getDefaultFeatures(businessType);
         const featuresToSave = (enabledFeatures && enabledFeatures.length > 0)
@@ -200,7 +213,11 @@ const PreferenciasAplicacion = () => {
           business_type: businessType,
           enabled_features: featuresToSave,
           mesas_habilitadas: featuresToSave.includes('mesas'),
-          pedidos_habilitados: featuresToSave.includes('pedidos')
+          pedidos_habilitados: featuresToSave.includes('pedidos'),
+          catalogo_config: {
+            ...(organization.catalogo_config || {}),
+            mostrar_factura_pantalla: preferencias.mostrarFacturaPantalla === true
+          }
         };
 
         // Si es joyería, incluir los campos de joyería
