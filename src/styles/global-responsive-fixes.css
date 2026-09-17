@@ -3,7 +3,7 @@
 /* === PREVENIR OVERFLOW HORIZONTAL === */
 html,
 body {
-  overflow-x: hidden;
+  overflow-x: clip; /* Fix position: sticky */
   width: 100%;
   max-width: 100vw;
   position: relative;

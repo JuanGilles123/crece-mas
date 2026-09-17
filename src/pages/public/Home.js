@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../services/api/supabaseClient';
@@ -21,13 +21,28 @@ import {
   Menu,
   X,
   MessageCircle,
+  MessageSquare,
   Mail,
   Send,
   Coffee,
   ShoppingBag,
-  Check
+  Scale,
+  Headphones,
+  Receipt,
+  Wallet,
+  Boxes,
+  PieChart,
+  AlertCircle,
+  Calendar,
+  Search,
+  Settings,
+  Sparkles,
+  Leaf,
+  Building2
 } from 'lucide-react';
 import { ReactComponent as LogoSVG } from '../../assets/logo-crece.svg';
+import FlickeringGrid from '../../components/animations/FlickeringGrid';
+import { LightRays } from '../../components/animations/LightRays';
 import { TextAnimate } from '../../components/animations/TextAnimate';
 import { Marquee } from '../../components/animations/Marquee';
 import { NumberTicker } from '../../components/animations/NumberTicker';
@@ -85,7 +100,41 @@ const Home = () => {
 
   // Scroll effect to shrink navbar
   const [scrolled, setScrolled] = useState(false);
+
+  // MacBook 3D Scroll Animation logic
+  const heroRef = useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ["start start", "end start"]
+  });
+
+  const { scrollY } = useScroll();
+  // El grid empieza en 0.8 en el hero y baja suavemente a 0.45 para que siga siendo visible en el resto de la página
+  const gridOpacity = useTransform(scrollY, [0, 800], [0.8, 0.45]);
+
+  // Animaciones controladas por Scroll
+  const lidRotateX = useTransform(scrollYProgress, [0, 0.7], ["0deg", "-95deg"]);
+  const globalRotateX = useTransform(scrollYProgress, [0, 0.7], ["0deg", "90deg"]);
+  const globalY = useTransform(scrollYProgress, [0, 0.7], ["0px", "100px"]);
+  
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const globalXMobile = useTransform(scrollYProgress, [0, 0.7], ["0vw", "0vw"]);
+  const globalXDesktop = useTransform(scrollYProgress, [0, 0.7], ["2vw", "-27vw"]); // 2vw para empujarlo un poco a la derecha al inicio
+  const globalX = isMobile ? globalXMobile : globalXDesktop;
+  
+  const globalWidthMobile = useTransform(scrollYProgress, [0, 0.7], ["85vw", "95vw"]);
+  const globalWidthDesktop = useTransform(scrollYProgress, [0, 0.7], ["30vw", "85vw"]); // 30vw (antes 38) para darle más espacio horizontal al texto
+  const globalWidth = isMobile ? globalWidthMobile : globalWidthDesktop;
+  
+  const textOpacity = useTransform(scrollYProgress, [0, 0.3], [1, 0]);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [hoveredNav, setHoveredNav] = useState(null);
+  
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   useEffect(() => {
     const handleScroll = () => {
@@ -205,6 +254,21 @@ const Home = () => {
 
   return (
     <div className={styles.container}>
+      {/* Fondos Animados Globales (Full Screen & Fixed) */}
+      <motion.div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100vh', zIndex: 0, pointerEvents: 'none', opacity: gridOpacity }}>
+        
+        {/* Rayos de Luz (Verdes) que crecen y se animan desde arriba */}
+        <LightRays />
+
+        {/* Cuadrícula Mágica */}
+        <FlickeringGrid 
+          squareSize={3} 
+          gridGap={20} 
+          maxOpacity={0.4} 
+          flickerChance={0.08} 
+          colors={['#014abb', '#1ad61a']}
+        />
+      </motion.div>
 
       {/* Floating WhatsApp Widget */}
       <div className={styles.whatsappFloat}>
@@ -231,11 +295,32 @@ const Home = () => {
             <CreceLogo />
           </div>
 
-          <nav className={`${styles.navLinks} ${mobileMenuOpen ? styles.navLinksMobileActive : ''}`}>
-            <a href="#funcionalidades" onClick={(e) => handleSmoothScroll(e, 'funcionalidades')}>Funcionalidades</a>
-            <a href="#visuales" onClick={(e) => handleSmoothScroll(e, 'visuales')}>Ver Ejemplos</a>
-            <a href="#precios" onClick={(e) => handleSmoothScroll(e, 'precios')}>Planes</a>
-            <a href="#contacto" onClick={(e) => handleSmoothScroll(e, 'contacto')}>Soporte</a>
+          <nav className={`${styles.navLinks} ${mobileMenuOpen ? styles.navLinksMobileActive : ''}`} onMouseLeave={() => setHoveredNav(null)}>
+            {[
+              { id: 'funcionalidades', label: 'Funcionalidades' },
+              { id: 'visuales', label: 'Ver Ejemplos' },
+              { id: 'precios', label: 'Planes' },
+              { id: 'contacto', label: 'Soporte' }
+            ].map((item) => (
+              <a 
+                key={item.id}
+                href={`#${item.id}`} 
+                onClick={(e) => handleSmoothScroll(e, item.id)}
+                onMouseEnter={() => setHoveredNav(item.id)}
+              >
+                {hoveredNav === item.id && (
+                  <motion.div
+                    layoutId="navHoverPill"
+                    className={styles.navHoverPill}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  />
+                )}
+                <span style={{ position: 'relative', zIndex: 2 }}>{item.label}</span>
+              </a>
+            ))}
             <div className={styles.mobileNavActions}>
               <Link to="/login" className={styles.navLoginMobile} onClick={() => setMobileMenuOpen(false)}>Iniciar Sesión</Link>
               <Link to="/registro" className={styles.navRegisterMobile} onClick={() => setMobileMenuOpen(false)}>Comenzar Gratis</Link>
@@ -256,26 +341,15 @@ const Home = () => {
       </header>
 
       {/* Hero Section */}
-      <section className={styles.hero}>
+      <section className={styles.hero} id="inicio" ref={heroRef}>
         <div className={styles.heroContent}>
           <motion.div
             className={styles.heroText}
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-          >
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
-              <div className={styles.badge}>
-                <Zap size={16} />
-                <span>Para Emprendimientos</span>
-              </div>
-              <div className={styles.badge} style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', color: '#02A5E0', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-                <Globe size={16} />
-                <span>¡Nuevo! Tu Página Web Integrada</span>
-              </div>
-            </div>
-
-            <h1 className={styles.heroTitle}>
+            initial={{ opacity: 0, x: -30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, type: "spring", bounce: 0.4 }}
+            style={{ opacity: textOpacity, position: 'relative', zIndex: 10 }}
+          >  <h1 className={styles.heroTitle}>
               <TextAnimate content="Transforma tu negocio con el POS más ágil" as="span" by="word" once={false} />{' '}
               <span className={styles.gradientText}>
                 <TextAnimate content="de " as="span" by="character" delay={0.6} once={false} />
@@ -315,56 +389,43 @@ const Home = () => {
 
           <motion.div
             className={styles.heroVisual}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2, type: "spring", bounce: 0.4 }}
+            style={{ zIndex: 10 }}
           >
-            <div className={styles.heroMockupContainer}>
-              <div className={styles.mockupHeader}>
-                <div className={styles.mockupDots}>
-                  <div className={styles.dot}></div>
-                  <div className={styles.dot}></div>
-                  <div className={styles.dot}></div>
-                </div>
-                <span>Crece+ Nube - Caja Registradora</span>
-              </div>
-              <div className={styles.mockupBody}>
-                {/* Visual Quick POS Simulator */}
-                <div className={styles.simulatedHeroPos}>
-                  <div className={styles.simulatedHeroPosHeader}>
-                    <div className={styles.simulatedHeroPosTitle} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <DollarSign size={16} color="#014abb" /> Registrando Venta
-                    </div>
-                    <div className={styles.simulatedHeroPosBadge}>$54.500 COP</div>
-                  </div>
-                  <div className={styles.simulatedHeroPosItems}>
-                    <div className={styles.simulatedHeroPosItem}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Coffee size={14} color="#6b7280" /> Hamburguesa Premium x2</span> 
-                      <span className={styles.simulatedHeroItemVal}>$36.000</span>
-                    </div>
-                    <div className={styles.simulatedHeroPosItem}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><ShoppingBag size={14} color="#6b7280" /> Papas Rústicas x1</span> 
-                      <span className={styles.simulatedHeroItemVal}>$9.500</span>
-                    </div>
-                    <div className={styles.simulatedHeroPosItem}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Package size={14} color="#6b7280" /> Gaseosa Cola 350ml x2</span> 
-                      <span className={styles.simulatedHeroItemVal}>$9.000</span>
-                    </div>
-                  </div>
-                  <div className={styles.simulatedHeroPosFooter}>
-                    <div className={styles.simulatedHeroMethod}>
-                      <span className={styles.methodLabel}>Método Activo:</span>
-                      <span className={styles.methodValue} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Zap size={14} color="#f59e0b" /> Pago Mixto
-                      </span>
-                    </div>
-                    <div className={styles.simulatedHeroBtn} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                      Venta Completada <Check size={16} />
-                    </div>
+            <motion.div 
+              className={styles.macbookContainer}
+              style={{ 
+                rotateX: globalRotateX,
+                width: globalWidth,
+                x: globalX,
+                y: globalY
+              }}
+            >
+              <motion.div 
+                className={styles.macbookLid}
+                style={{ rotateX: lidRotateX }}
+              >
+                {/* Front of the lid (Screen) */}
+                <div className={styles.macbookScreen}>
+                  <div className={styles.macbookCamera}></div>
+                  <div className={styles.macbookDisplay}>
+                    <img src="/pantalla%20primera%20.jpeg" alt="Dashboard Crece+ POS" />
                   </div>
                 </div>
+                
+                {/* Back of the lid (Apple Logo) */}
+                <div className={styles.macbookBackFace}>
+                  {/* Using Crece+ logo instead of Apple to avoid copyright, but styled exactly like an Apple logo on a Mac */}
+                  <LogoSVG className={styles.macbookAppleLogo} />
+                </div>
+              </motion.div>
+              
+              <div className={styles.macbookBase}>
+                <div className={styles.macbookNotch}></div>
               </div>
-            </div>
+            </motion.div>
           </motion.div>
         </div>
       </section>
@@ -377,23 +438,36 @@ const Home = () => {
         <Marquee pauseOnHover={true} className="[--duration:30s]">
           {/* Aquí irán los logos reales. Por ahora usamos textos con estilo de logo */}
           {[
-            'Restaurantes', 'Minimercados', 'Boutiques', 'Ferreterías', 
-            'Papelerías', 'Licorerías', 'Droguerías', 'Cafeterías'
+            { src: '/logo lotus.jpeg', alt: 'Lotus' },
+            { src: '/logo luxury.jpeg', alt: 'Luxury' },
+            { src: '/logo lotus.jpeg', alt: 'Lotus' },
+            { src: '/logo luxury.jpeg', alt: 'Luxury' },
+            { src: '/logo lotus.jpeg', alt: 'Lotus' },
+            { src: '/logo luxury.jpeg', alt: 'Luxury' }
           ].map((client, i) => (
             <div key={i} style={{ 
-              padding: '0.75rem 2rem', 
-              background: '#f8fafc', 
-              borderRadius: '8px',
+              padding: '1rem', 
+              background: '#ffffff', 
+              borderRadius: '12px',
               border: '1px solid #e2e8f0',
-              fontWeight: '700',
-              color: '#014abb',
-              fontSize: '1.1rem',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+              boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+              width: '180px',
+              height: '90px',
+              margin: '0 1rem'
             }}>
-              {client}
+              <img 
+                src={client.src} 
+                alt={client.alt} 
+                style={{ 
+                  maxWidth: '100%', 
+                  maxHeight: '100%', 
+                  objectFit: 'contain',
+                  borderRadius: '4px'
+                }} 
+              />
             </div>
           ))}
         </Marquee>
@@ -435,7 +509,7 @@ const Home = () => {
             transition={{ duration: 0.6, delay: 0.3 }}
           >
             <div className={styles.statNumber}>
-              <DiaTextReveal text="24/7" once={false} gradient="linear-gradient(to right, #072146 0%, #072146 45%, #02A5E0 55%, #072146 65%, #072146 100%)" />
+              <DiaTextReveal text="24/7" once={false} repeat={true} repeatDelay={4} gradient="linear-gradient(to right, #072146 0%, #072146 45%, #02A5E0 55%, #072146 65%, #072146 100%)" />
             </div>
             <div className={styles.statLabel}>Acceso Seguro Nube</div>
           </motion.div>
@@ -456,23 +530,43 @@ const Home = () => {
             <p>Herramientas potentes y simplificadas para evitar fugas de dinero, organizar el inventario y vender más rápido.</p>
           </motion.div>
 
-          <div className={styles.featuresGrid}>
-            {features.map((feature, index) => (
-              <motion.div
-                key={index}
-                className={styles.featureCard}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: index * 0.08 }}
-                viewport={{ once: true }}
-                whileHover={{ y: -6, borderColor: 'rgba(251, 191, 36, 0.4)' }}
-              >
-                <div className={styles.featureIcon}>{feature.icon}</div>
-                <h3>{feature.title}</h3>
-                <p>{feature.description}</p>
-              </motion.div>
-            ))}
-          </div>
+          <motion.div 
+            className={styles.featuresGrid}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: false, amount: 0.1 }}
+            variants={{
+              hidden: { opacity: 0 },
+              visible: {
+                opacity: 1,
+                transition: {
+                  staggerChildren: 0.1
+                }
+              }
+            }}
+          >
+            {features.map((feature, index) => {
+              let layoutClass = styles.featureCard;
+              if (index === 0 || index === 4) layoutClass = `${styles.featureCard} ${styles.featureWide}`;
+              if (index === 1) layoutClass = `${styles.featureCard} ${styles.featureTall}`;
+
+              return (
+                <motion.div
+                  key={index}
+                  className={layoutClass}
+                  variants={{
+                    hidden: { opacity: 0, y: 30 },
+                    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
+                  }}
+                  whileHover={{ y: -6, borderColor: 'rgba(2, 165, 224, 0.4)' }}
+                >
+                  <div className={styles.featureIcon}>{feature.icon}</div>
+                  <h3>{feature.title}</h3>
+                  <p>{feature.description}</p>
+                </motion.div>
+              );
+            })}
+          </motion.div>
         </div>
       </section>
 
@@ -484,42 +578,52 @@ const Home = () => {
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
+            viewport={{ once: false, amount: 0.1 }}
           >
-            <h2>Explora nuestra interfaz en funcionamiento</h2>
+            <h2>
+              <TextAnimate content="Explora nuestra interfaz en funcionamiento" as="span" by="word" once={false} />
+            </h2>
             <p>Diseño premium de alta velocidad desarrollado con la mejor tecnología. Haz clic en las pestañas a continuación para ver cómo opera el sistema.</p>
           </motion.div>
 
           {/* Interactive tabs */}
           <div className={styles.tabsRow}>
-            <button
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               className={`${styles.tabBtn} ${activeMockup === 'pos' ? styles.tabBtnActive : ''}`}
               onClick={() => setActiveMockup('pos')}
             >
               <ShoppingCart size={18} />
               Punto de Venta (POS)
-            </button>
-            <button
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               className={`${styles.tabBtn} ${activeMockup === 'inventory' ? styles.tabBtnActive : ''}`}
               onClick={() => setActiveMockup('inventory')}
             >
               <Package size={18} />
               Gestión de Inventario
-            </button>
-            <button
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               className={`${styles.tabBtn} ${activeMockup === 'dashboard' ? styles.tabBtnActive : ''}`}
               onClick={() => setActiveMockup('dashboard')}
             >
               <BarChart3 size={18} />
               Dashboard y Analítica
-            </button>
-            <button
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               className={`${styles.tabBtn} ${activeMockup === 'catalog' ? styles.tabBtnActive : ''}`}
               onClick={() => setActiveMockup('catalog')}
             >
               <Globe size={18} />
               Mi Tienda Online
-            </button>
+            </motion.button>
           </div>
 
           <div className={styles.showcaseContent}>
@@ -558,31 +662,27 @@ const Home = () => {
                     >
                       {/* Left: Cart items */}
                       <div className={styles.posCartPane}>
-                        <h4>📝 Cuenta Activa</h4>
+                        <h4><Receipt size={18} className={styles.paneTitleIcon} /> Cuenta Activa</h4>
                         <div className={styles.posCartItems}>
-                          <div className={styles.posCartItem}>
-                            <div>
-                              <strong>Hamburguesa Especial con Queso</strong>
-                              <span>Código: H012 / Cantidad: x2</span>
-                            </div>
-                            <span className={styles.itemPrice}>$36.000</span>
-                          </div>
-
-                          <div className={styles.posCartItem}>
-                            <div>
-                              <strong>Papas Rústicas en Casco</strong>
-                              <span>Código: P005 / Cantidad: x1</span>
-                            </div>
-                            <span className={styles.itemPrice}>$9.500</span>
-                          </div>
-
-                          <div className={styles.posCartItem}>
-                            <div>
-                              <strong>Coca-Cola Original 350ml</strong>
-                              <span>Código: B002 / Cantidad: x2</span>
-                            </div>
-                            <span className={styles.itemPrice}>$9.000</span>
-                          </div>
+                          {[
+                            { name: "Hamburguesa Especial con Queso", code: "H012 / Cantidad: x2", price: "$36.000" },
+                            { name: "Papas Rústicas en Casco", code: "P005 / Cantidad: x1", price: "$9.500" },
+                            { name: "Coca-Cola Original 350ml", code: "B002 / Cantidad: x2", price: "$9.000" }
+                          ].map((item, index) => (
+                            <motion.div 
+                              key={index}
+                              className={styles.posCartItem}
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ duration: 0.4, delay: 0.1 * index, type: "spring", stiffness: 100 }}
+                            >
+                              <div>
+                                <strong>{item.name}</strong>
+                                <span>Código: {item.code}</span>
+                              </div>
+                              <span className={styles.itemPrice}>{item.price}</span>
+                            </motion.div>
+                          ))}
                         </div>
 
                         <div className={styles.posTotalRow}>
@@ -597,7 +697,7 @@ const Home = () => {
 
                       {/* Right: Payment configuration */}
                       <div className={styles.posPaymentPane}>
-                        <h4>💳 Métodos de Pago</h4>
+                        <h4><Wallet size={18} className={styles.paneTitleIcon} /> Métodos de Pago</h4>
                         <p className={styles.paneHelp}>Selecciona cómo pagará el cliente:</p>
 
                         <div className={styles.paymentMethodButtons}>
@@ -682,7 +782,7 @@ const Home = () => {
                     >
                       <div className={styles.invToolbar}>
                         <div className={styles.searchSimulator}>
-                          <span className={styles.searchIcon}>🔍</span>
+                          <Search size={16} className={styles.searchIcon} />
                           <input type="text" placeholder="Buscando: Café, Leche, Queso..." readOnly />
                         </div>
                         <div className={styles.invFilters}>
@@ -696,13 +796,13 @@ const Home = () => {
                             className={`${styles.filterTab} ${invFilter === 'low' ? styles.filterTabActive : ''}`}
                             onClick={() => setInvFilter('low')}
                           >
-                            ⚠️ Stock Bajo (2)
+                            <AlertCircle size={14} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: '4px' }} /> Stock Bajo (2)
                           </button>
                           <button
                             className={`${styles.filterTab} ${invFilter === 'out' ? styles.filterTabActive : ''}`}
                             onClick={() => setInvFilter('out')}
                           >
-                            🚫 Agotados (1)
+                            <X size={14} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: '4px' }} /> Agotados (1)
                           </button>
                         </div>
                       </div>
@@ -726,7 +826,10 @@ const Home = () => {
                                 <td>
                                   <div className={styles.productNameCell}>
                                     <div className={styles.productAvatar}>
-                                      {p.label === 'Café' ? '☕' : p.label === 'Lácteo' ? '🥛' : p.label === 'Panadería' ? '🍞' : '📦'}
+                                      {p.label === 'Café' ? <Coffee size={16} color="#072146" /> : 
+                                       p.label === 'Lácteo' ? <Package size={16} color="#072146" /> : 
+                                       p.label === 'Panadería' ? <ShoppingBag size={16} color="#072146" /> : 
+                                       <Boxes size={16} color="#072146" />}
                                     </div>
                                     <div>
                                       <span className={styles.pName}>{p.name}</span>
@@ -768,7 +871,7 @@ const Home = () => {
                     >
                       {/* Period Filter Selector */}
                       <div className={styles.dashHeaderRow}>
-                        <h4>📊 Resumen de Rendimiento</h4>
+                        <h4><PieChart size={18} className={styles.paneTitleIcon} /> Resumen de Rendimiento</h4>
                         <div className={styles.dashPeriodButtons}>
                           <button
                             className={`${styles.periodBtn} ${dashPeriod === 'hoy' ? styles.periodBtnActive : ''}`}
@@ -817,7 +920,7 @@ const Home = () => {
                       {/* Charts and Alerts Mockup */}
                       <div className={styles.dashContentGrid}>
                         <div className={styles.dashChartCol}>
-                          <h5>📈 Gráfico de Ventas</h5>
+                          <h5><BarChart3 size={16} className={styles.paneSubtitleIcon} /> Gráfico de Ventas</h5>
                           <div className={styles.simulatedChart}>
                             <div className={styles.chartBars}>
                               <div className={styles.barItem} style={{ height: dashPeriod === 'hoy' ? '30%' : '75%' }}><span className={styles.barTooltip}>Lun</span></div>
@@ -831,17 +934,17 @@ const Home = () => {
                         </div>
 
                         <div className={styles.dashAlertsCol}>
-                          <h5>⚠️ Alertas de Atención</h5>
+                          <h5><AlertCircle size={16} className={styles.paneSubtitleIcon} /> Alertas de Atención</h5>
                           <div className={styles.dashAlertList}>
                             <div className={styles.dashAlertItem}>
-                              <span className={styles.alertIcon}>⚠️</span>
+                              <span className={styles.alertIcon}><AlertCircle size={16} color="#d97706" /></span>
                               <div>
                                 <strong>Stock Crítico de Productos</strong>
                                 <p>Leche Entera Premium y Aceite de Oliva tienen existencias bajas.</p>
                               </div>
                             </div>
                             <div className={styles.dashAlertItem}>
-                              <span className={styles.alertIcon}>📅</span>
+                              <span className={styles.alertIcon}><Calendar size={16} color="#02A5E0" /></span>
                               <div>
                                 <strong>Próximos Vencimientos</strong>
                                 <p>1 producto vence en menos de 5 días. Revisa tu estantería.</p>
@@ -866,7 +969,7 @@ const Home = () => {
                     >
                       {/* Left: Configuration Panel */}
                       <div style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                        <h4 style={{ marginBottom: '15px' }}>⚙️ Personaliza tu Tienda Online</h4>
+                        <h4 style={{ marginBottom: '15px' }}><Settings size={18} className={styles.paneTitleIcon} /> Personaliza tu Tienda Online</h4>
 
                         <div style={{ marginBottom: '20px' }}>
                           <label style={{ fontSize: '0.85rem', color: '#9ca3af', display: 'block', marginBottom: '8px' }}>Color Principal de tu Marca</label>
@@ -919,7 +1022,7 @@ const Home = () => {
                           {/* Search */}
                           <div style={{ padding: '0 10px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', backgroundColor: activeThemeObj.header, padding: '8px 12px', borderRadius: '10px', transition: 'background-color 0.3s ease' }}>
-                              <span style={{ marginRight: '8px', opacity: 0.5 }}>🔍</span>
+                              <Search size={14} style={{ marginRight: '8px', opacity: 0.5, color: activeThemeObj.text }} />
                               <span style={{ fontSize: '0.75rem', color: activeThemeObj.text, opacity: 0.7 }}>Buscar productos...</span>
                             </div>
                           </div>
@@ -940,8 +1043,8 @@ const Home = () => {
                           </div>
 
                           {/* Promo Text */}
-                          <div style={{ margin: '15px 10px', backgroundColor: activeThemeObj.header, padding: '10px', borderRadius: '10px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 'bold', color: activeThemeObj.text, transition: 'all 0.3s ease' }}>
-                            ✨ ¡UN MUNDO DE BELLEZA!
+                          <div style={{ margin: '15px 10px', backgroundColor: activeThemeObj.header, padding: '10px', borderRadius: '10px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 'bold', color: activeThemeObj.text, transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                            <Sparkles size={14} color="#fcd116" /> ¡UN MUNDO DE BELLEZA! <Sparkles size={14} color="#fcd116" />
                           </div>
 
                           {/* Products Grid */}
@@ -1046,7 +1149,7 @@ const Home = () => {
 
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Link to="/registro" className={styles.ctaButton}>
-                <Target size={20} />
+                <Zap size={20} />
                 Comenzar Gratis Ahora
               </Link>
             </motion.div>
@@ -1054,32 +1157,65 @@ const Home = () => {
 
           <motion.div
             className={styles.benefitsVisual}
-            initial={{ opacity: 0, x: 30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
+            initial="hidden"
+            whileInView="show"
             viewport={{ once: true }}
+            variants={{
+              hidden: { opacity: 0 },
+              show: {
+                opacity: 1,
+                transition: {
+                  staggerChildren: 0.15,
+                  delayChildren: 0.3
+                }
+              }
+            }}
           >
             <div className={styles.floatingCardsGrid}>
-              <div className={styles.floatGridCard}>
-                <ShoppingCart size={24} color="#fbbf24" />
+              <motion.div 
+                className={styles.floatGridCard}
+                variants={{
+                  hidden: { opacity: 0, y: 20 },
+                  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100 } }
+                }}
+              >
+                <ShoppingCart size={24} color="#014abb" />
                 <strong>Punto de Venta</strong>
                 <span>Cobra rápido y sin enredos</span>
-              </div>
-              <div className={styles.floatGridCard}>
-                <Package size={24} color="#02A5E0" />
+              </motion.div>
+              <motion.div 
+                className={styles.floatGridCard}
+                variants={{
+                  hidden: { opacity: 0, y: 20 },
+                  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100 } }
+                }}
+              >
+                <Package size={24} color="#014abb" />
                 <strong>Inventarios</strong>
                 <span>Alertas y stock en la nube</span>
-              </div>
-              <div className={styles.floatGridCard}>
-                <Calculator size={24} color="#10b981" />
+              </motion.div>
+              <motion.div 
+                className={styles.floatGridCard}
+                variants={{
+                  hidden: { opacity: 0, y: 20 },
+                  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100 } }
+                }}
+              >
+                <Calculator size={24} color="#014abb" />
                 <strong>Cierre de Caja</strong>
                 <span>Monitorea tus diferencias</span>
-              </div>
-              <div className={styles.floatGridCard}>
-                <Users size={24} color="#8b5cf6" />
+              </motion.div>
+              <motion.div 
+                className={styles.floatGridCard}
+                variants={{
+                  hidden: { opacity: 0, y: 20 },
+                  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100 } }
+                }}
+              >
+                <Users size={24} color="#014abb" />
                 <strong>Cajeros</strong>
                 <span>Controla roles y permisos</span>
-              </div>
+              </motion.div>
             </div>
           </motion.div>
         </div>
@@ -1093,10 +1229,12 @@ const Home = () => {
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
+            viewport={{ once: false, amount: 0.1 }}
           >
             <div className={styles.pricingBadge}>PRECIOS CLAROS Y TRANSPARENTES</div>
-            <h2>Planes de bajo costo diseñados para Emprendimientos</h2>
+            <h2>
+              <TextAnimate content="Planes de bajo costo diseñados para Emprendimientos" as="span" by="word" once={false} />
+            </h2>
             <p>Comienza gratis para probar las capacidades de la herramienta. Desbloquea límites más altos a medida que tu negocio prospere, con planes mensuales sumamente accesibles.</p>
           </motion.div>
 
@@ -1120,16 +1258,31 @@ const Home = () => {
           </div>
 
           {/* Plans Grid */}
-          <div className={styles.plansGrid}>
+          <motion.div 
+            className={styles.plansGrid}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: false, amount: 0.1 }}
+            variants={{
+              hidden: { opacity: 0 },
+              visible: {
+                opacity: 1,
+                transition: { staggerChildren: 0.2 }
+              }
+            }}
+          >
 
             {/* PLAN 1: GRATIS */}
             <motion.div
               className={styles.planCard}
+              variants={{
+                hidden: { opacity: 0, y: 30 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
+              }}
               whileHover={{ y: -8 }}
-              transition={{ duration: 0.3 }}
             >
               <div className={styles.planHeader}>
-                <span className={styles.planIcon}>🌱</span>
+                <span className={styles.planIcon} style={{ background: '#f4f9fd', color: '#10b981' }}><Leaf size={24} /></span>
                 <h3>Plan Gratuito</h3>
                 <p className={styles.planDesc}>Perfecto para probar las bases de tu negocio</p>
                 <div className={styles.planPriceRow}>
@@ -1156,12 +1309,24 @@ const Home = () => {
             {/* PLAN 2: ESTÁNDAR (POPULAR) */}
             <motion.div
               className={`${styles.planCard} ${styles.planCardPopular}`}
+              variants={{
+                hidden: { opacity: 0, y: 30 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
+              }}
               whileHover={{ y: -8 }}
-              transition={{ duration: 0.3 }}
+              animate={{
+                boxShadow: ["0 0 0 0 rgba(2, 165, 224, 0)", "0 0 0 8px rgba(2, 165, 224, 0.1)", "0 0 0 0 rgba(2, 165, 224, 0)"],
+              }}
+              transition={{
+                boxShadow: {
+                  repeat: Infinity,
+                  duration: 2,
+                }
+              }}
             >
-              <div className={styles.popularBadge}>👑 MÁS POPULAR PARA EMPRENDEDORES</div>
+              <div className={styles.popularBadge}>MÁS POPULAR PARA EMPRENDEDORES</div>
               <div className={styles.planHeader}>
-                <span className={styles.planIcon} style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#02A5E0' }}>⚡</span>
+                <span className={styles.planIcon} style={{ background: 'rgba(1, 74, 187, 0.1)', color: '#014abb' }}><Zap size={24} /></span>
                 <h3>Plan Estándar</h3>
                 <p className={styles.planDesc}>Ideal para digitalizar y escalar tu tienda</p>
                 <div className={styles.planPriceRow}>
@@ -1195,11 +1360,14 @@ const Home = () => {
             {/* PLAN 3: PREMIUM */}
             <motion.div
               className={styles.planCard}
+              variants={{
+                hidden: { opacity: 0, y: 30 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
+              }}
               whileHover={{ y: -8 }}
-              transition={{ duration: 0.3 }}
             >
               <div className={styles.planHeader}>
-                <span className={styles.planIcon} style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }}>🏢</span>
+                <span className={styles.planIcon} style={{ background: 'rgba(26, 214, 26, 0.1)', color: '#1ad61a' }}><Building2 size={24} /></span>
                 <h3>Plan Premium</h3>
                 <p className={styles.planDesc}>Para empresas consolidadas y sucursales</p>
                 <div className={styles.planPriceRow}>
@@ -1226,10 +1394,10 @@ const Home = () => {
                 <li><CheckCircle size={16} color="#10b981" /> <strong>WhatsApp de Soporte Directo</strong></li>
               </ul>
             </motion.div>
-          </div>
+          </motion.div>
 
           <div className={styles.pricingFooterNotice}>
-            <p>💡 <strong>¿Por qué cobramos mensualidades bajas?</strong> Nuestro enfoque es democratizar la tecnología. Al ser un pago mensual bajo, eliminamos la barrera de entrada para que cualquier panadería, restaurante, boutique o minimercado pueda profesionalizarse hoy sin descapitalizarse.</p>
+            <p><Zap size={18} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '8px', color: '#014abb' }} /> <strong>¿Por qué cobramos mensualidades bajas?</strong> Nuestro enfoque es democratizar la tecnología. Al ser un pago mensual bajo, eliminamos la barrera de entrada para que cualquier panadería, restaurante, boutique o minimercado pueda profesionalizarse hoy sin descapitalizarse.</p>
           </div>
         </div>
       </section>
@@ -1251,10 +1419,10 @@ const Home = () => {
           {/* Department Cards */}
           <div className={styles.contactDeptGrid}>
             {[
-              { icon: '🛒', title: 'Ventas', desc: 'Planes, precios y facturación', email: 'ventas@crecemas.co', dept: 'ventas' },
-              { icon: '🛠️', title: 'Soporte Técnico', desc: 'Ayuda con la plataforma', email: 'soporte@crecemas.co', dept: 'soporte' },
-              { icon: '⚖️', title: 'Legal', desc: 'Términos y privacidad', email: 'legal@crecemas.co', dept: 'legal' },
-              { icon: '💬', title: 'Contacto General', desc: 'Cualquier otra consulta', email: 'hola@crecemas.co', dept: 'general' },
+              { icon: <ShoppingCart size={24} color="#014abb" />, title: 'Ventas', desc: 'Planes, precios y facturación', email: 'ventas@crecemas.co', dept: 'ventas' },
+              { icon: <Headphones size={24} color="#014abb" />, title: 'Soporte Técnico', desc: 'Ayuda con la plataforma', email: 'soporte@crecemas.co', dept: 'soporte' },
+              { icon: <Scale size={24} color="#014abb" />, title: 'Legal', desc: 'Términos y privacidad', email: 'legal@crecemas.co', dept: 'legal' },
+              { icon: <MessageSquare size={24} color="#014abb" />, title: 'Contacto General', desc: 'Cualquier otra consulta', email: 'hola@crecemas.co', dept: 'general' },
             ].map((dept, i) => (
               <motion.div
                 key={i}
@@ -1284,7 +1452,7 @@ const Home = () => {
               transition={{ duration: 0.6 }}
               viewport={{ once: true }}
             >
-              <h3 className={styles.contactFormTitle}><Mail size={20} /> Envíanos un mensaje</h3>
+              <h3 className={styles.contactFormTitle}><MessageSquare size={24} color="#014abb" /> Envíanos un mensaje</h3>
               <form onSubmit={handleContactSubmit} className={styles.contactForm}>
                 <div className={styles.contactInputsRow}>
                   <input
@@ -1312,10 +1480,10 @@ const Home = () => {
                   className={styles.contactSelect}
                   id="contact-department"
                 >
-                  <option value="soporte">🛠️ Soporte Técnico</option>
-                  <option value="ventas">🛒 Ventas y Planes</option>
-                  <option value="legal">⚖️ Legal</option>
-                  <option value="general">💬 Consulta General</option>
+                  <option value="soporte">Soporte Técnico</option>
+                  <option value="ventas">Ventas y Planes</option>
+                  <option value="legal">Legal</option>
+                  <option value="general">Consulta General</option>
                 </select>
                 <textarea
                   placeholder="¿En qué podemos ayudarte? Cuéntanos con detalle..."
@@ -1357,9 +1525,7 @@ const Home = () => {
             >
               <div className={styles.waBoxInner}>
                 <div className={styles.waIconBig}>
-                  <svg viewBox="0 0 24 24" width="52" height="52" fill="currentColor">
-                    <path d="M12.004 2C6.48 2 2 6.48 2 12.004c0 1.908.533 3.69 1.458 5.214L2 22l4.928-1.428A9.957 9.957 0 0012.004 22c5.52 0 10-4.48 10-10S17.524 2 12.004 2zm5.795 14.197c-.244.686-1.233 1.258-1.795 1.343-.54.085-1.218.157-3.415-.744-2.825-1.157-4.607-4.047-4.75-4.232-.143-.186-1.157-1.545-1.157-2.946 0-1.4.729-2.087.986-2.373.257-.286.558-.358.744-.358.186 0 .372.014.53.028.172.014.386-.057.6-.057.215 0 .415.086.63.586.23.53.772 1.902.844 2.045.072.143.115.315.015.515-.1.2-.15.315-.3.486-.15.172-.315.386-.45.515-.15.143-.308.301-.129.615.18.3.794 1.31 1.702 2.116.78.694 1.442.909 1.758 1.052.315.143.5.122.687-.086.186-.208.787-.915.994-1.23.208-.315.415-.258.701-.15.286.1.18.1.18.1s1.825.9 2.14 1.058c.315.158.53.23.6.358.072.13.072.744-.172 1.43z" />
-                  </svg>
+                  <MessageCircle size={36} strokeWidth={2.5} color="white" />
                 </div>
                 <h3>¿Prefieres WhatsApp?</h3>
                 <p>Habla con nuestro equipo en tiempo real. Respondemos en minutos durante horario hábil.</p>
@@ -1375,7 +1541,9 @@ const Home = () => {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  💬 Chatear por WhatsApp
+                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                    <MessageCircle size={18} /> Chatear por WhatsApp
+                  </span>
                 </motion.a>
                 <div className={styles.waOrSeparator}><span>o escríbenos directamente</span></div>
                 <div className={styles.waEmailLinks}>
@@ -1396,34 +1564,51 @@ const Home = () => {
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
+            viewport={{ once: false, amount: 0.1 }}
           >
-            <h2>¿Listo para organizar tu negocio y empezar a crecer?</h2>
+            <h2 style={{ maxWidth: '700px', margin: '0 auto', paddingBottom: '1rem' }}>
+              <TextAnimate content="¿Listo para organizar tu negocio y llevarlo al siguiente nivel?" as="span" by="word" once={false} />
+            </h2>
             <p>Regístrate en menos de 1 minuto y obtén acceso inmediato a nuestra Versión Gratuita. Pásate a un plan Premium cuando tu negocio lo necesite.</p>
+            <Link to="/registro" className={styles.ctaFinalButton}>
+              Crear Cuenta Gratis <ArrowRight size={20} />
+            </Link>
           </motion.div>
         </div>
       </section>
 
       {/* Premium Footer */}
-      <footer className={styles.footer}>
+      <motion.footer 
+        className={styles.footer}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: false, amount: 0.1 }}
+        variants={{
+          hidden: { opacity: 0 },
+          visible: {
+            opacity: 1,
+            transition: { staggerChildren: 0.1 }
+          }
+        }}
+      >
         <div className={styles.footerContainer}>
-          <div className={styles.footerInfoCol}>
+          <motion.div className={styles.footerInfoCol} variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}>
             <div className={styles.footerLogo}>
               <CreceLogo />
               <span>Crece+</span>
             </div>
             <p className={styles.footerBrandDesc}>El sistema de gestión y ventas más amigable del mercado colombiano. Empoderamos a los pequeños y medianos emprendimientos con tecnología ágil en la nube.</p>
-          </div>
+          </motion.div>
 
-          <div className={styles.footerLinksCol}>
+          <motion.div className={styles.footerLinksCol} variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}>
             <h4>Navegación</h4>
             <a href="#funcionalidades">Funcionalidades</a>
             <a href="#visuales">Ejemplos</a>
             <a href="#precios">Precios y Planes</a>
             <a href="#contacto">Contacto y Soporte</a>
-          </div>
+          </motion.div>
 
-          <div className={styles.footerContactCol}>
+          <motion.div className={styles.footerContactCol} variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}>
             <h4>Contacto Oficial</h4>
             <div className={styles.contactItem}>
               <MessageCircle size={16} color="#22c55e" />
@@ -1441,12 +1626,12 @@ const Home = () => {
               <Globe size={16} />
               <span>crecemas.co — Colombia</span>
             </div>
-          </div>
+          </motion.div>
         </div>
-        <div className={styles.footerBottom}>
+        <motion.div className={styles.footerBottom} variants={{ hidden: { opacity: 0 }, visible: { opacity: 1 } }}>
           <p>&copy; {new Date().getFullYear()} Crece+. Todos los derechos reservados. Diseñado con amor para impulsar a los emprendedores de Colombia.</p>
-        </div>
-      </footer>
+        </motion.div>
+      </motion.footer>
       {/* Scroll to Top Button */}
       <AnimatePresence>
         {showScrollTop && (

@@ -24,7 +24,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.6;
-  overflow-x: hidden;
+  overflow-x: clip; /* Fix position: sticky */
   /* Smooth scrolling nativo iOS */
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;

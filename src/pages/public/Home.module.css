@@ -5,7 +5,7 @@
   color: #014abb;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   position: relative;
-  overflow-x: hidden;
+  overflow-x: clip; /* clip prevents overflow without breaking position: sticky */
 }
 
 /* Floating WhatsApp Widget with animation */
@@ -173,15 +173,30 @@
 }
 
 .navLinks a {
+  position: relative;
   color: #475569;
   text-decoration: none;
   font-weight: 600;
-  font-size: 1.05rem; /* Letra más grande y legible */
+  font-size: 1.05rem;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
   transition: color 0.2s ease;
+  z-index: 1;
 }
 
 .navLinks a:hover {
-  color: #014abb; /* Azul del logo */
+  color: #014abb;
+}
+
+.navHoverPill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(2, 165, 224, 0.08);
+  border-radius: 9999px;
+  z-index: -1;
 }
 
 .navActions {
@@ -235,11 +250,9 @@
 
 /* Hero Section */
 .hero {
-  padding-top: 10rem;
-  padding-bottom: 6rem;
-  min-height: 95vh;
-  display: flex;
-  align-items: center;
+  padding-top: 5rem; /* Reduced padding since content will center in 100vh */
+  height: 250vh; /* Long scroll container */
+  position: relative;
 }
 
 .heroContent {
@@ -250,6 +263,9 @@
   grid-template-columns: 1.1fr 0.9fr;
   gap: 5rem;
   align-items: center;
+  position: sticky;
+  top: 0;
+  height: 100vh;
 }
 
 .heroText {
@@ -408,140 +424,115 @@
   font-weight: 500;
 }
 
-/* Hero Mockup Frame CSS */
+/* Hero MacBook Frame CSS */
 .heroVisual {
   display: flex;
   justify-content: center;
-}
-
-.heroMockupContainer {
-  background: #072146;
-  border: 1px solid rgba(0, 0, 0, 0.15);
-  border-radius: 1.25rem;
+  align-items: center;
+  perspective: 1600px;
   width: 100%;
-  max-width: 440px;
-  overflow: hidden;
-  box-shadow: 0 25px 60px rgba(0, 68, 129, 0.15);
 }
 
-.mockupHeader {
-  background: #021a35;
-  padding: 0.85rem 1.25rem;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.mockupDots {
-  display: flex;
-  gap: 0.4rem;
-}
-
-.dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
-
-.dot:nth-child(1) { background: #ef4444; }
-.dot:nth-child(2) { background: #fbbf24; }
-.dot:nth-child(3) { background: #10b981; }
-
-.mockupHeader span {
-  font-size: 0.8rem;
-  color: #94a3b8;
-  font-weight: 600;
-  letter-spacing: 0.025em;
-}
-
-.mockupBody {
-  padding: 1.5rem;
-  background: #f4f9fd;
-}
-
-/* Simulated POS component on Hero */
-.simulatedHeroPos {
-  background: #ffffff;
-  border: 1px solid rgba(0, 68, 129, 0.06);
-  border-radius: 0.75rem;
-  padding: 1.25rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
-}
-
-.simulatedHeroPosHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid rgba(0, 68, 129, 0.06);
-}
-
-.simulatedHeroPosTitle {
-  font-weight: 700;
-  font-size: 0.95rem;
-  color: #072146;
-}
-
-.simulatedHeroPosBadge {
-  background: rgba(16, 185, 129, 0.1);
-  border: 1px solid rgba(16, 185, 129, 0.2);
-  color: #10b981;
-  font-weight: 800;
-  font-size: 0.9rem;
-  padding: 0.2rem 0.6rem;
-  border-radius: 0.25rem;
-}
-
-.simulatedHeroPosItems {
+.macbookContainer {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
-  margin-bottom: 1rem;
+  align-items: center;
+  transform-style: preserve-3d;
+  margin-top: 2rem;
 }
 
-.simulatedHeroPosItem {
+.macbookLid {
+  width: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  transform-origin: bottom center;
+  z-index: 2;
+}
+
+.macbookScreen {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  background: #111111;
+  border-radius: 20px 20px 0 0;
+  padding: 12px 12px 20px 12px;
+  position: relative;
+  box-shadow: inset 0 0 0 2px #333333, 0 10px 40px rgba(0, 0, 0, 0.4);
+  backface-visibility: hidden;
+  transform: translateZ(1px);
+}
+
+.macbookCamera {
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 6px;
+  background: #000;
+  border: 1px solid #333;
+  border-radius: 50%;
+  box-shadow: inset 0 0 2px rgba(255, 255, 255, 0.2);
+}
+
+.macbookDisplay {
+  width: 100%;
+  height: 100%;
+  background: #000;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.macbookDisplay img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top; /* Since it's a long screenshot, start from top */
+}
+
+/* 3D Back of the Lid (Metallic with Logo) */
+.macbookBackFace {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #e5e5e5 0%, #b3b3b3 100%);
+  border-radius: 20px 20px 0 0;
   display: flex;
-  justify-content: space-between;
-  font-size: 0.85rem;
-  color: #475569;
+  justify-content: center;
+  align-items: center;
+  backface-visibility: hidden;
+  transform: rotateX(180deg) translateZ(1px);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5), inset 0 10px 20px rgba(255,255,255,0.4);
 }
 
-.simulatedHeroItemVal {
-  color: #072146;
-  font-weight: 600;
+/* Metallic Logo */
+.macbookAppleLogo {
+  width: 60px;
+  height: auto;
+  fill: #ffffff;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+  opacity: 0.9;
 }
 
-.simulatedHeroPosFooter {
-  border-top: 1px solid rgba(0, 68, 129, 0.06);
-  padding-top: 1rem;
-}
-
-.simulatedHeroMethod {
+.macbookBase {
+  width: 115%;
+  height: 16px;
+  background: linear-gradient(to bottom, #d4d4d4, #a3a3a3);
+  border-radius: 0 0 16px 16px;
+  position: relative;
   display: flex;
-  justify-content: space-between;
-  font-size: 0.8rem;
-  margin-bottom: 0.75rem;
+  justify-content: center;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 10px 20px rgba(0, 0, 0, 0.3);
 }
 
-.methodLabel {
-  color: #64748b;
-}
-
-.methodValue {
-  color: #004481;
-  font-weight: 600;
-}
-
-.simulatedHeroBtn {
-  background: #10b981;
-  color: white;
-  text-align: center;
-  font-weight: 700;
-  font-size: 0.85rem;
-  padding: 0.5rem;
-  border-radius: 0.35rem;
+.macbookNotch {
+  width: 120px;
+  height: 8px;
+  background: #b3b3b3;
+  border-radius: 0 0 8px 8px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* Stats Section */
@@ -619,22 +610,52 @@
 .featuresGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 2rem;
+  grid-auto-rows: minmax(280px, auto);
+  gap: 1.5rem;
 }
 
 .featureCard {
-  background: #ffffff;
-  border: 1px solid rgba(0, 68, 129, 0.06);
-  border-radius: 1.25rem;
-  padding: 2.25rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
-  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 68, 129, 0.08);
+  border-radius: 2rem;
+  padding: 2.5rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.03), inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  position: relative;
+  overflow: hidden;
+}
+
+.featureWide {
+  grid-column: span 2;
+}
+
+.featureTall {
+  grid-row: span 2;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.featureTall .featureIcon {
+  width: 80px;
+  height: 80px;
+  margin-bottom: 2rem;
+}
+
+.featureTall .featureIcon svg {
+  width: 40px;
+  height: 40px;
 }
 
 .featureCard:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 30px rgba(2, 165, 224, 0.06);
-  border-color: rgba(2, 165, 224, 0.2);
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 20px 40px rgba(2, 165, 224, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.8);
+  border-color: rgba(2, 165, 224, 0.3);
 }
 
 .featureIcon {
@@ -643,11 +664,12 @@
   justify-content: center;
   width: 52px;
   height: 52px;
-  background: rgba(2, 165, 224, 0.06);
-  border: 1px solid rgba(2, 165, 224, 0.15);
+  background: linear-gradient(135deg, rgba(2, 165, 224, 0.1) 0%, rgba(0, 68, 129, 0.05) 100%);
+  border: 1px solid rgba(2, 165, 224, 0.2);
   color: #004481;
-  border-radius: 0.75rem;
+  border-radius: 1rem;
   margin-bottom: 1.5rem;
+  flex-shrink: 0;
 }
 
 .featureCard h3 {
@@ -770,20 +792,29 @@
 }
 
 .posCartPane, .posPaymentPane {
-  background: #ffffff;
-  border: 1px solid rgba(0, 68, 129, 0.05);
-  border-radius: 0.75rem;
-  padding: 1.25rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 68, 129, 0.08);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 10px 30px rgba(1, 74, 187, 0.04), 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.paneTitleIcon, .paneSubtitleIcon {
+  margin-right: 6px;
+  color: #014abb;
 }
 
 .posCartPane h4, .posPaymentPane h4 {
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   color: #072146;
-  margin-bottom: 0.85rem;
+  margin-bottom: 1rem;
   font-weight: 700;
   border-bottom: 1px solid rgba(0, 68, 129, 0.06);
-  padding-bottom: 0.5rem;
+  padding-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
 }
 
 .posCartItems {
@@ -1460,20 +1491,20 @@
   display: inline-flex;
   align-items: center;
   gap: 0.75rem;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: #1ad61a;
   color: white;
   text-decoration: none;
   padding: 0.9rem 1.8rem;
   border-radius: 0.75rem;
   font-weight: 700;
   font-size: 1.05rem;
-  box-shadow: 0 4px 18px rgba(16, 185, 129, 0.2);
+  box-shadow: 0 4px 18px rgba(26, 214, 26, 0.2);
   transition: all 0.3s ease;
 }
 
 .ctaButton:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 8px 24px rgba(26, 214, 26, 0.3);
 }
 
 .benefitsVisual {
@@ -1490,21 +1521,81 @@
 }
 
 .floatGridCard {
-  background: #ffffff;
-  border: 1px solid rgba(0, 68, 129, 0.05);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 68, 129, 0.08);
   border-radius: 1rem;
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+  box-shadow: 0 10px 30px rgba(1, 74, 187, 0.04), 0 2px 8px rgba(0, 0, 0, 0.02);
   transition: all 0.3s;
 }
 
 .floatGridCard:hover {
   transform: translateY(-4px);
-  border-color: rgba(2, 165, 224, 0.2);
-  box-shadow: 0 10px 20px rgba(2, 165, 224, 0.04);
+  border-color: rgba(1, 74, 187, 0.2);
+  box-shadow: 0 15px 35px rgba(1, 74, 187, 0.08);
+}
+
+.cta {
+  padding: 6rem 0;
+  background: linear-gradient(135deg, #014abb 0%, #003893 100%);
+  color: white;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.ctaContainer {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  position: relative;
+  z-index: 2;
+}
+
+.ctaContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.ctaContent h2 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.ctaContent p {
+  font-size: 1.25rem;
+  opacity: 0.9;
+  max-width: 600px;
+  margin: 0 auto 1rem;
+}
+
+.ctaFinalButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: #10b981;
+  color: white;
+  text-decoration: none;
+  padding: 1rem 2.5rem;
+  border-radius: 9999px;
+  font-weight: 700;
+  font-size: 1.15rem;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
+  transition: all 0.3s ease;
+}
+
+.ctaFinalButton:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 12px 32px rgba(16, 185, 129, 0.4);
 }
 
 .floatGridCard strong {
@@ -1549,44 +1640,52 @@
   justify-content: center;
   margin-bottom: 4rem;
 }
-
 .billingToggle {
-  background: #cbd5e1;
-  padding: 0.35rem;
-  border-radius: 2rem;
-  border: 1px solid rgba(0, 68, 129, 0.05);
+  background: #e2e8f0;
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
   display: inline-flex;
-  align-items: center;
+  width: 340px; /* Fixed width for perfect symmetry */
 }
 
 .billingOption {
-  background: none;
+  flex: 1; /* Both buttons take exactly 50% */
+  background: transparent;
   border: none;
-  color: #475569;
-  font-size: 0.9rem;
+  color: #64748b;
+  font-size: 0.95rem;
   font-weight: 600;
-  padding: 0.5rem 1.25rem;
-  border-radius: 2rem;
+  padding: 0.6rem 0; /* Reduced padding for a sleeker pill */
+  border-radius: 999px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: center;
+  position: relative; 
 }
 
 .billingOptionActive {
-  background: white;
-  color: #004481;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  background: #ffffff;
+  color: #014abb;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .discountBadge {
-  background: #10b981;
-  color: white;
-  font-size: 0.7rem;
-  font-weight: 700;
-  padding: 0.1rem 0.4rem;
-  border-radius: 0.25rem;
+  position: absolute;
+  top: -12px;
+  right: -5px; /* Better alignment */
+  background: #1ad61a;
+  color: #ffffff;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 0.2rem 0.5rem;
+  border-radius: 1rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  box-shadow: 0 4px 10px rgba(26, 214, 26, 0.3);
+  pointer-events: none;
 }
 
 .plansGrid {
@@ -1625,7 +1724,7 @@
   top: -14px;
   left: 50%;
   transform: translateX(-50%);
-  background: linear-gradient(135deg, #004481 0%, #02A5E0 100%);
+  background: #014abb; /* Flat color requested by user */
   color: white;
   font-size: 0.75rem;
   font-weight: 800;
@@ -1633,7 +1732,7 @@
   border-radius: 2rem;
   white-space: nowrap;
   letter-spacing: 0.025em;
-  box-shadow: 0 4px 10px rgba(2, 165, 224, 0.2);
+  box-shadow: 0 4px 10px rgba(1, 74, 187, 0.2);
 }
 
 .planHeader {
@@ -1714,14 +1813,14 @@
 }
 
 .planCtaBtnPopular {
-  background: linear-gradient(135deg, #004481 0%, #02A5E0 100%);
+  background: #014abb;
   color: white;
   border: none;
-  box-shadow: 0 4px 14px rgba(2, 165, 224, 0.2);
+  box-shadow: 0 4px 14px rgba(1, 74, 187, 0.2);
 }
 
 .planCtaBtnPopular:hover {
-  background: linear-gradient(135deg, #072146 0%, #0073C2 100%);
+  background: #003893;
   transform: translateY(-1px);
 }
 
@@ -1980,7 +2079,7 @@
    RESPONSIVE LAYOUTS (Media Queries)
    ========================================================================== */
 
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
   .heroContent {
     grid-template-columns: 1fr;
     gap: 4rem;
@@ -2781,8 +2880,8 @@
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  font-size: 1.3rem;
-  font-weight: 700;
+  font-size: 1.5rem;
+  font-weight: 800;
   color: #072146;
   margin-bottom: 1.75rem;
 }
@@ -2889,16 +2988,16 @@
   align-items: center;
   justify-content: center;
   gap: 0.6rem;
-  background: linear-gradient(135deg, #004481 0%, #02A5E0 100%);
+  background: #014abb;
   color: white;
   border: none;
-  padding: 0.9rem 1.5rem;
+  padding: 1rem 1.5rem;
   border-radius: 0.75rem;
-  font-size: 1rem;
+  font-size: 1.05rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s;
-  box-shadow: 0 4px 14px rgba(0, 68, 129, 0.25);
+  box-shadow: 0 4px 14px rgba(1, 74, 187, 0.25);
 }
 
 .contactSubmitBtn:hover {
@@ -2917,34 +3016,42 @@
 }
 
 .waBoxInner {
-  background: linear-gradient(135deg, #004481 0%, #0369a1 100%);
+  background: #072146;
   border-radius: 1.5rem;
   padding: 2.5rem 2rem;
   color: white;
   text-align: center;
-  box-shadow: 0 8px 30px rgba(0, 68, 129, 0.2);
+  box-shadow: 0 8px 30px rgba(7, 33, 70, 0.15);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
+  gap: 1.2rem;
 }
 
 .waIconBig {
-  color: #22c55e;
-  filter: drop-shadow(0 2px 8px rgba(34, 197, 94, 0.4));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  background: #10b981;
+  border-radius: 50%;
+  color: white;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
+  margin-bottom: 0.5rem;
 }
 
 .waBoxInner h3 {
-  font-size: 1.3rem;
-  font-weight: 700;
+  font-size: 1.5rem;
+  font-weight: 800;
   color: white;
   margin: 0;
 }
 
 .waBoxInner p {
-  font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.75);
-  line-height: 1.5;
+  font-size: 1.05rem;
+  color: rgba(255, 255, 255, 0.95);
+  line-height: 1.6;
   margin: 0;
 }
 
@@ -2966,15 +3073,15 @@
 .waCtaBtn {
   display: block;
   width: 100%;
-  background: #22c55e;
+  background: #10b981;
   color: white;
   text-decoration: none;
-  padding: 0.9rem;
+  padding: 1rem;
   border-radius: 0.75rem;
-  font-weight: 700;
-  font-size: 0.95rem;
+  font-weight: 800;
+  font-size: 1.05rem;
   text-align: center;
-  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
   transition: all 0.2s;
 }
 
@@ -3001,10 +3108,10 @@
 
 .waOrSeparator span {
   position: relative;
-  background: #004481;
+  background: #072146;
   padding: 0 0.75rem;
-  font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .waEmailLinks {

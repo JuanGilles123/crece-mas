@@ -34,7 +34,7 @@ export const TextAnimate = ({
     items = [content];
   }
 
-  const container = {
+  const container = React.useMemo(() => ({
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
@@ -43,10 +43,13 @@ export const TextAnimate = ({
         delayChildren: delay
       }
     }
-  };
+  }), [by, delay]);
 
   const itemAnim = animations[animation] || animations.blurInUp;
-  const MotionComponent = motion(Component);
+  const viewportOptions = React.useMemo(() => ({ once, amount: 0.1 }), [once]);
+  
+  // Memoize the motion component type to prevent React from unmounting/remounting on every render
+  const MotionComponent = React.useMemo(() => motion(Component), [Component]);
 
   return (
     <MotionComponent
@@ -54,7 +57,7 @@ export const TextAnimate = ({
       variants={container}
       initial="hidden"
       whileInView="visible"
-      viewport={{ once, amount: 0.1 }}
+      viewport={viewportOptions}
       style={{ display: Component === 'span' ? 'inline-block' : 'block' }}
     >
       {items.map((item, index) => (
