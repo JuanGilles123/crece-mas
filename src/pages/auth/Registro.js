@@ -8,6 +8,10 @@ import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 import ConfirmacionCorreo from '../../components/ConfirmacionCorreo';
 import styles from './Registro.module.css';
+import { ReactComponent as LogoSVG } from '../../assets/logo-crece.svg';
+import { TextAnimate } from '../../components/animations/TextAnimate';
+import FlickeringGrid from '../../components/animations/FlickeringGrid';
+import { LightRays } from '../../components/animations/LightRays';
 
 const TerminosModal = ({ open, onClose }) => (
   open ? (
@@ -151,25 +155,57 @@ const Registro = () => {
 
 
           <div className={styles.logo}>
-            <TrendingUp size={40} color="#111827" />
-            <h1>Crece+</h1>
+            <motion.div
+              className={styles.logoAnimated}
+              whileHover={{ rotate: -45, scale: 1.05 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 15 }}
+            >
+              <LogoSVG style={{ width: '100%', height: '100%' }} />
+            </motion.div>
           </div>
-          <h2>¡Únete a Crece+!</h2>
-          <p>Comienza a gestionar tu negocio de manera profesional y eficiente. Regístrate y descubre todas las herramientas que necesitas.</p>
+          
+          <TextAnimate content="¡Únete a Crece+!" animation="slideUp" as="h2" className={styles.loginTitle} />
+          <div style={{ maxWidth: '90%', lineHeight: '1.6', fontSize: '1.15rem', opacity: 0.95 }}>
+            <TextAnimate content="Comienza a gestionar tu negocio de manera profesional y eficiente. Regístrate y descubre todas las herramientas que necesitas." animation="slideUp" as="p" delay={0.2} className={styles.loginSubtitle} />
+          </div>
 
           <div className={styles.features}>
-            <div className={styles.feature}>
-              <BarChart3 size={20} color="#111827" />
-              <span>Dashboard completo</span>
-            </div>
-            <div className={styles.feature}>
-              <Users size={20} color="#111827" />
-              <span>Gestión de inventario</span>
-            </div>
-            <div className={styles.feature}>
-              <TrendingUp size={20} color="#111827" />
-              <span>Reportes en tiempo real</span>
-            </div>
+            <motion.div 
+              className={styles.feature}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <BarChart3 size={28} style={{ flexShrink: 0, marginTop: '0.2rem', color: '#1ad61a' }} />
+              <div>
+                <strong style={{ display: 'block', fontSize: '1.1rem', marginBottom: '0.25rem', color: '#ffffff' }}>Dashboard completo</strong>
+                <span style={{ fontSize: '0.95rem', opacity: 0.85, lineHeight: '1.4', color: 'rgba(255,255,255,0.9)' }}>Obtén una visión general de tu negocio en tiempo real.</span>
+              </div>
+            </motion.div>
+            <motion.div 
+              className={styles.feature}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.4 }}
+            >
+              <Users size={28} style={{ flexShrink: 0, marginTop: '0.2rem', color: '#1ad61a' }} />
+              <div>
+                <strong style={{ display: 'block', fontSize: '1.1rem', marginBottom: '0.25rem', color: '#ffffff' }}>Gestión de inventario</strong>
+                <span style={{ fontSize: '0.95rem', opacity: 0.85, lineHeight: '1.4', color: 'rgba(255,255,255,0.9)' }}>Controla tu stock y evita pérdidas con alertas automáticas.</span>
+              </div>
+            </motion.div>
+            <motion.div 
+              className={styles.feature}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.5 }}
+            >
+              <TrendingUp size={28} style={{ flexShrink: 0, marginTop: '0.2rem', color: '#1ad61a' }} />
+              <div>
+                <strong style={{ display: 'block', fontSize: '1.1rem', marginBottom: '0.25rem', color: '#ffffff' }}>Reportes financieros</strong>
+                <span style={{ fontSize: '0.95rem', opacity: 0.85, lineHeight: '1.4', color: 'rgba(255,255,255,0.9)' }}>Analiza tus ventas y toma decisiones basadas en datos.</span>
+              </div>
+            </motion.div>
           </div>
         </motion.div>
 
@@ -179,85 +215,112 @@ const Registro = () => {
           initial={{ opacity: 0, x: 50 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
+          style={{ position: 'relative', overflow: 'hidden' }}
         >
-          <div className={styles.form}>
+          {/* Animaciones de fondo estilo Home */}
+          <div style={{ position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none', opacity: 0.5 }}>
+            <LightRays />
+            <FlickeringGrid 
+              className="absolute inset-0 z-0 size-full"
+              squareSize={4}
+              gridGap={6}
+              color="#02a5e0"
+              maxOpacity={0.1}
+              flickerChance={0.1}
+            />
+          </div>
+
+          <div className={styles.form} style={{ position: 'relative', zIndex: 10 }}>
             <div className={styles.formHeader}>
               <h2>Crear cuenta</h2>
               <p>Completa los datos para comenzar</p>
             </div>
 
             <form onSubmit={handleSubmit}>
-              <div className={styles.inputGroup}>
-                <div className={styles.inputRow}>
-                  <Mail size={20} className={styles.inputIconLeft} />
-                  <div className={styles.inputWrapper}>
-                    <input
-                      type="email"
-                      placeholder="Correo electrónico"
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
+              <motion.div 
+                className={styles.inputGroup}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+              >
+                <div className={styles.inputWrapper}>
+                  <Mail size={20} color="#9ca3af" className={styles.inputIcon} />
+                  <input
+                    type="email"
+                    placeholder="Correo electrónico"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    required
+                    className={styles.input}
+                  />
+                </div>
+              </motion.div>
+
+              <motion.div 
+                className={styles.inputGroup}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+              >
+                <div className={styles.inputWrapper}>
+                  <Lock size={20} color="#9ca3af" className={styles.inputIcon} />
+                  <input
+                    type={showPass ? 'text' : 'password'}
+                    placeholder="Contraseña (mín. 8 caracteres)"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    required
+                    className={styles.input}
+                  />
+                  <button type="button" className={styles.eyeButton} onClick={() => setShowPass(!showPass)}>
+                    {showPass ? <EyeOff size={20} color="#9ca3af" /> : <Eye size={20} color="#9ca3af" />}
+                  </button>
+                </div>
+              </motion.div>
+
+              <motion.div 
+                className={styles.inputGroup}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+              >
+                <div className={styles.inputWrapper}>
+                  <div className={styles.phoneInputContainer} style={{ width: '100%' }}>
+                    <PhoneInput
+                      country={'co'}
+                      value={phone}
+                      onChange={setPhone}
+                      inputClass={styles.input}
+                      buttonStyle={{
+                        border: 'none',
+                        background: 'transparent',
+                        borderRadius: '1rem 0 0 1rem',
+                        paddingLeft: '0.5rem'
+                      }}
+                      placeholder="Número de teléfono"
+                      enableSearch
                       required
-                      className={styles.input}
                     />
                   </div>
                 </div>
-              </div>
+              </motion.div>
 
-              <div className={styles.inputGroup}>
-                <div className={styles.inputRow}>
-                  <Lock size={20} className={styles.inputIconLeft} />
-                  <div className={styles.inputWrapper}>
-                    <input
-                      type={showPass ? 'text' : 'password'}
-                      placeholder="Contraseña (mín. 8 caracteres)"
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      required
-                      className={`${styles.input} ${styles.inputWithIcon}`}
-                    />
-                    {password?.length > 0 && (
-                      <button
-                        type="button"
-                        className={styles.eyeButton}
-                        onClick={() => setShowPass(v => !v)}
-                      >
-                        {showPass ? <EyeOff size={20} /> : <Eye size={20} />}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className={styles.inputGroup}>
-                <div className={styles.inputRow}>
-                  <Phone size={20} className={styles.inputIconLeft} />
-                  <div className={styles.inputWrapper}>
-                    <div className={styles.phoneInputContainer}>
-                      <PhoneInput
-                        country={'co'}
-                        value={phone}
-                        onChange={setPhone}
-                        placeholder="Número de teléfono"
-                        enableSearch
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className={styles.inputGroup}>
-                <div className={styles.inputRow}>
-                  <Globe size={20} className={styles.inputIconLeft} />
-                  <div className={`${styles.inputWrapper} ${styles.currencySelect}`}>
-                    <select
-                      value={currency}
-                      onChange={e => setCurrency(e.target.value)}
-                      className={styles.select}
-                      required
-                    >
-                      <option value="">Selecciona tu moneda</option>
-                      <option value="USD">USD - Dólar Estadounidense</option>
+              <motion.div 
+                className={styles.inputGroup}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.4 }}
+              >
+                <div className={styles.inputWrapper}>
+                  <Globe size={20} color="#9ca3af" className={styles.inputIcon} />
+                  <select
+                    value={currency}
+                    onChange={e => setCurrency(e.target.value)}
+                    className={styles.select}
+                    required
+                  >
+                    <option value="">Selecciona tu moneda</option>
+                    <option value="USD">USD - Dólar Estadounidense</option>
                       <option value="EUR">EUR - Euro</option>
                       <option value="COP">COP - Peso Colombiano</option>
                       <option value="MXN">MXN - Peso Mexicano</option>
@@ -323,9 +386,8 @@ const Registro = () => {
                       <option value="XAF">XAF - Franco CFA BEAC</option>
                       <option value="XPF">XPF - Franco CFP</option>
                     </select>
-                  </div>
                 </div>
-              </div>
+              </motion.div>
 
 
               <div className={styles.checkboxGroup}>
@@ -338,7 +400,8 @@ const Registro = () => {
                   className={styles.checkbox}
                 />
                 <label htmlFor="terms" className={styles.checkboxLabel}>
-                  Acepto los <span className={styles.termsLink} onClick={() => setShowTerms(true)}>términos y condiciones</span>
+                  Acepto los{' '}
+                  <span className={styles.termsLink} onClick={() => setShowTerms(true)}>términos y condiciones</span>
                 </label>
               </div>
 

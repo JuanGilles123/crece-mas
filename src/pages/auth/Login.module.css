@@ -1,26 +1,16 @@
 /* Login - Diseño Moderno */
 .container {
   min-height: 100vh !important;
-  background: linear-gradient(180deg, #bfd7ed 0%, #60a3d9 100%) !important;
+  background: #014abb !important; /* Flat logo color requested */
   display: flex !important;
   flex-direction: column !important;
   position: relative !important;
   overflow: hidden !important;
 }
 
-/* Efectos de fondo */
+/* Efectos de fondo eliminados por flat design */
 .container::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background:
-    radial-gradient(circle at 20% 80%, rgba(2, 165, 224, 0.15) 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.25) 0%, transparent 50%),
-    radial-gradient(circle at 40% 40%, rgba(0, 68, 129, 0.1) 0%, transparent 50%);
-  pointer-events: none;
+  display: none;
 }
 
 /* Botón de regreso */
@@ -35,21 +25,21 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: #021b53;
+  color: #ffffff;
   text-decoration: none;
   font-weight: 600;
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  background: rgba(255, 255, 255, 0.4);
+  padding: 0.75rem 1.25rem;
+  border-radius: 2rem;
+  background: rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(6, 47, 135, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   transition: all 0.3s ease;
 }
 
 .backLink:hover {
-  background: rgba(255, 255, 255, 0.6);
-  color: #02A5E0;
-  transform: translateX(-2px);
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+  transform: translateX(-4px);
 }
 
 /* Contenido principal */
@@ -68,7 +58,7 @@
   flex-direction: column !important;
   justify-content: center !important;
   padding: 4rem !important;
-  color: #111827 !important;
+  color: #ffffff !important;
   position: relative !important;
 }
 
@@ -80,20 +70,30 @@
   justify-content: center !important;
 }
 
-.logo img {
-  width: 96px;
-  height: 96px;
-  object-fit: contain;
+.logoAnimated {
+  width: 140px; /* Mucho más grande */
+  height: 140px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  will-change: transform;
+  /* Fondo blanco sutil para que resalte sobre el azul corporativo */
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 50%;
+  padding: 1.5rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.logoAnimated svg {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .logo h1 {
-  font-size: 2.5rem !important;
-  font-weight: 800 !important;
-  margin: 0 !important;
-  background: linear-gradient(135deg, #111827 0%, #374151 100%) !important;
-  -webkit-background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-  background-clip: text !important;
+  display: none;
 }
 
 .infoPanel h2 {
@@ -102,6 +102,7 @@
   margin-bottom: 0 !important;
   line-height: 1.2 !important;
   text-align: center !important;
+  color: #ffffff !important;
 }
 
 .infoPanel p {
@@ -109,6 +110,7 @@
   opacity: 0.9 !important;
   line-height: 1.6 !important;
   margin-bottom: 3rem !important;
+  color: rgba(255, 255, 255, 0.85) !important;
 }
 
 .features {
@@ -136,8 +138,9 @@
 
 .feature span {
   font-weight: 500 !important;
-  font-size: 1.1rem !important;
-  color: #2E2E2E !important;
+  font-size: 1.05rem !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  line-height: 1.5 !important;
 }
 
 /* Panel derecho - Formulario */
@@ -478,24 +481,24 @@
 
 .submitButton {
   width: 100% !important;
-  background: linear-gradient(135deg, #004481 0%, #02A5E0 100%) !important;
+  background: #1ad61a !important; /* Flat green brand color */
   color: white !important;
   border: none !important;
   border-radius: var(--pwa-radius-xl) !important;
   padding: var(--pwa-space-5) !important;
   font-size: var(--pwa-font-size-xl) !important;
-  font-weight: 600 !important;
+  font-weight: 700 !important;
   cursor: pointer !important;
   transition: var(--pwa-transition-normal) !important;
   margin-bottom: 1.25rem !important;
   margin-top: 1rem !important;
-  box-shadow: var(--pwa-shadow-lg) !important;
+  box-shadow: 0 4px 14px rgba(26, 214, 26, 0.3) !important;
   min-height: var(--pwa-btn-height-xl) !important;
 }
 
 .submitButton:hover {
-  background: linear-gradient(135deg, #072146 0%, #0073C2 100%) !important;
-  box-shadow: 0 6px 20px rgba(2, 165, 224, 0.4) !important;
+  background: #15b915 !important;
+  box-shadow: 0 6px 20px rgba(26, 214, 26, 0.4) !important;
   transform: translateY(-2px) !important;
 }
 
@@ -764,4 +767,111 @@
     width: 26px;
     height: 26px;
   }
+}
+
+/* Inverted Theme for Employee Login */
+.inverted {
+  background: #ffffff !important;
+}
+
+.inverted .logoAnimated {
+  width: 180px !important;
+  height: 180px !important;
+  background: rgba(1, 74, 187, 0.05) !important;
+  box-shadow: 0 8px 32px rgba(1, 74, 187, 0.1) !important;
+  margin-bottom: 1rem !important;
+}
+
+.inverted .infoPanel {
+  color: #111827 !important;
+}
+
+.inverted .infoPanel h2 {
+  color: #111827 !important;
+}
+
+.inverted .infoPanel p {
+  color: rgba(17, 24, 39, 0.8) !important;
+}
+
+.inverted .feature {
+  background: rgba(1, 74, 187, 0.05) !important;
+  border: 1px solid rgba(1, 74, 187, 0.1) !important;
+}
+
+.inverted .feature span {
+  color: #111827 !important;
+}
+
+.inverted .backLink {
+  color: #111827;
+  border: 1px solid rgba(17, 24, 39, 0.2);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.inverted .formPanel {
+  background: #014abb !important;
+  color: #ffffff !important;
+}
+
+.inverted .formPanel::before {
+  display: none !important;
+}
+
+.inverted .formHeader h2,
+.inverted .formHeader p {
+  color: #ffffff !important;
+}
+
+.inverted .inputWrapper input {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  border-radius: 1rem !important;
+  backdrop-filter: blur(10px) !important;
+  font-weight: 500 !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05) !important;
+}
+
+.inverted .inputWrapper input:focus {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.1) !important;
+}
+
+.inverted .inputWrapper input::placeholder {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.inverted .inputIcon {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+.inverted .eyeButton {
+  color: #ffffff !important;
+}
+
+.inverted .eyeButton svg {
+  stroke: #ffffff !important;
+}
+
+.inverted .switchActions {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 1rem !important;
+  backdrop-filter: blur(10px) !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05) !important;
+  padding: 1rem !important;
+  transition: all 0.3s ease !important;
+}
+
+.inverted .switchActions:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.inverted .switchActions a {
+  color: #1ad61a !important;
+  font-weight: 600 !important;
 }
