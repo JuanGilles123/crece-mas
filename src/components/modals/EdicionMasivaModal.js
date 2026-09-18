@@ -26,6 +26,9 @@ const EdicionMasivaModal = ({ open, onClose, productosSeleccionados, categoriasD
     { key: 'precio_venta', label: 'P. Venta', type: 'number', placeholder: '0', required: true },
     { key: 'stock', label: 'Stock', type: 'number', placeholder: '0' },
     { key: 'categoria', label: 'Categoría', type: 'datalist', options: categoriasDisponibles },
+    ...(!isJewelry ? [
+      { key: 'permite_toppings', label: 'Permite Toppings', type: 'select', options: ['Sí', 'No'] },
+    ] : []),
     { key: 'marca', label: 'Marca', type: 'text', placeholder: 'Ej. Samsung' },
     { key: 'modelo', label: 'Modelo', type: 'text', placeholder: 'Ej. S21' },
     { key: 'color', label: 'Color', type: 'text', placeholder: 'Ej. Rojo' },
@@ -46,6 +49,8 @@ const EdicionMasivaModal = ({ open, onClose, productosSeleccionados, categoriasD
     const defaults = ['codigo', 'nombre', 'precio_venta', 'precio_compra', 'stock', 'categoria'];
     if (organization?.business_type === 'jewelry_metals') {
       defaults.push('peso', 'pureza');
+    } else {
+      defaults.push('permite_toppings');
     }
     return defaults;
   });
@@ -56,24 +61,35 @@ const EdicionMasivaModal = ({ open, onClose, productosSeleccionados, categoriasD
 
   useEffect(() => {
     if (open && productosSeleccionados && productosSeleccionados.length > 0) {
-      const initialRows = productosSeleccionados.map(prod => ({
-        id: prod.id,
-        codigo: prod.codigo || '',
-        nombre: prod.nombre || '',
-        tipo: prod.tipo || 'fisico',
-        peso: prod.metadata?.peso || '',
-        pureza: prod.metadata?.pureza || '',
-        precio_compra: prod.precio_compra || '',
-        precio_venta: prod.precio_venta || '',
-        stock: prod.stock || '',
-        categoria: prod.metadata?.categoria || '',
-        marca: prod.metadata?.marca || '',
-        modelo: prod.metadata?.modelo || '',
-        color: prod.metadata?.color || '',
-        material: prod.metadata?.material || '',
-        ocultar_en_catalogo: (prod.metadata?.ocultar_en_catalogo === true || String(prod.metadata?.ocultar_en_catalogo) === 'true') ? 'Ocultar' : 'Mostrar',
-        imagen: prod.imagen || ''
-      }));
+      const initialRows = productosSeleccionados.map(prod => {
+        let permiteToppings = 'Sí';
+        const metaPermite = prod.metadata?.permite_toppings;
+        if (metaPermite !== undefined && metaPermite !== null) {
+          permiteToppings = (metaPermite === false || metaPermite === 'false' || metaPermite === 'no' || metaPermite === 'No') ? 'No' : 'Sí';
+        } else if (organization?.business_type && organization?.business_type !== 'food' && organization?.business_type !== 'service' && prod.tipo !== 'comida') {
+          permiteToppings = 'No';
+        }
+
+        return {
+          id: prod.id,
+          codigo: prod.codigo || '',
+          nombre: prod.nombre || '',
+          tipo: prod.tipo || 'fisico',
+          peso: prod.metadata?.peso || '',
+          pureza: prod.metadata?.pureza || '',
+          precio_compra: prod.precio_compra || '',
+          precio_venta: prod.precio_venta || '',
+          stock: prod.stock || '',
+          categoria: prod.metadata?.categoria || '',
+          marca: prod.metadata?.marca || '',
+          modelo: prod.metadata?.modelo || '',
+          color: prod.metadata?.color || '',
+          material: prod.metadata?.material || '',
+          permite_toppings: permiteToppings,
+          ocultar_en_catalogo: (prod.metadata?.ocultar_en_catalogo === true || String(prod.metadata?.ocultar_en_catalogo) === 'true') ? 'Ocultar' : 'Mostrar',
+          imagen: prod.imagen || ''
+        };
+      });
       setRows(initialRows);
       
       const originals = {};
@@ -82,7 +98,7 @@ const EdicionMasivaModal = ({ open, onClose, productosSeleccionados, categoriasD
       });
       setOriginalRows(originals);
     }
-  }, [open, productosSeleccionados]);
+  }, [open, productosSeleccionados, organization?.business_type]);
 
   const updateCell = (id, field, value) => {
     setRows(rows.map(row => row.id === id ? { ...row, [field]: value } : row));
@@ -190,6 +206,10 @@ const EdicionMasivaModal = ({ open, onClose, productosSeleccionados, categoriasD
           if (row.modelo !== original.modelo) { newMetadata.modelo = row.modelo || null; metaUpdates = true; }
           if (row.color !== original.color) { newMetadata.color = row.color || null; metaUpdates = true; }
           if (row.material !== original.material) { newMetadata.material = row.material || null; metaUpdates = true; }
+          if (row.permite_toppings !== original.permite_toppings) {
+            newMetadata.permite_toppings = (row.permite_toppings === 'Sí' || row.permite_toppings === 'Si');
+            metaUpdates = true;
+          }
           if (row.ocultar_en_catalogo !== original.ocultar_en_catalogo) { newMetadata.ocultar_en_catalogo = row.ocultar_en_catalogo === 'Ocultar'; metaUpdates = true; }
           
           if (isJewelry) {

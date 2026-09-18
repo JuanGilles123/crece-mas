@@ -180,6 +180,11 @@
   transition: all 0.2s;
 }
 
+select.edicion-masiva-input option {
+  background-color: var(--bg-modal, #0f0f23);
+  color: var(--text-primary, #ffffff);
+}
+
 .edicion-masiva-input:focus {
   background: var(--bg-hover, rgba(255, 255, 255, 0.1));
   border-color: var(--accent-primary, #7c3aed);

@@ -1,11 +1,150 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../../services/api/supabaseClient';
-import { Search, Store, PackageX, ShoppingCart, ShoppingBag, Plus, Minus, MessageCircle, X, Instagram, Facebook, Phone, ArrowLeft, ArrowRight, Sparkles, LayoutGrid, Rows } from 'lucide-react';
+import { Search, Store, PackageX, ShoppingCart, ShoppingBag, Plus, Minus, MessageCircle, X, Instagram, Facebook, Phone, ArrowLeft, ArrowRight, Sparkles, LayoutGrid, Rows, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
-// Import eliminado
 import './Catalogo.css';
 import OptimizedProductImage from '../../components/business/OptimizedProductImage';
+import { useDebounce } from '../../hooks/useInfiniteScroll';
+
+// Formateador de moneda instanciado una sola vez para máximo rendimiento (evita overhead en bucles)
+const copFormatter = new Intl.NumberFormat('es-CO', {
+  style: 'currency',
+  currency: 'COP',
+  minimumFractionDigits: 0
+});
+const formatCOP = (amount) => copFormatter.format(amount || 0);
+
+// Helper para normalizar texto (búsqueda sin acentos, mayúsculas o espacios sobrantes)
+const normalizeText = (text) => {
+  if (!text) return '';
+  return text.toString().toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+};
+
+// Componente memoizado para cada tarjeta de producto (evita re-renders al actualizar carrito o carousel)
+const ProductoCard = React.memo(({ producto, categoriaNombre, onAddToCart }) => {
+  const hasStock = producto.es_servicio || (producto.stock_disponible || 0) > 0;
+
+  return (
+    <div className="producto-card">
+      <div className="producto-img-container">
+        <OptimizedProductImage
+          imagePath={producto.url_imagen}
+          alt={producto.nombre}
+          className="producto-img"
+        />
+      </div>
+      <div className="producto-info">
+        <div className="producto-categoria">{categoriaNombre}</div>
+        <h3 className="producto-nombre">{producto.nombre}</h3>
+        {producto.descripcion && (
+          <p className="producto-descripcion">
+            {producto.descripcion}
+          </p>
+        )}
+        <div className="producto-footer">
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span className="producto-precio" style={{ color: 'var(--catalogo-theme-color, #4f46e5)' }}>
+              {formatCOP(producto.precio_venta)}
+            </span>
+            {!producto.es_servicio && (
+              <span className={`producto-stock ${hasStock ? 'disponible' : ''}`} style={{ alignSelf: 'flex-start', marginTop: '0.2rem' }}>
+                {hasStock ? 'Disponible' : 'Agotado'}
+              </span>
+            )}
+          </div>
+
+          {hasStock ? (
+            <button
+              type="button"
+              className="btn-agregar-pedido"
+              onClick={() => onAddToCart(producto)}
+            >
+              Agregar
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn-agregar-pedido agotado"
+              disabled
+            >
+              Agotado
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+});
+
+// Componente memoizado para el carrusel de promociones (aísla su propio temporizador de 5s del catálogo)
+const PromoCarousel = React.memo(({ promociones, onSelectPromo }) => {
+  const [activePromoIndex, setActivePromoIndex] = useState(0);
+
+  useEffect(() => {
+    if (promociones && promociones.length > 1) {
+      const interval = setInterval(() => {
+        setActivePromoIndex(prev => (prev + 1) % promociones.length);
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [promociones]);
+
+  if (!promociones || promociones.length === 0) return null;
+
+  return (
+    <div className="catalogo-promo-carousel-wrapper">
+      <div className="catalogo-promo-carousel">
+        <div className="promo-slider" style={{ transform: `translateX(-${activePromoIndex * 100}%)` }}>
+          {promociones.map((promo, idx) => {
+            const hasLink = promo.enlace_filtro && promo.enlace_filtro.trim() !== '';
+            return (
+              <div
+                key={promo.id || idx}
+                className="promo-slide"
+                onClick={() => {
+                  if (hasLink && onSelectPromo) {
+                    onSelectPromo(promo.enlace_filtro);
+                  }
+                }}
+                style={{ cursor: hasLink ? 'pointer' : 'default' }}
+              >
+                <img src={promo.imagen_url} alt={promo.titulo || 'Promoción'} className="promo-image" loading="lazy" />
+                {promo.titulo && (
+                  <div className="promo-overlay">
+                    <div className="promo-text-container">
+                      <span className="promo-badge" style={{ backgroundColor: 'var(--catalogo-theme-color, #4f46e5)' }}>Destacado</span>
+                      <h2 className="promo-title">{promo.titulo}</h2>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        {promociones.length > 1 && (
+          <div className="promo-indicators">
+            {promociones.map((_, idx) => (
+              <button
+                key={idx}
+                type="button"
+                className={`promo-dot ${activePromoIndex === idx ? 'active' : ''}`}
+                onClick={() => setActivePromoIndex(idx)}
+                style={{
+                  backgroundColor: activePromoIndex === idx ? 'var(--catalogo-theme-color, #4f46e5)' : '#d1d5db'
+                }}
+                aria-label={`Ir a promoción ${idx + 1}`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+});
 
 const Catalogo = () => {
   const { slug } = useParams();
@@ -15,11 +154,18 @@ const Catalogo = () => {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
   const [logoError, setLogoError] = useState(false);
-  const [activePromoIndex, setActivePromoIndex] = useState(0);
 
   const [categoriaActiva, setCategoriaActiva] = useState('todas');
   const [busqueda, setBusqueda] = useState('');
   const [vistaLayout, setVistaLayout] = useState('grid');
+  const [categoriasMobileOpen, setCategoriasMobileOpen] = useState(false);
+  const categoriasRef = useRef(null);
+
+  // Paginación virtual progresiva (Scroll infinito fluido estilo Inventario)
+  const PAGE_SIZE = 24;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const loadMoreRef = useRef(null);
+  const debouncedBusqueda = useDebounce(busqueda, 200);
 
   // Estados del carrito
   const [cart, setCart] = useState([]);
@@ -210,16 +356,65 @@ const Catalogo = () => {
     }
   }, [slug]);
 
+  // Efecto para limpiar variables CSS al desmontar el catálogo
+  useEffect(() => {
+    return () => {
+      document.documentElement.style.removeProperty('--catalogo-theme-color');
+      document.documentElement.style.removeProperty('--catalogo-bg-color');
+      document.documentElement.style.removeProperty('--catalogo-text-btn-color');
+      document.documentElement.style.removeProperty('--catalogo-header-bg');
+      document.documentElement.style.removeProperty('--catalogo-header-text');
+      document.documentElement.style.removeProperty('--catalogo-font');
+      document.documentElement.style.removeProperty('--catalogo-theme-rgb');
+    };
+  }, []);
+
   // Efecto para inyectar color dinámico y variables auxiliares
   useEffect(() => {
-    if (organizacion) {
-      const config = organizacion.catalogo_config || {};
+    const isLightColor = (hex) => {
+      if (!hex || typeof hex !== 'string') return true;
+      const cleanHex = hex.replace('#', '');
+      if (cleanHex.length !== 6 && cleanHex.length !== 3) return true;
+      const fullHex = cleanHex.length === 3 ? cleanHex.split('').map(c => c + c).join('') : cleanHex;
+      const r = parseInt(fullHex.substring(0, 2), 16);
+      const g = parseInt(fullHex.substring(2, 4), 16);
+      const b = parseInt(fullHex.substring(4, 6), 16);
+      if (isNaN(r) || isNaN(g) || isNaN(b)) return true;
+      return (r * 299 + g * 587 + b * 114) / 1000 >= 128;
+    };
+
+    const applyThemeColors = () => {
+      const isDark = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ||
+        document.body.classList.contains('dark') ||
+        document.body.classList.contains('dark-theme') ||
+        document.documentElement.classList.contains('dark');
+
+      const config = organizacion?.catalogo_config || {};
       const colorTemaVal = config.color_botones || config.color_tema || '#4f46e5';
-      const colorFondoVal = config.color_fondo || '#f9fafb';
       const colorTextBtnVal = config.color_texto_botones || '#ffffff';
-      const colorHeaderVal = config.color_header || '#ffffff';
-      const colorTextoHeaderVal = config.color_texto_header || '#111827';
       const fuenteVal = config.fuente_principal || 'Inter';
+
+      // Si el dispositivo está en modo oscuro y el fondo/header configurado es claro o no está definido,
+      // se adapta automáticamente a la paleta oscura moderna
+      let colorFondoVal = config.color_fondo;
+      let colorHeaderVal = config.color_header;
+      let colorTextoHeaderVal = config.color_texto_header;
+
+      if (isDark) {
+        if (!colorFondoVal || isLightColor(colorFondoVal)) {
+          colorFondoVal = '#0f172a';
+        }
+        if (!colorHeaderVal || isLightColor(colorHeaderVal)) {
+          colorHeaderVal = '#1e293b';
+        }
+        if (!colorTextoHeaderVal || !isLightColor(colorTextoHeaderVal)) {
+          colorTextoHeaderVal = '#f8fafc';
+        }
+      } else {
+        colorFondoVal = colorFondoVal || '#f9fafb';
+        colorHeaderVal = colorHeaderVal || '#ffffff';
+        colorTextoHeaderVal = colorTextoHeaderVal || '#111827';
+      }
 
       document.documentElement.style.setProperty('--catalogo-theme-color', colorTemaVal);
       document.documentElement.style.setProperty('--catalogo-bg-color', colorFondoVal);
@@ -247,23 +442,38 @@ const Catalogo = () => {
         const g = parseInt(hex.substring(2, 4), 16);
         const b = parseInt(hex.substring(4, 6), 16);
         document.documentElement.style.setProperty('--catalogo-theme-rgb', `${r}, ${g}, ${b}`);
-      } catch (e) { }
+      } catch (e) {
+        document.documentElement.style.setProperty('--catalogo-theme-rgb', '79, 70, 229');
+      }
+    };
+
+    applyThemeColors();
+
+    const mediaQuery = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+    if (mediaQuery) {
+      mediaQuery.addEventListener('change', applyThemeColors);
     }
+
+    return () => {
+      if (mediaQuery) {
+        mediaQuery.removeEventListener('change', applyThemeColors);
+      }
+    };
   }, [organizacion]);
 
-  // Auto-scroll para las promociones
-  useEffect(() => {
-    const promos = organizacion?.catalogo_config?.promociones || [];
-    if (promos.length > 1) {
-      const interval = setInterval(() => {
-        setActivePromoIndex(prev => (prev + 1) % promos.length);
-      }, 5000);
-      return () => clearInterval(interval);
+  // Manejador para seleccionar promoción en el carrusel
+  const handleSelectPromo = useCallback((enlace) => {
+    if (!enlace) return;
+    setCategoriaActiva('todas');
+    setBusqueda(enlace);
+    const target = document.getElementById('catalogo-productos');
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-  }, [organizacion]);
+  }, []);
 
   // Funciones del carrito
-  const addToCart = (producto) => {
+  const addToCart = useCallback((producto) => {
     setCart(prev => {
       const existing = prev.find(item => item.id === producto.id);
       if (existing) {
@@ -272,9 +482,9 @@ const Catalogo = () => {
       return [...prev, { ...producto, cantidad: 1 }];
     });
     toast.success(`${producto.nombre} agregado al pedido`);
-  };
+  }, []);
 
-  const updateQuantity = (productId, change) => {
+  const updateQuantity = useCallback((productId, change) => {
     setCart(prev => {
       const existing = prev.find(item => item.id === productId);
       if (!existing) return prev;
@@ -284,11 +494,11 @@ const Catalogo = () => {
       }
       return prev.map(item => item.id === productId ? { ...item, cantidad: newQty } : item);
     });
-  };
+  }, []);
 
-  const clearCart = () => {
+  const clearCart = useCallback(() => {
     setCart([]);
-  };
+  }, []);
 
   const totalCart = useMemo(() => {
     return cart.reduce((sum, item) => sum + (item.precio_venta * item.cantidad), 0);
@@ -356,29 +566,80 @@ const Catalogo = () => {
       filtrados = filtrados.filter(p => p.categoria_id === categoriaActiva);
     }
 
-    if (busqueda.trim() !== '') {
-      const termino = busqueda.toLowerCase().trim();
-      filtrados = filtrados.filter(p =>
-        p.nombre?.toLowerCase().includes(termino) ||
-        p.descripcion?.toLowerCase().includes(termino)
-      );
+    if (debouncedBusqueda.trim() !== '') {
+      const termino = normalizeText(debouncedBusqueda);
+      filtrados = filtrados.filter(p => {
+        const nombreNorm = normalizeText(p.nombre);
+        const descNorm = normalizeText(p.descripcion);
+        return nombreNorm.includes(termino) || descNorm.includes(termino);
+      });
     }
 
     return filtrados;
-  }, [productos, categoriaActiva, busqueda]);
+  }, [productos, categoriaActiva, debouncedBusqueda]);
 
-  const formatCOP = (amount) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0
-    }).format(amount || 0);
-  };
+  // Reiniciar la cantidad visible cuando cambian filtros o búsqueda
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [categoriaActiva, debouncedBusqueda]);
 
-  const getCategoriaNombre = (id) => {
-    const cat = categorias.find(c => c.id === id);
-    return cat ? cat.nombre : 'Sin Categoría';
-  };
+  // IntersectionObserver para paginación progresiva virtual (estilo Inventario)
+  const handleObserver = useCallback((entries) => {
+    const target = entries[0];
+    if (target.isIntersecting && visibleCount < productosFiltrados.length) {
+      setVisibleCount(prev => Math.min(prev + PAGE_SIZE, productosFiltrados.length));
+    }
+  }, [visibleCount, productosFiltrados.length, PAGE_SIZE]);
+
+  useEffect(() => {
+    const option = {
+      root: null,
+      rootMargin: '600px', // Precarga fluida antes de llegar al final del scroll
+      threshold: 0
+    };
+    const observer = new IntersectionObserver(handleObserver, option);
+    if (loadMoreRef.current) observer.observe(loadMoreRef.current);
+
+    return () => observer.disconnect();
+  }, [handleObserver]);
+
+  // Tomar solo la rebanada (slice) visible para no sobrecargar el DOM
+  const productosVisibles = useMemo(() => {
+    return productosFiltrados.slice(0, visibleCount);
+  }, [productosFiltrados, visibleCount]);
+
+  // Mapa de categorías para acceso O(1) ultra rápido
+  const categoriasMap = useMemo(() => {
+    const map = new Map();
+    categorias.forEach(c => map.set(c.id, c.nombre));
+    return map;
+  }, [categorias]);
+
+  const getCategoriaNombre = useCallback((id) => {
+    return categoriasMap.get(id) || 'Sin Categoría';
+  }, [categoriasMap]);
+
+  const nombreCategoriaActiva = useMemo(() => {
+    if (categoriaActiva === 'todas') return 'Todas';
+    return categoriasMap.get(categoriaActiva) || 'Todas';
+  }, [categoriaActiva, categoriasMap]);
+
+  // Cerrar desplegable de categorías en móvil si se hace clic afuera
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (categoriasRef.current && !categoriasRef.current.contains(e.target)) {
+        setCategoriasMobileOpen(false);
+      }
+    };
+    if (categoriasMobileOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [categoriasMobileOpen]);
 
   if (cargando) {
     return (
@@ -467,11 +728,11 @@ const Catalogo = () => {
               <button
                 className={`categoria-pill ${categoriaActiva === 'todas' ? 'active' : ''}`}
                 onClick={() => setCategoriaActiva('todas')}
-                style={{
-                  backgroundColor: categoriaActiva === 'todas' ? 'var(--catalogo-theme-color, #4f46e5)' : 'transparent',
-                  borderColor: categoriaActiva === 'todas' ? 'var(--catalogo-theme-color, #4f46e5)' : 'rgba(0,0,0,0.15)',
-                  color: categoriaActiva === 'todas' ? 'var(--catalogo-text-btn-color, #ffffff)' : '#475569'
-                }}
+                style={categoriaActiva === 'todas' ? {
+                  backgroundColor: 'var(--catalogo-theme-color, #4f46e5)',
+                  borderColor: 'var(--catalogo-theme-color, #4f46e5)',
+                  color: 'var(--catalogo-text-btn-color, #ffffff)'
+                } : {}}
               >
                 Todas
               </button>
@@ -480,11 +741,11 @@ const Catalogo = () => {
                   key={cat.id}
                   className={`categoria-pill ${categoriaActiva === cat.id ? 'active' : ''}`}
                   onClick={() => setCategoriaActiva(cat.id)}
-                  style={{
-                    backgroundColor: categoriaActiva === cat.id ? 'var(--catalogo-theme-color, #4f46e5)' : 'transparent',
-                    borderColor: categoriaActiva === cat.id ? 'var(--catalogo-theme-color, #4f46e5)' : 'rgba(0,0,0,0.15)',
-                    color: categoriaActiva === cat.id ? 'var(--catalogo-text-btn-color, #ffffff)' : '#475569'
-                  }}
+                  style={categoriaActiva === cat.id ? {
+                    backgroundColor: 'var(--catalogo-theme-color, #4f46e5)',
+                    borderColor: 'var(--catalogo-theme-color, #4f46e5)',
+                    color: 'var(--catalogo-text-btn-color, #ffffff)'
+                  } : {}}
                 >
                   {cat.nombre}
                 </button>
@@ -495,58 +756,12 @@ const Catalogo = () => {
       </header>
 
 
-      {/* Carrete de Promociones */}
+      {/* Carrete de Promociones Memoizado e Independiente */}
       {organizacion?.catalogo_config?.promociones && organizacion.catalogo_config.promociones.length > 0 && (
-        <div className="catalogo-promo-carousel-wrapper">
-          <div className="catalogo-promo-carousel">
-            <div className="promo-slider" style={{ transform: `translateX(-${activePromoIndex * 100}%)` }}>
-              {organizacion.catalogo_config.promociones.map((promo, idx) => {
-                const hasLink = promo.enlace_filtro && promo.enlace_filtro.trim() !== '';
-                return (
-                  <div
-                    key={promo.id || idx}
-                    className="promo-slide"
-                    onClick={() => {
-                      if (hasLink) {
-                        setCategoriaActiva('todas');
-                        setBusqueda(promo.enlace_filtro);
-                        const target = document.getElementById('catalogo-productos');
-                        if (target) {
-                          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        }
-                      }
-                    }}
-                    style={{ cursor: hasLink ? 'pointer' : 'default' }}
-                  >
-                    <img src={promo.imagen_url} alt={promo.titulo || 'Promoción'} className="promo-image" />
-                    {promo.titulo && (
-                      <div className="promo-overlay">
-                        <div className="promo-text-container">
-                          <span className="promo-badge" style={{ backgroundColor: 'var(--catalogo-theme-color, #4f46e5)' }}>Destacado</span>
-                          <h2 className="promo-title">{promo.titulo}</h2>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            {organizacion.catalogo_config.promociones.length > 1 && (
-              <div className="promo-indicators">
-                {organizacion.catalogo_config.promociones.map((_, idx) => (
-                  <button
-                    key={idx}
-                    className={`promo-dot ${activePromoIndex === idx ? 'active' : ''}`}
-                    onClick={() => setActivePromoIndex(idx)}
-                    style={{
-                      backgroundColor: activePromoIndex === idx ? 'var(--catalogo-theme-color, #4f46e5)' : '#d1d5db'
-                    }}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+        <PromoCarousel
+          promociones={organizacion.catalogo_config.promociones}
+          onSelectPromo={handleSelectPromo}
+        />
       )}
 
       {/* Mensaje de Bienvenida (debajo del carrusel) */}
@@ -567,32 +782,68 @@ const Catalogo = () => {
       <div id="catalogo-productos" className={`catalogo-main-layout ${layoutCategorias === 'side' ? 'side-layout' : 'top-layout'}`}>
         {/* Menú lateral de categorías - solo si es diseño lateral */}
         {categorias.length > 0 && layoutCategorias === 'side' && (
-          <aside className="catalogo-categorias-container">
+          <aside className="catalogo-categorias-container" ref={categoriasRef}>
             <h3 className="side-categorias-title">Categorías</h3>
-            <div className="catalogo-categorias">
+
+            {/* Cabecera desplegable para dispositivos pequeños */}
+            <button
+              type="button"
+              className="side-categorias-mobile-toggle"
+              onClick={() => setCategoriasMobileOpen(prev => !prev)}
+              aria-expanded={categoriasMobileOpen}
+            >
+              <div className="side-categorias-mobile-info">
+                <span className="side-categorias-mobile-label">Categorías:</span>
+                <span
+                  className="side-categorias-mobile-active"
+                  title={nombreCategoriaActiva}
+                  style={categoriaActiva !== 'todas' ? {
+                    backgroundColor: 'var(--catalogo-theme-color, #4f46e5)',
+                    color: 'var(--catalogo-text-btn-color, #ffffff)',
+                    borderColor: 'var(--catalogo-theme-color, #4f46e5)'
+                  } : {}}
+                >
+                  {nombreCategoriaActiva}
+                </span>
+              </div>
+              <ChevronDown 
+                size={18} 
+                className={`side-categorias-chevron ${categoriasMobileOpen ? 'open' : ''}`} 
+              />
+            </button>
+
+            <div className={`catalogo-categorias ${categoriasMobileOpen ? 'mobile-open' : 'mobile-closed'}`}>
               <button
+                type="button"
                 className={`categoria-pill ${categoriaActiva === 'todas' ? 'active' : ''}`}
-                onClick={() => setCategoriaActiva('todas')}
-                style={{
-                  backgroundColor: categoriaActiva === 'todas' ? 'var(--catalogo-theme-color, #4f46e5)' : 'transparent',
-                  borderColor: categoriaActiva === 'todas' ? 'var(--catalogo-theme-color, #4f46e5)' : 'rgba(0,0,0,0.15)',
-                  color: categoriaActiva === 'todas' ? 'var(--catalogo-text-btn-color, #ffffff)' : '#475569'
+                onClick={() => {
+                  setCategoriaActiva('todas');
+                  setCategoriasMobileOpen(false);
                 }}
+                style={categoriaActiva === 'todas' ? {
+                  backgroundColor: 'var(--catalogo-theme-color, #4f46e5)',
+                  borderColor: 'var(--catalogo-theme-color, #4f46e5)',
+                  color: 'var(--catalogo-text-btn-color, #ffffff)'
+                } : {}}
               >
-                Todas
+                <span className="categoria-pill-text">Todas</span>
               </button>
               {categorias.map(cat => (
                 <button
+                  type="button"
                   key={cat.id}
                   className={`categoria-pill ${categoriaActiva === cat.id ? 'active' : ''}`}
-                  onClick={() => setCategoriaActiva(cat.id)}
-                  style={{
-                    backgroundColor: categoriaActiva === cat.id ? 'var(--catalogo-theme-color, #4f46e5)' : 'transparent',
-                    borderColor: categoriaActiva === cat.id ? 'var(--catalogo-theme-color, #4f46e5)' : 'rgba(0,0,0,0.15)',
-                    color: categoriaActiva === cat.id ? 'var(--catalogo-text-btn-color, #ffffff)' : '#475569'
+                  onClick={() => {
+                    setCategoriaActiva(cat.id);
+                    setCategoriasMobileOpen(false);
                   }}
+                  style={categoriaActiva === cat.id ? {
+                    backgroundColor: 'var(--catalogo-theme-color, #4f46e5)',
+                    borderColor: 'var(--catalogo-theme-color, #4f46e5)',
+                    color: 'var(--catalogo-text-btn-color, #ffffff)'
+                  } : {}}
                 >
-                  {cat.nombre}
+                  <span className="categoria-pill-text">{cat.nombre}</span>
                 </button>
               ))}
             </div>
@@ -631,76 +882,20 @@ const Catalogo = () => {
               </div>
 
               <div className={`productos-grid vista-${vistaLayout}`}>
-                {productosFiltrados.map((producto) => {
-                  const hasStock = producto.es_servicio || (producto.stock_disponible || 0) > 0;
-                  return (
-                    <div key={producto.id} className="producto-card">
-                      <div className="producto-img-container">
-                        <OptimizedProductImage
-                          imagePath={producto.url_imagen}
-                          alt={producto.nombre}
-                          className="producto-img"
-                        />
-                      </div>
-                      <div className="producto-info">
-                        <div className="producto-categoria">{getCategoriaNombre(producto.categoria_id)}</div>
-                        <h3 className="producto-nombre">{producto.nombre}</h3>
-                        {producto.descripcion && (
-                          <p className="producto-descripcion" style={{ fontSize: '0.75rem', color: '#6b7280', margin: '0 0 0.5rem 0', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', height: '32px' }}>
-                            {producto.descripcion}
-                          </p>
-                        )}
-                        <div className="producto-footer">
-                          <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span className="producto-precio" style={{ color: 'var(--catalogo-theme-color, #4f46e5)' }}>{formatCOP(producto.precio_venta)}</span>
-                            {!producto.es_servicio && (
-                              <span className={`producto-stock ${hasStock ? 'disponible' : ''}`} style={{ alignSelf: 'flex-start', marginTop: '0.2rem' }}>
-                                {hasStock ? 'Disponible' : 'Agotado'}
-                              </span>
-                            )}
-                          </div>
+                {productosVisibles.map((producto) => (
+                  <ProductoCard
+                    key={producto.id}
+                    producto={producto}
+                    categoriaNombre={getCategoriaNombre(producto.categoria_id)}
+                    onAddToCart={addToCart}
+                  />
+                ))}
 
-                          {hasStock ? (
-                            <button
-                              className="btn-agregar-pedido"
-                              onClick={() => addToCart(producto)}
-                              style={{
-                                background: 'var(--catalogo-theme-color, #4f46e5)',
-                                color: '#ffffff',
-                                border: 'none',
-                                borderRadius: '8px',
-                                padding: '0.5rem 0.8rem',
-                                fontSize: '0.85rem',
-                                fontWeight: '600',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s'
-                              }}
-                            >
-                              Agregar
-                            </button>
-                          ) : (
-                            <button
-                              className="btn-agregar-pedido agotado"
-                              disabled
-                              style={{
-                                background: '#e2e8f0',
-                                color: '#94a3b8',
-                                border: 'none',
-                                borderRadius: '8px',
-                                padding: '0.5rem 0.8rem',
-                                fontSize: '0.85rem',
-                                fontWeight: '600',
-                                cursor: 'not-allowed'
-                              }}
-                            >
-                              Agotado
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                {visibleCount < productosFiltrados.length && (
+                  <div ref={loadMoreRef} className="catalogo-load-more-sentinel">
+                    <div className="catalogo-loading-more-spinner" />
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -730,7 +925,7 @@ const Catalogo = () => {
                 <button
                   className="cart-drawer-back"
                   onClick={() => setCheckoutStep('cart')}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem', color: '#4b5563', marginRight: '0.5rem', display: 'flex', alignItems: 'center' }}
+                  title="Volver"
                 >
                   <ArrowLeft size={20} />
                 </button>
@@ -791,74 +986,74 @@ const Catalogo = () => {
               </>
             ) : (
               <>
-                <div className="cart-drawer-items" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151' }}>Nombre Completo *</label>
+                <div className="cart-drawer-items cart-shipping-form">
+                  <div className="cart-form-group">
+                    <label className="cart-form-label">Nombre Completo *</label>
                     <input
                       type="text"
+                      className="cart-form-input"
                       value={shippingNombre}
                       onChange={(e) => setShippingNombre(e.target.value)}
                       placeholder="Ej. Juan Pérez"
-                      style={{ padding: '0.6rem 0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem' }}
                       required
                     />
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151' }}>Celular / Teléfono *</label>
+                  <div className="cart-form-group">
+                    <label className="cart-form-label">Celular / Teléfono *</label>
                     <input
                       type="tel"
+                      className="cart-form-input"
                       value={shippingTelefono}
                       onChange={(e) => setShippingTelefono(e.target.value)}
                       placeholder="Ej. 3001234567"
-                      style={{ padding: '0.6rem 0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem' }}
                       required
                     />
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151' }}>Dirección de Envío *</label>
+                  <div className="cart-form-group">
+                    <label className="cart-form-label">Dirección de Envío *</label>
                     <input
                       type="text"
+                      className="cart-form-input"
                       value={shippingDireccion}
                       onChange={(e) => setShippingDireccion(e.target.value)}
                       placeholder="Ej. Calle 45 # 12 - 34"
-                      style={{ padding: '0.6rem 0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem' }}
                       required
                     />
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151' }}>Ciudad / Municipio *</label>
+                  <div className="cart-form-group">
+                    <label className="cart-form-label">Ciudad / Municipio *</label>
                     <input
                       type="text"
+                      className="cart-form-input"
                       value={shippingCiudad}
                       onChange={(e) => setShippingCiudad(e.target.value)}
                       placeholder="Ej. Bogotá"
-                      style={{ padding: '0.6rem 0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem' }}
                       required
                     />
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151' }}>Indicaciones de Entrega (Opcional)</label>
+                  <div className="cart-form-group">
+                    <label className="cart-form-label">Indicaciones de Entrega (Opcional)</label>
                     <input
                       type="text"
+                      className="cart-form-input"
                       value={shippingIndicaciones}
                       onChange={(e) => setShippingIndicaciones(e.target.value)}
                       placeholder="Ej. Portería, casa blanca reja negra"
-                      style={{ padding: '0.6rem 0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem' }}
                     />
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151' }}>Nota o comentarios para el negocio (Opcional)</label>
+                  <div className="cart-form-group">
+                    <label className="cart-form-label">Nota o comentarios para el negocio (Opcional)</label>
                     <textarea
                       rows={2}
+                      className="cart-form-textarea"
                       value={notaPedido}
                       onChange={(e) => setNotaPedido(e.target.value)}
                       placeholder="Ej. Sin cebolla, empacar por separado, etc."
-                      style={{ padding: '0.6rem 0.75rem', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem', resize: 'none', fontFamily: 'inherit' }}
                     />
                   </div>
                 </div>
