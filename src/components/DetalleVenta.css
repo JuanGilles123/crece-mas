@@ -9,7 +9,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10000 !important;
+  z-index: 10005 !important;
   padding: 1rem;
 }
 
@@ -411,9 +411,9 @@
 @media (max-width: 768px) {
   .detalle-venta-modal {
     max-width: 100%;
-    max-height: 100vh;
-    border-radius: 0;
-    margin-bottom: 80px !important; /* Espacio para el bottom-nav */
+    max-height: calc(100dvh - 2rem);
+    border-radius: 1rem;
+    margin-bottom: 0 !important;
   }
 
   .detalle-venta-header,
@@ -434,7 +434,7 @@
 
 /* Asegurar que el overlay esté por encima de todo */
 .detalle-venta-overlay {
-  z-index: 10000 !important;
+  z-index: 10005 !important;
 }
 
 /* Ocultar bottom-nav cuando el modal está abierto */

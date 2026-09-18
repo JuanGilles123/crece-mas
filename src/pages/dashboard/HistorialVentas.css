@@ -506,7 +506,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 10005 !important;
   padding: 1rem;
   backdrop-filter: blur(4px);
 }
@@ -960,13 +960,16 @@ input.qty-input::-webkit-outer-spin-button {
   }
 
   .venta-actions {
-    flex-direction: column;
-    gap: 0.5rem;
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)) !important;
+    gap: 0.5rem !important;
+    width: 100% !important;
   }
 
   .btn-action {
-    width: 100%;
-    justify-content: center;
+    width: 100% !important;
+    min-height: 42px !important;
+    justify-content: center !important;
   }
 
   .venta-card {
@@ -980,6 +983,7 @@ input.qty-input::-webkit-outer-spin-button {
   .modal-overlay {
     padding: 0 !important;
     align-items: flex-end !important;
+    z-index: 10005 !important;
   }
 
   .modal-content {
@@ -987,7 +991,8 @@ input.qty-input::-webkit-outer-spin-button {
     max-width: 100% !important;
     margin: 0 !important;
     border-radius: 20px 20px 0 0 !important;
-    max-height: 90vh !important;
+    max-height: calc(100dvh - 2rem) !important;
+    -webkit-overflow-scrolling: touch !important;
   }
 
   .modal-devolucion,
@@ -1197,14 +1202,32 @@ input.qty-input::-webkit-outer-spin-button {
 
 @media (max-width: 480px) {
   .item-row input[type="checkbox"] {
-    width: 10px !important;
-    height: 10px !important;
-    min-width: 10px !important;
-    min-height: 10px !important;
+    width: 18px !important;
+    height: 18px !important;
+    min-width: 18px !important;
+    min-height: 18px !important;
+    cursor: pointer;
   }
 
   .item-name {
-    font-size: 0.7rem !important;
+    font-size: 0.75rem !important;
+  }
+
+  .venta-actions {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .modal-actions {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    width: 100% !important;
+  }
+
+  .modal-actions button,
+  .modal-actions .btn-cancel,
+  .modal-actions .btn-confirm {
+    width: 100% !important;
+    min-height: 44px !important;
   }
 }
 

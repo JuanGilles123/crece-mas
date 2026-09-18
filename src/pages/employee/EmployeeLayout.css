@@ -124,7 +124,7 @@
 
 @media (max-width: 768px) {
   .employee-content {
-    padding: 16px 16px 0px;
+    padding: 16px 16px calc(var(--bottom-nav-height, 62px) + 16px) !important;
   }
 
   .employee-hero {

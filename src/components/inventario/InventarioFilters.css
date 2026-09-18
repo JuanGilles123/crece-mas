@@ -250,3 +250,53 @@
   filter: brightness(1.1);
   transform: translateY(-1px);
 }
+
+/* ==========================================================================
+   Responsive para Filtros Avanzados en Móviles
+   ========================================================================== */
+@media (max-width: 480px) {
+  .adv-filters-dropdown {
+    width: min(320px, calc(100vw - 1.5rem));
+    max-width: calc(100vw - 1.5rem);
+    max-height: min(480px, calc(100dvh - 6rem));
+  }
+
+  .adv-filters-header {
+    padding: 0.75rem 1rem;
+  }
+
+  .adv-search-container {
+    padding: 0.6rem 1rem;
+  }
+
+  .adv-field-label-row {
+    padding: 0.65rem 0.65rem;
+    min-height: 42px;
+  }
+
+  .adv-filter-input {
+    min-height: 42px;
+    font-size: 0.85rem;
+  }
+
+  .adv-close-btn {
+    min-height: 44px;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .adv-filters-dropdown {
+    width: calc(100vw - 1rem);
+    max-width: calc(100vw - 1rem);
+  }
+
+  .adv-field-control-wrapper {
+    padding: 0 0.5rem 0.5rem 1rem;
+  }
+
+  .adv-multi-chip {
+    padding: 0.4rem 0.6rem;
+    min-height: 36px;
+  }
+}

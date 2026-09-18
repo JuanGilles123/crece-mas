@@ -531,67 +531,195 @@
   .venta-rapida-header {
     flex-direction: column;
     text-align: center;
-    gap: 16px;
+    gap: 12px;
+    padding-bottom: 14px !important;
+    margin-bottom: 14px !important;
   }
 
   .header-icon {
-    width: 64px;
-    height: 64px;
+    width: 52px;
+    height: 52px;
   }
 
   .header-text h1 {
-    font-size: 28px;
+    font-size: 26px;
   }
 
   .header-text p {
-    font-size: 15px;
+    font-size: 14px;
   }
 
   .venta-rapida-container {
-    padding: 20px;
+    padding: 18px;
+    border-radius: 14px;
   }
 
   .monto-input {
-    font-size: 32px;
-    padding: 14px;
+    font-size: clamp(26px, 7vw, 34px);
+    padding: 12px 14px;
   }
 
   .monto-simbolo-outside {
-    font-size: 32px !important;
+    font-size: clamp(26px, 7vw, 34px) !important;
   }
 
   .monto-simbolo {
-    font-size: 32px;
+    font-size: clamp(26px, 7vw, 34px);
     left: 14px;
   }
 
   .montos-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .monto-btn {
+    padding: 12px 8px;
+    font-size: 15px;
   }
 
   .metodos-pago {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .metodo-btn {
+    padding: 12px 8px;
+    font-size: 14px;
+    gap: 8px;
   }
 
   .acciones {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1.5fr;
+    gap: 10px;
+  }
+
+  .btn-cancelar,
+  .btn-registrar {
+    padding: 14px 16px;
+    font-size: 15px;
   }
 }
 
 @media (max-width: 480px) {
+  .venta-rapida {
+    padding: 12px;
+  }
+
+  .venta-rapida-container {
+    padding: 14px;
+    border-radius: 12px;
+  }
+
+  .monto-section {
+    margin-bottom: 18px;
+  }
+
   .monto-input {
-    font-size: 28px;
+    font-size: clamp(22px, 6.5vw, 28px);
+    padding: 10px 12px;
   }
 
   .monto-simbolo-outside {
-    font-size: 2rem !important;
+    font-size: clamp(22px, 6.5vw, 28px) !important;
   }
-  
-  .monto-simbolo {
-    font-size: 2rem;
+
+  .monto-preview {
+    font-size: 20px;
+    padding: 12px;
+  }
+
+  .montos-rapidos {
+    margin-bottom: 18px;
+    padding: 14px;
   }
 
   .montos-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .monto-btn {
+    padding: 10px 6px;
+    font-size: 14px;
+  }
+
+  .form-section {
+    margin-bottom: 18px;
+  }
+
+  .metodos-pago {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .metodo-btn {
+    padding: 10px 6px;
+    font-size: 13px;
+    gap: 6px;
+  }
+
+  .acciones {
+    grid-template-columns: 1fr 1.3fr;
+    gap: 8px;
+  }
+
+  .btn-cancelar,
+  .btn-registrar {
+    padding: 12px 14px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 360px) {
+  .venta-rapida {
+    padding: 8px;
+  }
+
+  .venta-rapida-header {
+    gap: 8px;
+  }
+
+  .header-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+  }
+
+  .header-text h1 {
+    font-size: 22px;
+  }
+
+  .venta-rapida-container {
+    padding: 12px 10px;
+  }
+
+  .monto-input-wrapper {
+    gap: 0.4rem;
+  }
+
+  .monto-input {
+    font-size: 20px;
+    padding: 8px 10px;
+  }
+
+  .monto-simbolo-outside {
+    font-size: 20px !important;
+  }
+
+  .monto-preview {
+    font-size: 18px;
+    padding: 10px;
+  }
+
+  .acciones {
     grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .btn-cancelar,
+  .btn-registrar {
+    padding: 12px;
+    width: 100%;
   }
 }

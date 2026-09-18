@@ -1012,19 +1012,28 @@
     align-items: center;
   }
   
-  /* Buscador abajo - SOLUCIÓN SIMPLIFICADA */
-  .inventario-search-container {
+  /* Buscador y filtros en tablet - Wrapping natural */
+  .inventario-main .inventario-search-row {
     display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
     width: 100% !important;
-    min-width: 0 !important;
+    overflow: visible !important;
+  }
+  
+  .inventario-main .search-input-wrapper.compact {
+    flex: 1 1 260px !important;
     max-width: 100% !important;
-    box-sizing: border-box;
-    margin: 0 !important;
-    padding: 0 !important;
-    flex: 0 0 auto !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    overflow: hidden;
+  }
+
+  .inventario-main .inventario-quick-filters {
+    flex: 1 1 auto !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 0.5rem !important;
+    overflow: visible !important;
   }
   
   .search-input-wrapper {
@@ -3734,8 +3743,8 @@
     justify-content: center !important;
     padding: 0.4rem 0.5rem !important;
     font-size: 0.75rem !important;
-    min-height: 32px !important;
-    height: 32px !important;
+    min-height: 38px !important;
+    height: 38px !important;
     margin: 0 !important;
     display: inline-flex !important;
     align-items: center !important;
@@ -3847,5 +3856,117 @@
   .inventario-main .inventario-lista-item {
     position: relative !important;
     z-index: 1 !important;
+  }
+
+  .inventario-main .inventario-select-checkbox {
+    min-width: 38px;
+    min-height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .inventario-main .inventario-select-checkbox input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+  }
+
+  .inventario-main .inventario-nombre {
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+  }
+
+  /* Acciones de Revisiones de Inventario */
+  .inventario-main .inventario-revisiones-actions {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    width: 100% !important;
+    gap: 0.5rem !important;
+  }
+
+  .inventario-main .inventario-revisiones-actions .inventario-btn {
+    width: 100% !important;
+    min-height: 44px !important;
+    justify-content: center !important;
+  }
+
+  /* Inventario Inicial */
+  .inventario-inicial-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+
+  .inventario-inicial-table {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .inventario-inicial-table table {
+    min-width: 720px;
+  }
+}
+
+/* ==========================================================================
+   Ajustes para Pantallas Móviles Pequeñas (<= 480px y <= 360px)
+   ========================================================================== */
+@media (max-width: 480px) {
+  .inventario-main .inventario-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+    padding: 0 !important;
+  }
+
+  .inventario-main .inventario-card {
+    padding: 0.875rem !important;
+    border-radius: 12px !important;
+  }
+
+  .inventario-main .inventario-card-actions {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 0.35rem !important;
+    width: 100% !important;
+    margin-top: 0.5rem !important;
+  }
+
+  .inventario-main .inventario-card-actions .inventario-btn,
+  .inventario-main .inventario-card-actions .inventario-btn-outline {
+    flex: 1 !important;
+    min-height: 40px !important;
+    font-size: 0.8rem !important;
+    justify-content: center !important;
+    padding: 0.4rem 0.5rem !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .inventario-main {
+    padding: 0.75rem 0.5rem !important;
+  }
+
+  .inventario-main .inventario-actions {
+    gap: 0.35rem !important;
+  }
+
+  .inventario-main .inventario-actions .inventario-btn {
+    padding: 0.5rem 0.35rem !important;
+    font-size: 0.78rem !important;
+    min-height: 40px !important;
+  }
+
+  .inventario-main .cp-dropdown-filter {
+    min-width: 100px !important;
+  }
+
+  .inventario-main .inventario-lista-item {
+    padding: 0.5rem 0.35rem !important;
+    gap: 0.4rem !important;
+  }
+
+  .inventario-main .inventario-lista-actions .inventario-btn,
+  .inventario-main .inventario-lista-actions .inventario-btn-outline {
+    font-size: 0.7rem !important;
+    padding: 0.35rem 0.3rem !important;
   }
 }

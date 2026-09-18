@@ -36,35 +36,15 @@
   height: 62px;
   min-height: 62px;
 
-  /* Comportamiento auto-hide */
-  transform: translateY(calc(100% - 15px));
-  opacity: 0;
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* Pseudo-elemento para capturar el área de interacción cuando está oculta */
-.bottom-nav::before {
-  content: '';
-  position: absolute;
-  top: -30px;
-  left: 0;
-  right: 0;
-  height: 30px;
-  background: transparent;
-}
-
-/* Mostrar la barra al pasar el cursor o hacer touch */
-.bottom-nav:hover,
-.bottom-nav:active,
-.bottom-nav:focus-within {
-  transform: translateY(0);
+  transform: none;
   opacity: 1;
+  pointer-events: auto;
 }
 
-/* Ocultar en desktop */
+/* Ocultar en tablet y desktop */
 @media (min-width: 769px) {
   .bottom-nav {
-    display: none;
+    display: none !important;
   }
 }
 
@@ -120,7 +100,7 @@
 /* Reservar espacio para la barra en móvil */
 @media (max-width: 768px) {
   .dashboard-content {
-    padding-bottom: 70px !important;
+    padding-bottom: calc(var(--bottom-nav-height, 62px) + 16px) !important;
   }
 }
 
