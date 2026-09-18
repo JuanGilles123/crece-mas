@@ -31,6 +31,17 @@ import toast from 'react-hot-toast';
 import { getEmployeeSession } from '../../utils/employeeSession';
 import './HistorialVentas.css';
 
+// Helper para normalizar texto de búsqueda (elimina acentos, mayúsculas y espacios extra)
+const normalizeSearchText = (text) => {
+  if (!text) return '';
+  return text
+    .toString()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+};
+
 const HistorialVentas = () => {
   const { userProfile, organization, isEmployeeMode, hasPermission } = useAuth();
   const { getLimit } = useSubscription();
@@ -50,17 +61,23 @@ const HistorialVentas = () => {
         if (Array.isArray(parsed)) return parsed;
       } catch (e) {}
     }
-    return venta.items || [];
+    if (typeof venta.items === 'string') {
+      try {
+        const parsed = JSON.parse(venta.items);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {}
+    }
+    return Array.isArray(venta.items) ? venta.items : [];
   }, []);
 
   const [busquedaLocal, setBusquedaLocal] = useState('');
   const [busqueda, setBusqueda] = useState('');
 
-  // Debounce para evitar parpadeos en la búsqueda
+  // Debounce optimizado a 150ms para respuesta ultra fluida sin parpadeos ni bloqueos
   useEffect(() => {
     const timer = setTimeout(() => {
       setBusqueda(busquedaLocal);
-    }, 400); // 400ms de retraso
+    }, 150);
     return () => clearTimeout(timer);
   }, [busquedaLocal]);
 
@@ -71,13 +88,12 @@ const HistorialVentas = () => {
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
 
-  const [fetchLimit, setFetchLimit] = useState(150);
-  const activeLimit = useMemo(() => {
-    return busqueda.trim() ? 1000 : fetchLimit;
-  }, [busqueda, fetchLimit]);
+  // Límite inicial saludable (250 ventas para cubrir historial inmediato con carga veloz)
+  const [fetchLimit, setFetchLimit] = useState(250);
+  const activeLimit = fetchLimit;
 
   const calculatedDates = useMemo(() => {
-    if (filtroFecha === 'todos' || busqueda.trim()) {
+    if (filtroFecha === 'todos') {
       return { startDate: null, endDate: null };
     }
     const hoy = new Date();
@@ -127,9 +143,9 @@ const HistorialVentas = () => {
         break;
     }
     return { startDate: start, endDate: end };
-  }, [filtroFecha, fechaEspecifica, fechaInicio, fechaFin, busqueda]);
+  }, [filtroFecha, fechaEspecifica, fechaInicio, fechaFin]);
 
-  const { data: ventas = [], isLoading, refetch } = useVentas(
+  const { data: ventas = [], isLoading, isFetching, refetch } = useVentas(
     userProfile?.organization_id, 
     activeLimit, 
     historyDays,
@@ -152,56 +168,38 @@ const HistorialVentas = () => {
     });
   }, [ventas, cotizaciones]);
 
-  // --- OPTIMIZACIÓN: ÍNDICE DE BÚSQUEDA ---
+  // --- OPTIMIZACIÓN: ÍNDICE DE BÚSQUEDA ACCIÓN INMEDIATA Y ULTRA RÁPIDO ---
   const ventasSearchIndex = useMemo(() => {
     const index = new Map();
-    todasLasVentas.forEach((venta) => {
-      const camposVenta = [
-        venta.id,
-        venta.numero_venta,
-        venta.metodo_pago,
-        venta.estado,
-        venta.cliente_nombre,
-        venta.cliente_telefono,
-        venta.total?.toString()
-      ];
+    for (let i = 0; i < todasLasVentas.length; i++) {
+      const venta = todasLasVentas[i];
+      let str = `${venta.id || ''} ${venta.numero_venta || ''} ${venta.metodo_pago || ''} ${venta.estado || ''} ${venta.cliente_nombre || ''} ${venta.cliente_telefono || ''} ${venta.total || ''} ${venta.notas || ''}`;
 
-      const camposItems = getVentaItems(venta).flatMap(item => {
-        const baseFields = [
-          item.nombre,
-          item.codigo,
-          item.variant_nombre,
-          item.variant_codigo
-        ];
+      if (venta.cliente) {
+        str += ` ${venta.cliente.nombre || ''} ${venta.cliente.documento || ''} ${venta.cliente.telefono || ''} ${venta.cliente.email || ''}`;
+      }
 
-        let meta = item.metadata;
-        if (typeof meta === 'string') {
-          try { meta = JSON.parse(meta); } catch (e) {}
+      const items = getVentaItems(venta);
+      if (Array.isArray(items)) {
+        for (let j = 0; j < items.length; j++) {
+          const item = items[j];
+          if (!item) continue;
+          str += ` ${item.nombre || ''} ${item.codigo || ''} ${item.variant_nombre || ''} ${item.variant_codigo || ''}`;
+
+          let meta = item.metadata;
+          if (typeof meta === 'string') {
+            try { meta = JSON.parse(meta); } catch (e) {}
+          }
+          if (meta?.productos_vinculados && Array.isArray(meta.productos_vinculados)) {
+            for (let k = 0; k < meta.productos_vinculados.length; k++) {
+              str += ` ${meta.productos_vinculados[k]?.producto_nombre || ''}`;
+            }
+          }
         }
-        const vinculados = meta?.productos_vinculados;
-        if (vinculados && Array.isArray(vinculados)) {
-          vinculados.forEach(v => {
-            if (v.producto_nombre) baseFields.push(v.producto_nombre);
-          });
-        }
+      }
 
-        return baseFields;
-      });
-
-      const cliente = venta.cliente || {};
-      const camposCliente = [
-        cliente.nombre,
-        cliente.documento,
-        cliente.telefono,
-        cliente.email
-      ];
-
-      const todosLosCampos = [...camposVenta, ...camposItems, ...camposCliente]
-        .filter(campo => campo !== null && campo !== undefined && campo !== '')
-        .map(campo => String(campo).toLowerCase());
-
-      index.set(String(venta.id || venta.temp_id), todosLosCampos.join(' '));
-    });
+      index.set(String(venta.id || venta.temp_id), normalizeSearchText(str));
+    }
     return index;
   }, [todasLasVentas, getVentaItems]);
 
@@ -413,12 +411,12 @@ const HistorialVentas = () => {
   const ventasFiltradas = useMemo(() => {
     let filtradas = todasLasVentas;
 
-    // Filtro de búsqueda optimizado con índice
+    // Filtro de búsqueda optimizado con índice y soporte para múltiples palabras y acentos
     if (busqueda.trim()) {
-      const termino = busqueda.toLowerCase().trim();
+      const terminos = normalizeSearchText(busqueda).split(/\s+/).filter(Boolean);
       filtradas = filtradas.filter(venta => {
         const textoCompleto = ventasSearchIndex.get(String(venta.id || venta.temp_id)) || '';
-        return textoCompleto.includes(termino);
+        return terminos.every(t => textoCompleto.includes(t));
       });
     }
 
@@ -521,10 +519,9 @@ const HistorialVentas = () => {
   const [visibleCount, setVisibleCount] = useState(50);
   const loadingObserverRef = useRef(null);
 
-  // Reiniciar cantidad visible cuando cambian los filtros o la búsqueda
+  // Reiniciar cantidad visible cuando cambian los filtros o la búsqueda (sin reiniciar límite de red)
   useEffect(() => {
     setVisibleCount(50);
-    setFetchLimit(150);
   }, [busqueda, filtroFecha, filtroMetodoPago, filtroEstado, fechaEspecifica, fechaInicio, fechaFin]);
 
   const handleObserver = useCallback((entries) => {
@@ -532,12 +529,12 @@ const HistorialVentas = () => {
     if (target.isIntersecting) {
       if (visibleCount < ventasFiltradas.length) {
         setVisibleCount((prev) => Math.min(prev + 100, ventasFiltradas.length));
-      } else if (ventas.length >= activeLimit && !busqueda.trim()) {
-        // Aumentar el límite dinámico de la consulta a la base de datos
+      } else if (ventas.length >= activeLimit) {
+        // Aumentar el límite dinámico de la consulta a la base de datos de forma suave
         setFetchLimit((prev) => prev + 150);
       }
     }
-  }, [visibleCount, ventasFiltradas.length, ventas.length, activeLimit, busqueda]);
+  }, [visibleCount, ventasFiltradas.length, ventas.length, activeLimit]);
 
   useEffect(() => {
     const option = {
@@ -1354,7 +1351,7 @@ const HistorialVentas = () => {
     }
   };
 
-  if (isLoading) {
+  if (isLoading && todasLasVentas.length === 0) {
     return (
       <div className="historial-ventas-container">
         <div className="loading-state">
@@ -1386,7 +1383,7 @@ const HistorialVentas = () => {
             onClick={() => refetch()}
             title="Actualizar"
           >
-            <RefreshCw size={20} />
+            <RefreshCw size={20} className={isFetching ? 'spinning' : ''} />
           </button>
         </div>
       </div>
@@ -1411,6 +1408,9 @@ const HistorialVentas = () => {
               e.target.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
             }}
           />
+          {isFetching && (
+            <RefreshCw size={15} className="spinning" style={{ color: '#9ca3af', flexShrink: 0 }} />
+          )}
           <button
             className="clear-search"
             onClick={() => { setBusquedaLocal(''); setBusqueda(''); }}
@@ -1530,7 +1530,27 @@ const HistorialVentas = () => {
         {visibleVentas.length === 0 ? (
           <div className="empty-state">
             <FileText size={48} />
-            <p>No se encontraron ventas</p>
+            <p>No se encontraron ventas {busqueda.trim() ? `para "${busqueda}"` : ''}</p>
+            {busqueda.trim() && ventas.length >= activeLimit && activeLimit < 1000 && (
+              <button
+                type="button"
+                className="btn-action"
+                style={{
+                  marginTop: '0.85rem',
+                  padding: '0.6rem 1.25rem',
+                  background: 'var(--color-primary, #4f46e5)',
+                  color: '#ffffff',
+                  borderRadius: '8px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  fontSize: '0.88rem'
+                }}
+                onClick={() => setFetchLimit(prev => Math.min(prev + 300, 1000))}
+              >
+                Buscar en ventas más antiguas en la base de datos
+              </button>
+            )}
           </div>
         ) : (
           visibleVentas.map((venta) => (
