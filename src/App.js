@@ -157,9 +157,11 @@ function App() {
                 background: '#363636',
                 color: '#fff',
                 borderRadius: '10px',
-                padding: '16px',
+                padding: '12px 16px',
                 fontSize: '14px',
                 fontWeight: '500',
+                maxWidth: 'calc(100vw - 32px)',
+                wordBreak: 'break-word',
               },
               success: {
                 duration: 3000,

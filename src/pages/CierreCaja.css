@@ -612,6 +612,7 @@
 @media (max-width: 768px) {
   .cierre-caja {
     padding: 1rem;
+    padding-bottom: calc(var(--bottom-nav-height, 62px) + 2rem + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   .cierre-header {
@@ -640,6 +641,8 @@
   
   .resumen-card h3 {
     font-size: 1.5rem;
+    word-break: normal;
+    overflow-wrap: break-word;
   }
 
   .venta-item {
@@ -672,6 +675,7 @@
 @media (max-width: 480px) {
   .cierre-caja {
     padding: 0.75rem;
+    padding-bottom: calc(var(--bottom-nav-height, 62px) + 2rem + env(safe-area-inset-bottom, 0px)) !important;
   }
   
   .cierre-header {
@@ -702,7 +706,9 @@
   }
   
   .resumen-card h3 {
-    font-size: 1.5rem;
+    font-size: 1.35rem;
+    word-break: normal;
+    overflow-wrap: break-word;
   }
   
   .resumen-label {
@@ -734,6 +740,31 @@
   
   .input-group {
     gap: 0.5rem;
+  }
+
+  .comparacion-row {
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+
+  .comparacion-row span:last-child {
+    font-size: 1rem;
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+
+  .botones-acciones {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+  }
+
+  .btn-accion {
+    width: 100% !important;
+    min-height: 46px !important;
+  }
+
+  .btn-guardar-cierre {
+    min-height: 48px !important;
   }
   
   .btn {

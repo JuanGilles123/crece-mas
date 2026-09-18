@@ -257,11 +257,20 @@ body[data-modal-open="true"] .dashboard-sidebar:hover {
 }
 
 /* Desktop: Ajustar margen izquierdo para sidebar y usar todo el espacio */
-@media (min-width: 769px) {
+@media (min-width: 1025px) {
   .dashboard-main {
     margin-left: 70px;
     width: calc(100% - 70px);
     max-width: calc(100% - 70px);
+  }
+}
+
+/* Tablet y Móvil: Sin margen izquierdo ya que TopNav está arriba */
+@media (max-width: 1024px) {
+  .dashboard-main {
+    margin-left: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
   }
 }
 
@@ -360,8 +369,7 @@ body[data-modal-open="true"] .dashboard-sidebar:hover {
 @media (max-width: 768px) {
   .dashboard-layout {
     position: relative;
-    padding-bottom: 60px;
-    /* Espacio para bottom nav */
+    padding-bottom: 0;
   }
 
   .sidebar-toggle {
@@ -370,7 +378,7 @@ body[data-modal-open="true"] .dashboard-sidebar:hover {
 
   /* Ajustar contenido para bottom nav */
   .dashboard-content {
-    padding-bottom: 80px;
+    padding-bottom: calc(var(--bottom-nav-height, 62px) + 16px) !important;
   }
 
   /* Sidebar as overlay en móvil */

@@ -200,7 +200,7 @@
 /* ================== RESPONSIVE ================== */
 @media (max-width: 768px) {
   .usage-banner {
-    top: 10px;
+    top: 64px;
     width: calc(100% - 20px);
     padding: 1rem;
     flex-direction: column;

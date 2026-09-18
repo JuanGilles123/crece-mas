@@ -400,3 +400,20 @@ h4 {
     text-shadow: none !important;
   }
 }
+
+/* === TOASTER RESPONSIVE FIXES === */
+@media (max-width: 640px) {
+  div[style*="z-index: 2147483647"] {
+    top: 8px !important;
+    left: 8px !important;
+    right: 8px !important;
+    bottom: auto !important;
+    pointer-events: none;
+  }
+
+  div[style*="z-index: 2147483647"] > div {
+    pointer-events: auto;
+    margin: 0 auto 8px auto !important;
+    max-width: 100% !important;
+  }
+}

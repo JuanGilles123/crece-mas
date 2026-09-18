@@ -12,7 +12,7 @@ import './EmployeeLayout.css';
 const EmployeeLayout = () => {
   const { organization, userProfile, hasPermission } = useAuth();
   const navigate = useNavigate();
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 1024);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   const getPrimerNombre = () => {
     const nombreCompleto = userProfile?.full_name || userProfile?.nombre || 'Empleado';
@@ -158,7 +158,7 @@ const EmployeeLayout = () => {
   }, [hasPermission]);
 
   useEffect(() => {
-    const checkIsMobile = () => setIsMobile(window.innerWidth <= 1024);
+    const checkIsMobile = () => setIsMobile(window.innerWidth <= 768);
     checkIsMobile();
     window.addEventListener('resize', checkIsMobile);
     return () => window.removeEventListener('resize', checkIsMobile);
